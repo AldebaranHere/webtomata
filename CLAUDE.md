@@ -1,12 +1,12 @@
 # CLAUDE.md
 
-Instructions for Claude Code in this repository. Read this file and `ROADMAP.md` at the start of every session.
+Instructions for Claude Code in this repository. Read this file and `MD_FILES/ROADMAP.md` at the start of every session.
 
 ## 1. What we are building
 
 A free, open-source web tool for learning finite state machines, in **Indonesian first**, for Theory of Computation (ToC) students. First users: Fasilkom UI students (course textbook: Elaine Rich, *Automata, Computability and Complexity*).
 
-v1 scope (see `ROADMAP.md`): DFSM and NDFSM (with ε), simulation with traces, NDFSM → DFSM, minimization, equivalence with witness strings, regex → NDFSM, FSM → regex (state elimination), practice questions with feedback, and guides.
+v1 scope (see `MD_FILES/ROADMAP.md`): DFSM and NDFSM (with ε), simulation with traces, NDFSM → DFSM, minimization, equivalence with witness strings, regex → NDFSM, FSM → regex (state elimination), practice questions with feedback, and guides.
 
 The site has three sections that share one editor and one engine:
 
@@ -56,7 +56,9 @@ Change these only when the human approves it in this file first.
 
 ```
 /
-├── CLAUDE.md, ROADMAP.md, README.md, LICENSE (AGPL-3.0), CONTRIBUTING.md
+├── CLAUDE.md, README.md, LICENSE (AGPL-3.0), CONTRIBUTING.md
+├── MD_FILES/        private planning notes (ROADMAP.md, COMPETITORS.md, LIGHTHOUSE1.md); git-ignored, never public
+├── REFERENCES/      private textbooks and course files; git-ignored, never public
 ├── docs/            ARCHITECTURE.md, glossary.md, notation.md, decisions/ (ADRs)
 ├── crates/
 │   ├── engine-core/ pure Rust: model, algorithms, traces, tests, benches
@@ -146,7 +148,7 @@ Rules that keep the budgets:
 
 ## 10. How to work in this repo
 
-1. The human names one task from `ROADMAP.md` (for example "do E3"). Work only on that task.
+1. The human names one task from `MD_FILES/ROADMAP.md` (for example "do E3"). Work only on that task.
 2. **Plan first.** Read the relevant code, then state the plan, the files you will touch and the tests you will write. Wait for approval on anything that changes a decision in this file.
 3. Write tests first, then code. Keep the change small.
 4. Run all checks before you finish:
@@ -155,7 +157,7 @@ Rules that keep the budgets:
    - in `web/`: `pnpm lint && pnpm check && pnpm test && pnpm build`
    - Lighthouse CI and Playwright when UI changes
 5. One task = one branch = one pull request, with Conventional Commit messages (`feat(engine): …`, `fix(editor): …`).
-6. In the same PR, tick the task in `ROADMAP.md` and update docs if behavior changed.
+6. In the same PR, tick the task in `MD_FILES/ROADMAP.md` and update docs if behavior changed.
 7. Record any significant decision as a short ADR in `docs/decisions/`.
 
 **Ask the human instead of guessing** when: a textbook method or notation is unclear; an Indonesian term is missing; a task needs a new dependency; a budget would be raised; scope seems to grow beyond the task.
@@ -164,9 +166,9 @@ Rules that keep the budgets:
 
 ## 11. Definition of done
 
-- Acceptance criteria in `ROADMAP.md` are met.
+- Acceptance criteria in `MD_FILES/ROADMAP.md` are met.
 - Tests cover the change; all checks and CI pass.
 - Budgets hold.
 - New strings exist in `id` and `en`.
-- Docs and `ROADMAP.md` are updated.
+- Docs and `MD_FILES/ROADMAP.md` are updated.
 - The diff is small enough for the human to review in one sitting.
