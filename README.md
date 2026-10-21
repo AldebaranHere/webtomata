@@ -10,4 +10,4 @@ Ini adalah repositori open-source untuk WebTomata. Proyek ini dirancang untuk me
 
 ## Lisensi / License
 
-[AGPL-3.0](LICENSE). Lihat / see [CONTRIBUTING.md](CONTRIBUTING.md) dan / and [docs/glossary.md](docs/glossary.md).
+[AGPL-3.0](LICENSE). Lihat / see [CONTRIBUTING.md](CONTRIBUTING.md), [docs/glossary.md](docs/glossary.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/notation.md](docs/notation.md), [docs/decisions/](docs/decisions/).
