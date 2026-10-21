@@ -35,3 +35,16 @@ cargo test
 pnpm install
 pnpm build
 ```
+
+## Pemeriksaan kode / Code checks
+
+| Command | What it runs |
+| --- | --- |
+| `pnpm lint:rust` | `cargo fmt --check` and `cargo clippy -D warnings` |
+| `pnpm lint` | ESLint (web) |
+| `pnpm format:check` / `pnpm format` | Prettier check / fix (web) |
+| `pnpm check` | `svelte-check` with TypeScript strict |
+| `pnpm test` | `cargo test` |
+| `pnpm verify` | all of the above plus `pnpm build` |
+
+Run `pnpm verify` before opening a pull request.

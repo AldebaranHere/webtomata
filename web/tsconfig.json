@@ -1,7 +1,9 @@
 {
 	"extends": "$app/tsconfig",
 	"compilerOptions": {
-		"strict": true
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true
 	},
 	"include": ["src", "test", "*"],
 	"exclude": ["src/service-worker"]

@@ -3,8 +3,18 @@
   "private": true,
   "license": "AGPL-3.0-only",
   "packageManager": "pnpm@12.14.0",
-  "engines": { "node": ">=24.21.0 <25", "pnpm": ">=12.14.0 <13" },
+  "engines": {
+    "node": ">=24.21.0 <25",
+    "pnpm": ">=12.14.0 <13"
+  },
   "scripts": {
-    "build": "pnpm --filter web build"
+    "build": "pnpm --filter web build",
+    "lint": "pnpm --filter web lint",
+    "format:check": "pnpm --filter web format:check",
+    "format": "pnpm --filter web format",
+    "check": "pnpm --filter web check",
+    "lint:rust": "cargo fmt --check && cargo clippy --all-targets -- -D warnings",
+    "test": "cargo test",
+    "verify": "pnpm lint:rust && pnpm lint && pnpm format:check && pnpm check && pnpm test && pnpm build"
   }
 }
