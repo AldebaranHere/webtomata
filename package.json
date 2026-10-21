@@ -15,8 +15,14 @@
     "check": "pnpm --filter web check",
     "lint:rust": "cargo fmt --check && cargo clippy --all-targets -- -D warnings",
     "test": "cargo test",
-    "verify": "pnpm lint:rust && pnpm build:wasm && pnpm lint && pnpm format:check && pnpm check && pnpm test && pnpm test:wasm && pnpm build",
+    "verify": "pnpm lint:rust && pnpm build:wasm && pnpm lint && pnpm format:check && pnpm check && pnpm test && pnpm test:wasm && pnpm build && pnpm size && pnpm lighthouse",
     "build:wasm": "wasm-pack build crates/engine-wasm --target web --release --out-dir ../../web/src/lib/engine/wasm",
-    "test:wasm": "wasm-pack test --node crates/engine-wasm"
+    "test:wasm": "wasm-pack test --node crates/engine-wasm",
+    "size": "node tools/check-size.mjs",
+    "lighthouse": "node tools/check-lighthouse.mjs"
+  },
+  "devDependencies": {
+    "chrome-launcher": "1.2.2",
+    "lighthouse": "13.5.0"
   }
 }

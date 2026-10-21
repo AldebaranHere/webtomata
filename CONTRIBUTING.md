@@ -45,6 +45,8 @@ pnpm build
 | `pnpm format:check` / `pnpm format` | Prettier check / fix (web) |
 | `pnpm check` | `svelte-check` with TypeScript strict |
 | `pnpm test` | `cargo test` |
+| `pnpm size` | gzip budgets: initial JS per page and `.wasm` (after a build) |
+| `pnpm lighthouse` | Lighthouse mobile scores and metrics on the build (needs Chrome) |
 | `pnpm verify` | all of the above plus `pnpm build` |
 
 Run `pnpm verify` before opening a pull request.
