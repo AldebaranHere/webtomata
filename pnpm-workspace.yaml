@@ -1,2 +1,7 @@
 packages:
   - web
+
+# Install scripts stay off for these (wrangler works without them).
+allowBuilds:
+  esbuild: false
+  workerd: false

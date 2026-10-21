@@ -52,3 +52,7 @@ pnpm build
 Run `pnpm verify` before opening a pull request.
 
 `pnpm build` also builds the WASM engine first (needs `wasm-pack`: `cargo install wasm-pack --locked`). `pnpm test:wasm` runs the engine tests under Node.
+
+## Deploy
+
+Merges to `main` deploy to Cloudflare; pull requests from this repository get a preview URL. `node tools/check-headers.mjs <url>` checks the security headers and CSP of any deployed URL. See `docs/decisions/0002-deploy-cloudflare-workers.md`.
