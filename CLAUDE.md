@@ -89,6 +89,12 @@ Change these only when the human approves it in this file first.
 
 ## 6. Frontend rules
 
+**UX sources of truth:** `docs/ux/` (wireframes, design system, editor interactions, feedback copy). Build screens to match them. If a spec is missing or unclear, ask the human; do not invent a new layout. Use only the design tokens in `web/src/lib/styles/tokens.css`, never raw color or size values in components.
+
+- First run: an empty canvas shows a short "Coba contoh" list and an optional one-minute tour, never a long tutorial.
+- Feedback tone: calm and specific, per `docs/ux/feedback-copy.md`. Never show a bare "SALAH" or red error wall.
+- Touch targets are at least 44 × 44 px.
+
 - The UI never imports the WASM module directly; it talks to the engine worker through `src/lib/engine/`.
 - One machine document, three synced views (diagram, transition table, formal definition).
 - Every edit is a command object, so undo/redo works for everything.
