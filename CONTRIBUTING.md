@@ -28,7 +28,7 @@ Thanks for helping. WebTomata is free, open source (AGPL-3.0), with no accounts 
 
 ## Menjalankan proyek / Running the project
 
-Requirements: Rust (stable, via `rustup`), Node 24 or newer, pnpm.
+Requirements: Rust (stable, via `rustup`), Node 24.21.x (see `.nvmrc`), pnpm 12.14 (`packageManager` in `package.json`).
 
 ```
 cargo test
