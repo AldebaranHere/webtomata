@@ -17,5 +17,23 @@ export default ts.config(
 	{
 		files: ['**/*.svelte', '**/*.svelte.ts'],
 		languageOptions: { parserOptions: { parser: ts.parser } }
-	}
+	},
+	{
+		files: ['src/**/*.{ts,svelte}'],
+		ignores: ['src/lib/engine/worker.ts'],
+		rules: {
+			'no-restricted-imports': [
+				'error',
+				{
+					patterns: [
+						{
+							group: ['**/engine/wasm/*', '**/engine/wasm'],
+							message: 'Only src/lib/engine/worker.ts may import the WASM package.'
+						}
+					]
+				}
+			]
+		}
+	},
+	{ ignores: ['src/lib/engine/wasm/'] }
 );

@@ -48,3 +48,5 @@ pnpm build
 | `pnpm verify` | all of the above plus `pnpm build` |
 
 Run `pnpm verify` before opening a pull request.
+
+`pnpm build` also builds the WASM engine first (needs `wasm-pack`: `cargo install wasm-pack --locked`). `pnpm test:wasm` runs the engine tests under Node.

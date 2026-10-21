@@ -8,13 +8,15 @@
     "pnpm": ">=12.14.0 <13"
   },
   "scripts": {
-    "build": "pnpm --filter web build",
+    "build": "pnpm build:wasm && pnpm --filter web build",
     "lint": "pnpm --filter web lint",
     "format:check": "pnpm --filter web format:check",
     "format": "pnpm --filter web format",
     "check": "pnpm --filter web check",
     "lint:rust": "cargo fmt --check && cargo clippy --all-targets -- -D warnings",
     "test": "cargo test",
-    "verify": "pnpm lint:rust && pnpm lint && pnpm format:check && pnpm check && pnpm test && pnpm build"
+    "verify": "pnpm lint:rust && pnpm build:wasm && pnpm lint && pnpm format:check && pnpm check && pnpm test && pnpm test:wasm && pnpm build",
+    "build:wasm": "wasm-pack build crates/engine-wasm --target web --release --out-dir ../../web/src/lib/engine/wasm",
+    "test:wasm": "wasm-pack test --node crates/engine-wasm"
   }
 }
