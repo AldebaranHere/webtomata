@@ -7,3 +7,7 @@ This is an open-source repository for WebTomata. This project is designed to mak
 ## BAHASA INDONESIA
 
 Ini adalah repositori open-source untuk WebTomata. Proyek ini dirancang untuk memudahkan hal-hal yang berkaitan dengan teori komputasi atau automata dan teori bahasa di web.
+
+## Lisensi / License
+
+[AGPL-3.0](LICENSE). Lihat / see [CONTRIBUTING.md](CONTRIBUTING.md) dan / and [docs/glossary.md](docs/glossary.md).
