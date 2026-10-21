@@ -14,3 +14,11 @@ mod tests {
         assert!(!version().is_empty());
     }
 }
+
+#[cfg(test)]
+mod red_check {
+    #[test]
+    fn deliberately_fails() {
+        assert_eq!(1 + 1, 3);
+    }
+}
