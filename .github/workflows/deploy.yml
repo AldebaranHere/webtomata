@@ -69,7 +69,13 @@ jobs:
           pnpm --filter web exec wrangler deploy --message "$GITHUB_SHA" | tee deploy.log
           url=$(grep -o 'https://[a-z0-9.-]*\.workers\.dev' deploy.log | head -n 1)
           echo "Deployed to $url"
-          node tools/check-headers.mjs "$url/"
+          # A new version can take a few seconds to reach every edge, so retry.
+          for attempt in 1 2 3 4 5 6; do
+            node tools/check-headers.mjs "$url/" && exit 0
+            echo "Header check failed (attempt $attempt); retrying in 5s"
+            sleep 5
+          done
+          exit 1
 
       - name: Upload preview
         if: steps.secrets.outputs.present == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
