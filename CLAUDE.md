@@ -4,9 +4,11 @@ Instructions for Claude Code in this repository. Read this file and `MD_FILES/RO
 
 ## 1. What we are building
 
-A free, open-source web tool for learning finite state machines, in **Indonesian first**, for Theory of Computation (ToC) students. First users: Fasilkom UI students (course textbook: Elaine Rich, *Automata, Computability and Complexity*).
+A free, open-source web tool for learning finite state machines, in **Indonesian first**, for Theory of Computation (ToC) students at any Indonesian computer science program. First users: Fasilkom UI students (course textbook: Elaine Rich, *Automata, Computability and Complexity*). It is also a portfolio project, but the quality of the website comes first.
 
 v1 scope (see `MD_FILES/ROADMAP.md`): DFSM and NDFSM (with ε), simulation with traces, NDFSM → DFSM, minimization, equivalence with witness strings, regex → NDFSM, FSM → regex (state elimination), practice questions with feedback, and guides.
+
+**Priorities:** quality over deadline (the launch target is about 1 February 2027; a week early or late is fine). v1 comes first; topics beyond v1 follow in course order (see `MD_FILES/VISION.md`).
 
 The site has three sections that share one editor and one engine:
 
@@ -15,6 +17,8 @@ The site has three sections that share one editor and one engine:
 - **Panduan** (guides) — Indonesian guides on design patterns; examples open in the editor.
 
 **Out of scope until the human says otherwise:** PDAs, Turing machines, grammars, AI features, accounts, a backend server, classrooms, payments, analytics that track individuals.
+
+**Keep the door open for a lecturer mode (possible v2):** do not build it now, but avoid choices that would force a big refactor later. Keep machine and question formats versioned and plain data, edits as command objects, and the engine free of browser code.
 
 ## 2. Non-negotiable principles
 
@@ -75,7 +79,7 @@ Change these only when the human approves it in this file first.
 └── tools/           dev-only scripts (for example differential-test fixture generation)
 ```
 
-`engine-native` (a trusted server-side grader) comes later. Keep `engine-core` free of browser and OS code so it can compile to native without changes.
+Keep `engine-core` free of browser and OS code so it can compile to native without changes (for CI, differential tests, and a possible grader in a later version).
 
 ## 5. Engine rules
 
