@@ -5,7 +5,7 @@ use engine_core::{
 use proptest::prelude::*;
 
 mod common;
-use common::{A_STAR_B_STAR, ENDS_10, PARTIAL, arb_fsm};
+use common::{A_STAR_B_STAR, ENDS_10, PARTIAL, arb_fsm, nth_from_end};
 
 fn fsm(json: &str) -> Fsm {
     Fsm::from_json(json).unwrap()
@@ -228,22 +228,7 @@ fn too_many_steps_stops_with_the_trace_so_far() {
 #[test]
 fn an_exponential_machine_stops_at_the_state_limit() {
     // "The 12th symbol from the end is a" needs 2^12 = 4096 subsets.
-    let n = 12;
-    let mut t = vec![
-        r#"{"from":0,"on":"a","to":0}"#.to_string(),
-        r#"{"from":0,"on":"b","to":0}"#.to_string(),
-        r#"{"from":0,"on":"a","to":1}"#.to_string(),
-    ];
-    for i in 1..n {
-        t.push(format!(r#"{{"from":{i},"on":"a","to":{}}}"#, i + 1));
-        t.push(format!(r#"{{"from":{i},"on":"b","to":{}}}"#, i + 1));
-    }
-    let states: Vec<String> = (0..=n).map(|i| i.to_string()).collect();
-    let json = format!(
-        r#"{{"schemaVersion":1,"kind":"ndfsm","alphabet":["a","b"],"states":[{}],"start":0,"accepting":[{n}],"transitions":[{}]}}"#,
-        states.join(","),
-        t.join(",")
-    );
+    let json = nth_from_end(12);
     let (reason, _) = stopped(&json, ConversionBudget::default());
     assert_eq!(reason, StopReason::MaxStates);
 }

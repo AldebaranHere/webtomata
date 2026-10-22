@@ -6,13 +6,10 @@ use proptest::prelude::*;
 use std::collections::HashMap;
 
 mod common;
-use common::{ENDS_10, EVEN, PARTIAL, arb_fsm};
+use common::{ENDS_10, EVEN, EVEN_MOD_4, PARTIAL, arb_fsm};
 
 // Rich, Example 5.28 (and the course slides): six states over {a, b}, start 1, accepting {2, 4}.
 const RICH_5_28: &str = r#"{"schemaVersion":1,"kind":"dfsm","alphabet":["a","b"],"states":[1,2,3,4,5,6],"start":1,"accepting":[2,4],"transitions":[{"from":1,"on":"a","to":2},{"from":1,"on":"b","to":4},{"from":2,"on":"a","to":3},{"from":2,"on":"b","to":6},{"from":3,"on":"a","to":2},{"from":3,"on":"b","to":4},{"from":4,"on":"a","to":6},{"from":4,"on":"b","to":5},{"from":5,"on":"a","to":2},{"from":5,"on":"b","to":4},{"from":6,"on":"a","to":6},{"from":6,"on":"b","to":6}]}"#;
-
-// L = {w : |w| is even}, counting modulo 4 (states 0 and 2 accept)
-const EVEN_MOD_4: &str = r#"{"schemaVersion":1,"kind":"dfsm","alphabet":["a","b"],"states":[0,1,2,3],"start":0,"accepting":[0,2],"transitions":[{"from":0,"on":"a","to":1},{"from":0,"on":"b","to":1},{"from":1,"on":"a","to":2},{"from":1,"on":"b","to":2},{"from":2,"on":"a","to":3},{"from":2,"on":"b","to":3},{"from":3,"on":"a","to":0},{"from":3,"on":"b","to":0}]}"#;
 
 // EVEN plus a state 2 that no input can reach
 const EVEN_WITH_UNREACHABLE: &str = r#"{"schemaVersion":1,"kind":"dfsm","alphabet":["a","b"],"states":[0,1,2],"start":0,"accepting":[0,2],"transitions":[{"from":0,"on":"a","to":1},{"from":0,"on":"b","to":1},{"from":1,"on":"a","to":0},{"from":1,"on":"b","to":0},{"from":2,"on":"a","to":2},{"from":2,"on":"b","to":2}]}"#;

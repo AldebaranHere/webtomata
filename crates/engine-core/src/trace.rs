@@ -49,6 +49,13 @@ pub enum Change {
         witness: Witness,
         classes: Vec<Vec<StateId>>,
     },
+    /// equivalent: the active states of both machines after `position` symbols of the witness
+    Product {
+        position: usize,
+        symbol: Option<SymbolId>,
+        candidate: Vec<StateId>,
+        reference: Vec<StateId>,
+    },
     NewState {
         state: StateId,
         members: Vec<StateId>,
