@@ -13,6 +13,14 @@ pub struct Witness {
     pub symbol: SymbolId,
 }
 
+/// A transition label that is a regular expression, shown as text (fsm_to_regex).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Label {
+    pub from: StateId,
+    pub to: StateId,
+    pub expression: String,
+}
+
 /// What a step changed. In `determinize`, `members` and `closure` hold states of the original
 /// machine. In `minimize`, `classes`, `class`, `kept` and `new` hold states of the original
 /// machine too. `state` in `NewState`, `Start`, `Accepting` and both `from` and `to` in
@@ -64,6 +72,19 @@ pub enum Change {
         accepting: Vec<StateId>,
         states: Vec<StateId>,
         transitions: Vec<Transition>,
+    },
+    /// fsm_to_regex: every transition label that is not `∅`, after the machine is standardized
+    Labels {
+        labels: Vec<Label>,
+    },
+    /// fsm_to_regex: `state` is removed; `updates` are the labels that changed
+    Rip {
+        state: StateId,
+        updates: Vec<Label>,
+    },
+    /// fsm_to_regex: the regular expression for the whole machine
+    Expression {
+        expression: String,
     },
     NewState {
         state: StateId,
