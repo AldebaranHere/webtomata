@@ -2,6 +2,7 @@
 
 mod closure;
 mod determinize;
+mod equivalence;
 mod fsm;
 mod json;
 mod message;
@@ -12,6 +13,7 @@ mod trace;
 mod validate;
 
 pub use determinize::{Conversion, ConversionBudget, determinize};
+pub use equivalence::{Counterexample, Equivalence, EquivalenceBudget, equivalent};
 pub use fsm::{
     Alphabet, Fsm, FsmKind, MAX_STATES, MAX_SYMBOL_CHARS, MAX_SYMBOLS, MAX_TRANSITIONS, StateId,
     SymbolId, Transition,

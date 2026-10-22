@@ -10,4 +10,6 @@ pub enum StopReason {
     MaxConfigurations,
     /// Too many states in the machine being built (conversions).
     MaxStates,
+    /// Too many pairs of state sets explored (equivalence).
+    MaxPairs,
 }
