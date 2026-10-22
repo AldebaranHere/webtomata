@@ -13,6 +13,6 @@ The engine needs one machine type that the editor, the algorithms and share link
 - Untrusted input limits: 1 MiB of JSON, 2,000 states, 256 symbols (32 characters each), 100,000 transitions. Errors are `Message { key, params }` values, never sentences and never panics. Keys so far: `machine.json_invalid`, `machine.invalid_structure`, `machine.unsupported_schema_version`, `machine.limit_exceeded`, `machine.invalid_symbol`, `machine.duplicate_symbol`, `machine.duplicate_state`, `machine.unknown_state`, `machine.unknown_symbol`.
 
 ## Consequences
-- E2 validates what the loader allows: no start state, missing or duplicate DFSM transitions, ε in a DFSM, unreachable states.
+- E2 validates what the loader allows. `validate(&Fsm)` returns a list of `Issue { severity, message }` in a fixed order, stopping at 1,000 issues. Keys: `fsm.no_start_state`, `dfsm.missing_transition { state, symbol }`, `dfsm.duplicate_transition { state, symbol }`, `dfsm.epsilon_transition { from, to }` (errors); `fsm.unreachable_state { state }` and `fsm.too_many_issues { limit }` (warnings).
 - The limits are starting values; E13 benchmarks may change them.
 - Every message key needs `id` and `en` text in the UI (S1).

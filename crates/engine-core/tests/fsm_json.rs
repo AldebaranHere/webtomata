@@ -1,6 +1,9 @@
 use engine_core::{Alphabet, Fsm, FsmKind, Message, Param, StateId, SymbolId, Transition};
 use proptest::prelude::*;
 
+mod common;
+use common::arb_fsm;
+
 const DFSM: &str = r#"{"schemaVersion":1,"kind":"dfsm","alphabet":["a","b"],"states":[0,1],"start":0,"accepting":[1],"transitions":[{"from":0,"on":"a","to":1},{"from":0,"on":"b","to":0},{"from":1,"on":"a","to":1},{"from":1,"on":"b","to":0}]}"#;
 
 fn err(input: &str) -> Message {
@@ -226,39 +229,6 @@ fn references_to_missing_states_and_symbols_are_rejected() {
 }
 
 // ---- properties ----
-
-fn arb_fsm() -> impl Strategy<Value = Fsm> {
-    (
-        prop::bool::ANY,
-        prop::collection::btree_set("[a-z]{1,4}", 0..5),
-        1u32..8,
-        prop::option::of(0u32..8),
-        prop::collection::vec(prop::bool::ANY, 8),
-        prop::collection::vec((0u32..8, 0usize..6, 0u32..8), 0..20),
-    )
-        .prop_map(|(ndfsm, symbols, n, start, accepting, edges)| {
-            let symbols: Vec<String> = symbols.into_iter().collect();
-            let k = symbols.len();
-            let id = |i: u32| StateId((i % n) * 3); // sparse ids
-            let transitions = edges
-                .into_iter()
-                .map(|(f, s, t)| Transition {
-                    from: id(f),
-                    on: (s % (k + 1) < k).then(|| SymbolId((s % (k + 1)) as u16)),
-                    to: id(t),
-                })
-                .collect();
-            Fsm::new(
-                if ndfsm { FsmKind::Ndfsm } else { FsmKind::Dfsm },
-                Alphabet::new(symbols).unwrap(),
-                (0..n).map(id).collect(),
-                start.map(id),
-                (0..n).filter(|&i| accepting[i as usize]).map(id).collect(),
-                transitions,
-            )
-            .unwrap()
-        })
-}
 
 proptest! {
     #[test]

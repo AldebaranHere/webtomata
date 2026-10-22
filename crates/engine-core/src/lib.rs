@@ -3,6 +3,7 @@
 mod fsm;
 mod json;
 mod message;
+mod validate;
 
 pub use fsm::{
     Alphabet, Fsm, FsmKind, MAX_STATES, MAX_SYMBOL_CHARS, MAX_SYMBOLS, MAX_TRANSITIONS, StateId,
@@ -10,6 +11,7 @@ pub use fsm::{
 };
 pub use json::MAX_JSON_BYTES;
 pub use message::{Message, Param};
+pub use validate::{Issue, MAX_ISSUES, Severity, validate};
 
 /// Engine version, taken from the crate version.
 pub fn version() -> &'static str {
