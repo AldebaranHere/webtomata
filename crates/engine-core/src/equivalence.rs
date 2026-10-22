@@ -97,31 +97,6 @@ fn start_of<'a>(fsm: &'a Fsm, side: &'static str) -> Result<Side<'a>, Message> {
     })
 }
 
-/// For each symbol of the candidate, the symbol of the reference with the same name.
-fn match_alphabets(candidate: &Fsm, reference: &Fsm) -> Result<Vec<SymbolId>, Message> {
-    let mismatch = |symbol: &str, side: &str| {
-        Message::new("equivalent.alphabet_mismatch")
-            .with("symbol", symbol)
-            .with("side", side)
-    };
-    let mut map = Vec::new();
-    for name in candidate.alphabet.names() {
-        match reference.alphabet.id(name) {
-            Some(id) => map.push(id),
-            None => return Err(mismatch(name, "reference")),
-        }
-    }
-    if let Some(name) = reference
-        .alphabet
-        .names()
-        .iter()
-        .find(|n| candidate.alphabet.id(n).is_none())
-    {
-        return Err(mismatch(name, "candidate"));
-    }
-    Ok(map)
-}
-
 /// Compares `candidate` with `reference`. Returns an error message if a machine has no start
 /// state or the alphabets do not have the same symbols (in any order).
 pub fn equivalent(
@@ -131,7 +106,11 @@ pub fn equivalent(
 ) -> Result<Equivalence, Message> {
     let a = start_of(candidate, "candidate")?;
     let b = start_of(reference, "reference")?;
-    let map = match_alphabets(candidate, reference)?;
+    let map = candidate.alphabet.match_by_name(
+        &reference.alphabet,
+        "equivalent.alphabet_mismatch",
+        ("candidate", "reference"),
+    )?;
     let k = map.len();
     let (Some(sa), Some(sb)) = (candidate.start, reference.start) else {
         return Err(Message::new("equivalent.no_start_state"));
