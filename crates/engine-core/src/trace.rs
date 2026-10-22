@@ -1,0 +1,73 @@
+//! The step trace shared by the algorithms. Each step has a message key with parameters
+//! and a `Change` that holds the data, so the UI can animate it and translate the message.
+
+use crate::fsm::{StateId, SymbolId};
+use crate::message::Message;
+use serde::Serialize;
+
+/// Two states that prove a class can be split: on `symbol` they go to different classes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct Witness {
+    pub p: StateId,
+    pub q: StateId,
+    pub symbol: SymbolId,
+}
+
+/// What a step changed. In `determinize`, `members` and `closure` hold states of the original
+/// machine. In `minimize`, `classes`, `class`, `kept` and `new` hold states of the original
+/// machine too. `state` in `NewState`, `Start`, `Accepting` and both `from` and `to` in
+/// `Transition` are states of the machine being built.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum Change {
+    /// determinize: eps(state)
+    Closure {
+        state: StateId,
+        closure: Vec<StateId>,
+    },
+    /// minimize: a state no input can reach is dropped
+    RemoveUnreachable {
+        state: StateId,
+    },
+    /// minimize: the classes at the start of the algorithm
+    Classes {
+        classes: Vec<Vec<StateId>>,
+    },
+    /// minimize: this class is checked for a pair of states that behave differently
+    Examine {
+        class: Vec<StateId>,
+    },
+    /// minimize: all states of the class behave the same
+    NoSplit {
+        class: Vec<StateId>,
+    },
+    /// minimize: `class` becomes `kept` and `new`, shown with the classes that result
+    Split {
+        class: Vec<StateId>,
+        kept: Vec<StateId>,
+        new: Vec<StateId>,
+        witness: Witness,
+        classes: Vec<Vec<StateId>>,
+    },
+    NewState {
+        state: StateId,
+        members: Vec<StateId>,
+    },
+    Start {
+        state: StateId,
+    },
+    Transition {
+        from: StateId,
+        symbol: SymbolId,
+        to: StateId,
+    },
+    Accepting {
+        state: StateId,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ConversionStep {
+    pub message: Message,
+    pub change: Change,
+}

@@ -53,6 +53,7 @@ fn describe(trace: &[ConversionStep]) -> Vec<String> {
                 format!("t {} {} {}", from.0, symbol.0, to.0)
             }
             Change::Accepting { state } => format!("acc {}", state.0),
+            other => panic!("unexpected change: {other:?}"),
         })
         .collect()
 }
