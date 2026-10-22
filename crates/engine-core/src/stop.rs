@@ -12,4 +12,8 @@ pub enum StopReason {
     MaxStates,
     /// Too many pairs of state sets explored (equivalence).
     MaxPairs,
+    /// Too many label updates (state elimination).
+    MaxUpdates,
+    /// A regular expression grew too big (state elimination).
+    MaxNodes,
 }

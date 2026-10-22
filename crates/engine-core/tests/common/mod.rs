@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-use engine_core::{Alphabet, Fsm, FsmKind, StateId, SymbolId, Transition};
+use engine_core::{Alphabet, Fsm, FsmKind, Regex, StateId, SymbolId, Transition};
 use proptest::prelude::*;
 
 // Rich: L = {w in {a, b}* : |w| is even}
@@ -88,5 +88,38 @@ pub fn arb_pair() -> impl Strategy<Value = (Fsm, Fsm)> {
     prop::collection::btree_set("[a-z]{1,3}", 1..4).prop_flat_map(|symbols| {
         let symbols: Vec<String> = symbols.into_iter().collect();
         (machine(symbols.clone()), machine(symbols))
+    })
+}
+
+pub fn bx(r: Regex) -> Box<Regex> {
+    Box::new(r)
+}
+
+pub fn union(a: Regex, b: Regex) -> Regex {
+    Regex::Union(bx(a), bx(b))
+}
+
+pub fn concat(a: Regex, b: Regex) -> Regex {
+    Regex::Concat(bx(a), bx(b))
+}
+
+pub fn star(a: Regex) -> Regex {
+    Regex::Star(bx(a))
+}
+
+/// Small random regular expressions over the symbols 0, 1 and 2.
+pub fn arb_regex() -> impl Strategy<Value = Regex> {
+    let leaf = prop_oneof![
+        Just(Regex::Empty),
+        Just(Regex::Epsilon),
+        (0u16..3).prop_map(|i| Regex::Symbol(SymbolId(i))),
+    ];
+    leaf.prop_recursive(4, 14, 2, |inner| {
+        prop_oneof![
+            (inner.clone(), inner.clone()).prop_map(|(a, b)| union(a, b)),
+            (inner.clone(), inner.clone()).prop_map(|(a, b)| concat(a, b)),
+            inner.clone().prop_map(star),
+            inner.prop_map(|a| Regex::Plus(bx(a))),
+        ]
     })
 }

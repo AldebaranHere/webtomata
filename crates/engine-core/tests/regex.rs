@@ -5,6 +5,9 @@ use engine_core::{
 };
 use proptest::prelude::*;
 
+mod common;
+use common::{arb_regex, bx, concat, star, union};
+
 use Regex::{Concat, Empty, Epsilon, Plus, Star, Union};
 
 fn alphabet(names: &[&str]) -> Alphabet {
@@ -21,22 +24,6 @@ fn multi() -> Alphabet {
 
 fn sym(i: u16) -> Regex {
     Regex::Symbol(SymbolId(i))
-}
-
-fn bx(r: Regex) -> Box<Regex> {
-    Box::new(r)
-}
-
-fn union(a: Regex, b: Regex) -> Regex {
-    Union(bx(a), bx(b))
-}
-
-fn concat(a: Regex, b: Regex) -> Regex {
-    Concat(bx(a), bx(b))
-}
-
-fn star(a: Regex) -> Regex {
-    Star(bx(a))
 }
 
 fn parse(text: &str) -> Regex {
@@ -354,22 +341,6 @@ fn the_state_budget_stops_the_construction() {
 }
 
 // ---- properties ----
-
-fn arb_regex() -> impl Strategy<Value = Regex> {
-    let leaf = prop_oneof![
-        Just(Empty),
-        Just(Epsilon),
-        (0u16..3).prop_map(|i| Regex::Symbol(SymbolId(i))),
-    ];
-    leaf.prop_recursive(4, 14, 2, |inner| {
-        prop_oneof![
-            (inner.clone(), inner.clone()).prop_map(|(a, b)| union(a, b)),
-            (inner.clone(), inner.clone()).prop_map(|(a, b)| concat(a, b)),
-            inner.clone().prop_map(star),
-            inner.prop_map(|a| Plus(bx(a))),
-        ]
-    })
-}
 
 fn nodes(r: &Regex) -> usize {
     match r {

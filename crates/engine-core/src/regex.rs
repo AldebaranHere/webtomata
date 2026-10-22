@@ -35,6 +35,15 @@ fn one_character_symbols(alphabet: &Alphabet) -> bool {
 }
 
 impl Regex {
+    /// The number of parts (symbols, operators, `ε` and `∅`) in the expression.
+    pub fn size(&self) -> usize {
+        match self {
+            Regex::Union(a, b) | Regex::Concat(a, b) => 1 + a.size() + b.size(),
+            Regex::Star(a) | Regex::Plus(a) => 1 + a.size(),
+            _ => 1,
+        }
+    }
+
     /// The expression in Rich's notation, with only the parentheses that are needed.
     pub fn to_text(&self, alphabet: &Alphabet) -> String {
         let mut out = String::new();
