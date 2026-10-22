@@ -5,19 +5,10 @@ use proptest::prelude::*;
 use std::collections::HashSet;
 
 mod common;
-use common::arb_fsm;
+use common::{A_STAR_B_STAR, ENDS_10, PARTIAL, arb_fsm};
 
 // Rich: L = {w in {a, b}* : |w| is even}
 const EVEN: &str = r#"{"schemaVersion":1,"kind":"dfsm","alphabet":["a","b"],"states":[0,1],"start":0,"accepting":[0],"transitions":[{"from":0,"on":"a","to":1},{"from":0,"on":"b","to":1},{"from":1,"on":"a","to":0},{"from":1,"on":"b","to":0}]}"#;
-
-// L = {w in {0, 1}* : w ends in 10}, as an NDFSM
-const ENDS_10: &str = r#"{"schemaVersion":1,"kind":"ndfsm","alphabet":["0","1"],"states":[0,1,2],"start":0,"accepting":[2],"transitions":[{"from":0,"on":"0","to":0},{"from":0,"on":"1","to":0},{"from":0,"on":"1","to":1},{"from":1,"on":"0","to":2}]}"#;
-
-// L = a*b*, as an NDFSM with an epsilon transition
-const A_STAR_B_STAR: &str = r#"{"schemaVersion":1,"kind":"ndfsm","alphabet":["a","b"],"states":[0,1],"start":0,"accepting":[1],"transitions":[{"from":0,"on":"a","to":0},{"from":0,"on":null,"to":1},{"from":1,"on":"b","to":1}]}"#;
-
-// A DFSM that only knows "a" from state 0
-const PARTIAL: &str = r#"{"schemaVersion":1,"kind":"dfsm","alphabet":["a","b"],"states":[0,1],"start":0,"accepting":[1],"transitions":[{"from":0,"on":"a","to":1}]}"#;
 
 fn fsm(json: &str) -> Fsm {
     Fsm::from_json(json).unwrap()

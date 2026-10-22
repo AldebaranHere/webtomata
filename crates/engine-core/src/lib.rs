@@ -1,18 +1,23 @@
 //! Pure Rust finite state machine engine. No browser or OS code.
 
+mod closure;
+mod determinize;
 mod fsm;
 mod json;
 mod message;
 mod simulate;
+mod stop;
 mod validate;
 
+pub use determinize::{Change, Conversion, ConversionBudget, ConversionStep, determinize};
 pub use fsm::{
     Alphabet, Fsm, FsmKind, MAX_STATES, MAX_SYMBOL_CHARS, MAX_SYMBOLS, MAX_TRANSITIONS, StateId,
     SymbolId, Transition,
 };
 pub use json::MAX_JSON_BYTES;
 pub use message::{Message, Param};
-pub use simulate::{Budget, Simulation, Step, StopReason, simulate};
+pub use simulate::{Budget, Simulation, Step, simulate};
+pub use stop::StopReason;
 pub use validate::{Issue, MAX_ISSUES, Severity, validate};
 
 /// Engine version, taken from the crate version.

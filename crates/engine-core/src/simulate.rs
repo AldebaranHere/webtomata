@@ -2,10 +2,11 @@
 //! states with ε-closure; a DFSM is the case where the set has one state. Every run has
 //! a budget, so a huge input or machine cannot freeze the page.
 
+use crate::closure::{closure, moves_of};
 use crate::fsm::{Fsm, StateId, SymbolId};
 use crate::message::Message;
+use crate::stop::StopReason;
 use serde::Serialize;
-use std::collections::{BTreeSet, HashMap};
 
 /// Limits for one run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,13 +24,6 @@ impl Default for Budget {
             max_configurations: 1_000_000,
         }
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum StopReason {
-    MaxSteps,
-    MaxConfigurations,
 }
 
 /// One configuration of the run: the states that are active after `position` symbols.
@@ -55,27 +49,6 @@ pub enum Simulation {
         reason: StopReason,
         partial_trace: Vec<Step>,
     },
-}
-
-type Moves = HashMap<(StateId, Option<SymbolId>), Vec<StateId>>;
-
-/// The states reachable from `seed` through ε-transitions, including `seed`.
-fn closure(moves: &Moves, seed: impl IntoIterator<Item = StateId>) -> BTreeSet<StateId> {
-    let mut set = BTreeSet::new();
-    let mut stack = Vec::new();
-    for state in seed {
-        if set.insert(state) {
-            stack.push(state);
-        }
-    }
-    while let Some(state) = stack.pop() {
-        for &to in moves.get(&(state, None)).into_iter().flatten() {
-            if set.insert(to) {
-                stack.push(to);
-            }
-        }
-    }
-    set
 }
 
 /// Adds a step unless it would pass the configuration budget.
@@ -108,11 +81,7 @@ pub fn simulate(fsm: &Fsm, input: &[SymbolId], budget: Budget) -> Result<Simulat
         return Err(Message::new("sim.unknown_symbol").with("symbol", u32::from(bad.0)));
     }
 
-    let mut moves = Moves::new();
-    for t in &fsm.transitions {
-        moves.entry((t.from, t.on)).or_default().push(t.to);
-    }
-
+    let moves = moves_of(fsm);
     let mut trace = Vec::new();
     let mut used = 0;
     let mut states = closure(&moves, [start]);
