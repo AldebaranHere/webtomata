@@ -7,6 +7,8 @@ mod fsm;
 mod json;
 mod message;
 mod minimize;
+mod regex;
+mod regex_fsm;
 mod simulate;
 mod stop;
 mod trace;
@@ -21,6 +23,8 @@ pub use fsm::{
 pub use json::MAX_JSON_BYTES;
 pub use message::{Message, Param};
 pub use minimize::{Minimization, MinimizeBudget, minimize};
+pub use regex::{MAX_REGEX_CHARS, MAX_REGEX_DEPTH, Regex, parse_regex};
+pub use regex_fsm::{Compiled, RegexBudget, regex_to_fsm};
 pub use simulate::{Budget, Simulation, Step, simulate};
 pub use stop::StopReason;
 pub use trace::{Change, ConversionStep, Witness};
