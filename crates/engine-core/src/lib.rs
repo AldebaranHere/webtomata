@@ -3,6 +3,7 @@
 mod fsm;
 mod json;
 mod message;
+mod simulate;
 mod validate;
 
 pub use fsm::{
@@ -11,6 +12,7 @@ pub use fsm::{
 };
 pub use json::MAX_JSON_BYTES;
 pub use message::{Message, Param};
+pub use simulate::{Budget, Simulation, Step, StopReason, simulate};
 pub use validate::{Issue, MAX_ISSUES, Severity, validate};
 
 /// Engine version, taken from the crate version.
