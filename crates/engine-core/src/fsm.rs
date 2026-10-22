@@ -12,11 +12,11 @@ pub const MAX_SYMBOLS: usize = 256;
 pub const MAX_TRANSITIONS: usize = 100_000;
 pub const MAX_SYMBOL_CHARS: usize = 32;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct StateId(pub u32);
 
 /// A symbol interned as its position in the [`Alphabet`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct SymbolId(pub u16);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -79,6 +79,31 @@ impl Alphabet {
     pub fn id(&self, name: &str) -> Option<SymbolId> {
         let i = self.symbols.iter().position(|s| s == name)?;
         u16::try_from(i).ok().map(SymbolId)
+    }
+
+    /// Turns text into symbols. If every symbol has one character, it reads one
+    /// character at a time; otherwise symbols are separated by whitespace (for example
+    /// `num plus num`). `position` in the error counts characters or symbols read so far.
+    pub fn tokenize(&self, text: &str) -> Result<Vec<SymbolId>, Message> {
+        let lookup = |name: &str, position: usize| {
+            self.id(name).ok_or_else(|| {
+                Message::new("input.unknown_symbol")
+                    .with("symbol", name)
+                    .with("position", position)
+            })
+        };
+        if self.symbols.iter().all(|s| s.chars().count() == 1) {
+            let mut buf = [0u8; 4];
+            text.chars()
+                .enumerate()
+                .map(|(i, c)| lookup(c.encode_utf8(&mut buf), i))
+                .collect()
+        } else {
+            text.split_whitespace()
+                .enumerate()
+                .map(|(i, token)| lookup(token, i))
+                .collect()
+        }
     }
 }
 
