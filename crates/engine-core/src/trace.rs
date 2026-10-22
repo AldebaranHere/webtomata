@@ -1,7 +1,7 @@
 //! The step trace shared by the algorithms. Each step has a message key with parameters
 //! and a `Change` that holds the data, so the UI can animate it and translate the message.
 
-use crate::fsm::{StateId, SymbolId};
+use crate::fsm::{StateId, SymbolId, Transition};
 use crate::message::Message;
 use serde::Serialize;
 
@@ -55,6 +55,15 @@ pub enum Change {
         symbol: Option<SymbolId>,
         candidate: Vec<StateId>,
         reference: Vec<StateId>,
+    },
+    /// regex_to_fsm: the part of the machine that one step built (`states` and `transitions`
+    /// are the new ones; `start` and `accepting` describe the machine for `expression`)
+    Fragment {
+        expression: String,
+        start: StateId,
+        accepting: Vec<StateId>,
+        states: Vec<StateId>,
+        transitions: Vec<Transition>,
     },
     NewState {
         state: StateId,

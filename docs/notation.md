@@ -12,6 +12,12 @@ The engine is notation-neutral. Labels below live only in the UI and message fil
 | Transition | δ(q, a) = p (function); Δ is a relation | δ(q, a) = p (function); NFA gives a set |
 | Configuration | (q, w) in K × Σ\*, with the yields relation ⊢ | not used |
 | Empty string | ε | ε |
-| Regex operators | union ∪, concatenation, Kleene star \*, also ε and ∅ | union ∪, concatenation, star \*, also ε and ∅ |
+| Regex operators | union ∪, concatenation (side by side), Kleene star \*, plus + (one or more), ε, ∅, parentheses | union ∪, concatenation, star \*, plus + (R⁺ = RR\*), ε, ∅, parentheses |
 
-TODO(review): confirm the exact regex symbols and the Rich transition notation against the book before E7. JFLAP uses `+` for union and `!` for ε; that is an import/export dialect, not a notation option.
+## Regular expressions
+
+The engine reads Rich's syntax (textbook section 6.1, rules 1 to 8) and writes it back in the same form: `∅`, `ε`, a symbol, concatenation by writing symbols side by side, `α∪β`, `α*`, `α+` (the same as `αα*`) and parentheses. Precedence, highest first: star and plus, concatenation, union. If every symbol has one character, each character is a symbol; otherwise symbols are separated by spaces, for example `(num plus)* num`.
+
+Only `∪` is accepted for union. The UI offers buttons for `∪`, `ε` and `∅`, and a small note that other tools write union differently: JFLAP uses `+` (and `!` for ε), and programming languages use `|`. Here `+` always means "one or more".
+
+TODO(review): the course slides lost the union and ε glyphs when the text was extracted. They read as `∪` and `ε` in context (for example `(ab ∪ b)*(a ∪ ε)`), but check them against the slide images. Also confirm the Rich transition notation (Δ, yields) against the book.

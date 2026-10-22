@@ -108,7 +108,7 @@ impl Alphabet {
 }
 
 /// `on: None` is an ε-transition.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct Transition {
     pub from: StateId,
     pub on: Option<SymbolId>,
