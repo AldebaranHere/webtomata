@@ -9,7 +9,7 @@ use crate::closure::{closure, moves_of};
 use crate::fsm::{Fsm, FsmKind, MAX_STATES, MAX_TRANSITIONS, StateId, SymbolId, Transition};
 use crate::message::Message;
 use crate::stop::StopReason;
-use serde::Serialize;
+use crate::trace::{Change, ConversionStep};
 use std::collections::{BTreeSet, HashMap};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,38 +27,6 @@ impl Default for ConversionBudget {
             max_steps: MAX_TRANSITIONS,
         }
     }
-}
-
-/// What a step changed. `StateId`s in `NewState`, `Start`, `Transition` and `Accepting`
-/// are states of the new DFSM; `members` and `closure` hold states of the original machine.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-pub enum Change {
-    Closure {
-        state: StateId,
-        closure: Vec<StateId>,
-    },
-    NewState {
-        state: StateId,
-        members: Vec<StateId>,
-    },
-    Start {
-        state: StateId,
-    },
-    Transition {
-        from: StateId,
-        symbol: SymbolId,
-        to: StateId,
-    },
-    Accepting {
-        state: StateId,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct ConversionStep {
-    pub message: Message,
-    pub change: Change,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

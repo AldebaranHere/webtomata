@@ -5,6 +5,9 @@
 use engine_core::{Alphabet, Fsm, FsmKind, StateId, SymbolId, Transition};
 use proptest::prelude::*;
 
+// Rich: L = {w in {a, b}* : |w| is even}
+pub const EVEN: &str = r#"{"schemaVersion":1,"kind":"dfsm","alphabet":["a","b"],"states":[0,1],"start":0,"accepting":[0],"transitions":[{"from":0,"on":"a","to":1},{"from":0,"on":"b","to":1},{"from":1,"on":"a","to":0},{"from":1,"on":"b","to":0}]}"#;
+
 // L = {w in {0, 1}* : w ends in 10}, as an NDFSM
 pub const ENDS_10: &str = r#"{"schemaVersion":1,"kind":"ndfsm","alphabet":["0","1"],"states":[0,1,2],"start":0,"accepting":[2],"transitions":[{"from":0,"on":"0","to":0},{"from":0,"on":"1","to":0},{"from":0,"on":"1","to":1},{"from":1,"on":"0","to":2}]}"#;
 

@@ -5,10 +5,7 @@ use proptest::prelude::*;
 use std::collections::HashSet;
 
 mod common;
-use common::{A_STAR_B_STAR, ENDS_10, PARTIAL, arb_fsm};
-
-// Rich: L = {w in {a, b}* : |w| is even}
-const EVEN: &str = r#"{"schemaVersion":1,"kind":"dfsm","alphabet":["a","b"],"states":[0,1],"start":0,"accepting":[0],"transitions":[{"from":0,"on":"a","to":1},{"from":0,"on":"b","to":1},{"from":1,"on":"a","to":0},{"from":1,"on":"b","to":0}]}"#;
+use common::{A_STAR_B_STAR, ENDS_10, EVEN, PARTIAL, arb_fsm};
 
 fn fsm(json: &str) -> Fsm {
     Fsm::from_json(json).unwrap()
