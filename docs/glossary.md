@@ -11,6 +11,7 @@ Indonesian terms used in the UI and guides. Source: the previous semester's ToC 
 | start state | start state / status mulai | TODO(review) |
 | accepting state | accepting state / status menerima | TODO(review) |
 | dead state | dead state | Slides keep the English term. |
+| trap state | trap state | The name in JFLAP ("Add Trap State to DFA"), the same thing as a dead state. TODO(review): use "dead state" in the UI, or show both? |
 | alphabet | alfabet | |
 | symbol | simbol | Can be multi-character in this tool. |
 | string | string | Slides keep "string". TODO(review): "untai" is not used by the course. |

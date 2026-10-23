@@ -1,16 +1,19 @@
 //! Closure operations on regular languages, as in Rich's Theorems 8.3 and 8.4 and the course
 //! slides.
 //! - Complement: swap the accepting and the non-accepting states of a complete DFSM.
+//! - Trap state: a new dead state that takes every missing transition of a DFSM, so that the
+//!   machine becomes complete (JFLAP: "Add Trap State to DFA"; Rich: dead state).
 //! - Union: a new start state with an ε-transition to each of the two start states.
 //! - Intersection by De Morgan: `L1 ∩ L2 = ¬(¬L1 ∪ ¬L2)`, in stages. A machine that is not a
 //!   complete DFSM is first made one with `determinize`.
 
 use crate::determinize::{Conversion, ConversionBudget, determinize};
-use crate::fsm::{Fsm, FsmKind, MAX_STATES, StateId, SymbolId, Transition};
+use crate::fsm::{Fsm, FsmKind, MAX_STATES, StateId, SymbolId, Transition, limit_exceeded};
 use crate::message::Message;
 use crate::stop::StopReason;
 use crate::trace::{Change, ConversionStep};
 use crate::validate::{Severity, validate};
+use std::collections::HashSet;
 
 /// The new machine and the steps that built it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -63,6 +66,103 @@ pub fn complement(fsm: &Fsm) -> Result<Operation, Message> {
         fsm.start,
         accepting,
         fsm.transitions.clone(),
+    )?;
+    Ok(Operation { fsm: result, trace })
+}
+
+/// Completes a DFSM: a new state, with the id after the highest one, takes every missing
+/// transition and loops on every symbol. It does not accept, so the language does not change.
+/// A DFSM that is already complete comes back unchanged. Returns an error message if the
+/// machine is not a DFSM, if it has no start state, an ε-transition or two transitions on one
+/// symbol, or if the result would be too big.
+pub fn add_trap_state(fsm: &Fsm) -> Result<Operation, Message> {
+    if fsm.kind != FsmKind::Dfsm {
+        return Err(Message::new("trap.not_a_dfsm"));
+    }
+    let invalid = || Message::new("trap.invalid_machine");
+    if fsm.start.is_none() {
+        return Err(invalid());
+    }
+    let mut seen = HashSet::new();
+    for t in &fsm.transitions {
+        match t.on {
+            Some(symbol) if seen.insert((t.from, symbol)) => {}
+            _ => return Err(invalid()),
+        }
+    }
+    let symbols = (0..fsm.alphabet.len()).filter_map(|i| u16::try_from(i).ok().map(SymbolId));
+    let symbols: Vec<SymbolId> = symbols.collect();
+    let missing: Vec<(StateId, SymbolId)> = fsm
+        .states
+        .iter()
+        .flat_map(|&state| symbols.iter().map(move |&symbol| (state, symbol)))
+        .filter(|key| !seen.contains(key))
+        .collect();
+    if missing.is_empty() {
+        return Ok(Operation {
+            fsm: fsm.clone(),
+            trace: vec![step("trap.already_complete", Change::AlreadyComplete)],
+        });
+    }
+
+    let too_big = || limit_exceeded("states", MAX_STATES);
+    let trap = StateId(
+        fsm.states
+            .last()
+            .and_then(|s| s.0.checked_add(1))
+            .ok_or_else(too_big)?,
+    );
+    let name = |symbol: SymbolId| fsm.alphabet.name(symbol).unwrap_or_default();
+    let mut trace = vec![ConversionStep {
+        message: Message::new("trap.new_state").with("state", trap.0),
+        change: Change::NewState {
+            state: trap,
+            members: vec![],
+        },
+    }];
+    let mut transitions = fsm.transitions.clone();
+    for (from, symbol) in missing {
+        trace.push(ConversionStep {
+            message: Message::new("trap.transition")
+                .with("state", from.0)
+                .with("symbol", name(symbol))
+                .with("to", trap.0),
+            change: Change::Transition {
+                from,
+                symbol,
+                to: trap,
+            },
+        });
+        transitions.push(Transition {
+            from,
+            on: Some(symbol),
+            to: trap,
+        });
+    }
+    for &symbol in &symbols {
+        trace.push(ConversionStep {
+            message: Message::new("trap.loop").with("symbol", name(symbol)),
+            change: Change::Transition {
+                from: trap,
+                symbol,
+                to: trap,
+            },
+        });
+        transitions.push(Transition {
+            from: trap,
+            on: Some(symbol),
+            to: trap,
+        });
+    }
+    let mut states = fsm.states.clone();
+    states.push(trap);
+    let result = Fsm::new(
+        FsmKind::Dfsm,
+        fsm.alphabet.clone(),
+        states,
+        fsm.start,
+        fsm.accepting.clone(),
+        transitions,
     )?;
     Ok(Operation { fsm: result, trace })
 }
