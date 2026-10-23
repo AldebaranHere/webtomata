@@ -7,8 +7,8 @@ use proptest::prelude::*;
 
 mod common;
 use common::{
-    A_STAR, A_STAR_B_STAR, A_STAR_B_STAR_DFSM, ENDS_10, EVEN, EVEN_MOD_4, arb_fsm, arb_pair,
-    nth_from_end,
+    A_STAR, A_STAR_B_STAR, A_STAR_B_STAR_DFSM, ENDS_10, EVEN, EVEN_MOD_4, all_strings, arb_fsm,
+    arb_pair, nth_from_end,
 };
 
 fn fsm(json: &str) -> Fsm {
@@ -278,26 +278,6 @@ fn accepts(fsm: &Fsm, input: &[SymbolId]) -> bool {
         Simulation::Finished { accepted, .. } => accepted,
         Simulation::Stopped { .. } => panic!("stopped"),
     }
-}
-
-/// Every string over `k` symbols with at most `max_len` symbols, shortest first.
-fn all_strings(k: usize, max_len: usize) -> Vec<Vec<SymbolId>> {
-    let mut all = vec![vec![]];
-    let mut level = vec![vec![]];
-    for _ in 0..max_len {
-        level = level
-            .iter()
-            .flat_map(|s: &Vec<SymbolId>| {
-                (0..k).map(move |c| {
-                    let mut t = s.clone();
-                    t.push(SymbolId(c as u16));
-                    t
-                })
-            })
-            .collect();
-        all.extend(level.iter().cloned());
-    }
-    all
 }
 
 proptest! {

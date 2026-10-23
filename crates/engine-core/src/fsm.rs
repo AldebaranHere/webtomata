@@ -81,6 +81,30 @@ impl Alphabet {
         u16::try_from(i).ok().map(SymbolId)
     }
 
+    /// For each symbol of this alphabet, the symbol of `other` with the same name. Returns the
+    /// message `key` (with `symbol` and `side`, the side that lacks the symbol) if the two
+    /// alphabets do not have the same symbol names.
+    pub(crate) fn match_by_name(
+        &self,
+        other: &Alphabet,
+        key: &'static str,
+        sides: (&str, &str),
+    ) -> Result<Vec<SymbolId>, Message> {
+        let mismatch =
+            |symbol: &str, side: &str| Message::new(key).with("symbol", symbol).with("side", side);
+        let mut map = Vec::with_capacity(self.len());
+        for name in &self.symbols {
+            match other.id(name) {
+                Some(id) => map.push(id),
+                None => return Err(mismatch(name, sides.1)),
+            }
+        }
+        if let Some(name) = other.symbols.iter().find(|n| self.id(n).is_none()) {
+            return Err(mismatch(name, sides.0));
+        }
+        Ok(map)
+    }
+
     /// Turns text into symbols. If every symbol has one character, it reads one
     /// character at a time; otherwise symbols are separated by whitespace (for example
     /// `num plus num`). `position` in the error counts characters or symbols read so far.

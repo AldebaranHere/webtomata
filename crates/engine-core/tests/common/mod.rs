@@ -123,3 +123,23 @@ pub fn arb_regex() -> impl Strategy<Value = Regex> {
         ]
     })
 }
+
+/// Every string over `k` symbols with at most `max_len` symbols, shortest first.
+pub fn all_strings(k: usize, max_len: usize) -> Vec<Vec<SymbolId>> {
+    let mut all = vec![vec![]];
+    let mut level = vec![vec![]];
+    for _ in 0..max_len {
+        level = level
+            .iter()
+            .flat_map(|s: &Vec<SymbolId>| {
+                (0..k).map(move |c| {
+                    let mut t = s.clone();
+                    t.push(SymbolId(c as u16));
+                    t
+                })
+            })
+            .collect();
+        all.extend(level.iter().cloned());
+    }
+    all
+}

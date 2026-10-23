@@ -86,6 +86,27 @@ pub enum Change {
     Expression {
         expression: String,
     },
+    /// union: machine 1 or 2 is copied; `from[i]` becomes `to[i]`
+    Copy {
+        machine: u8,
+        from: Vec<StateId>,
+        to: Vec<StateId>,
+        start: StateId,
+        accepting: Vec<StateId>,
+    },
+    /// union: a new ε-transition
+    Epsilon {
+        from: StateId,
+        to: StateId,
+    },
+    /// complement: the state no longer accepts
+    NotAccepting {
+        state: StateId,
+    },
+    /// intersection: a new stage of the De Morgan construction begins
+    Stage {
+        stage: u8,
+    },
     NewState {
         state: StateId,
         members: Vec<StateId>,
