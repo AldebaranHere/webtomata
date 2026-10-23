@@ -1,0 +1,29 @@
+[package]
+name = "engine-core-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "=0.4.13"
+engine-core = { path = "../crates/engine-core" }
+
+# This crate is its own workspace: it needs the nightly compiler and is built only by cargo-fuzz.
+[workspace]
+
+[[bin]]
+name = "parse_jff"
+path = "fuzz_targets/parse_jff.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_json"
+path = "fuzz_targets/parse_json.rs"
+test = false
+doc = false
+bench = false

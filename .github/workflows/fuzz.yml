@@ -1,0 +1,40 @@
+name: Fuzz
+
+# A short coverage-guided fuzz run of the two parsers (the JFLAP reader and the JSON loader).
+# It needs the nightly compiler, so it is a separate workflow and not a required check.
+on:
+  pull_request:
+    paths:
+      - "crates/engine-core/**"
+      - "fuzz/**"
+      - ".github/workflows/fuzz.yml"
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [parse_jff, parse_json]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install nightly --profile minimal
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: fuzz
+      - run: cargo install cargo-fuzz --locked --version 0.13.2
+      - run: cargo +nightly fuzz run ${{ matrix.target }} fuzz/seeds/${{ matrix.target }} -- -max_total_time=60
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: fuzz-crash-${{ matrix.target }}
+          path: fuzz/artifacts/${{ matrix.target }}
+          if-no-files-found: ignore

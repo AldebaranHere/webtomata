@@ -5,6 +5,7 @@ mod determinize;
 mod equivalence;
 mod fsm;
 mod fsm_regex;
+mod jff;
 mod json;
 mod message;
 mod minimize;
@@ -23,6 +24,7 @@ pub use fsm::{
     SymbolId, Transition,
 };
 pub use fsm_regex::{Extraction, FsmToRegexBudget, fsm_to_regex};
+pub use jff::{Jff, JffState, MAX_JFF_BYTES, parse_jff, to_jff};
 pub use json::MAX_JSON_BYTES;
 pub use message::{Message, Param};
 pub use minimize::{Minimization, MinimizeBudget, minimize};
