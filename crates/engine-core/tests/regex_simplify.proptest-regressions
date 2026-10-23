@@ -1,7 +1,0 @@
-# Seeds for failure cases proptest has generated in the past. It is
-# automatically read and these particular cases re-run before any
-# novel cases are generated.
-#
-# It is recommended to check this file in to source control so that
-# everyone who runs the test benefits from these saved cases.
-cc b1ceb02739ed83ed49d43221070bcb05ed1643e258d3af6237f03bc020bd023b # shrinks to r = Concat(Union(Symbol(SymbolId(0)), Concat(Epsilon, Epsilon)), Star(Empty))
