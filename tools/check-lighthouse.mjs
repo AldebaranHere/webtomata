@@ -35,7 +35,21 @@ await new Promise((ok) => server.listen(0, '127.0.0.1', ok));
 const origin = `http://127.0.0.1:${server.address().port}`;
 
 const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
-const chrome = await launch({ chromeFlags: ['--headless=new', '--no-sandbox'] });
+// Chrome sometimes does not open its debugging port on a busy CI runner (it timed out once on
+// a green commit). --disable-dev-shm-usage avoids the small /dev/shm of runners. Try a few
+// times; a real score failure below still fails the check.
+async function launchChrome() {
+	const flags = ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'];
+	for (let attempt = 1; ; attempt++) {
+		try {
+			return await launch({ chromeFlags: flags });
+		} catch (error) {
+			if (attempt === 3) throw error;
+			console.log(`Chrome did not start (attempt ${attempt} of 3): ${error.message}`);
+		}
+	}
+}
+const chrome = await launchChrome();
 let failed = false;
 
 try {
