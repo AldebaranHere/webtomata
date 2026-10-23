@@ -20,7 +20,8 @@ export default ts.config(
 	},
 	{
 		files: ['src/**/*.{ts,svelte}'],
-		ignores: ['src/lib/engine/worker.ts'],
+		// The worker, and the one test that runs the real module through the handlers.
+		ignores: ['src/lib/engine/worker.ts', 'src/lib/engine/handlers.test.ts'],
 		rules: {
 			'no-restricted-imports': [
 				'error',

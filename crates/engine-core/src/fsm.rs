@@ -12,7 +12,7 @@ pub const MAX_SYMBOLS: usize = 256;
 pub const MAX_TRANSITIONS: usize = 100_000;
 pub const MAX_SYMBOL_CHARS: usize = 32;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct StateId(pub u32);
 
