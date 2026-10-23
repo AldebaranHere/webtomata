@@ -17,6 +17,8 @@ mod regex_simplify;
 mod simulate;
 mod stop;
 mod trace;
+#[cfg(feature = "ts")]
+mod ts;
 mod validate;
 
 pub use determinize::{Conversion, ConversionBudget, determinize};
@@ -38,6 +40,8 @@ pub use regex_simplify::{Simplification, SimplifyBudget, simplify};
 pub use simulate::{Budget, Simulation, Step, simulate};
 pub use stop::StopReason;
 pub use trace::{Change, ConversionStep, Label, Witness};
+#[cfg(feature = "ts")]
+pub use ts::declarations as typescript_declarations;
 pub use validate::{Issue, MAX_ISSUES, Severity, validate};
 
 /// Engine version, taken from the crate version.

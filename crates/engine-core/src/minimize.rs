@@ -13,9 +13,12 @@ use crate::message::Message;
 use crate::stop::StopReason;
 use crate::trace::{Change, ConversionStep, Witness};
 use crate::validate::{Severity, validate};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct MinimizeBudget {
     /// The most trace steps.
     pub max_steps: usize,
@@ -29,9 +32,16 @@ impl Default for MinimizeBudget {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(
+    tag = "result",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub enum Minimization {
     Finished {
+        #[cfg_attr(feature = "ts", ts(as = "crate::json::Wire"))]
         dfsm: Fsm,
         /// `classes[i]` holds the original states in state `i` of the minimal DFSM.
         classes: Vec<Vec<StateId>>,

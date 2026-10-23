@@ -7,6 +7,7 @@ use serde::Serialize;
 
 /// Two states that prove a class can be split: on `symbol` they go to different classes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct Witness {
     pub p: StateId,
     pub q: StateId,
@@ -15,6 +16,7 @@ pub struct Witness {
 
 /// A transition label that is a regular expression, shown as text (fsm_to_regex).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct Label {
     pub from: StateId,
     pub to: StateId,
@@ -27,6 +29,7 @@ pub struct Label {
 /// `Transition` are states of the machine being built.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub enum Change {
     /// determinize: eps(state)
     Closure {
@@ -127,6 +130,7 @@ pub enum Change {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct ConversionStep {
     pub message: Message,
     pub change: Change,

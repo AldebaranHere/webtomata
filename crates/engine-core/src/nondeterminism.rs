@@ -8,6 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 /// A state that has at least one reason to be nondeterministic.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct Nondeterminism {
     pub state: StateId,
     /// The symbols with two or more transitions out of this state, sorted. Two identical

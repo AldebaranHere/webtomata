@@ -18,9 +18,12 @@ use crate::message::Message;
 use crate::regex::Regex;
 use crate::stop::StopReason;
 use crate::trace::{Change, ConversionStep, Label};
+use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct FsmToRegexBudget {
     /// The most trace steps.
     pub max_steps: usize,

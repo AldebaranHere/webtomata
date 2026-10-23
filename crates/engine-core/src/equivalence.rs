@@ -9,9 +9,12 @@ use crate::fsm::{Fsm, StateId, SymbolId};
 use crate::message::Message;
 use crate::stop::StopReason;
 use crate::trace::{Change, ConversionStep};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashSet, VecDeque};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct EquivalenceBudget {
     /// The most pairs of state sets to explore when deciding equivalence.
     pub max_pairs: usize,
@@ -36,14 +39,22 @@ impl Default for EquivalenceBudget {
 
 /// A string that the two machines classify differently. Symbols refer to the alphabet of the
 /// first machine (the candidate).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct Counterexample {
     pub string: Vec<SymbolId>,
     /// True if the candidate accepts it and the reference rejects it.
     pub candidate_accepts: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(
+    tag = "result",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub enum Equivalence {
     Equivalent {
         /// How many pairs of state sets were explored.

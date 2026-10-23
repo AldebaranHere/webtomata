@@ -10,9 +10,12 @@ use crate::fsm::{Fsm, FsmKind, MAX_STATES, MAX_TRANSITIONS, StateId, SymbolId, T
 use crate::message::Message;
 use crate::stop::StopReason;
 use crate::trace::{Change, ConversionStep};
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct ConversionBudget {
     /// The most states the new DFSM may have (at most [`MAX_STATES`]).
     pub max_states: usize,
@@ -29,9 +32,16 @@ impl Default for ConversionBudget {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(
+    tag = "result",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub enum Conversion {
     Finished {
+        #[cfg_attr(feature = "ts", ts(as = "crate::json::Wire"))]
         dfsm: Fsm,
         /// `subsets[i]` holds the original states that make up DFSM state `i`.
         subsets: Vec<Vec<StateId>>,

@@ -35,5 +35,5 @@ export default ts.config(
 			]
 		}
 	},
-	{ ignores: ['src/lib/engine/wasm/'] }
+	{ ignores: ['src/lib/engine/wasm/', 'src/lib/engine/types.ts'] }
 );

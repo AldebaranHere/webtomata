@@ -9,9 +9,12 @@ use std::collections::HashMap;
 pub const MAX_JSON_BYTES: usize = 1024 * 1024;
 const SCHEMA_VERSION: u32 = 1;
 
+/// The machine file. In TypeScript it is the type `Machine`.
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
-struct Wire {
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(rename = "Machine"))]
+pub(crate) struct Wire {
     schema_version: u32,
     kind: FsmKind,
     alphabet: Vec<String>,
@@ -25,7 +28,9 @@ struct Wire {
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct WireTransition {
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(rename = "MachineTransition"))]
+pub(crate) struct WireTransition {
     from: u32,
     #[serde(deserialize_with = "Option::deserialize")]
     on: Option<String>,
@@ -101,15 +106,15 @@ impl Fsm {
         )
     }
 
-    /// Canonical JSON: sorted lists, so the same machine always gives the same text.
-    pub fn to_json(&self) -> String {
+    /// The machine file, with sorted lists.
+    fn to_wire(&self) -> Wire {
         let mut states = self.states.clone();
         let mut accepting = self.accepting.clone();
         let mut transitions = self.transitions.clone();
         states.sort_unstable();
         accepting.sort_unstable();
         transitions.sort_unstable();
-        let wire = Wire {
+        Wire {
             schema_version: SCHEMA_VERSION,
             kind: self.kind,
             alphabet: self.alphabet.names().to_vec(),
@@ -124,7 +129,18 @@ impl Fsm {
                     to: t.to.0,
                 })
                 .collect(),
-        };
-        serde_json::to_string(&wire).expect("plain data always serializes")
+        }
+    }
+
+    /// Canonical JSON: sorted lists, so the same machine always gives the same text.
+    pub fn to_json(&self) -> String {
+        serde_json::to_string(&self.to_wire()).expect("plain data always serializes")
+    }
+}
+
+impl Serialize for Fsm {
+    /// A machine serializes as the machine file.
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.to_wire().serialize(serializer)
     }
 }

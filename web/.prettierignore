@@ -4,3 +4,4 @@ node_modules
 pnpm-lock.yaml
 src/lib/engine/wasm
 .wrangler
+src/lib/engine/types.ts
