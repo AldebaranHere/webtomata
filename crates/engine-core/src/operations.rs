@@ -13,11 +13,14 @@ use crate::message::Message;
 use crate::stop::StopReason;
 use crate::trace::{Change, ConversionStep};
 use crate::validate::{Severity, validate};
+use serde::Serialize;
 use std::collections::HashSet;
 
 /// The new machine and the steps that built it.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct Operation {
+    #[cfg_attr(feature = "ts", ts(as = "crate::json::Wire"))]
     pub fsm: Fsm,
     pub trace: Vec<ConversionStep>,
 }
@@ -277,9 +280,16 @@ fn epsilon(from: StateId, to: StateId) -> ConversionStep {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(
+    tag = "result",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub enum Intersection {
     Finished {
+        #[cfg_attr(feature = "ts", ts(as = "crate::json::Wire"))]
         fsm: Fsm,
         trace: Vec<ConversionStep>,
     },

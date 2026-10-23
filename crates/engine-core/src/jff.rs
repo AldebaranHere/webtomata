@@ -20,6 +20,7 @@ pub const MAX_JFF_BYTES: usize = 1024 * 1024;
 
 /// A state as the file describes it. Names and positions belong to the UI, not to the machine.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct JffState {
     pub id: StateId,
     pub name: String,
@@ -27,8 +28,10 @@ pub struct JffState {
     pub y: f64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct Jff {
+    #[cfg_attr(feature = "ts", ts(as = "crate::json::Wire"))]
     pub fsm: Fsm,
     /// Every state of the machine, by id. This includes the states that were added for labels with
     /// several characters.

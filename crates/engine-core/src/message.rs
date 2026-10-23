@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 /// A message parameter.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(untagged)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub enum Param {
     Int(i64),
     Text(String),
@@ -44,6 +45,7 @@ impl From<String> for Param {
 
 /// A message key such as `machine.unknown_state` with named parameters.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct Message {
     pub key: &'static str,
     pub params: BTreeMap<&'static str, Param>,

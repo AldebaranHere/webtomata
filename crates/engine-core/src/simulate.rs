@@ -6,10 +6,13 @@ use crate::closure::{closure, moves_of};
 use crate::fsm::{Fsm, StateId, SymbolId};
 use crate::message::Message;
 use crate::stop::StopReason;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Limits for one run.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(rename = "SimulateBudget"))]
 pub struct Budget {
     /// The most input symbols the run may read.
     pub max_steps: usize,
@@ -28,6 +31,9 @@ impl Default for Budget {
 
 /// One configuration of the run: the states that are active after `position` symbols.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(rename = "SimulationStep"))]
 pub struct Step {
     /// How many symbols have been read.
     pub position: usize,
@@ -39,7 +45,12 @@ pub struct Step {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(tag = "result", rename_all = "snake_case")]
+#[serde(
+    tag = "result",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub enum Simulation {
     Finished {
         accepted: bool,

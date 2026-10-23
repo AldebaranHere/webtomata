@@ -13,14 +13,17 @@ pub const MAX_TRANSITIONS: usize = 100_000;
 pub const MAX_SYMBOL_CHARS: usize = 32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct StateId(pub u32);
 
 /// A symbol interned as its position in the [`Alphabet`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct SymbolId(pub u16);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub enum FsmKind {
     Dfsm,
     Ndfsm,
@@ -133,6 +136,7 @@ impl Alphabet {
 
 /// `on: None` is an ε-transition.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct Transition {
     pub from: StateId,
     pub on: Option<SymbolId>,
