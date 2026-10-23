@@ -16,4 +16,6 @@ pub enum StopReason {
     MaxUpdates,
     /// A regular expression grew too big (state elimination).
     MaxNodes,
+    /// Too many checks of the form "is this language inside that one?" (simplifying a regular expression).
+    MaxChecks,
 }
