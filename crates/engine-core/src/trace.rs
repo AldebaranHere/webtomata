@@ -103,6 +103,8 @@ pub enum Change {
     NotAccepting {
         state: StateId,
     },
+    /// add_trap_state: no transition is missing, so the machine is not changed
+    AlreadyComplete,
     /// intersection: a new stage of the De Morgan construction begins
     Stage {
         stage: u8,
