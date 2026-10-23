@@ -1,0 +1,1 @@
+{"schemaVersion":1,"kind":"ndfsm","alphabet":["num","plus"],"states":[0,1,2],"start":0,"accepting":[2],"transitions":[{"from":0,"on":"num","to":1},{"from":1,"on":null,"to":2},{"from":2,"on":"plus","to":0}]}

@@ -26,6 +26,7 @@ id_ed25519*
 
 # Rust
 /target/
+/fuzz/target/
 **/pkg/
 
 # Node / SvelteKit
