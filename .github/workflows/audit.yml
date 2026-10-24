@@ -26,7 +26,8 @@ jobs:
       - run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - run: cargo install cargo-audit --locked --version 0.22.2
-      # The advisory database comes from the RustSec repository.
+      # The advisory database comes from the RustSec repository. Accepted advisories, with their
+      # reasons and dates, are in .cargo/audit.toml.
       - run: cargo audit
       - run: cargo audit --file fuzz/Cargo.lock
 
@@ -43,4 +44,5 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # Sends the names and versions of our packages to the npm registry, as an install does.
+      # Accepted advisories, with their reasons and dates, are in pnpm-workspace.yaml.
       - run: pnpm audit

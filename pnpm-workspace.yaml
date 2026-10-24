@@ -5,3 +5,16 @@ packages:
 allowBuilds:
   esbuild: false
   workerd: false
+
+# Known advisories that we accept until 2026-10-29. Then remove them and add a pnpm override for
+# undici >= 7.30.1 (check first that no newer wrangler already includes it).
+# GHSA-xjj6-f33q-929c (high, a denial of service through content-encodings), GHSA-4qv8-2p9j-2685
+# (an EventSource parser) and GHSA-f72v-6w45-q472 (an SRI bypass), all in undici 7.29.1. undici
+# reaches us only through wrangler > miniflare, our deploy and local-dev tool, which talks only to
+# Cloudflare. The fixed version 7.30.1 was published on 2026-10-15, and our rule is to wait two
+# weeks. undici sits next to the Cloudflare token in the deploy job, so we do not hurry.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-xjj6-f33q-929c
+    - GHSA-4qv8-2p9j-2685
+    - GHSA-f72v-6w45-q472
