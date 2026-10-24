@@ -1,10 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import '#lib/styles/base.css';
 	import SiteHeader from '#lib/components/SiteHeader.svelte';
 	import { loadLocale, t } from '#lib/i18n/index.svelte.ts';
 
 	let { children } = $props();
+
+	// The Sandbox is an app that fills the screen: no footer, and the editor takes the height.
+	const app = $derived(page.route.id === '/sandbox');
 
 	// The pages are prerendered in Indonesian; this applies the language the user saved.
 	onMount(loadLocale);
@@ -12,14 +16,16 @@
 
 <a class="skip" href="#main">{t('nav.skip')}</a>
 
-<div class="shell">
+<div class="shell" class:app>
 	<SiteHeader />
 	<main id="main" tabindex="-1">
 		{@render children()}
 	</main>
-	<footer>
-		<p>{t('app.privacy')}</p>
-	</footer>
+	{#if !app}
+		<footer>
+			<p>{t('app.privacy')}</p>
+		</footer>
+	{/if}
 </div>
 
 <style>
@@ -44,6 +50,15 @@
 	}
 	main {
 		flex: 1;
+	}
+	.app {
+		height: 100dvh;
+	}
+	.app main {
+		min-height: 0;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
 	}
 	main:focus {
 		outline: none;

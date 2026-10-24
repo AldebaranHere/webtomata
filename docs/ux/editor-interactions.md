@@ -248,6 +248,17 @@ Messages are keys with parameters, spoken through one polite live region (`role=
 
 Errors from the document keep their own keys (`document.duplicate_name` and so on) and are shown by the same region. The tone follows U4.
 
+## Decisions made while building S4b-1
+
+- **Tools:** Pilih, Tambah state and **Hapus** (a press on a state deletes it). The transition tool comes with S4c.
+- **Canvas:** a world of 1600 × 1000 units shown at 100%, scrolled by the browser. Pan and zoom replace this in S4d.
+- **Add by double-click:** a double-click on empty canvas adds a state in every tool except Tambah state, where one click already adds.
+- **Selection and focus:** `Tab` moves focus and the selection together. `Ctrl+Arrow` moves focus only, and `Space` toggles the focused state in the selection.
+- **Drag:** the drag is a preview; one batch of `moveState` is committed on release, and `Esc` cancels. A nudge with `Alt+Arrow` is one undo step until the selection changes or the canvas loses focus.
+- **Thresholds:** a drag starts after 4 px with a mouse and 8 px with a finger.
+- **Layout:** on a laptop the tools and undo/redo are a column at the left. On a phone the tools are a bar at the bottom and undo/redo are in the title bar. Targets are at least 44 px.
+- **Sandbox page:** it fills the screen and has no footer. Until autosave (S10a) a "leave the page?" warning protects unsaved changes.
+
 ## What each interaction needs from S3
 
 Every interaction uses an existing command. No new command is needed for S4.
