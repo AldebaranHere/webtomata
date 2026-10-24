@@ -4,6 +4,10 @@ import { createHandlers, run } from './handlers.ts';
 import type { CallMessage, ReplyMessage } from './protocol.ts';
 
 const ready = init();
+// If loading the WASM file fails, the first call finds out through `await ready` below and reports
+// a crash. Marking the failure as handled here keeps the browser from also logging it as an
+// uncaught error, which nobody can act on.
+ready.catch(() => undefined);
 const handlers = createHandlers(wasm);
 
 self.onmessage = async (event: MessageEvent<CallMessage>) => {

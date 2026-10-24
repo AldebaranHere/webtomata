@@ -1,16 +1,27 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
+	import EngineNotice from '#lib/components/EngineNotice.svelte';
 	import { engineVersion } from '#lib/engine/client.ts';
+	import { engineProblem } from '#lib/engine/problem.ts';
+	import type { EngineProblem } from '#lib/engine/problem.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 
 	let version = $state('');
+	let problem = $state<EngineProblem>();
 
 	// The engine starts after the first render. Its version proves that the worker, the WASM file
-	// and the CSP work (the smoke test and the browser tests wait for it).
-	onMount(async () => {
-		version = await engineVersion();
-	});
+	// and the CSP work (the smoke test and the browser tests wait for it). If it fails, the user
+	// sees a notice with a button to try again.
+	async function loadVersion() {
+		problem = undefined;
+		try {
+			version = await engineVersion();
+		} catch (error) {
+			problem = engineProblem(error);
+		}
+	}
+	onMount(loadVersion);
 
 	const entries = [
 		{ href: '/sandbox', name: 'nav.sandbox', hint: 'home.sandbox_hint' },
@@ -38,6 +49,10 @@
 			</li>
 		{/each}
 	</ul>
+
+	{#if problem}
+		<div class="problem"><EngineNotice {problem} onretry={loadVersion} /></div>
+	{/if}
 
 	<p class="version">{t('home.engine')} <code>{version}</code></p>
 </div>
@@ -88,6 +103,9 @@
 	}
 	.hint {
 		color: var(--color-muted);
+	}
+	.problem {
+		margin-bottom: var(--space-4);
 	}
 	.version {
 		margin: 0;

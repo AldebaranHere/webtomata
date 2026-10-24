@@ -43,6 +43,7 @@ One WASM call for each user action. Every function takes text and returns one te
 - **Limits** apply to every input: machine and `.jff` files 1 MiB, regular expressions 1,000 characters, simulation input 100,000 bytes, budget text 4,096 bytes.
 - **The types** in `web/src/lib/engine/types.ts` are generated (`pnpm build:types`, run by `pnpm build:wasm`) and are not committed. The file also holds golden samples, real answers of every function written as constants that must fit their types, so `pnpm check` fails if a Rust type and the JSON drift apart.
 - **A crash does not freeze the app.** Any exception in the worker (a WASM trap, an unknown call) makes the worker report a crash and close. The client then fails the waiting calls with `EngineCrashed`, and the next call starts a new worker. `engine.cancel()` ends the worker the same way (`EngineCancelled`). Saved machines live on the main thread and in IndexedDB, so they are not affected.
+- **A call that takes too long is stopped.** A call that gets no answer within 10 seconds (30 before the worker has answered once, for loading the WASM file) fails with `EngineTimeout`. The worker is ended and replaced; the other waiting calls are sent again to the new worker. `engineProblem(error)` turns a failure into the message keys of a calm notice with a "Coba lagi" button. See ADR 0020.
 
 ## The document
 

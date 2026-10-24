@@ -1,5 +1,12 @@
-import { describe, expect, it } from 'vitest';
-import { EngineCancelled, EngineCrashed, WEB_BUDGETS, createEngine } from './client.ts';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+	EngineCancelled,
+	EngineCrashed,
+	EngineTimeout,
+	WEB_BUDGETS,
+	WEB_TIMEOUTS,
+	createEngine
+} from './client.ts';
 import type { WorkerLike } from './client.ts';
 import { METHODS } from './protocol.ts';
 import type { CallMessage, ReplyMessage } from './protocol.ts';
@@ -30,13 +37,17 @@ class FakeWorker implements WorkerLike {
 	}
 }
 
-function setup() {
+function setup(timeouts?: Partial<typeof WEB_TIMEOUTS>) {
 	const workers: FakeWorker[] = [];
-	const engine = createEngine(() => {
-		const worker = new FakeWorker();
-		workers.push(worker);
-		return worker;
-	});
+	const engine = createEngine(
+		() => {
+			const worker = new FakeWorker();
+			workers.push(worker);
+			return worker;
+		},
+		WEB_BUDGETS,
+		timeouts
+	);
 	return { engine, workers };
 }
 
@@ -208,5 +219,174 @@ describe('the client', () => {
 		const { engine } = setup();
 		for (const method of METHODS) expect(typeof engine[method]).toBe('function');
 		expect(typeof engine.cancel).toBe('function');
+	});
+});
+
+describe('a call that is not answered in time', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	/** The outcome of a promise as a value, so that a rejection is not left unhandled. */
+	const outcome = (promise: Promise<unknown>) =>
+		promise.then(
+			(value) => ({ value }),
+			(error: unknown) => ({ error })
+		);
+
+	/** Starts the first worker and lets it answer, so that it counts as started. */
+	async function started(ctx: ReturnType<typeof setup>) {
+		const first = ctx.engine.version();
+		ctx.workers[0]!.reply({ id: 1, result: worked('0.0.0') });
+		await first;
+	}
+
+	it('has a limit of 10 seconds for a call and 30 for the start of the worker', () => {
+		expect(WEB_TIMEOUTS).toEqual({ callMs: 10_000, startMs: 30_000 });
+	});
+
+	it('fails with EngineTimeout at the limit and ends the worker', async () => {
+		const ctx = setup();
+		await started(ctx);
+		const slow = outcome(ctx.engine.simulate(machine, 'a'));
+		vi.advanceTimersByTime(9_999);
+		expect(ctx.workers[0]!.terminated).toBe(false);
+		vi.advanceTimersByTime(1);
+		const result = await slow;
+		expect(result).toMatchObject({ error: expect.any(EngineTimeout) });
+		expect((result as { error: EngineTimeout }).error.timeoutMs).toBe(10_000);
+		expect(ctx.workers[0]!.terminated).toBe(true);
+	});
+
+	it('lets the next call run on a new worker', async () => {
+		const ctx = setup();
+		await started(ctx);
+		const slow = outcome(ctx.engine.simulate(machine, 'a'));
+		vi.advanceTimersByTime(10_000);
+		await slow;
+		const next = ctx.engine.version();
+		expect(ctx.workers).toHaveLength(2);
+		ctx.workers[1]!.reply({ id: 3, result: worked('0.0.0') });
+		expect(await next).toEqual(worked('0.0.0'));
+	});
+
+	it('does not time out a call that was answered', async () => {
+		const ctx = setup();
+		await started(ctx);
+		const quick = ctx.engine.validate(machine);
+		ctx.workers[0]!.reply({ id: 2, result: worked([]) });
+		await quick;
+		// The clock of an answered call is stopped, not just ignored.
+		expect(vi.getTimerCount()).toBe(0);
+		vi.advanceTimersByTime(120_000);
+		expect(ctx.workers[0]!.terminated).toBe(false);
+		expect(ctx.workers).toHaveLength(1);
+	});
+
+	it('gives a call before the first answer 30 seconds, for loading the WASM file', async () => {
+		const ctx = setup();
+		const first = outcome(ctx.engine.version());
+		vi.advanceTimersByTime(29_999);
+		expect(ctx.workers[0]!.terminated).toBe(false);
+		vi.advanceTimersByTime(1);
+		const result = await first;
+		expect((result as { error: EngineTimeout }).error).toBeInstanceOf(EngineTimeout);
+		expect((result as { error: EngineTimeout }).error.timeoutMs).toBe(30_000);
+	});
+
+	it('uses the short limit for a call sent after the first answer', async () => {
+		const ctx = setup();
+		const first = ctx.engine.version(); // id 1, sent before any answer
+		const early = outcome(ctx.engine.validate(machine)); // id 2, sent before any answer too
+		ctx.workers[0]!.reply({ id: 1, result: worked('0.0.0') });
+		await first;
+		const late = outcome(ctx.engine.complement(machine)); // id 3, after the first answer
+		vi.advanceTimersByTime(10_000);
+		expect(await late).toMatchObject({ error: expect.any(EngineTimeout) });
+		// The worker was ended, so the early call is sent again, with a new start allowance.
+		expect(ctx.workers).toHaveLength(2);
+		ctx.workers[1]!.reply({ id: 2, result: worked([]) });
+		expect(await early).toEqual({ value: worked([]) });
+	});
+
+	it('sends the other waiting calls again to the new worker, and they finish', async () => {
+		const ctx = setup();
+		await started(ctx);
+		const stuck = outcome(ctx.engine.simulate(machine, 'a')); // id 2
+		vi.advanceTimersByTime(5_000);
+		const innocent = outcome(ctx.engine.validate(machine)); // id 3, sent 5 s later
+		vi.advanceTimersByTime(5_000);
+		expect(await stuck).toMatchObject({ error: expect.any(EngineTimeout) });
+		expect(ctx.workers).toHaveLength(2);
+		expect(ctx.workers[1]!.posted).toEqual([ctx.workers[0]!.posted[2]]);
+		ctx.workers[1]!.reply({ id: 3, result: worked(['fine']) });
+		expect(await innocent).toEqual({ value: worked(['fine']) });
+	});
+
+	it('times out a call that was sent again and hangs again, by itself', async () => {
+		const ctx = setup();
+		await started(ctx);
+		const stuck = outcome(ctx.engine.simulate(machine, 'a')); // id 2
+		const alsoStuck = outcome(ctx.engine.validate(machine)); // id 3
+		vi.advanceTimersByTime(10_000);
+		expect(await stuck).toMatchObject({ error: expect.any(EngineTimeout) });
+		// id 3 has a new clock on the new worker, which has not answered yet: 30 seconds.
+		vi.advanceTimersByTime(29_999);
+		expect(ctx.workers[1]!.terminated).toBe(false);
+		vi.advanceTimersByTime(1);
+		expect(await alsoStuck).toMatchObject({ error: expect.any(EngineTimeout) });
+		expect(ctx.workers[1]!.terminated).toBe(true);
+		expect(ctx.workers).toHaveLength(2); // a worker starts again only on the next call
+	});
+
+	it('ignores a late answer of the worker that was ended', async () => {
+		const ctx = setup();
+		await started(ctx);
+		const stuck = outcome(ctx.engine.simulate(machine, 'a')); // id 2
+		vi.advanceTimersByTime(10_000);
+		await stuck;
+		const next = ctx.engine.version(); // id 3, new worker
+		ctx.workers[0]!.reply({ id: 3, result: worked('wrong') });
+		ctx.workers[1]!.reply({ id: 3, result: worked('right') });
+		expect(await next).toEqual(worked('right'));
+	});
+
+	it('stops the timers when the calls are canceled', async () => {
+		const ctx = setup();
+		await started(ctx);
+		const canceled = outcome(ctx.engine.simulate(machine, 'a'));
+		ctx.engine.cancel();
+		expect(await canceled).toMatchObject({ error: expect.any(EngineCancelled) });
+		vi.advanceTimersByTime(120_000);
+		expect(ctx.workers).toHaveLength(1);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('stops the timers when the worker crashes', async () => {
+		const ctx = setup();
+		await started(ctx);
+		const lost = outcome(ctx.engine.simulate(machine, 'a'));
+		ctx.workers[0]!.fail();
+		expect(await lost).toMatchObject({ error: expect.any(EngineCrashed) });
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('takes other limits as an option, and falls back to the defaults for a bad value', async () => {
+		const custom = setup({ callMs: 50, startMs: 100 });
+		await started(custom);
+		const quick = outcome(custom.engine.simulate(machine, 'a'));
+		vi.advanceTimersByTime(50);
+		expect(await quick).toMatchObject({ error: expect.any(EngineTimeout) });
+
+		const bad = setup({ callMs: -1, startMs: Number.NaN });
+		await started(bad);
+		const slow = outcome(bad.engine.simulate(machine, 'a'));
+		vi.advanceTimersByTime(9_999);
+		expect(bad.workers[0]!.terminated).toBe(false);
+		vi.advanceTimersByTime(1);
+		expect(await slow).toMatchObject({ error: expect.any(EngineTimeout) });
 	});
 });

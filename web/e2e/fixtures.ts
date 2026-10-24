@@ -6,11 +6,16 @@ import type { Page } from '@playwright/test';
 
 export { expect };
 
-export const test = base.extend<{ watch: void }>({
+export const test = base.extend<{ watch: void; allowedProblem: RegExp | undefined }>({
+	// Problems that a test causes on purpose (a blocked file, for example): a pattern for the text
+	// of the problem. Use it with test.use({ allowedProblem: /pattern/ }). It is one pattern, not a
+	// list, because Playwright reads a two-item array as [value, options].
+	allowedProblem: [undefined, { option: true }],
+
 	// Runs for every test. The problems are checked after the test, so that the first problem
 	// does not hide the others.
 	watch: [
-		async ({ page }, use) => {
+		async ({ page, allowedProblem }, use) => {
 			const problems: string[] = [];
 			page.on('console', (message) => {
 				if (message.type() === 'error') problems.push(`console error: ${message.text()}`);
@@ -23,7 +28,7 @@ export const test = base.extend<{ watch: void }>({
 				if (response.status() >= 400) problems.push(`${response.status()}: ${response.url()}`);
 			});
 			await use();
-			expect(problems).toEqual([]);
+			expect(problems.filter((p) => !allowedProblem?.test(p))).toEqual([]);
 		},
 		{ auto: true }
 	]
