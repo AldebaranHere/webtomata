@@ -77,6 +77,18 @@ jobs:
           done
           exit 1
 
+      - name: Smoke test the production site
+        if: steps.secrets.outputs.present == 'true' && github.event_name == 'push'
+        run: |
+          url=$(grep -o 'https://[a-z0-9.-]*\.workers\.dev' deploy.log | head -n 1)
+          # The new version can take a few seconds to reach every edge, so retry.
+          for attempt in 1 2 3 4; do
+            node tools/smoke.mjs "$url/" && exit 0
+            echo "Smoke test failed (attempt $attempt); retrying in 10s"
+            sleep 10
+          done
+          exit 1
+
       - name: Upload preview
         if: steps.secrets.outputs.present == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         env:
@@ -95,3 +107,18 @@ jobs:
           if [ -n "$url" ]; then
             gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body "Preview: $url (commit ${GITHUB_SHA::7})"
           fi
+
+      - name: Smoke test the preview
+        if: steps.secrets.outputs.present == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          url=$(grep -o 'https://pr-[a-z0-9.-]*\.workers\.dev' preview.log | head -n 1)
+          if [ -z "$url" ]; then
+            echo "No preview was uploaded; skipping."
+            exit 0
+          fi
+          for attempt in 1 2 3 4; do
+            node tools/smoke.mjs "$url/" && exit 0
+            echo "Smoke test failed (attempt $attempt); retrying in 10s"
+            sleep 10
+          done
+          exit 1

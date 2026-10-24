@@ -52,6 +52,9 @@ jobs:
       - run: pnpm format:check
       - run: pnpm check
       - run: pnpm test:web
+      - run: pnpm test:tools
       - run: pnpm --filter web build
       - run: pnpm size
+      # Opens the production build in headless Chrome and checks that the app runs.
+      - run: pnpm smoke
       - run: pnpm lighthouse

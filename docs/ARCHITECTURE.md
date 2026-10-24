@@ -52,7 +52,7 @@ One WASM call for each user action. Every function takes text and returns one te
 
 ## Build and deploy
 
-`pnpm build` runs `wasm-pack` (release, `wasm-opt -Oz`) and then `vite build` into `web/build/`. CI checks formatting, lint, types, tests, size budgets and Lighthouse budgets (`tools/budgets.mjs`). Merges to `main` deploy `web/build/` to Cloudflare; pull requests get a preview URL.
+`pnpm build` runs `wasm-pack` (release, `wasm-opt -Oz`) and then `vite build` into `web/build/`. CI checks formatting, lint, types, tests, size budgets and Lighthouse budgets (`tools/budgets.mjs`). Merges to `main` deploy `web/build/` to Cloudflare; pull requests get a preview URL. After each deploy, CI checks the security headers and runs a smoke test (headless Chrome loads the site and waits for the engine version) on the production and the preview URL. A weekly workflow audits the Rust and npm dependencies for known vulnerabilities; it is not a required check.
 
 ## Performance and benchmarks
 

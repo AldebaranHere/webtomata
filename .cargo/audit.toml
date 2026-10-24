@@ -1,0 +1,9 @@
+# Settings of `cargo audit`.
+
+[advisories]
+# Known advisory that we accept until 2026-11-04. Then remove it and run
+# `cargo update -p tokio --precise 1.54.1`.
+# RUSTSEC-2026-0384, a race in tokio::time::Interval. tokio 1.54.0 reaches us only through
+# wasm-bindgen-test, a dev-dependency of the WASM tests; no shipped code uses it. The fixed
+# version 1.54.1 was published on 2026-10-21, and our rule is to wait two weeks.
+ignore = ["RUSTSEC-2026-0384"]
