@@ -2,7 +2,7 @@
 
 The rules for the diagram editor: what each mouse, touch and keyboard action does, which command it sends, and what the user hears and sees. S4 (the diagram view) is built from this file. The wireframes ("Automata Tool Wireframes", 2026-10-21) give the layout and the tool names. The commands are in [`web/src/lib/editor/commands.ts`](../../web/src/lib/editor/commands.ts), the history in [`history.ts`](../../web/src/lib/editor/history.ts) ([ADR 0017](../decisions/0017-document-commands-history.md)).
 
-Words: the wireframes say **status** for a state. This file uses "state" in rules and "status" in tool names. TODO(review): the glossary has not picked one yet.
+Words: the UI says **state** (not "status", which the first wireframes used), as in the course slides; see `docs/glossary.md`.
 
 ## Rules for the whole editor
 
@@ -22,7 +22,7 @@ Words: the wireframes say **status** for a state. This file uses "state" in rule
 - **State**: a circle, with an id (never reused), a name and a place.
 - **Edge**: all transitions from one state to one state, drawn as one arrow with one label. An edge exists only if it has at least one transition. The document stores transitions; the view groups them by (from, to). Selecting an edge selects the pair.
 - **Self-loop**: an edge whose from and to are the same state.
-- **Tool**: Pilih (V), Tambah status (S), Tambah transisi (T), Hapus (Del). The tool stays until the user picks another one, or presses Esc (back to Pilih).
+- **Tool**: Pilih (V), Tambah state (S), Tambah transisi (T), Hapus (Del). The tool stays until the user picks another one, or presses Esc (back to Pilih).
 - **Label field**: the small text box on an edge, where symbols are typed.
 
 ## Drawing conventions (follow the textbook)
@@ -53,8 +53,8 @@ Notation: **Cmd** is the command of S3. "Step" is one undo step.
 
 | Way | Rule |
 | --- | --- |
-| Mouse | With **Tambah status**, a click on empty canvas adds a state centered there. In any tool, a double-click on empty canvas does the same. |
-| Touch | With **Tambah status**, a tap on empty canvas adds a state. (In **Pilih**, a tap on empty canvas only clears the selection.) |
+| Mouse | With **Tambah state**, a click on empty canvas adds a state centered there. In any tool, a double-click on empty canvas does the same. |
+| Touch | With **Tambah state**, a tap on empty canvas adds a state. (In **Pilih**, a tap on empty canvas only clears the selection.) |
 | Keyboard | `N`, with the canvas focused, adds a state at the center of the visible area, in any tool. If a state is within 72 of that spot, the new state goes to the nearest free spot on a grid of 80, searched in a spiral. |
 | Cmd | `addState {x, y}` (the name is `q<k>`) |
 | Step | One |
@@ -81,7 +81,7 @@ A double-click is **not** rename. It toggles accepting (next row).
 
 | Way | Rule |
 | --- | --- |
-| Mouse | Double-click a state in **Pilih**: toggle accepting. Menu: "Jadikan status mulai", "Status penerima". |
+| Mouse | Double-click a state in **Pilih**: toggle accepting. Menu: "Jadikan start state", "Accepting state". |
 | Touch | Long-press → menu (same items). |
 | Keyboard | On the selected state: `A` toggles accepting, `M` makes it the start (on the start state, `M` clears the start). |
 | Cmd | `setAccepting {id, accepting}`; `setStart {id}` or `setStart {id: null}` |
@@ -192,13 +192,13 @@ The button "Tata letak otomatis" (S9) sends one `batch` of `moveState`, so it is
 
 ## Phone dock and menu
 
-The dock has **Pilih**, **Status**, **Transisi**, **Ketik ε** (shown only while a label field is open) and **Hapus**, each 44 × 44 or more. The menu (long-press, or right-click) shows items by what was pressed:
+The dock has **Pilih**, **State**, **Transisi**, **Ketik ε** (shown only while a label field is open) and **Hapus**, each 44 × 44 or more. The menu (long-press, or right-click) shows items by what was pressed:
 
 | Pressed | Items |
 | --- | --- |
-| A state | Ubah nama · Jadikan status mulai · Status penerima (check mark when on) · Tambah transisi dari sini · Hapus |
+| A state | Ubah nama · Jadikan start state · Accepting state (check mark when on) · Tambah transisi dari sini · Hapus |
 | An edge | Ubah simbol · Hapus |
-| Empty canvas | Tambah status di sini |
+| Empty canvas | Tambah state di sini |
 
 Each item is a button with an accessible name, reachable with the arrows, closed with `Esc`.
 
@@ -206,7 +206,7 @@ Each item is a button with an accessible name, reachable with the arrows, closed
 
 | Key | Action |
 | --- | --- |
-| `V` `S` `T` | Tools Pilih, Tambah status, Tambah transisi |
+| `V` `S` `T` | Tools Pilih, Tambah state, Tambah transisi |
 | `Esc` | Cancel the open field, drag or transition; then clear selection; then back to **Pilih** |
 | `N` | New state at the center of the view |
 | `Enter` / `F2` | Rename a state, or edit the symbols of an edge |
@@ -228,17 +228,17 @@ Messages are keys with parameters, spoken through one polite live region (`role=
 
 | Key | Parameters | Draft text (id) |
 | --- | --- | --- |
-| `editor.state_added` | name | "Status {name} ditambahkan." |
+| `editor.state_added` | name | "State {name} ditambahkan." |
 | `editor.deleted` | what, count | "{what} dihapus." (with **Urungkan**) |
 | `editor.edge_changed` | from, to, symbols | "Transisi {from} ke {to}: {symbols}." |
 | `editor.edge_removed` | from, to | "Transisi {from} ke {to} dihapus." |
-| `editor.accepting_on` / `_off` | name | "{name} menjadi status penerima." / "{name} bukan lagi status penerima." |
-| `editor.start_set` / `_cleared` | name | "{name} menjadi status mulai." / "Status mulai dihapus." |
+| `editor.accepting_on` / `_off` | name | "{name} menjadi accepting state." / "{name} bukan lagi accepting state." |
+| `editor.start_set` / `_cleared` | name | "{name} menjadi start state." / "Start state dihapus." |
 | `editor.moved` | name, x, y | "{name} dipindah." |
 | `editor.selected` | count or name | "{count} dipilih." |
 | `editor.undone` / `editor.redone` | none | "Dibatalkan." / "Diulang." |
-| `editor.hint_pick_target` | none | "Pilih status tujuan." |
-| `editor.need_one_state` | none | "Pilih satu status." |
+| `editor.hint_pick_target` | none | "Pilih state tujuan." |
+| `editor.need_one_state` | none | "Pilih satu state." |
 | `editor.ask_split` | text | "Maksud Anda simbol terpisah atau satu simbol?" |
 
 Errors from the document keep their own keys (`document.duplicate_name` and so on) and are shown by the same region. The tone follows U4.

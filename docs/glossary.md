@@ -1,41 +1,55 @@
 # Glosarium / Glossary
 
-Indonesian terms used in the UI and guides. Source: the previous semester's ToC slides (Fasilkom UI, based on Rich). The course mixes English and Indonesian, so entries marked `TODO(review)` need the human's confirmation before they ship.
+Indonesian terms used in the UI and guides. Source: the ToC slides, quizzes and exams of Fasilkom UI (based on Rich). The owner confirmed the terms below on 2026-10-24. The lecturer will see this page in task C2.
+
+**The rule.** The slides mix English and Indonesian, even for one idea. So the UI uses the English word where the slides use English for a technical noun (state, start state, accepting state, dead state, string, configuration). It uses Indonesian for sentences, verbs and words that have a settled Indonesian term (alfabet, simbol, bahasa, transisi, komplemen, irisan, ekuivalen). An entry marked `TODO(review)` is not shown in M1 and still needs a decision.
 
 | English (Rich) | Indonesian (UI) | Notes |
 | --- | --- | --- |
-| finite state machine (FSM) | mesin berhingga (FSM) | TODO(review): slides say "mesin" / "FSM" |
+| finite state machine (FSM) | mesin berhingga (FSM) | Slides say "mesin" and "FSM". |
 | deterministic FSM (DFSM) | DFSM | Keep the abbreviation. |
 | nondeterministic FSM (NDFSM) | NDFSM | Slides write "nondeterminisme". |
-| state | state | Slides use both "state" and "status". TODO(review): pick one for the UI. |
-| start state | start state / status mulai | TODO(review) |
-| accepting state | accepting state / status menerima | TODO(review) |
-| dead state | dead state | Slides keep the English term. |
-| trap state | trap state | The name in JFLAP ("Add Trap State to DFA"), the same thing as a dead state. TODO(review): use "dead state" in the UI, or show both? |
+| state | state | Never "status" (the first wireframes used it; the slides use "state" more, and the exams do not use "status"). |
+| active state | state aktif | |
+| start state | start state | The arrow in the diagram is labelled "mulai". |
+| accepting state | accepting state | |
+| dead state | dead state | The same as a trap state. JFLAP says "trap state"; the course says "dead state". Use "dead state" only. |
+| unreachable state | state unreachable | |
+| self-loop | self-loop | |
 | alphabet | alfabet | |
 | symbol | simbol | Can be multi-character in this tool. |
-| string | string | Slides keep "string". TODO(review): "untai" is not used by the course. |
+| string | string | Not "untai". |
 | empty string (ε) | string kosong (ε) | |
 | language | bahasa | |
 | transition | transisi | |
-| transition function (δ) | fungsi transisi | TODO(review) |
+| ε-transition | transisi ε | |
+| transition function (δ) | fungsi transisi | DFSM. |
+| transition relation (Δ) | relasi transisi | NDFSM. |
 | configuration | konfigurasi | Element of K × Σ*. |
 | initial configuration | konfigurasi awal | |
-| accepting configuration | accepting configuration | TODO(review) |
 | yields-in-one-step | yields-in-one-step | Slides keep the English name. |
 | accept / reject | menerima / menolak | "diterima" for the passive form. |
-| computation | komputasi | |
-| regular expression | ekspresi reguler | |
+| computation | komputasi | The sequence of configurations of a run. The UI says "komputasi" for a simulation run, not "jejak". |
+| step (of an algorithm) | langkah | The UI says "langkah" for a step of a conversion. |
+| regular expression | ekspresi reguler (regex) | "regex" is fine in short labels. |
 | regular language | bahasa reguler | |
-| union | union | Slides write "union". |
+| union | union | Slides write "union" (not "gabungan"). |
+| intersection | irisan | |
+| complement | komplemen | |
 | concatenation | konkatenasi | |
 | Kleene star | Kleene star | |
+| ε-closure | ε-closure | |
+| complete DFSM | DFSM lengkap | Every state has a transition on every symbol. |
 | minimal DFSM | DFSM minimal | |
-| minimization | minimalisasi | Slides write "Minimalization". TODO(review) |
-| distinguishable strings | string yang dapat dibedakan | TODO(review) |
-| equivalence class | kelas ekuivalen | |
+| minimization | minimalisasi | Buttons use the verb: "Minimalkan DFSM". The slides spell the noun three ways (minimalisasi, minimisasi, "minimalization"). TODO(review): ask the lecturer (C2). |
+| NDFSM → DFSM | Konversi NDFSM ke DFSM | Do not use "determinisasi". |
+| rip state | rip state | State elimination in FSM → regex. |
+| equivalence class | kelas ekuivalen | "ekuivalen", not "ekivalen". |
 | equivalent machines | mesin ekuivalen | |
-| witness string | string pembeda | TODO(review): our own term. |
-| trace | jejak | TODO(review): our own term. |
-| determinize (NDFSM → DFSM) | determinisasi | TODO(review) |
-| start arrow label | mulai | Per the UX track (`MD_FILES/ROADMAP.md` U3). |
+| distinguishable strings | distinguishable | TODO(review): not shown before M2. Keep the English word, as in the slides. |
+| witness string | string pembeda | Our own term: the shortest string that one machine accepts and the other rejects. |
+| start arrow label | mulai | |
+
+## Words of the interface
+
+No course source. These come from the wireframes and stay unless the owner or the lecturer asks for a change: Sandbox, Soal, Panduan, Pilih, Hapus, Urungkan, Ulangi, Tambah state, Tambah transisi, Tata letak otomatis, Simulasi, Tabel, Definisi, Konversi, Coba contoh, Tersimpan di perangkat ini.
