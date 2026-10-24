@@ -24,6 +24,10 @@ id_ed25519*
 # Third-party binaries we must not redistribute (JFLAP license)
 *.jar
 
+# Browser test output
+/web/test-results/
+/web/playwright-report/
+
 # Rust
 /target/
 /fuzz/target/

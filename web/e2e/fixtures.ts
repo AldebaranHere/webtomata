@@ -1,0 +1,42 @@
+// What every browser test shares: it fails when the page logs an error, throws, or loads
+// something that fails, and it has a helper that scans a page with axe.
+import AxeBuilder from '@axe-core/playwright';
+import { expect, test as base } from '@playwright/test';
+import type { Page } from '@playwright/test';
+
+export { expect };
+
+export const test = base.extend<{ watch: void }>({
+	// Runs for every test. The problems are checked after the test, so that the first problem
+	// does not hide the others.
+	watch: [
+		async ({ page }, use) => {
+			const problems: string[] = [];
+			page.on('console', (message) => {
+				if (message.type() === 'error') problems.push(`console error: ${message.text()}`);
+			});
+			page.on('pageerror', (error) => problems.push(`uncaught error: ${error.message}`));
+			page.on('requestfailed', (request) =>
+				problems.push(`request failed: ${request.url()} (${request.failure()?.errorText})`)
+			);
+			page.on('response', (response) => {
+				if (response.status() >= 400) problems.push(`${response.status()}: ${response.url()}`);
+			});
+			await use();
+			expect(problems).toEqual([]);
+		},
+		{ auto: true }
+	]
+});
+
+// WCAG 2.0, 2.1 and 2.2 levels A and AA, and axe's best practices. No violation is allowed.
+const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
+
+/** Fails, and names every rule that was broken, if axe finds a violation on the page. */
+export async function expectNoAxeViolations(page: Page): Promise<void> {
+	const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+	expect(
+		violations.map((v) => `${v.id}: ${v.help} (${v.nodes.length} element(s))`),
+		'accessibility violations'
+	).toEqual([]);
+}

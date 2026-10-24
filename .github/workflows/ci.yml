@@ -62,4 +62,7 @@ jobs:
       - run: pnpm size
       # Opens the production build in headless Chrome and checks that the app runs.
       - run: pnpm smoke
+      # Browser tests on the production build: the engine version loads, and axe finds no
+      # accessibility violation (docs/decisions/0018-playwright.md). Uses the Chrome of the runner.
+      - run: pnpm test:e2e
       - run: pnpm lighthouse

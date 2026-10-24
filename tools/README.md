@@ -17,7 +17,11 @@ The seed is fixed. The same versions give the same files, on any computer.
 
 ## Smoke test (`smoke.mjs`)
 
-`node tools/smoke.mjs <url>` opens a page in headless Chrome and checks that the app runs: the home page must show the engine version (so the script, the worker and the WASM module loaded), and there must be no console error, uncaught exception, failed request, bad response or CSP violation. `pnpm smoke` runs it on the production build (served locally), and `deploy.yml` runs it on the production and preview URLs after each deploy. It talks to Chrome through a small DevTools client (`cdp.mjs`) with no extra package. `smoke-judge.mjs` decides pass or fail and is tested by `pnpm test:tools` (Node's test runner). Playwright (Phase 2) will take over the real user flows.
+`node tools/smoke.mjs <url>` opens a page in headless Chrome and checks that the app runs: the home page must show the engine version (so the script, the worker and the WASM module loaded), and there must be no console error, uncaught exception, failed request, bad response or CSP violation. `pnpm smoke` runs it on the production build (served locally), and `deploy.yml` runs it on the production and preview URLs after each deploy. It talks to Chrome through a small DevTools client (`cdp.mjs`) with no extra package. `smoke-judge.mjs` decides pass or fail and is tested by `pnpm test:tools` (Node's test runner). The real user flows are tested with Playwright (see below).
+
+## Browser tests (`web/e2e`)
+
+`pnpm test:e2e` runs Playwright on the production build in `web/build` (so run `pnpm --filter web build` first). It serves the build with `serve-build.mjs` on port 4599 and uses the Chrome that is installed on the computer; set `CHROME_PATH` to use another one. Two projects run every test: `desktop` (1440 × 900) and `phone` (Pixel 7, with touch). Every test fails if the page logs a console error, throws, or loads something that fails (`e2e/fixtures.ts`). `expectNoAxeViolations(page)` scans a page with axe (WCAG 2.0 to 2.2 A and AA, and best practices) and allows no violation; `e2e/axe.spec.ts` proves that the scan can fail. axe finds only part of the accessibility problems, so G5 (a keyboard-only run and a screen-reader check) stays. Firefox and WebKit are not run yet (a decision at the start of M2).
 
 ## Workflow guard rails (`check-workflows.mjs`)
 
