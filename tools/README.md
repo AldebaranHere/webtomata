@@ -23,6 +23,10 @@ The seed is fixed. The same versions give the same files, on any computer.
 
 `pnpm check:workflows` reads `.github/workflows/*.yml` and fails if the Cloudflare key (`secrets.`) is used outside the job `deploy` of `deploy.yml`, if that job installs without `--ignore-scripts` or runs build code, if an action is not pinned to a full commit, or if `pull_request_target` is used. See `docs/decisions/0015-deploy-isolation.md`. Its tests run with `pnpm test:tools`.
 
+## Design token checks
+
+`pnpm check:contrast` (`check-contrast.mjs`) reads `web/src/lib/styles/tokens.css` and checks the color pairs in `contrast-pairs.mjs` against WCAG 2.2 (4.5:1 for text, 3:1 for graphics and the edges of controls). It also fails if a color token is in no pair and is not marked decorative. `--markdown` prints the table for `docs/ux/design-system.md`. `pnpm check:tokens` (`check-tokens-usage.mjs`) fails if a component or a css file other than `tokens.css` has a raw color. Their tests run with `pnpm test:tools`.
+
 ## Audits
 
 `.github/workflows/audit.yml` runs `cargo audit` and `pnpm audit` weekly, when a lockfile changes, and by hand. It is not a required check.

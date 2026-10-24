@@ -23,3 +23,11 @@ The token itself is already as narrow as Cloudflare allows: "Account – Workers
 - The deploy job still runs `wrangler` and its dependencies with the key. A compromised `wrangler` release would still leak it. The 2-week rule, the lockfile, and the weekly audit are the protection there.
 - A deploy takes about one minute longer, because the artifact is uploaded and downloaded.
 - A change to the workflows that breaks a rule fails CI before it can be merged.
+
+## Repository settings (not stored in the repository)
+Set on 2026-10-24, with `gh api`. A person who forks or moves the repository must set them again.
+- **Actions must be pinned to a full commit** (`sha_pinning_required: true`). All four workflows were re-run after the change and pass.
+- **Dependabot alerts: on. Dependabot security updates: off.** Security updates would open pull requests with brand new versions and break the two-week rule. The weekly audit and the alerts tell us; we update by hand.
+- **Private vulnerability reporting: on**, so that the "Report a vulnerability" button in `SECURITY.md` works.
+- Already in place: secret scanning and push protection are on; the `main` and `staging` ruleset blocks deletion and force pushes and requires a pull request and the checks `rust` and `web`, with an empty bypass list; workflow tokens are read-only by default.
+- Cloudflare: one token, `webtomata-github-deploy` ("Account – Workers Scripts – Edit", one account). The renewal date is a dated chore in the roadmap.
