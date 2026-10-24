@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import Announcer from './Announcer.svelte';
 	import EditorCanvas from './EditorCanvas.svelte';
@@ -14,6 +14,9 @@
 	let { doc }: { doc: MachineDocument } = $props();
 
 	const editor = createEditor(untrack(() => doc));
+	// The page is drawn before it takes keys and touches; the tests wait for this mark.
+	let ready = $state(false);
+	onMount(() => (ready = true));
 	let snapshot = $state(editor.getState());
 	$effect(() => editor.subscribe(() => (snapshot = editor.getState())));
 
@@ -26,7 +29,7 @@
 	});
 </script>
 
-<div class="editor">
+<div class="editor" data-ready={ready || undefined}>
 	<ToolRail
 		tool={snapshot.tool}
 		canUndo={snapshot.canUndo}

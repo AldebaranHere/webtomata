@@ -278,6 +278,7 @@ Errors from the document keep their own keys (`document.duplicate_name` and so o
 - **Label box:** it sits on the label of the edge, or above the source for a loop, or over the middle of the new edge. The edge text is in the order of the alphabet with ε last, as it is drawn. An edge that exists opens its box with its symbols; an empty text then removes it (one step).
 - **ε:** the **Ketik ε** button is in the box, not in the dock (the dock is hidden behind the keyboard on some phones; the box is scrolled into view). A press on it does not take the focus from the text. `Ctrl/Cmd+E` and the words `eps` and `ε` work too.
 - **Leaving the box:** a text that changed is sent; a text that did not change, or is refused, or needs an answer, cancels.
+- **A finger on a state (found on a real phone):** the editor cancels the browser's own handling of that touch (a non-passive `touchstart`), so a drag is not taken over by a scroll and the browser does not send the mouse events that follow a tap. Those events landed on the state under the finger and took the focus from a box that the tap had just opened. As a second defence, a name box or label box takes the focus back if it loses it in its first 400 ms. Playwright's `tap()` does not send those mouse events; the tests use real touch events (`e2e/touch.ts`).
 - **Not yet (S4c-2):** selecting, editing and deleting an edge, the menu items for an edge, and "Tambah transisi dari sini".
 
 ## What each interaction needs from S3

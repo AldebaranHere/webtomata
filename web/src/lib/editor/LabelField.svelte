@@ -33,9 +33,11 @@
 
 	const messageId = $props.id();
 	const WIDTH = 200;
+	const SETTLE_MS = 400;
 	let box: HTMLDivElement;
 	let input: HTMLInputElement;
 	let value = $state('');
+	const openedAt = performance.now();
 
 	onMount(async () => {
 		value = initial;
@@ -72,6 +74,12 @@
 	function onfocusout(event: FocusEvent) {
 		// A press on a button of the box keeps the focus in it (see keep).
 		if (event.relatedTarget && box.contains(event.relatedTarget as Node)) return;
+		// A tap opens the box, and the events that the browser sends after the tap can take the focus
+		// away at once. That is not the user leaving: take the focus back.
+		if (performance.now() - openedAt < SETTLE_MS) {
+			input?.focus();
+			return;
+		}
 		onleave(value);
 	}
 

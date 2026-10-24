@@ -1,8 +1,9 @@
 // S4c-1 in the browser: adding a transition by drag, by two clicks and by keyboard, the label box
 // with ε and the question about long symbols. The rules have unit tests; this checks the pointer,
 // the focus, the box over the canvas and the touch.
-import { expect, expectNoAxeViolations, test } from './fixtures.ts';
+import { expect, expectNoAxeViolations, test, openSandbox } from './fixtures.ts';
 import type { Locator, Page } from '@playwright/test';
+import { touchDrag, touchTap } from './touch.ts';
 
 const nodes = (page: Page) => page.locator('svg.world g.node');
 const labels = (page: Page) => page.locator('svg.world text.label');
@@ -18,7 +19,7 @@ async function center(node: Locator) {
 
 /** An empty canvas with two states, q0 and q1, and the alphabet of the sample (0 and 1). */
 async function twoStates(page: Page) {
-	await page.goto('/sandbox');
+	await openSandbox(page);
 	// The page is drawn before it is ready for keys: try until the keys work.
 	await expect(async () => {
 		await canvas(page).focus();
@@ -196,32 +197,71 @@ test('leaving the box with a new text sends it, and with no change cancels', asy
 	await twoStates(page);
 	await link(page, 'q0', 'q1');
 	await page.keyboard.type('1');
+	// A box ignores a focus that leaves it in its first moments (see LabelField).
+	await page.waitForTimeout(500);
 	await canvas(page).click({ position: { x: 5, y: 5 } });
 	await expect(labels(page)).toHaveText(['1']);
 	await link(page, 'q1', 'q0');
+	await page.waitForTimeout(500);
 	await canvas(page).click({ position: { x: 5, y: 5 } });
 	await expect(labels(page)).toHaveCount(1);
 });
 
-test('touch: tap Transisi, tap the source, tap the target, type', async ({ page, isMobile }) => {
-	test.skip(!isMobile, 'a phone only');
-	await twoStates(page);
-	for (const name of ['Tambah transisi']) {
-		const b = (await tool(page, name).boundingBox())!;
-		expect(b.height).toBeGreaterThanOrEqual(44);
-		expect(b.width).toBeGreaterThanOrEqual(44);
-	}
-	await tool(page, 'Tambah transisi').tap();
-	await q(page, 'q0').tap();
-	await q(page, 'q1').tap();
-	await expect(box(page)).toBeFocused();
-	for (const name of ['Ketik ε']) {
-		const b = (await page.getByRole('button', { name }).boundingBox())!;
-		expect(b.height).toBeGreaterThanOrEqual(44);
-		expect(b.width).toBeGreaterThanOrEqual(44);
-	}
-	await page.keyboard.type('1');
-	await page.keyboard.press('Enter');
-	await expect(labels(page)).toHaveText(['1']);
-	await expectNoAxeViolations(page);
+test.describe('with a finger, as a phone sends it', () => {
+	test.beforeEach(({ isMobile }) => test.skip(!isMobile, 'a phone only'));
+
+	test('tap the tool, the source and the target: the box opens and stays', async ({ page }) => {
+		await twoStates(page);
+		await touchTap(page, tool(page, 'Tambah transisi'));
+		await touchTap(page, q(page, 'q0'));
+		await expect(page.getByText('Pilih state tujuan.').first()).toBeVisible();
+		await touchTap(page, q(page, 'q1'));
+		await expect(box(page)).toBeFocused();
+		// It is still there after the browser has sent the events that follow a tap.
+		await page.waitForTimeout(700);
+		await expect(box(page)).toBeFocused();
+		for (const name of ['Tambah transisi', 'Ketik ε']) {
+			const b = (await page.getByRole('button', { name, exact: true }).boundingBox())!;
+			expect(b.height, name).toBeGreaterThanOrEqual(44);
+			expect(b.width, name).toBeGreaterThanOrEqual(44);
+		}
+		await page.keyboard.type('1');
+		await page.keyboard.press('Enter');
+		await expect(labels(page)).toHaveText(['1']);
+		await expectNoAxeViolations(page);
+	});
+
+	test('two taps on the same state make a self-loop', async ({ page }) => {
+		await twoStates(page);
+		await touchTap(page, tool(page, 'Tambah transisi'));
+		await touchTap(page, q(page, 'q1'));
+		await touchTap(page, q(page, 'q1'));
+		await expect(box(page)).toBeFocused();
+		await page.getByRole('button', { name: 'Ketik ε' }).click();
+		await expect(box(page)).toHaveValue('ε');
+	});
+
+	test('a finger drag from the source to the target shows an arrow and opens the box', async ({
+		page
+	}) => {
+		await twoStates(page);
+		await touchTap(page, tool(page, 'Tambah transisi'));
+		await touchDrag(page, q(page, 'q0'), q(page, 'q1'));
+		await expect(box(page)).toBeFocused();
+		await page.waitForTimeout(700);
+		await expect(box(page)).toBeFocused();
+	});
+
+	test('a finger drag in Pilih moves a state, and the page does not scroll with it', async ({
+		page
+	}) => {
+		await twoStates(page);
+		const a = (await q(page, 'q0').locator('circle.state').boundingBox())!;
+		const target = canvas(page);
+		const before = await target.evaluate((el) => [el.scrollLeft, el.scrollTop]);
+		await touchDrag(page, q(page, 'q0'), q(page, 'q1'));
+		const after = (await q(page, 'q0').locator('circle.state').boundingBox())!;
+		expect(Math.abs(after.x - a.x) + Math.abs(after.y - a.y)).toBeGreaterThan(20);
+		expect(await target.evaluate((el) => [el.scrollLeft, el.scrollTop])).toEqual(before);
+	});
 });

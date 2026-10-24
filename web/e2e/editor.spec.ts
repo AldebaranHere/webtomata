@@ -1,7 +1,7 @@
 // The editor as a user meets it (S4b-1): build a machine with the mouse, move and delete states,
 // undo, use the keyboard, and the touch. The rules have unit tests (src/lib/editor/interaction);
 // this checks the browser: coordinates after a scroll, focus, the live region and touch targets.
-import { expect, expectNoAxeViolations, test } from './fixtures.ts';
+import { expect, expectNoAxeViolations, test, openSandbox } from './fixtures.ts';
 import type { Locator, Page } from '@playwright/test';
 
 const nodes = (page: Page) => page.locator('svg.world g.node');
@@ -15,7 +15,7 @@ async function center(node: Locator) {
 
 /** Clears the sample, so that tests start from an empty canvas (Select all, Delete). */
 async function emptyCanvas(page: Page) {
-	await page.goto('/sandbox');
+	await openSandbox(page);
 	// The page is drawn before it is ready for keys: try until the keys work.
 	await expect(async () => {
 		await canvas(page).focus();
@@ -26,7 +26,7 @@ async function emptyCanvas(page: Page) {
 }
 
 test('the Sandbox opens with the sample, and the page does not scroll', async ({ page }) => {
-	await page.goto('/sandbox');
+	await openSandbox(page);
 	await expect(nodes(page)).toHaveCount(3);
 	await expect(page.getByRole('button', { name: 'State q0, start state' })).toBeVisible();
 	await expect(page.locator('footer')).toHaveCount(0);
@@ -96,7 +96,7 @@ test('build four states with the mouse, drag one, and undo the drag', async ({
 });
 
 test('the keyboard: Tab to a state, arrows, N, nudge, Delete and undo', async ({ page }) => {
-	await page.goto('/sandbox');
+	await openSandbox(page);
 	const q0 = page.getByRole('button', { name: 'State q0, start state' });
 	await canvas(page).focus();
 	await page.keyboard.press('Tab');
@@ -126,7 +126,7 @@ test('the keyboard: Tab to a state, arrows, N, nudge, Delete and undo', async ({
 test('the Hapus tool deletes the state that is pressed, and undo brings it back', async ({
 	page
 }) => {
-	await page.goto('/sandbox');
+	await openSandbox(page);
 	await page.getByRole('button', { name: 'Hapus' }).click();
 	await page.getByRole('button', { name: 'State q2' }).click();
 	await expect(nodes(page)).toHaveCount(2);
@@ -155,7 +155,7 @@ test('touch: the tools are at least 44 px and a tap adds a state', async ({ page
 
 test('the editor texts follow the language', async ({ page }) => {
 	await page.addInitScript(() => localStorage.setItem('webtomata.lang', 'en'));
-	await page.goto('/sandbox');
+	await openSandbox(page);
 	await expect(page.getByRole('application', { name: 'Machine canvas' })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Undo' }).first()).toBeVisible();
 });

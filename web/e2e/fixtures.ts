@@ -37,6 +37,12 @@ export const test = base.extend<{ watch: void; allowedProblem: RegExp | undefine
 // WCAG 2.0, 2.1 and 2.2 levels A and AA, and axe's best practices. No violation is allowed.
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
 
+/** Opens the Sandbox and waits until the editor takes keys and touches (the page is drawn before that). */
+export async function openSandbox(page: Page): Promise<void> {
+	await page.goto('/sandbox');
+	await page.locator('.editor[data-ready]').waitFor();
+}
+
 /** Fails, and names every rule that was broken, if axe finds a violation on the page. */
 export async function expectNoAxeViolations(page: Page): Promise<void> {
 	const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();

@@ -208,8 +208,10 @@
 	}
 
 	/** The state under the pointer. While a pointer is captured the target is the svg, so ask the page. */
-	const stateAtPointer = (event: MouseEvent) =>
+	const stateAtPointer = (event: { clientX: number; clientY: number }) =>
 		stateIdOf(document.elementFromPoint(event.clientX, event.clientY));
+	// Where the pointer was at its last move: the end of a touch does not always carry a place.
+	let lastMove = { clientX: 0, clientY: 0 };
 
 	function onpointerdown(event: PointerEvent) {
 		if (event.button !== 0 || press) return;
@@ -264,6 +266,7 @@
 		// With a source chosen, the preview follows a mouse that is not pressed.
 		if (!press && view.link && event.pointerType === 'mouse') dragTo(toCanvas(event), false, true);
 		if (!press || event.pointerId !== press.pointerId) return;
+		lastMove = { clientX: event.clientX, clientY: event.clientY };
 		const point = toCanvas(event);
 		const far = Math.hypot(point.x - press.from.x, point.y - press.from.y) >= threshold(press.type);
 		if (far) clearTimeout(longPress);
@@ -295,7 +298,7 @@
 			if (done.dragging) {
 				flush();
 				// A release on empty canvas cancels the arrow.
-				if (view.tool === 'transition') editor.finishLink(stateAtPointer(event) ?? null);
+				if (view.tool === 'transition') editor.finishLink(stateAtPointer(lastMove) ?? null);
 				else editor.endDrag();
 			} else if (view.tool === 'transition') {
 				// A click: the first one chooses the source, the second one the target.
@@ -471,6 +474,17 @@
 		const { bounds } = shapes;
 		viewport.scrollLeft = Math.max(0, bounds.x + bounds.width / 2 - viewport.clientWidth / 2);
 		viewport.scrollTop = Math.max(0, bounds.y + bounds.height / 2 - viewport.clientHeight / 2);
+
+		// A finger that touches a state belongs to the editor: no scroll takes it over (that would
+		// cancel a drag), and the browser does not send the mouse events that follow a tap. Those
+		// arrive after the tap has been handled, land on the state under the finger and take the
+		// focus from a box that the tap has just opened. A listener is needed (and not the CSS
+		// touch-action alone) because it must be able to cancel, so it cannot be passive.
+		const keepTouch = (event: TouchEvent) => {
+			if (stateIdOf(event.target) !== undefined) event.preventDefault();
+		};
+		svg.addEventListener('touchstart', keepTouch, { passive: false });
+		return () => svg.removeEventListener('touchstart', keepTouch);
 	});
 </script>
 
