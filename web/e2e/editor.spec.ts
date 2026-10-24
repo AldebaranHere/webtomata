@@ -16,10 +16,13 @@ async function center(node: Locator) {
 /** Clears the sample, so that tests start from an empty canvas (Select all, Delete). */
 async function emptyCanvas(page: Page) {
 	await page.goto('/sandbox');
-	await canvas(page).focus();
-	await page.keyboard.press('Control+a');
-	await page.keyboard.press('Delete');
-	await expect(nodes(page)).toHaveCount(0);
+	// The page is drawn before it is ready for keys: try until the keys work.
+	await expect(async () => {
+		await canvas(page).focus();
+		await page.keyboard.press('Control+a');
+		await page.keyboard.press('Delete');
+		expect(await nodes(page).count()).toBe(0);
+	}).toPass();
 }
 
 test('the Sandbox opens with the sample, and the page does not scroll', async ({ page }) => {

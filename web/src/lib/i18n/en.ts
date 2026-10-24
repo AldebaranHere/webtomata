@@ -81,6 +81,17 @@ export const en: Record<MessageKey, string> = {
 	'document.duplicate_name': 'The name {name} is used by another state.',
 	'document.invalid_name':
 		'A name cannot be empty, start or end with a space, or be longer than 32 characters.',
+	'editor.tool.transition': 'Add transition',
+	'editor.hint_pick_source': 'Choose the source state of the transition.',
+	'editor.hint_pick_target': 'Choose the target state.',
+	'editor.label_field': 'Transition symbols',
+	'editor.type_epsilon': 'Type ε',
+	'editor.ask_split': 'Is "{text}" several symbols?',
+	'editor.ask_whole': 'One symbol {text}',
+	'editor.edge_changed': 'Transition from {from} to {to}: {symbols}.',
+	'editor.edge_removed': 'Transition from {from} to {to} removed.',
+	'document.invalid_symbol':
+		'The symbol "{symbol}" cannot be used: it must not be empty, too long, or contain forbidden characters.',
 	'document.limit_exceeded': 'Limit reached: {what}, at most {limit}.',
 	'soal.description': 'Practice questions on finite state machines with calm, specific feedback.',
 	'panduan.description':
