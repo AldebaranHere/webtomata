@@ -31,10 +31,11 @@ type: build-dfsm
 # (num, plus), write strings with a space between the symbols: "num plus num".
 alphabet: [0, 1]
 
-# Optional. maxStates: any machine. complete (default true) and minimal: build-dfsm. minimal needs
-# complete. allowEpsilon (default true): build-ndfsm. write-regex has no constraints.
-constraints:
-  maxStates: 2
+# Optional. maxStates: any machine (a complete DFSM counts its dead state). complete (default true)
+# and minimal: build-dfsm. minimal needs complete. allowEpsilon (default true): build-ndfsm.
+# write-regex has no constraints.
+# constraints:
+#   maxStates: 3
 
 difficulty: 1 # 1 mudah, 2 sedang, 3 sulit
 week: 1 # the week of the syllabus, 1 to 14

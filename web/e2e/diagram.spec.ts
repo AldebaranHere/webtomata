@@ -5,7 +5,7 @@ import { expect, expectNoAxeViolations, test } from './fixtures.ts';
 
 test('the Sandbox draws the sample machine', async ({ page }) => {
 	await page.goto('/sandbox');
-	const diagram = page.getByRole('img', { name: 'DFSM dengan 3 state' });
+	const diagram = page.locator('svg.world');
 	await expect(diagram).toBeVisible();
 
 	// The three states, one of them accepting (a second circle), and the start label.
@@ -26,12 +26,12 @@ test('the labels do not overlap each other or a state, as drawn by the browser',
 	page
 }) => {
 	await page.goto('/sandbox');
-	await page.locator('svg.diagram text.label').first().waitFor();
+	await page.locator('svg.world text.label').first().waitFor();
 	// The fonts must have loaded, or the widths are those of a fallback font.
 	await page.evaluate(() => document.fonts.ready);
 
 	const problems = await page.evaluate(() => {
-		const svg = document.querySelector('svg.diagram')!;
+		const svg = document.querySelector('svg.world')!;
 		const labels = [...svg.querySelectorAll<SVGGraphicsElement>('text.label, text.start-label')];
 		const circles = [...svg.querySelectorAll<SVGCircleElement>('circle.state')];
 		const box = (el: Element) => el.getBoundingClientRect();
@@ -63,8 +63,8 @@ test('the labels do not overlap each other or a state, as drawn by the browser',
 test('the diagram follows the language: the description and the start label', async ({ page }) => {
 	await page.addInitScript(() => localStorage.setItem('webtomata.lang', 'en'));
 	await page.goto('/sandbox');
-	await expect(page.getByRole('img', { name: 'DFSM with 3 state(s)' })).toBeVisible();
-	await expect(page.locator('svg.diagram text.start-label')).toHaveText('start');
+	await expect(page.getByRole('button', { name: 'State q0, start state' })).toBeVisible();
+	await expect(page.locator('svg.world text.start-label')).toHaveText('start');
 });
 
 test('the diagram fits a phone screen without a sideways scroll of the page', async ({
@@ -73,7 +73,7 @@ test('the diagram fits a phone screen without a sideways scroll of the page', as
 }) => {
 	test.skip(!isMobile, 'a phone only');
 	await page.goto('/sandbox');
-	await page.locator('svg.diagram').waitFor();
+	await page.locator('svg.world').waitFor();
 	const overflow = await page.evaluate(
 		() => document.documentElement.scrollWidth - document.documentElement.clientWidth
 	);
