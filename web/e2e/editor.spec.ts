@@ -127,7 +127,7 @@ test('the Hapus tool deletes the state that is pressed, and undo brings it back'
 	await page.getByRole('button', { name: 'Hapus' }).click();
 	await page.getByRole('button', { name: 'State q2' }).click();
 	await expect(nodes(page)).toHaveCount(2);
-	await page.getByRole('button', { name: 'Urungkan' }).click();
+	await page.getByRole('button', { name: 'Urungkan' }).first().click();
 	await expect(nodes(page)).toHaveCount(3);
 });
 

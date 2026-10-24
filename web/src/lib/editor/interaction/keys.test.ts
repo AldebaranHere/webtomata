@@ -41,6 +41,30 @@ describe('delete, select all and escape', () => {
 	});
 });
 
+describe('accepting, start and rename', () => {
+	it('A toggles accepting and M makes the start, in either case', () => {
+		expect(keyAction(key('a'), ctx)).toEqual({ type: 'toggleAccepting' });
+		expect(keyAction(key('A', { shift: true }), ctx)).toEqual({ type: 'toggleAccepting' });
+		expect(keyAction(key('m'), ctx)).toEqual({ type: 'toggleStart' });
+	});
+
+	it('Enter and F2 rename', () => {
+		expect(keyAction(key('Enter'), ctx)).toEqual({ type: 'rename' });
+		expect(keyAction(key('F2'), ctx)).toEqual({ type: 'rename' });
+	});
+
+	it('with Ctrl, Cmd or Alt they are not ours, and Ctrl+A is still select all', () => {
+		expect(keyAction(key('a', { ctrl: true }), ctx)).toEqual({ type: 'selectAll' });
+		expect(keyAction(key('m', { ctrl: true }), ctx)).toBeUndefined();
+		expect(keyAction(key('Enter', { alt: true }), ctx)).toBeUndefined();
+	});
+
+	it('none of them works while a field is open', () => {
+		const open = { fieldOpen: true };
+		for (const k of ['a', 'm', 'Enter', 'F2']) expect(keyAction(key(k), open)).toBeUndefined();
+	});
+});
+
 describe('undo and redo', () => {
 	it('Ctrl or Cmd+Z undoes; Ctrl+Y and Ctrl or Cmd+Shift+Z redo', () => {
 		expect(keyAction(key('z', { ctrl: true }), ctx)).toEqual({ type: 'undo' });
@@ -124,7 +148,7 @@ describe('keys that must not be taken', () => {
 	});
 
 	it('ignores every other key', () => {
-		for (const k of ['q', 'Tab', 'Enter', 'F2', '1', 'a', 'Shift']) {
+		for (const k of ['q', 'Tab', '1', 'Shift']) {
 			expect(keyAction(key(k), ctx), k).toBeUndefined();
 		}
 	});
