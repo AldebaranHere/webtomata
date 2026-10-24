@@ -231,6 +231,8 @@
 		fill: none;
 		stroke: transparent;
 		stroke-width: 44px;
+		/* 44 px on the screen at every zoom. */
+		vector-effect: non-scaling-stroke;
 		stroke-linecap: round;
 		pointer-events: stroke;
 	}

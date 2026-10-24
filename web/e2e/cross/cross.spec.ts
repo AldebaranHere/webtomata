@@ -118,3 +118,31 @@ test('a language that is chosen is still there after a reload', async ({ page })
 	await page.reload();
 	await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 });
+
+test('the view: a laptop zooms with the keys, a phone has the Pas button', async ({
+	page,
+	isMobile
+}) => {
+	await openSandbox(page);
+	const area = (await canvas(page).boundingBox())!;
+	const inside = async (name: string) => {
+		const b = (await state(page, name).locator('circle.state').boundingBox())!;
+		const x = b.x + b.width / 2;
+		const y = b.y + b.height / 2;
+		expect(x > area.x && x < area.x + area.width && y > area.y && y < area.y + area.height).toBe(
+			true
+		);
+	};
+	if (isMobile) {
+		await press(page.getByRole('button', { name: 'Pas', exact: true }), isMobile);
+	} else {
+		await press(state(page, 'q1'), isMobile);
+		await page.keyboard.press('0');
+		const level = page.getByRole('button', { name: 'Atur ke 100%' });
+		await expect(level).toHaveText('100%');
+		await page.keyboard.press('+');
+		await expect(level).toHaveText('125%');
+		await page.keyboard.press('1');
+	}
+	for (const name of ['q0', 'q1', 'q2']) await inside(name);
+});

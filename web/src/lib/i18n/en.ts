@@ -96,6 +96,12 @@ export const en: Record<MessageKey, string> = {
 	'editor.edge_selected': 'Transition from {from} to {to}: {symbols} selected.',
 	'editor.menu.edit': 'Change symbols',
 	'editor.menu.link': 'Add transition from here',
+	'editor.zoom': 'Zoom',
+	'editor.zoom_in': 'Zoom in',
+	'editor.zoom_out': 'Zoom out',
+	'editor.zoom_reset': 'Reset to 100%',
+	'editor.zoom_is': 'Zoom {percent}%',
+	'editor.fit': 'Fit',
 	'document.limit_exceeded': 'Limit reached: {what}, at most {limit}.',
 	'soal.description': 'Practice questions on finite state machines with calm, specific feedback.',
 	'panduan.description':

@@ -252,16 +252,16 @@ test.describe('with a finger, as a phone sends it', () => {
 		await expect(box(page)).toBeFocused();
 	});
 
-	test('a finger drag in Pilih moves a state, and the page does not scroll with it', async ({
+	test('a finger drag in Pilih moves a state, and the view does not pan with it', async ({
 		page
 	}) => {
 		await twoStates(page);
 		const a = (await q(page, 'q0').locator('circle.state').boundingBox())!;
-		const target = canvas(page);
-		const before = await target.evaluate((el) => [el.scrollLeft, el.scrollTop]);
+		const other = (await q(page, 'q1').locator('circle.state').boundingBox())!;
 		await touchDrag(page, q(page, 'q0'), q(page, 'q1'));
 		const after = (await q(page, 'q0').locator('circle.state').boundingBox())!;
 		expect(Math.abs(after.x - a.x) + Math.abs(after.y - a.y)).toBeGreaterThan(20);
-		expect(await target.evaluate((el) => [el.scrollLeft, el.scrollTop])).toEqual(before);
+		const otherAfter = (await q(page, 'q1').locator('circle.state').boundingBox())!;
+		expect(Math.abs(otherAfter.x - other.x) + Math.abs(otherAfter.y - other.y)).toBeLessThan(2);
 	});
 });

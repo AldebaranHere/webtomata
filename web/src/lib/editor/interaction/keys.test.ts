@@ -71,6 +71,52 @@ describe('accepting, start and rename', () => {
 	});
 });
 
+describe('pan and zoom', () => {
+	it('Shift+Arrow pans the view by 100: the content moves the other way', () => {
+		expect(keyAction(key('ArrowRight', { shift: true }), ctx)).toEqual({
+			type: 'pan',
+			dx: -100,
+			dy: 0
+		});
+		expect(keyAction(key('ArrowLeft', { shift: true }), ctx)).toEqual({
+			type: 'pan',
+			dx: 100,
+			dy: 0
+		});
+		expect(keyAction(key('ArrowDown', { shift: true }), ctx)).toEqual({
+			type: 'pan',
+			dx: 0,
+			dy: -100
+		});
+		expect(keyAction(key('ArrowUp', { shift: true }), ctx)).toEqual({
+			type: 'pan',
+			dx: 0,
+			dy: 100
+		});
+	});
+
+	it('+ and = zoom in, - and _ zoom out, 0 is 100%, 1 fits the machine', () => {
+		expect(keyAction(key('+', { shift: true }), ctx)).toEqual({ type: 'zoom', mode: 'in' });
+		expect(keyAction(key('='), ctx)).toEqual({ type: 'zoom', mode: 'in' });
+		expect(keyAction(key('-'), ctx)).toEqual({ type: 'zoom', mode: 'out' });
+		expect(keyAction(key('_', { shift: true }), ctx)).toEqual({ type: 'zoom', mode: 'out' });
+		expect(keyAction(key('0'), ctx)).toEqual({ type: 'zoom', mode: 'reset' });
+		expect(keyAction(key('1'), ctx)).toEqual({ type: 'zoom', mode: 'fit' });
+	});
+
+	it('with Ctrl, Cmd or Alt the zoom keys belong to the browser', () => {
+		expect(keyAction(key('+', { ctrl: true }), ctx)).toBeUndefined();
+		expect(keyAction(key('0', { meta: true }), ctx)).toBeUndefined();
+		expect(keyAction(key('-', { alt: true }), ctx)).toBeUndefined();
+	});
+
+	it('none of them works while a field is open', () => {
+		for (const k of ['+', '-', '0', '1'])
+			expect(keyAction(key(k), { fieldOpen: true }), k).toBeUndefined();
+		expect(keyAction(key('ArrowLeft', { shift: true }), { fieldOpen: true })).toBeUndefined();
+	});
+});
+
 describe('undo and redo', () => {
 	it('Ctrl or Cmd+Z undoes; Ctrl+Y and Ctrl or Cmd+Shift+Z redo', () => {
 		expect(keyAction(key('z', { ctrl: true }), ctx)).toEqual({ type: 'undo' });
@@ -125,10 +171,6 @@ describe('the arrows', () => {
 			dy: 0
 		});
 	});
-
-	it('Shift+Arrow is left to the browser (it will pan in S4d)', () => {
-		expect(keyAction(key('ArrowLeft', { shift: true }), ctx)).toBeUndefined();
-	});
 });
 
 describe('Space', () => {
@@ -154,7 +196,7 @@ describe('keys that must not be taken', () => {
 	});
 
 	it('ignores every other key', () => {
-		for (const k of ['q', 'Tab', '1', 'Shift']) {
+		for (const k of ['q', 'Tab', '2', 'Shift']) {
 			expect(keyAction(key(k), ctx), k).toBeUndefined();
 		}
 	});

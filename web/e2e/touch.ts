@@ -45,6 +45,25 @@ export async function touchTapAt(page: Page, at: { x: number; y: number }): Prom
 	await page.waitForTimeout(150);
 }
 
+/** A finger that goes from one point of the page to another and lifts. */
+export async function touchDragAt(
+	page: Page,
+	a: { x: number; y: number },
+	b: { x: number; y: number }
+): Promise<void> {
+	const cdp = await page.context().newCDPSession(page);
+	await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [a] });
+	for (let i = 1; i <= 8; i++) {
+		await cdp.send('Input.dispatchTouchEvent', {
+			type: 'touchMove',
+			touchPoints: [{ x: a.x + ((b.x - a.x) * i) / 8, y: a.y + ((b.y - a.y) * i) / 8 }]
+		});
+	}
+	await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+	await cdp.detach();
+	await page.waitForTimeout(150);
+}
+
 /** A finger that stays on a point for longer than a long-press. */
 export async function touchLongPressAt(page: Page, at: { x: number; y: number }): Promise<void> {
 	const cdp = await page.context().newCDPSession(page);

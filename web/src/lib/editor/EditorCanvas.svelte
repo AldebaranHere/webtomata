@@ -8,8 +8,23 @@
 	import type { MachineDocument } from './document.ts';
 	import LabelField from './LabelField.svelte';
 	import RenameField from './RenameField.svelte';
+	import ZoomControl from './ZoomControl.svelte';
 	import { RADIUS } from './diagram/geometry.ts';
-	import { WORLD, linkLine } from './interaction/canvas.ts';
+	import {
+		IDENTITY,
+		ZOOM_STEP,
+		centerOf,
+		fit,
+		panBy,
+		percent,
+		reveal,
+		toScreen,
+		wheel,
+		zoomAt,
+		zoomBy
+	} from './interaction/camera.ts';
+	import type { Camera } from './interaction/camera.ts';
+	import { linkLine } from './interaction/canvas.ts';
 	import type { Point } from './interaction/canvas.ts';
 	import type { Editor, EditorState } from './interaction/editor.ts';
 	import { keyAction } from './interaction/keys.ts';
@@ -19,8 +34,9 @@
 	import { nearestInDirection } from './interaction/selection.ts';
 
 	// The canvas of the editor: the drawing, and the pointer and keyboard. It turns what the user
-	// does into calls of the editor (interaction/editor.ts), where the rules are. The world is
-	// 1600 by 1000 units shown at 100%, and the browser scrolls it (S4d adds pan and zoom).
+	// does into calls of the editor (interaction/editor.ts), where the rules are. The canvas has no
+	// edge: a camera (interaction/camera.ts) says where the world is on the screen and how big. The
+	// camera is not part of the document.
 	let { editor, state: view }: { editor: Editor; state: EditorState } = $props();
 
 	const uid = $props.id();
@@ -62,21 +78,44 @@
 
 	let viewport: HTMLDivElement;
 	let svg: SVGSVGElement;
+	/** The group that is moved and scaled by the camera. */
+	let world: SVGGElement;
+	let size = $state({ width: 0, height: 0 });
+	let camera = $state<Camera>(IDENTITY);
+	const screenOf = (p: Point) => toScreen(camera, p);
+	// The dots of the background move and scale with the camera (a sparser grid when it is small).
+	const dotGap = $derived((camera.scale < 0.5 ? 80 : 20) * camera.scale);
+	// Set with the CSSOM, not as a style attribute: the page's security policy blocks that.
+	$effect(() => {
+		viewport.style.backgroundSize = `${dotGap}px ${dotGap}px`;
+		viewport.style.backgroundPosition = `${camera.x}px ${camera.y}px`;
+	});
 
-	// ---- coordinates: from the screen to the canvas, with the matrix of the svg ----
+	/** The part of the drawing to show for "fit": the machine, or nothing if it is empty. */
+	const machineBounds = () => (view.doc.states.length === 0 ? null : shapes.bounds);
+	const viewSize = () => ({ width: viewport.clientWidth, height: viewport.clientHeight });
+
+	/** The buttons and the keys of the zoom. All of them zoom around the middle of the view. */
+	export function zoom(mode: 'in' | 'out' | 'reset' | 'fit') {
+		const now = viewSize();
+		const middle = { x: now.width / 2, y: now.height / 2 };
+		if (mode === 'in') camera = zoomBy(camera, middle, ZOOM_STEP);
+		else if (mode === 'out') camera = zoomBy(camera, middle, 1 / ZOOM_STEP);
+		else if (mode === 'reset') camera = zoomAt(camera, middle, 1);
+		else camera = fit(machineBounds(), now);
+	}
+
+	// ---- coordinates: from the screen to the canvas, with the matrix of the moved group ----
 
 	function toCanvas(event: { clientX: number; clientY: number }): Point {
-		const matrix = svg.getScreenCTM();
+		const matrix = world.getScreenCTM();
 		if (!matrix) return { x: 0, y: 0 };
 		const p = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
 		return { x: p.x, y: p.y };
 	}
 
 	/** The center of the part of the canvas that is on the screen. */
-	const visibleCenter = (): Point => ({
-		x: viewport.scrollLeft + viewport.clientWidth / 2,
-		y: viewport.scrollTop + viewport.clientHeight / 2
-	});
+	const visibleCenter = (): Point => centerOf(camera, viewSize());
 
 	/** The edge (from → to) that an element belongs to. */
 	const edgeOf = (target: EventTarget | null): { from: number; to: number } | undefined => {
@@ -131,6 +170,10 @@
 		  };
 	let press: Press | null = null;
 	let lastInput: 'pointer' | 'keyboard' = 'pointer';
+	/** Where the press began on the screen, and the camera then, when the press pans. */
+	let pressClient = { x: 0, y: 0 };
+	let panFrom: Camera | null = null;
+	let spaceDown = false;
 
 	// The preview is updated at most once for each frame, and the last place wins.
 	let pending: { point: Point; snap: boolean; link: boolean } | null = null;
@@ -225,6 +268,8 @@
 	function oncontextmenu(event: MouseEvent) {
 		// The browser's own menu would cover ours.
 		event.preventDefault();
+		// The zoom control has no menu.
+		if ((event.target as Element).closest('.zoom')) return;
 		const id = stateIdOf(event.target);
 		const edge = id === undefined ? edgeOf(event.target) : undefined;
 		let screen = { x: event.clientX, y: event.clientY };
@@ -253,11 +298,15 @@
 	let lastMove = { clientX: 0, clientY: 0 };
 
 	function onpointerdown(event: PointerEvent) {
-		if (event.button !== 0 || press) return;
+		// The middle button always pans, wherever it is pressed.
+		const middle = event.button === 1;
+		if ((event.button !== 0 && !middle) || press) return;
 		lastInput = 'pointer';
-		const id = stateIdOf(event.target);
-		const edge = id === undefined && edgesHit() ? edgeOf(event.target) : undefined;
+		const id = middle ? undefined : stateIdOf(event.target);
+		const edge = id === undefined && !middle && edgesHit() ? edgeOf(event.target) : undefined;
 		const from = toCanvas(event);
+		pressClient = { x: event.clientX, y: event.clientY };
+		panFrom = null;
 		if (edge) {
 			edgeNode(edge)?.focus({ preventScroll: true });
 			press = {
@@ -284,8 +333,10 @@
 				consumed: false
 			};
 		} else {
-			// A rectangle with Shift and a mouse; a finger on empty canvas scrolls the page instead.
-			const marquee = view.tool === 'select' && event.shiftKey && event.pointerType === 'mouse';
+			// A rectangle with Shift and a mouse. Otherwise a drag on empty canvas pans: with a finger,
+			// with the middle button, with Space held, and with a mouse in Pilih.
+			const marquee =
+				!middle && view.tool === 'select' && event.shiftKey && event.pointerType === 'mouse';
 			press = {
 				kind: 'empty',
 				pointerId: event.pointerId,
@@ -297,6 +348,10 @@
 			};
 			if (marquee) editor.startMarquee(from);
 			viewport.focus({ preventScroll: true });
+		}
+		if ((press.kind === 'empty' && !press.marquee) || press.kind === 'edge') {
+			const mouseInSelect = event.pointerType === 'mouse' && view.tool === 'select';
+			if (middle || spaceDown || event.pointerType !== 'mouse' || mouseInSelect) panFrom = camera;
 		}
 		// A finger that stays in place opens the menu.
 		if (event.pointerType !== 'mouse') {
@@ -316,7 +371,7 @@
 		}
 		// The pointer stays ours until it is released, also outside the canvas.
 		svg.setPointerCapture(event.pointerId);
-		if (event.pointerType === 'mouse') event.preventDefault();
+		if (event.pointerType === 'mouse' || middle) event.preventDefault();
 	}
 
 	function onpointermove(event: PointerEvent) {
@@ -325,9 +380,19 @@
 		if (!press || event.pointerId !== press.pointerId) return;
 		lastMove = { clientX: event.clientX, clientY: event.clientY };
 		const point = toCanvas(event);
-		const far = Math.hypot(point.x - press.from.x, point.y - press.from.y) >= threshold(press.type);
+		// The distance is on the screen, whatever the zoom.
+		const far =
+			Math.hypot(event.clientX - pressClient.x, event.clientY - pressClient.y) >=
+			threshold(press.type);
 		if (far) clearTimeout(longPress);
 		if (press.consumed) return;
+		if (panFrom && (press.kind === 'empty' || press.kind === 'edge')) {
+			if (far || press.moved) {
+				press.moved = true;
+				camera = panBy(panFrom, event.clientX - pressClient.x, event.clientY - pressClient.y);
+			}
+			return;
+		}
 		if (press.kind === 'state') {
 			const linking = view.tool === 'transition';
 			if (!press.dragging && far && view.tool !== 'delete') {
@@ -424,6 +489,7 @@
 
 	function onkeydown(event: KeyboardEvent) {
 		lastInput = 'keyboard';
+		if (event.key === ' ') spaceDown = true;
 		const action = keyAction(
 			{
 				key: event.key,
@@ -480,6 +546,12 @@
 					editor.startRename();
 				}
 				break;
+			case 'pan':
+				camera = panBy(camera, action.dx, action.dy);
+				break;
+			case 'zoom':
+				zoom(action.mode);
+				break;
 			case 'toggleSelection':
 				if (view.focus.id !== null) editor.toggle(view.focus.id);
 				break;
@@ -513,8 +585,15 @@
 					? (svg.querySelector<SVGElement>(`[data-state="${id}"]`) ?? viewport)
 					: ((edge ? edgeNode(edge) : null) ?? viewport);
 			suppress = true;
-			target.focus();
+			target.focus({ preventScroll: true });
 			suppress = false;
+			// A state that is off the screen (a new one, or one reached with the arrows) is brought in.
+			const place = id === null ? undefined : view.doc.states.find((s) => s.id === id);
+			if (place) {
+				// The whole circle, and its ring, must be in view.
+				const margin = RADIUS * camera.scale + 12;
+				camera = reveal(camera, { x: place.x, y: place.y }, viewSize(), margin);
+			}
 		});
 	});
 
@@ -551,24 +630,41 @@
 		editor.noteFocus(null);
 	}
 
-	// Open with the machine in the middle of the screen.
+	function onkeyup(event: KeyboardEvent) {
+		if (event.key === ' ') spaceDown = false;
+	}
+
+	// Open with the whole machine in view; an empty canvas opens at 100% at the origin.
 	onMount(() => {
-		const { bounds } = shapes;
-		viewport.scrollLeft = Math.max(0, bounds.x + bounds.width / 2 - viewport.clientWidth / 2);
-		viewport.scrollTop = Math.max(0, bounds.y + bounds.height / 2 - viewport.clientHeight / 2);
+		camera = fit(machineBounds(), viewSize());
+
+		// The wheel and the trackpad: Ctrl or Cmd zooms around the pointer (a trackpad pinch arrives
+		// like this too), and without them the view pans. The page itself never scrolls.
+		const onwheel = (event: WheelEvent) => {
+			event.preventDefault();
+			const box = viewport.getBoundingClientRect();
+			camera = wheel(camera, {
+				deltaX: event.deltaX,
+				deltaY: event.deltaY,
+				deltaMode: event.deltaMode,
+				ctrlKey: event.ctrlKey || event.metaKey,
+				x: event.clientX - box.left,
+				y: event.clientY - box.top
+			});
+		};
+		viewport.addEventListener('wheel', onwheel, { passive: false });
 
 		// A finger that touches a state belongs to the editor: no scroll takes it over (that would
 		// cancel a drag), and the browser does not send the mouse events that follow a tap. Those
 		// arrive after the tap has been handled, land on the state under the finger and take the
 		// focus from a box that the tap has just opened. A listener is needed (and not the CSS
 		// touch-action alone) because it must be able to cancel, so it cannot be passive.
-		const keepTouch = (event: TouchEvent) => {
-			if (stateIdOf(event.target) !== undefined || (edgesHit() && edgeOf(event.target))) {
-				event.preventDefault();
-			}
-		};
+		const keepTouch = (event: TouchEvent) => event.preventDefault();
 		svg.addEventListener('touchstart', keepTouch, { passive: false });
-		return () => svg.removeEventListener('touchstart', keepTouch);
+		return () => {
+			viewport.removeEventListener('wheel', onwheel);
+			svg.removeEventListener('touchstart', keepTouch);
+		};
 	});
 </script>
 
@@ -585,16 +681,16 @@
 	aria-label={t('editor.canvas')}
 	tabindex="0"
 	{onkeydown}
+	{onkeyup}
 	{onfocusin}
 	{onfocusout}
 	{oncontextmenu}
+	bind:clientWidth={size.width}
+	bind:clientHeight={size.height}
 >
 	<svg
 		class="world"
 		bind:this={svg}
-		width={WORLD.width}
-		height={WORLD.height}
-		viewBox="0 0 {WORLD.width} {WORLD.height}"
 		role="presentation"
 		{onpointerdown}
 		{onpointermove}
@@ -602,32 +698,33 @@
 		{onpointercancel}
 		{ondblclick}
 	>
-		<rect class="ground" width={WORLD.width} height={WORLD.height} />
-		<DiagramDrawing {shapes} {arrow} {selected} selectedEdge={view.edge} interactive />
-		{#if preview}
-			<line
-				class="preview"
-				x1={preview.from.x}
-				y1={preview.from.y}
-				x2={preview.to.x}
-				y2={preview.to.y}
-				marker-end="url(#{arrow})"
-			/>
-		{/if}
-		{#if view.marquee}
-			<rect
-				class="marquee"
-				x={Math.min(view.marquee.x, view.marquee.x + view.marquee.width)}
-				y={Math.min(view.marquee.y, view.marquee.y + view.marquee.height)}
-				width={Math.abs(view.marquee.width)}
-				height={Math.abs(view.marquee.height)}
-			/>
-		{/if}
+		<g bind:this={world} transform="translate({camera.x} {camera.y}) scale({camera.scale})">
+			<DiagramDrawing {shapes} {arrow} {selected} selectedEdge={view.edge} interactive />
+			{#if preview}
+				<line
+					class="preview"
+					x1={preview.from.x}
+					y1={preview.from.y}
+					x2={preview.to.x}
+					y2={preview.to.y}
+					marker-end="url(#{arrow})"
+				/>
+			{/if}
+			{#if view.marquee}
+				<rect
+					class="marquee"
+					x={Math.min(view.marquee.x, view.marquee.x + view.marquee.width)}
+					y={Math.min(view.marquee.y, view.marquee.y + view.marquee.height)}
+					width={Math.abs(view.marquee.width)}
+					height={Math.abs(view.marquee.height)}
+				/>
+			{/if}
+		</g>
 	</svg>
 	{#if renamed}
 		<RenameField
-			x={renamed.x}
-			y={renamed.y}
+			x={screenOf(renamed).x}
+			y={screenOf(renamed).y}
 			name={renamed.name}
 			problem={refused}
 			oncommit={(name) => {
@@ -639,8 +736,8 @@
 	{/if}
 	{#if view.labeling && labelAt}
 		<LabelField
-			x={labelAt.x}
-			y={labelAt.y}
+			x={screenOf(labelAt).x}
+			y={screenOf(labelAt).y}
 			initial={labelAt.initial}
 			problem={labelProblem}
 			ask={view.labeling.ask}
@@ -668,6 +765,13 @@
 			onclose={closeMenu}
 		/>
 	{/if}
+	<ZoomControl
+		percent={percent(camera)}
+		onin={() => zoom('in')}
+		onout={() => zoom('out')}
+		onreset={() => zoom('reset')}
+		onfit={() => zoom('fit')}
+	/>
 	{#if view.doc.states.length === 0}
 		<p class="hint">{t('editor.hint_empty')}</p>
 	{/if}
@@ -679,24 +783,27 @@
 		flex: 1;
 		min-height: 0;
 		min-width: 0;
-		overflow: auto;
+		overflow: clip;
 		background-color: var(--color-ground);
 		background-image: radial-gradient(var(--color-canvas-dot) 1px, transparent 1px);
 		background-size: 20px 20px;
-		/* A finger on empty canvas scrolls; a state keeps its touch for the drag (touch-action: none). */
-		touch-action: pan-x pan-y;
+		/* The editor pans and zooms by itself: no gesture of the browser takes a touch. */
+		touch-action: none;
+		overscroll-behavior: none;
 	}
 	.viewport:focus-visible {
 		outline: var(--focus-ring-width) solid var(--focus-ring-color);
 		outline-offset: calc(var(--focus-ring-width) * -1);
 	}
 	.world {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		touch-action: none;
 		display: block;
 		user-select: none;
 		-webkit-user-select: none;
-	}
-	.ground {
-		fill: transparent;
 	}
 	.preview {
 		stroke: var(--color-accent);

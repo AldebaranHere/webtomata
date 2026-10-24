@@ -13,7 +13,7 @@ import { documentsEqual } from '../document.ts';
 import type { MachineDocument } from '../document.ts';
 import { createHistory } from '../history.ts';
 import type { Message } from '../../engine/types.ts';
-import { MARGIN, WORLD, dragPlaces } from './canvas.ts';
+import { LIMIT, dragPlaces } from './canvas.ts';
 import type { Point } from './canvas.ts';
 import { labelCommands, labelOf, parseLabel, splitNeeded, splitParts } from './label.ts';
 import { freeSpot } from './placement.ts';
@@ -268,8 +268,8 @@ export function createEditor(initial: MachineDocument): Editor {
 	function addStateAt(point: Point) {
 		if (busy()) return;
 		history.seal();
-		const x = clamp(Math.round(point.x), MARGIN, WORLD.width - MARGIN);
-		const y = clamp(Math.round(point.y), MARGIN, WORLD.height - MARGIN);
+		const x = clamp(Math.round(point.x), -LIMIT, LIMIT);
+		const y = clamp(Math.round(point.y), -LIMIT, LIMIT);
 		const result = history.execute({ type: 'addState', x, y });
 		if (!result.ok) {
 			const { key, params } = refusal(result.error);

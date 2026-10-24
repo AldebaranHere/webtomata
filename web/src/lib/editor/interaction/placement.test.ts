@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { build } from '../diagram/testing.ts';
-import { WORLD } from './canvas.ts';
+import { LIMIT } from './canvas.ts';
 import { freeSpot } from './placement.ts';
 
 describe('freeSpot', () => {
@@ -34,11 +34,16 @@ describe('freeSpot', () => {
 			expect(Math.hypot(spot.x - s.x, spot.y - s.y)).toBeGreaterThanOrEqual(72);
 	});
 
-	it('stays inside the world', () => {
-		const doc = build({ states: [[WORLD.width - 40, WORLD.height - 40]] });
-		const spot = freeSpot(doc, { x: WORLD.width - 40, y: WORLD.height - 40 });
-		expect(spot.x).toBeLessThanOrEqual(WORLD.width - 40);
-		expect(spot.y).toBeLessThanOrEqual(WORLD.height - 40);
+	it('stays inside the limit of the document', () => {
+		const doc = build({ states: [[LIMIT - 40, LIMIT - 40]] });
+		const spot = freeSpot(doc, { x: LIMIT - 40, y: LIMIT - 40 });
+		expect(spot.x).toBeLessThanOrEqual(LIMIT);
+		expect(spot.y).toBeLessThanOrEqual(LIMIT);
+	});
+
+	it('can be far from the origin and from the old area of 1600 by 1000', () => {
+		const doc = build({ states: [[100, 100]] });
+		expect(freeSpot(doc, { x: -3000, y: 4500 })).toEqual({ x: -3000, y: 4500 });
 	});
 
 	it('is the same for the same input', () => {

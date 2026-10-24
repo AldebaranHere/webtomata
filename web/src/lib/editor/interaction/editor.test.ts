@@ -77,10 +77,10 @@ describe('add a state', () => {
 		expect(editor.getState().tool).toBe('addState');
 	});
 
-	it('keeps the new state inside the world', () => {
+	it('keeps the new state inside the limit of the document, and lets it be far from the origin', () => {
 		const editor = createEditor(three());
-		editor.addStateAt({ x: -50, y: 99999 });
-		expect(editor.getState().doc.states[3]).toMatchObject({ x: 40, y: 960 });
+		editor.addStateAt({ x: -50, y: 9_999_999 });
+		expect(editor.getState().doc.states[3]).toMatchObject({ x: -50, y: 1_000_000 });
 	});
 
 	it('asks again for focus each time, so that the view focuses it even if the id repeats', () => {
@@ -274,12 +274,12 @@ describe('move by dragging', () => {
 		editor.cancelDrag();
 	});
 
-	it('keeps the states inside the world', () => {
+	it('keeps the states inside the limit of the document', () => {
 		const editor = createEditor(three());
 		editor.beginDrag(0, { x: 200, y: 200 });
-		editor.dragTo({ x: -5000, y: 5000 }, false);
+		editor.dragTo({ x: -5_000_000, y: 5_000_000 }, false);
 		editor.endDrag();
-		expect(places(editor)[0]).toEqual([0, 40, 960]);
+		expect(places(editor)[0]).toEqual([0, -1_000_000, 1_000_000]);
 	});
 
 	it('does nothing for a state that does not exist', () => {
@@ -338,14 +338,14 @@ describe('move with the keyboard', () => {
 		]);
 	});
 
-	it('does nothing, and says nothing, when no state is selected or the state is at the edge', () => {
+	it('does nothing, and says nothing, when no state is selected or the state is at the limit', () => {
 		const editor = createEditor(three());
 		editor.nudge(10, 0);
 		expect(editor.getState().announcement).toBeNull();
 		editor.select([0]);
-		editor.nudge(-5000, 0);
+		editor.nudge(-5_000_000, 0);
 		editor.nudge(-10, 0);
-		expect(places(editor)[0]).toEqual([0, 40, 200]);
+		expect(places(editor)[0]).toEqual([0, -1_000_000, 200]);
 	});
 });
 

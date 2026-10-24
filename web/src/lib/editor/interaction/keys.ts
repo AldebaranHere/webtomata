@@ -29,7 +29,10 @@ export type Action =
 	| { type: 'toggleSelection' }
 	| { type: 'toggleAccepting' }
 	| { type: 'toggleStart' }
-	| { type: 'rename' };
+	| { type: 'rename' }
+	/** Moves the content by this much on the screen (Shift+Arrow moves the view the other way). */
+	| { type: 'pan'; dx: number; dy: number }
+	| { type: 'zoom'; mode: 'in' | 'out' | 'reset' | 'fit' };
 
 const ARROWS: Record<string, Direction> = {
 	ArrowLeft: 'left',
@@ -60,6 +63,10 @@ export function keyAction(input: KeyInput, context: KeyContext): Action | undefi
 		}
 		if (mod && !alt && !shift) return { type: 'focus', direction, keepSelection: true };
 		if (!mod && !alt && !shift) return { type: 'focus', direction, keepSelection: false };
+		if (shift && !mod && !alt) {
+			const [x, y] = STEP[direction];
+			return { type: 'pan', dx: -x * 100 || 0, dy: -y * 100 || 0 };
+		}
 		return undefined;
 	}
 
@@ -81,6 +88,16 @@ export function keyAction(input: KeyInput, context: KeyContext): Action | undefi
 		case 'Enter':
 		case 'F2':
 			return { type: 'rename' };
+		case '+':
+		case '=':
+			return { type: 'zoom', mode: 'in' };
+		case '-':
+		case '_':
+			return { type: 'zoom', mode: 'out' };
+		case '0':
+			return { type: 'zoom', mode: 'reset' };
+		case '1':
+			return { type: 'zoom', mode: 'fit' };
 		case 'Delete':
 		case 'Backspace':
 			return { type: 'delete' };

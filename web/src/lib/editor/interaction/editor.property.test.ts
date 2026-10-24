@@ -5,7 +5,7 @@ import { checkDocument, documentsEqual } from '../document.ts';
 import { build } from '../diagram/testing.ts';
 import { random } from '../testing.ts';
 import type { Random } from '../testing.ts';
-import { MARGIN, WORLD } from './canvas.ts';
+import { LIMIT } from './canvas.ts';
 import { createEditor } from './editor.ts';
 import type { Editor } from './editor.ts';
 
@@ -135,12 +135,10 @@ describe('random sequences of actions in the editor', () => {
 				if (s.doc.start !== null) expect(ids, `${where}: start`).toContain(s.doc.start);
 				// A drag that is not under way leaves no preview.
 				if (!s.dragging) expect(s.preview, where).toBeNull();
-				// Every state is inside the world.
+				// Every state is inside the limit of the document.
 				for (const x of s.doc.states) {
-					expect(x.x, where).toBeGreaterThanOrEqual(MARGIN);
-					expect(x.x, where).toBeLessThanOrEqual(WORLD.width - MARGIN);
-					expect(x.y, where).toBeGreaterThanOrEqual(MARGIN);
-					expect(x.y, where).toBeLessThanOrEqual(WORLD.height - MARGIN);
+					expect(Math.abs(x.x), where).toBeLessThanOrEqual(LIMIT);
+					expect(Math.abs(x.y), where).toBeLessThanOrEqual(LIMIT);
 				}
 			}
 		}
