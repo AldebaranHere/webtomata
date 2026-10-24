@@ -34,6 +34,10 @@ export const en: Record<MessageKey, string> = {
 	'engine.retry': 'Try again',
 
 	'sandbox.description': 'Build, run and convert finite state machines right in the browser.',
+	'sandbox.preview': 'A preview of how a machine is drawn. The editor is coming soon.',
+
+	'diagram.label': '{kind} with {count} state(s)',
+	'diagram.start': 'start',
 	'soal.description': 'Practice questions on finite state machines with calm, specific feedback.',
 	'panduan.description':
 		'Guides to the patterns for designing DFSMs, NDFSMs and regular expressions.',

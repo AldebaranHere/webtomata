@@ -29,21 +29,26 @@ Words: the UI says **state** (not "status", which the first wireframes used), as
 
 | Part | Rule |
 | --- | --- |
-| State | Circle, radius 32, fill `--color-surface`, stroke 1.5 `--color-neutral-ink`. The name is centered, in `--font-mono`. |
+| State | Circle, radius 32, fill `--color-surface`, stroke 1.5 `--color-neutral-ink`. The name is centered, in the UI font, semi-bold (as in the wireframes). A name of up to 4 characters is 16 px; a longer one shrinks to at least 11 px, and if it still does not fit it is cut with "…" and the full name is the tooltip (`<title>`). |
 | Accepting state | A second circle, radius 26, inside. The outer circle does not change. |
-| Start | One arrow of length 40 that ends at the rim of the start state, with the label "mulai" above it. Only one state can be the start. |
-| Edge | Arrow from rim to rim, stroke 1.5, arrowhead 10 long. The label is at the middle of the edge, 14 above it (to the left of the direction of travel), with a `--color-surface` halo 4 wide so the line never cuts the text. |
+| Start | One arrow of length 40 that ends at the rim of the start state, with the label "mulai" at its tail (beyond the end of the arrow, as in the wireframes). Only one state can be the start. |
+| Edge | Arrow from rim to rim, stroke 1.5, arrowhead 10 long. The label is at the middle of the edge, on the left of the direction of travel (above a rightward edge), with its nearest side 4 from the line, and a halo 4 wide in the color of the canvas (`--color-ground`) so a line never cuts the text. |
 | Label text | `--font-mono`. Symbols in alphabet order, then `ε` last, separated by `, `. |
-| Opposite edges | If A→B and B→A both exist, both are drawn as curves: the middle of each curve is 24 to the right of the straight line, looking in its direction of travel. They are on different sides, and each label goes outside its curve. An edge with no opposite edge is straight. |
-| Self-loop | A loop that leaves the rim at 30° left of its angle and comes back 30° right of it, reaching 40 above the rim. The label is above the loop. The angle is chosen by the rule below. |
+| Opposite edges | If A→B and B→A both exist, both are drawn as curves: the middle of each curve is 24 to the right of the straight line, looking in its direction of travel. They are on different sides, and each label goes outside its curve. An edge with no opposite edge is straight, **unless it would pass within 8 of the circle of another state** (100 from the center of a state that has a self-loop, to leave room for the loop and its label): then it curves too, on the side where the smaller bulge clears every state (the right if both are equal). |
+| Self-loop | A loop that leaves the rim at 30° left of its angle and comes back 30° right of it, reaching 40 above the rim. The label is beyond the top of the loop, 4 away. The angle is chosen by the rule below. |
 | Selected | A ring of stroke 2, `--color-accent`, at radius 37 (4 outside the circle) for a state; the edge line in `--color-accent` and stroke 2.6 for an edge. |
 | Focus | The focus ring of the tokens, around the selection ring if both are there. |
 
 These numbers are starting values from the wireframes. S4 may change a number if the rules still hold: no label covers another label or a state in the cases of the test below, and every part is still 44 px to hit.
 
-**Angle of the start arrow and of self-loops.** A state has a set of busy angles: the direction to every state it has an edge with, and the angle of its start arrow. A self-loop takes the free angle with the biggest gap to the busy angles. Candidates are every 30°. A tie goes to the top (−90°), then clockwise. The start arrow is placed first, preferring the left (180°); then the loops, in the order of their symbols. The angle is computed from the document, never stored, so the same document always looks the same.
+**Angle of the start arrow and of self-loops.** A state has a set of busy angles: the direction in which each edge leaves or arrives, the direction to every other state within 150 (even without an edge, because an arrow or a loop would run into it), the direction to an edge of another state that passes within 90 of its center, and (for a loop) the angle of its start arrow. Candidates are every 15°.
 
-**Test for S4 (a pure function, no browser).** `edgeGeometry(document)` returns the path and the label box of every edge. The test: for opposite pairs, loops on a busy state, and 20 random documents, no two label boxes overlap, and no label box overlaps a state circle.
+- **The start arrow** is placed first. It keeps to the left (180°) while the left has at least 90° of room to every busy angle. If not, the free angle nearest to the left wins (a tie goes clockwise); if no angle has 90° of room, the angle with the biggest gap wins.
+- **A self-loop** takes the angle with the biggest gap to the busy angles. A tie goes to the top (−90°), then clockwise. A loop spans 60° (30° each side of its angle).
+
+The angle is computed from the document, never stored, so the same document always looks the same.
+
+**Tests for S4a (pure functions, no browser).** `edgeGeometry(document)` returns the path, the points and the label box of every edge (`web/src/lib/editor/diagram/geometry.ts`). The tests check: the ends of edges on the circles, the side of the labels, opposite pairs, the choice of angles, edges that curve around a state, long names, the bounds, determinism, speed (200 states and 421 edges in about 9 ms), and the property that **no two labels overlap and no label covers a state** in 300 random machines on a grid. A label is not wrapped: one that is wider than the space between two circles (three symbols are 75 px, and two circles 130 apart leave 66) cannot fit. The user moves a state. The random machines therefore have at most two symbols per edge.
 
 ## Interactions
 
@@ -262,4 +267,4 @@ Two checks decide what S4 must test again in the browser: that a dragged state i
 
 ## Not in v1
 
-Copy and paste, dragging an edge to change its ends, editing an edge's curve by hand, selecting several items on touch, edges that avoid third states (the user moves the state), and grid snap that stays on. Each is a decision after the usability tests (U5).
+Copy and paste, dragging an edge to change its ends, editing an edge's curve by hand, selecting several items on touch, labels that wrap or move to find room (the user moves a state), and grid snap that stays on. Each is a decision after the usability tests (U5).

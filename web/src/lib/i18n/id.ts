@@ -34,6 +34,10 @@ export const id = {
 	'engine.retry': 'Coba lagi',
 
 	'sandbox.description': 'Bangun, jalankan dan ubah mesin berhingga langsung di peramban.',
+	'sandbox.preview': 'Pratinjau: begini sebuah mesin digambar. Editornya segera hadir.',
+
+	'diagram.label': '{kind} dengan {count} state',
+	'diagram.start': 'mulai',
 	'soal.description': 'Soal latihan mesin berhingga dengan umpan balik yang tenang dan spesifik.',
 	'panduan.description': 'Panduan pola merancang DFSM, NDFSM dan ekspresi reguler.',
 
