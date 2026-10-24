@@ -24,6 +24,7 @@
 	const tools = [
 		{ tool: 'select', label: 'editor.tool.select', icon: 'select', keys: 'V' },
 		{ tool: 'addState', label: 'editor.tool.add_state', icon: 'state', keys: 'S' },
+		{ tool: 'transition', label: 'editor.tool.transition', icon: 'transition', keys: 'T' },
 		{ tool: 'delete', label: 'editor.tool.delete', icon: 'delete', keys: 'Delete' }
 	] as const;
 </script>
@@ -111,9 +112,10 @@
 			border-top: 1px solid var(--color-border);
 		}
 		.tool {
-			width: 4rem;
+			width: 4.5rem;
 			min-height: 3.5rem;
 			font-size: var(--text-2xs);
+			text-align: center;
 		}
 		.label {
 			position: static;

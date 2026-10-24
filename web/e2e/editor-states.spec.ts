@@ -1,7 +1,7 @@
 // S4b-2 in the browser: accepting and start, rename, the menu, the delete toast and the long-press.
 // The rules have unit tests (src/lib/editor/interaction); this checks the focus, the keys that
 // reach a field or not, the positions and the touch targets, which only a browser can show.
-import { expect, expectNoAxeViolations, test } from './fixtures.ts';
+import { expect, expectNoAxeViolations, test, openSandbox } from './fixtures.ts';
 import type { Page } from '@playwright/test';
 
 const nodes = (page: Page) => page.locator('svg.world g.node');
@@ -13,7 +13,7 @@ const field = (page: Page) => page.getByRole('textbox', { name: 'Nama state' });
 
 test.describe('accepting and start', () => {
 	test('A and M act on the selected state, and undo brings them back', async ({ page }) => {
-		await page.goto('/sandbox');
+		await openSandbox(page);
 		await state(page, 'q1').click();
 		await page.keyboard.press('a');
 		await expect(state(page, 'q1')).toHaveAttribute('aria-label', 'State q1, accepting state');
@@ -34,7 +34,7 @@ test.describe('accepting and start', () => {
 	});
 
 	test('M needs exactly one state', async ({ page }) => {
-		await page.goto('/sandbox');
+		await openSandbox(page);
 		await page.getByRole('application', { name: 'Kanvas mesin' }).focus();
 		await page.keyboard.press('Control+a');
 		await page.keyboard.press('m');
@@ -43,7 +43,7 @@ test.describe('accepting and start', () => {
 
 	test('a double-click toggles accepting', async ({ page, isMobile }) => {
 		test.skip(isMobile, 'a mouse');
-		await page.goto('/sandbox');
+		await openSandbox(page);
 		await state(page, 'q1').dblclick();
 		await expect(state(page, 'q1')).toHaveAttribute('aria-label', 'State q1, accepting state');
 		await state(page, 'q1').dblclick();
@@ -56,7 +56,7 @@ test.describe('rename', () => {
 	test('Enter opens the field with the name selected, Enter sends, undo restores', async ({
 		page
 	}) => {
-		await page.goto('/sandbox');
+		await openSandbox(page);
 		await state(page, 'q1').click();
 		await page.keyboard.press('Enter');
 		await expect(field(page)).toBeFocused();
@@ -73,7 +73,7 @@ test.describe('rename', () => {
 	});
 
 	test('the keys of the canvas do not reach the field', async ({ page }) => {
-		await page.goto('/sandbox');
+		await openSandbox(page);
 		await state(page, 'q1').click();
 		await page.keyboard.press('F2');
 		await page.keyboard.type('amsnv');
@@ -88,7 +88,7 @@ test.describe('rename', () => {
 	test('a refused name keeps the field open and says why; Esc leaves the name', async ({
 		page
 	}) => {
-		await page.goto('/sandbox');
+		await openSandbox(page);
 		await state(page, 'q1').click();
 		await page.keyboard.press('Enter');
 		await page.keyboard.type('q2');
@@ -113,7 +113,7 @@ test.describe('the menu', () => {
 		isMobile
 	}) => {
 		test.skip(isMobile, 'a mouse');
-		await page.goto('/sandbox');
+		await openSandbox(page);
 		await state(page, 'q1').click({ button: 'right' });
 		await expect(menu(page)).toBeVisible();
 		const items = menu(page).getByRole('menuitem');
@@ -140,7 +140,7 @@ test.describe('the menu', () => {
 
 	test('Ubah nama in the menu opens the field', async ({ page, isMobile }) => {
 		test.skip(isMobile, 'a mouse');
-		await page.goto('/sandbox');
+		await openSandbox(page);
 		await state(page, 'q2').click({ button: 'right' });
 		await menu(page).getByRole('menuitem', { name: 'Ubah nama' }).click();
 		await expect(field(page)).toBeFocused();
@@ -149,7 +149,7 @@ test.describe('the menu', () => {
 
 	test('on empty canvas it adds a state where the pointer was', async ({ page, isMobile }) => {
 		test.skip(isMobile, 'a mouse');
-		await page.goto('/sandbox');
+		await openSandbox(page);
 		const area = (await page.getByRole('application', { name: 'Kanvas mesin' }).boundingBox())!;
 		const at = { x: area.x + 60, y: area.y + 60 };
 		await page.mouse.click(at.x, at.y, { button: 'right' });
@@ -163,7 +163,7 @@ test.describe('the menu', () => {
 
 	test('a click outside closes it', async ({ page, isMobile }) => {
 		test.skip(isMobile, 'a mouse');
-		await page.goto('/sandbox');
+		await openSandbox(page);
 		await state(page, 'q0').click({ button: 'right' });
 		await expect(menu(page)).toBeVisible();
 		await page.mouse.click(5, 300);
@@ -173,7 +173,7 @@ test.describe('the menu', () => {
 
 test.describe('the delete toast', () => {
 	test('names what was deleted, undoes it, and goes away by itself', async ({ page }) => {
-		await page.goto('/sandbox');
+		await openSandbox(page);
 		await state(page, 'q2').click();
 		await page.keyboard.press('Delete');
 		const toast = page.getByRole('group', { name: 'Pesan' });
@@ -196,7 +196,7 @@ test.describe('the delete toast', () => {
 
 	test('stays while the pointer is on it', async ({ page, isMobile }) => {
 		test.skip(isMobile, 'a mouse');
-		await page.goto('/sandbox');
+		await openSandbox(page);
 		await state(page, 'q2').click();
 		await page.keyboard.press('Delete');
 		const toast = page.getByRole('group', { name: 'Pesan' });
@@ -213,7 +213,7 @@ test('touch: a long-press on a state opens the menu, with targets of 44 px', asy
 	isMobile
 }) => {
 	test.skip(!isMobile, 'a phone only');
-	await page.goto('/sandbox');
+	await openSandbox(page);
 	const box = (await state(page, 'q1').locator('circle.state').boundingBox())!;
 	const x = box.x + box.width / 2;
 	const y = box.y + box.height / 2;

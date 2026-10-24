@@ -15,11 +15,12 @@ import { createHistory } from '../history.ts';
 import type { Message } from '../../engine/types.ts';
 import { MARGIN, WORLD, dragPlaces } from './canvas.ts';
 import type { Point } from './canvas.ts';
+import { labelCommands, labelOf, parseLabel, splitNeeded, splitParts } from './label.ts';
 import { freeSpot } from './placement.ts';
 import { inRectangle, prune, selectAll, toggle } from './selection.ts';
 import type { Selection } from './selection.ts';
 
-export type Tool = 'select' | 'addState' | 'delete';
+export type Tool = 'select' | 'addState' | 'transition' | 'delete';
 
 /** What to say to a screen reader. `seq` changes with every message, so that the same text is said again. */
 export interface Announcement {
@@ -47,8 +48,17 @@ export interface EditorState {
 	announcement: Announcement | null;
 	/** The state whose name is being edited. */
 	renaming: number | null;
+	/** A transition that is being made: the source is chosen, the target is not. */
+	link: { from: number; pointer: Point | null } | null;
+	/** The box for the symbols of the edge from → to. `ask` is a long part that needs an answer. */
+	labeling: { from: number; to: number; ask: string | null } | null;
 	/** What the last delete removed, for the message with Urungkan. It goes with the next change. */
 	toast: Announcement | null;
+}
+
+/** The label box needs an answer: is this long text one symbol or several? */
+export interface SplitQuestion {
+	ask: string;
 }
 
 /** A message of the document, as a key with parameters. */
@@ -90,6 +100,18 @@ export interface Editor {
 	/** Sends a name. Returns null when the field closed, or why the name was refused (it stays open). */
 	commitRename(name: string): Refusal | null;
 	cancelRename(): void;
+	startLink(from: number): void;
+	moveLink(pointer: Point): void;
+	/** The target of the transition, or null (a release on empty canvas) to cancel. */
+	finishLink(to: number | null): void;
+	/** The key of the keyboard: starts a transition from the one selected state, or ends it at the focus. */
+	linkAtFocus(): void;
+	/**
+	 * Sends the text of the label box. Returns null when the box closed, why the text was refused
+	 * (the box stays open), or a question to answer with `split`.
+	 */
+	commitLabel(text: string, split?: 'split' | 'whole'): Refusal | SplitQuestion | null;
+	cancelLabel(): void;
 	dismissToast(): void;
 
 	undo(): void;
@@ -143,6 +165,8 @@ export function createEditor(initial: MachineDocument): Editor {
 		dirty: false,
 		announcement: null,
 		renaming: null,
+		link: null,
+		labeling: null,
 		toast: null
 	};
 
@@ -185,6 +209,12 @@ export function createEditor(initial: MachineDocument): Editor {
 		state.renaming =
 			renaming !== null && doc.states.some((s) => s.id === renaming) ? renaming : null;
 		if (patch.toast === undefined && doc !== before) state.toast = null;
+		// A transition that is half made goes with any change of the document, or with its source.
+		const has = (id: number) => doc.states.some((s) => s.id === id);
+		if (state.link && (doc !== before || !has(state.link.from))) state.link = null;
+		if (state.labeling && !(has(state.labeling.from) && has(state.labeling.to))) {
+			state.labeling = null;
+		}
 		notify();
 	}
 
@@ -213,8 +243,8 @@ export function createEditor(initial: MachineDocument): Editor {
 		commit({ selection: next, announcement: describe(next) });
 	}
 
-	/** A drag under way, or a name field that is open: nothing else edits the document. */
-	const busy = () => drag !== null || state.renaming !== null;
+	/** A drag under way, or a box that is open: nothing else edits the document. */
+	const busy = () => drag !== null || state.renaming !== null || state.labeling !== null;
 
 	function addStateAt(point: Point) {
 		if (busy()) return;
@@ -301,6 +331,35 @@ export function createEditor(initial: MachineDocument): Editor {
 		});
 	}
 
+	function closeLabel(patch: Partial<EditorState> = {}) {
+		const open = state.labeling;
+		commit({
+			labeling: null,
+			focus: { id: open?.from ?? null, request: ++focusRequest },
+			...patch
+		});
+	}
+
+	function finishLink(to: number | null) {
+		const link = state.link;
+		if (!link) return;
+		if (to === null || !stateOf(to)) {
+			set({ link: null });
+			return;
+		}
+		set({ link: null, labeling: { from: link.from, to, ask: null } });
+	}
+
+	function startLink(from: number) {
+		if (busy() || !stateOf(from)) return;
+		history.seal();
+		commit({
+			link: { from, pointer: null },
+			selection: [from],
+			announcement: say('editor.hint_pick_target')
+		});
+	}
+
 	function closeRename(patch: Partial<EditorState> = {}) {
 		const id = state.renaming;
 		commit({
@@ -321,7 +380,13 @@ export function createEditor(initial: MachineDocument): Editor {
 
 		setTool(tool) {
 			history.seal();
-			if (tool !== state.tool) set({ tool });
+			if (tool !== state.tool || state.link) {
+				set({
+					tool,
+					link: null,
+					...(tool === 'transition' ? { announcement: say('editor.hint_pick_source') } : {})
+				});
+			}
 		},
 		select,
 		selectOnly: (id) => select([id]),
@@ -357,7 +422,8 @@ export function createEditor(initial: MachineDocument): Editor {
 			if (!stateOf(id)) return;
 			history.seal();
 			const focus = { id, request: ++focusRequest };
-			if (keepSelection || sameList(state.selection, [id])) {
+			// While a transition is being made the selection stays on its source.
+			if (keepSelection || state.link !== null || sameList(state.selection, [id])) {
 				set({ focus });
 				return;
 			}
@@ -434,6 +500,61 @@ export function createEditor(initial: MachineDocument): Editor {
 			closeRename(history.doc === before ? {} : { announcement: say('editor.renamed', { name }) });
 			return null;
 		},
+		startLink,
+		moveLink(pointer) {
+			if (state.link) set({ link: { ...state.link, pointer } });
+		},
+		finishLink,
+		linkAtFocus() {
+			if (state.link) {
+				if (state.focus.id !== null) finishLink(state.focus.id);
+			} else if (state.selection.length === 1) {
+				startLink(state.selection[0]!);
+			}
+		},
+		commitLabel(text, split) {
+			const open = state.labeling;
+			if (!open) return null;
+			let parts = parseLabel(text);
+			if (split === 'split') {
+				parts = splitParts(parts);
+			} else if (split === undefined) {
+				const long = splitNeeded(history.doc, parts);
+				if (long !== null) {
+					set({ labeling: { ...open, ask: long } });
+					return { ask: long };
+				}
+			}
+			const commands = labelCommands(history.doc, open.from, open.to, parts);
+			if (commands.length === 0) {
+				closeLabel();
+				return null;
+			}
+			const result = history.execute(
+				commands.length === 1 ? commands[0]! : { type: 'batch', commands }
+			);
+			if (!result.ok) {
+				const problem = refusal(result.error);
+				set({ labeling: { ...open, ask: null }, announcement: say(problem.key, problem.params) });
+				return problem;
+			}
+			const from = stateOf(open.from)?.name ?? '';
+			const to = stateOf(open.to)?.name ?? '';
+			closeLabel({
+				announcement:
+					parts.length === 0
+						? say('editor.edge_removed', { from, to })
+						: say('editor.edge_changed', {
+								from,
+								to,
+								symbols: labelOf(history.doc, open.from, open.to)
+							})
+			});
+			return null;
+		},
+		cancelLabel() {
+			if (state.labeling) closeLabel();
+		},
 		cancelRename() {
 			if (state.renaming !== null) closeRename();
 		},
@@ -461,9 +582,13 @@ export function createEditor(initial: MachineDocument): Editor {
 		escape() {
 			if (state.renaming !== null) {
 				closeRename();
+			} else if (state.labeling !== null) {
+				closeLabel();
 			} else if (drag) {
 				drag = null;
 				set({ dragging: false, preview: null });
+			} else if (state.link !== null) {
+				set({ link: null });
 			} else if (marqueeStart) {
 				marqueeStart = null;
 				set({ marquee: null });

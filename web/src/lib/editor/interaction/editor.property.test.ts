@@ -40,7 +40,7 @@ const someId = (rng: Random, editor: Editor) => {
 
 /** One random action. */
 function act(rng: Random, editor: Editor) {
-	const roll = rng.int(100);
+	const roll = rng.int(108);
 	if (roll < 10) editor.addStateAt(point(rng));
 	else if (roll < 14) editor.addStateNear(point(rng));
 	else if (roll < 22) editor.select([someId(rng, editor), someId(rng, editor)]);
@@ -79,7 +79,18 @@ function act(rng: Random, editor: Editor) {
 		const name = rng.pick(['q0', 'q1', 'x', '', ' y', 'Genap']);
 		if (rng.chance(0.7)) editor.commitRename(name);
 		if (rng.chance(0.5)) editor.cancelRename();
-	} else editor.noteFocus(rng.chance(0.2) ? null : someId(rng, editor));
+	} else if (roll < 100) editor.noteFocus(rng.chance(0.2) ? null : someId(rng, editor));
+	else if (roll < 104) {
+		// A transition: a source, a target (or none), then a text that may be refused or ask.
+		editor.setTool('transition');
+		editor.startLink(someId(rng, editor));
+		editor.moveLink(point(rng));
+		editor.finishLink(rng.chance(0.15) ? null : someId(rng, editor));
+	} else if (roll < 107) {
+		const text = rng.pick(['a', 'b, eps', 'ab', 'c d', '', 'x'.repeat(40), 'ε']);
+		editor.commitLabel(text, rng.pick([undefined, 'split', 'whole'] as const));
+		if (rng.chance(0.3)) editor.cancelLabel();
+	} else editor.cancelLabel();
 }
 
 describe('random sequences of actions in the editor', () => {
@@ -99,6 +110,13 @@ describe('random sequences of actions in the editor', () => {
 				for (const id of s.selection) expect(ids, `${where}: selected ${id}`).toContain(id);
 				if (s.focus.id !== null) expect(ids, `${where}: focus`).toContain(s.focus.id);
 				if (s.renaming !== null) expect(ids, `${where}: renaming`).toContain(s.renaming);
+				if (s.link) expect(ids, `${where}: link`).toContain(s.link.from);
+				if (s.labeling) {
+					expect(ids, `${where}: labeling from`).toContain(s.labeling.from);
+					expect(ids, `${where}: labeling to`).toContain(s.labeling.to);
+				}
+				// A half-made transition and an open box never exist together.
+				expect(s.link !== null && s.labeling !== null, where).toBe(false);
 				// The start state is a state that exists.
 				if (s.doc.start !== null) expect(ids, `${where}: start`).toContain(s.doc.start);
 				// A drag that is not under way leaves no preview.

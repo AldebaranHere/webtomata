@@ -6,11 +6,14 @@
 	import { edgeGeometry } from './diagram/geometry.ts';
 	import ContextMenu from './ContextMenu.svelte';
 	import type { MachineDocument } from './document.ts';
+	import LabelField from './LabelField.svelte';
 	import RenameField from './RenameField.svelte';
-	import { WORLD } from './interaction/canvas.ts';
+	import { RADIUS } from './diagram/geometry.ts';
+	import { WORLD, linkLine } from './interaction/canvas.ts';
 	import type { Point } from './interaction/canvas.ts';
 	import type { Editor, EditorState } from './interaction/editor.ts';
 	import { keyAction } from './interaction/keys.ts';
+	import { labelOf } from './interaction/label.ts';
 	import { menuItems } from './interaction/menu.ts';
 	import type { MenuItem, MenuTarget } from './interaction/menu.ts';
 	import { nearestInDirection } from './interaction/selection.ts';
@@ -37,6 +40,24 @@
 	});
 	const shapes = $derived(edgeGeometry(shown, { startLabel: t('diagram.start') }));
 	const selected = $derived(new Set(view.selection));
+	const preview = $derived(
+		view.link?.pointer ? linkLine(shown.states, view.link.from, view.link.pointer) : null
+	);
+	// The label box sits on the label of its edge, or where the edge will be.
+	const labelAt = $derived.by(() => {
+		const open = view.labeling;
+		if (!open) return null;
+		const edge = shapes.edges.find((e) => e.from === open.from && e.to === open.to);
+		const a = view.doc.states.find((s) => s.id === open.from);
+		const b = view.doc.states.find((s) => s.id === open.to);
+		if (!a || !b) return null;
+		const center = edge
+			? edge.label.center
+			: open.from === open.to
+				? { x: a.x, y: a.y - RADIUS - 60 }
+				: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 - 36 };
+		return { ...center, initial: labelOf(view.doc, open.from, open.to) };
+	});
 	const renamed = $derived(view.doc.states.find((s) => s.id === view.renaming));
 
 	let viewport: HTMLDivElement;
@@ -90,15 +111,18 @@
 	let lastInput: 'pointer' | 'keyboard' = 'pointer';
 
 	// The preview is updated at most once for each frame, and the last place wins.
-	let pending: { point: Point; snap: boolean } | null = null;
+	let pending: { point: Point; snap: boolean; link: boolean } | null = null;
 	let frame = 0;
 	function flush() {
 		frame = 0;
-		if (pending) editor.dragTo(pending.point, pending.snap);
+		if (pending) {
+			if (pending.link) editor.moveLink(pending.point);
+			else editor.dragTo(pending.point, pending.snap);
+		}
 		pending = null;
 	}
-	function dragTo(point: Point, snap: boolean) {
-		pending = { point, snap };
+	function dragTo(point: Point, snap: boolean, link = false) {
+		pending = { point, snap, link };
 		if (!frame) frame = requestAnimationFrame(flush);
 	}
 
@@ -114,6 +138,10 @@
 	} | null>(null);
 	let longPress: ReturnType<typeof setTimeout> | undefined;
 	let refused = $state<string | null>(null);
+	let labelProblem = $state<string | null>(null);
+	$effect(() => {
+		if (!view.labeling) labelProblem = null;
+	});
 
 	function openMenu(
 		target: MenuTarget,
@@ -179,6 +207,12 @@
 		);
 	}
 
+	/** The state under the pointer. While a pointer is captured the target is the svg, so ask the page. */
+	const stateAtPointer = (event: { clientX: number; clientY: number }) =>
+		stateIdOf(document.elementFromPoint(event.clientX, event.clientY));
+	// Where the pointer was at its last move: the end of a touch does not always carry a place.
+	let lastMove = { clientX: 0, clientY: 0 };
+
 	function onpointerdown(event: PointerEvent) {
 		if (event.button !== 0 || press) return;
 		lastInput = 'pointer';
@@ -229,17 +263,23 @@
 	}
 
 	function onpointermove(event: PointerEvent) {
+		// With a source chosen, the preview follows a mouse that is not pressed.
+		if (!press && view.link && event.pointerType === 'mouse') dragTo(toCanvas(event), false, true);
 		if (!press || event.pointerId !== press.pointerId) return;
+		lastMove = { clientX: event.clientX, clientY: event.clientY };
 		const point = toCanvas(event);
 		const far = Math.hypot(point.x - press.from.x, point.y - press.from.y) >= threshold(press.type);
 		if (far) clearTimeout(longPress);
 		if (press.consumed) return;
 		if (press.kind === 'state') {
+			const linking = view.tool === 'transition';
 			if (!press.dragging && far && view.tool !== 'delete') {
 				press.dragging = true;
-				editor.beginDrag(press.id, press.from);
+				// In Transisi a drag from a state is an arrow, never a move.
+				if (linking) editor.startLink(press.id);
+				else editor.beginDrag(press.id, press.from);
 			}
-			if (press.dragging) dragTo(point, event.shiftKey);
+			if (press.dragging) dragTo(point, event.shiftKey, linking);
 		} else if (press.marquee) {
 			editor.moveMarquee(point);
 		} else if (far) {
@@ -257,7 +297,13 @@
 		if (done.kind === 'state') {
 			if (done.dragging) {
 				flush();
-				editor.endDrag();
+				// A release on empty canvas cancels the arrow.
+				if (view.tool === 'transition') editor.finishLink(stateAtPointer(lastMove) ?? null);
+				else editor.endDrag();
+			} else if (view.tool === 'transition') {
+				// A click: the first one chooses the source, the second one the target.
+				if (view.link) editor.finishLink(done.id);
+				else editor.startLink(done.id);
 			} else if (view.tool === 'delete') {
 				editor.deleteStates([done.id]);
 			} else if (event.shiftKey || event.ctrlKey || event.metaKey) {
@@ -271,6 +317,7 @@
 			// A click or a tap on empty canvas.
 			if (view.tool === 'addState') editor.addStateAt(toCanvas(event));
 			else if (view.tool === 'select') editor.clearSelection();
+			else if (view.tool === 'transition') editor.finishLink(null);
 		}
 	}
 
@@ -281,7 +328,10 @@
 		press = null;
 		pending = null;
 		clearTimeout(longPress);
-		if (done.kind === 'state' && done.dragging) editor.cancelDrag();
+		if (done.kind === 'state' && done.dragging) {
+			if (view.tool === 'transition') editor.finishLink(null);
+			else editor.cancelDrag();
+		}
 		if (done.kind === 'empty' && done.marquee) editor.escape();
 	}
 
@@ -313,13 +363,15 @@
 				shift: event.shiftKey,
 				alt: event.altKey
 			},
-			{ fieldOpen: view.renaming !== null || menu !== null }
+			{ fieldOpen: view.renaming !== null || view.labeling !== null || menu !== null }
 		);
 		if (!action) return;
 		event.preventDefault();
 		switch (action.type) {
 			case 'tool':
 				editor.setTool(action.tool);
+				// T with a state selected: that state is the source.
+				if (action.tool === 'transition') editor.linkAtFocus();
 				break;
 			case 'newState':
 				editor.addStateNear(visibleCenter());
@@ -349,9 +401,13 @@
 				editor.toggleStart();
 				break;
 			case 'rename':
-				// Enter on a button is a press: only a selected state is renamed.
-				refused = null;
-				editor.startRename();
+				// With Transisi, Enter chooses the source and then the target (it is the key of the mouse click).
+				if (view.tool === 'transition') {
+					editor.linkAtFocus();
+				} else {
+					refused = null;
+					editor.startRename();
+				}
 				break;
 			case 'toggleSelection':
 				if (view.focus.id !== null) editor.toggle(view.focus.id);
@@ -418,6 +474,17 @@
 		const { bounds } = shapes;
 		viewport.scrollLeft = Math.max(0, bounds.x + bounds.width / 2 - viewport.clientWidth / 2);
 		viewport.scrollTop = Math.max(0, bounds.y + bounds.height / 2 - viewport.clientHeight / 2);
+
+		// A finger that touches a state belongs to the editor: no scroll takes it over (that would
+		// cancel a drag), and the browser does not send the mouse events that follow a tap. Those
+		// arrive after the tap has been handled, land on the state under the finger and take the
+		// focus from a box that the tap has just opened. A listener is needed (and not the CSS
+		// touch-action alone) because it must be able to cancel, so it cannot be passive.
+		const keepTouch = (event: TouchEvent) => {
+			if (stateIdOf(event.target) !== undefined) event.preventDefault();
+		};
+		svg.addEventListener('touchstart', keepTouch, { passive: false });
+		return () => svg.removeEventListener('touchstart', keepTouch);
 	});
 </script>
 
@@ -453,6 +520,16 @@
 	>
 		<rect class="ground" width={WORLD.width} height={WORLD.height} />
 		<DiagramDrawing {shapes} {arrow} {selected} interactive />
+		{#if preview}
+			<line
+				class="preview"
+				x1={preview.from.x}
+				y1={preview.from.y}
+				x2={preview.to.x}
+				y2={preview.to.y}
+				marker-end="url(#{arrow})"
+			/>
+		{/if}
 		{#if view.marquee}
 			<rect
 				class="marquee"
@@ -474,6 +551,27 @@
 				refused = problem ? t(problem.key as MessageKey, problem.params) : null;
 			}}
 			oncancel={() => editor.cancelRename()}
+		/>
+	{/if}
+	{#if view.labeling && labelAt}
+		<LabelField
+			x={labelAt.x}
+			y={labelAt.y}
+			initial={labelAt.initial}
+			problem={labelProblem}
+			ask={view.labeling.ask}
+			oncommit={(text, split) => {
+				const result = editor.commitLabel(text, split);
+				labelProblem =
+					result && 'key' in result ? t(result.key as MessageKey, result.params) : null;
+			}}
+			oncancel={() => editor.cancelLabel()}
+			onleave={(text) => {
+				// Leaving the box sends a text that changed, and cancels in every other case.
+				if (text.trim() === labelAt?.initial || editor.commitLabel(text) !== null) {
+					editor.cancelLabel();
+				}
+			}}
 		/>
 	{/if}
 	{#if menu}
@@ -515,6 +613,12 @@
 	}
 	.ground {
 		fill: transparent;
+	}
+	.preview {
+		stroke: var(--color-accent);
+		stroke-width: 2;
+		stroke-dasharray: 6 4;
+		pointer-events: none;
 	}
 	.marquee {
 		fill: var(--color-accent-tint);

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import Announcer from './Announcer.svelte';
 	import EditorCanvas from './EditorCanvas.svelte';
@@ -14,6 +14,9 @@
 	let { doc }: { doc: MachineDocument } = $props();
 
 	const editor = createEditor(untrack(() => doc));
+	// The page is drawn before it takes keys and touches; the tests wait for this mark.
+	let ready = $state(false);
+	onMount(() => (ready = true));
 	let snapshot = $state(editor.getState());
 	$effect(() => editor.subscribe(() => (snapshot = editor.getState())));
 
@@ -26,7 +29,7 @@
 	});
 </script>
 
-<div class="editor">
+<div class="editor" data-ready={ready || undefined}>
 	<ToolRail
 		tool={snapshot.tool}
 		canUndo={snapshot.canUndo}
@@ -48,6 +51,11 @@
 				/>
 			</span>
 		</div>
+		{#if snapshot.tool === 'transition' && snapshot.labeling === null}
+			<p class="hint-line">
+				{t(snapshot.link ? 'editor.hint_pick_target' : 'editor.hint_pick_source')}
+			</p>
+		{/if}
 		<EditorCanvas {editor} state={snapshot} />
 		<Toast
 			toast={snapshot.toast}
@@ -97,6 +105,23 @@
 	}
 	.phone-history {
 		display: none;
+	}
+	/* What to do next while a transition is being made. The same words are said by the live region. */
+	.hint-line {
+		position: absolute;
+		top: calc(var(--target-min) + var(--space-3));
+		left: 50%;
+		z-index: 2;
+		max-width: calc(100% - 2 * var(--space-4));
+		margin: 0;
+		padding: var(--space-2) var(--space-4);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-pill);
+		background: var(--color-surface);
+		color: var(--color-ink);
+		font-size: var(--text-sm);
+		transform: translateX(-50%);
+		pointer-events: none;
 	}
 
 	@media (max-width: 39.99rem) {

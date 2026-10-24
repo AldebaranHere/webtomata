@@ -81,6 +81,17 @@ export const id = {
 	'document.duplicate_name': 'Nama {name} sudah dipakai state lain.',
 	'document.invalid_name':
 		'Nama tidak boleh kosong, diawali atau diakhiri spasi, atau lebih dari 32 karakter.',
+	'editor.tool.transition': 'Tambah transisi',
+	'editor.hint_pick_source': 'Pilih state asal transisi.',
+	'editor.hint_pick_target': 'Pilih state tujuan.',
+	'editor.label_field': 'Simbol transisi',
+	'editor.type_epsilon': 'Ketik ε',
+	'editor.ask_split': 'Apakah "{text}" beberapa simbol?',
+	'editor.ask_whole': 'Satu simbol {text}',
+	'editor.edge_changed': 'Transisi dari {from} ke {to}: {symbols}.',
+	'editor.edge_removed': 'Transisi dari {from} ke {to} dihapus.',
+	'document.invalid_symbol':
+		'Simbol "{symbol}" tidak bisa dipakai: tidak boleh kosong, terlalu panjang, atau berisi karakter terlarang.',
 	'document.limit_exceeded': 'Batas tercapai: {what}, paling banyak {limit}.',
 	'soal.description': 'Soal latihan mesin berhingga dengan umpan balik yang tenang dan spesifik.',
 	'panduan.description': 'Panduan pola merancang DFSM, NDFSM dan ekspresi reguler.',

@@ -17,7 +17,7 @@ export interface KeyContext {
 }
 
 export type Action =
-	| { type: 'tool'; tool: 'select' | 'addState' }
+	| { type: 'tool'; tool: 'select' | 'addState' | 'transition' }
 	| { type: 'newState' }
 	| { type: 'delete' }
 	| { type: 'selectAll' }
@@ -70,6 +70,8 @@ export function keyAction(input: KeyInput, context: KeyContext): Action | undefi
 			return { type: 'tool', tool: 'select' };
 		case 's':
 			return { type: 'tool', tool: 'addState' };
+		case 't':
+			return { type: 'tool', tool: 'transition' };
 		case 'n':
 			return { type: 'newState' };
 		case 'a':

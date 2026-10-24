@@ -25,8 +25,10 @@
 
 	const messageId = $props.id();
 	const WIDTH = 140;
+	const SETTLE_MS = 400;
 	let input: HTMLInputElement;
 	let value = $state('');
+	const openedAt = performance.now();
 
 	onMount(async () => {
 		value = name;
@@ -63,7 +65,11 @@
 		aria-invalid={problem !== null}
 		aria-describedby={problem !== null ? messageId : undefined}
 		{onkeydown}
-		onblur={oncancel}
+		onblur={() => {
+			// A tap can open the box, and the events after it can take the focus at once: take it back.
+			if (performance.now() - openedAt < SETTLE_MS) input?.focus();
+			else oncancel();
+		}}
 	/>
 	{#if problem !== null}
 		<p id={messageId} class="problem">{problem}</p>
