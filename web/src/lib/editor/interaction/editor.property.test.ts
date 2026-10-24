@@ -40,7 +40,7 @@ const someId = (rng: Random, editor: Editor) => {
 
 /** One random action. */
 function act(rng: Random, editor: Editor) {
-	const roll = rng.int(108);
+	const roll = rng.int(116);
 	if (roll < 10) editor.addStateAt(point(rng));
 	else if (roll < 14) editor.addStateNear(point(rng));
 	else if (roll < 22) editor.select([someId(rng, editor), someId(rng, editor)]);
@@ -90,7 +90,12 @@ function act(rng: Random, editor: Editor) {
 		const text = rng.pick(['a', 'b, eps', 'ab', 'c d', '', 'x'.repeat(40), 'ε']);
 		editor.commitLabel(text, rng.pick([undefined, 'split', 'whole'] as const));
 		if (rng.chance(0.3)) editor.cancelLabel();
-	} else editor.cancelLabel();
+	} else if (roll < 108) editor.cancelLabel();
+	else if (roll < 111) editor.selectEdge(someId(rng, editor), someId(rng, editor));
+	else if (roll < 112) editor.editEdge();
+	else if (roll < 114) editor.deleteEdge(someId(rng, editor), someId(rng, editor));
+	else if (roll < 115) editor.linkFrom(someId(rng, editor));
+	else editor.deleteSelected();
 }
 
 describe('random sequences of actions in the editor', () => {
@@ -111,6 +116,15 @@ describe('random sequences of actions in the editor', () => {
 				if (s.focus.id !== null) expect(ids, `${where}: focus`).toContain(s.focus.id);
 				if (s.renaming !== null) expect(ids, `${where}: renaming`).toContain(s.renaming);
 				if (s.link) expect(ids, `${where}: link`).toContain(s.link.from);
+				// A selected edge has transitions, and is never selected together with states.
+				if (s.edge) {
+					const edge = s.edge;
+					expect(
+						s.doc.transitions.some((t) => t.from === edge.from && t.to === edge.to),
+						`${where}: edge`
+					).toBe(true);
+					expect(s.selection, `${where}: edge and states`).toEqual([]);
+				}
 				if (s.labeling) {
 					expect(ids, `${where}: labeling from`).toContain(s.labeling.from);
 					expect(ids, `${where}: labeling to`).toContain(s.labeling.to);

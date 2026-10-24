@@ -4,9 +4,10 @@
 import type { MachineDocument } from '../document.ts';
 import type { Selection } from './selection.ts';
 
-export type MenuTarget = { kind: 'state'; id: number } | { kind: 'canvas' };
+export type MenuTarget =
+	{ kind: 'state'; id: number } | { kind: 'edge'; from: number; to: number } | { kind: 'canvas' };
 
-export type MenuAction = 'rename' | 'start' | 'accepting' | 'delete' | 'add';
+export type MenuAction = 'rename' | 'start' | 'accepting' | 'link' | 'edit' | 'delete' | 'add';
 
 export interface MenuItem {
 	action: MenuAction;
@@ -20,11 +21,14 @@ export function menuItems(
 	selection: Selection
 ): MenuItem[] {
 	if (target.kind === 'canvas') return [{ action: 'add' }];
+	if (target.kind === 'edge') return [{ action: 'edit' }, { action: 'delete' }];
 	const items: MenuItem[] = [];
 	if (selection.length === 1) {
 		items.push({ action: 'rename' }, { action: 'start', checked: doc.start === selection[0] });
 	}
 	const accepting = selection.length > 0 && selection.every((id) => doc.accepting.includes(id));
-	items.push({ action: 'accepting', checked: accepting }, { action: 'delete' });
+	items.push({ action: 'accepting', checked: accepting });
+	if (selection.length === 1) items.push({ action: 'link' });
+	items.push({ action: 'delete' });
 	return items;
 }

@@ -78,6 +78,18 @@
 		y: viewport.scrollTop + viewport.clientHeight / 2
 	});
 
+	/** The edge (from → to) that an element belongs to. */
+	const edgeOf = (target: EventTarget | null): { from: number; to: number } | undefined => {
+		const key = (target as Element | null)?.closest?.('[data-edge]')?.getAttribute('data-edge');
+		if (!key) return undefined;
+		const [from, to] = key.split('>').map(Number);
+		return { from: from!, to: to! };
+	};
+	const edgeNode = (edge: { from: number; to: number }) =>
+		svg.querySelector<SVGElement>(`g.edge-node[data-edge="${edge.from}>${edge.to}"]`);
+	/** Edges are targets in Pilih and Hapus; in the other tools they are part of the empty canvas. */
+	const edgesHit = () => view.tool === 'select' || view.tool === 'delete';
+
 	const stateIdOf = (target: EventTarget | null): number | undefined => {
 		const node = (target as Element | null)?.closest?.('[data-state]');
 		return node ? Number(node.getAttribute('data-state')) : undefined;
@@ -96,6 +108,16 @@
 				type: string;
 				from: Point;
 				dragging: boolean;
+				consumed: boolean;
+		  }
+		| {
+				kind: 'edge';
+				edge: { from: number; to: number };
+				pointerId: number;
+				type: string;
+				from: Point;
+				marquee: false;
+				moved: boolean;
 				consumed: boolean;
 		  }
 		| {
@@ -151,6 +173,8 @@
 	) {
 		if (target.kind === 'state' && !view.selection.includes(target.id)) {
 			editor.selectOnly(target.id);
+		} else if (target.kind === 'edge') {
+			editor.selectEdge(target.from, target.to);
 		}
 		menu = { target, x: screen.x, y: screen.y, at, touch };
 	}
@@ -161,6 +185,8 @@
 		// The focus goes back to what was pressed.
 		if (open?.target.kind === 'state') {
 			editor.focusState(open.target.id, { keepSelection: true });
+		} else if (open?.target.kind === 'edge') {
+			edgeNode(open.target)?.focus({ preventScroll: true });
 		} else {
 			viewport.focus({ preventScroll: true });
 		}
@@ -181,6 +207,12 @@
 			case 'accepting':
 				editor.toggleAccepting();
 				break;
+			case 'edit':
+				editor.editEdge();
+				break;
+			case 'link':
+				if (open?.target.kind === 'state') editor.linkFrom(open.target.id);
+				break;
 			case 'delete':
 				editor.deleteSelected();
 				break;
@@ -194,14 +226,21 @@
 		// The browser's own menu would cover ours.
 		event.preventDefault();
 		const id = stateIdOf(event.target);
+		const edge = id === undefined ? edgeOf(event.target) : undefined;
 		let screen = { x: event.clientX, y: event.clientY };
-		if (id !== undefined && screen.x === 0 && screen.y === 0) {
-			// From the keyboard (the menu key): at the state.
-			const box = (event.target as Element).closest('[data-state]')!.getBoundingClientRect();
+		if ((id !== undefined || edge) && screen.x === 0 && screen.y === 0) {
+			// From the keyboard (the menu key): at the state or the edge.
+			const box = (event.target as Element)
+				.closest('[data-state],[data-edge]')!
+				.getBoundingClientRect();
 			screen = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
 		}
 		openMenu(
-			id === undefined ? { kind: 'canvas' } : { kind: 'state', id },
+			id !== undefined
+				? { kind: 'state', id }
+				: edge
+					? { kind: 'edge', ...edge }
+					: { kind: 'canvas' },
 			screen,
 			toCanvas(event)
 		);
@@ -217,8 +256,21 @@
 		if (event.button !== 0 || press) return;
 		lastInput = 'pointer';
 		const id = stateIdOf(event.target);
+		const edge = id === undefined && edgesHit() ? edgeOf(event.target) : undefined;
 		const from = toCanvas(event);
-		if (id !== undefined) {
+		if (edge) {
+			edgeNode(edge)?.focus({ preventScroll: true });
+			press = {
+				kind: 'edge',
+				edge,
+				pointerId: event.pointerId,
+				type: event.pointerType,
+				from,
+				marquee: false,
+				moved: false,
+				consumed: false
+			};
+		} else if (id !== undefined) {
 			// A mouse press does not move the focus by itself (it is prevented below): the keys
 			// (A, M, Enter, Delete) must reach the state that was pressed.
 			(event.target as Element).closest<SVGElement>('[data-state]')?.focus({ preventScroll: true });
@@ -248,7 +300,12 @@
 		}
 		// A finger that stays in place opens the menu.
 		if (event.pointerType !== 'mouse') {
-			const target: MenuTarget = id === undefined ? { kind: 'canvas' } : { kind: 'state', id };
+			const target: MenuTarget =
+				id !== undefined
+					? { kind: 'state', id }
+					: edge
+						? { kind: 'edge', ...edge }
+						: { kind: 'canvas' };
 			const screen = { x: event.clientX, y: event.clientY };
 			clearTimeout(longPress);
 			longPress = setTimeout(() => {
@@ -311,6 +368,10 @@
 			} else {
 				editor.selectOnly(done.id);
 			}
+		} else if (done.kind === 'edge') {
+			if (done.moved) return;
+			if (view.tool === 'delete') editor.deleteEdge(done.edge.from, done.edge.to);
+			else editor.selectEdge(done.edge.from, done.edge.to);
 		} else if (done.marquee) {
 			editor.endMarquee();
 		} else if (!done.moved) {
@@ -341,8 +402,16 @@
 	 */
 	function ondblclick(event: MouseEvent) {
 		// While a pointer is captured the target is the svg: ask for what is at the pointer.
-		const id = stateIdOf(document.elementFromPoint(event.clientX, event.clientY));
-		if (id !== undefined) {
+		const under = document.elementFromPoint(event.clientX, event.clientY);
+		const id = stateIdOf(under);
+		const edge = id === undefined ? edgeOf(under) : undefined;
+		if (edge) {
+			// A double-click on an edge or its label edits its symbols.
+			if (view.tool === 'select') {
+				editor.selectEdge(edge.from, edge.to);
+				editor.editEdge();
+			}
+		} else if (id !== undefined) {
 			if (view.tool !== 'select') return;
 			if (view.selection.length !== 1 || view.selection[0] !== id) editor.selectOnly(id);
 			editor.toggleAccepting();
@@ -404,6 +473,8 @@
 				// With Transisi, Enter chooses the source and then the target (it is the key of the mouse click).
 				if (view.tool === 'transition') {
 					editor.linkAtFocus();
+				} else if (view.edge) {
+					editor.editEdge();
 				} else {
 					refused = null;
 					editor.startRename();
@@ -433,14 +504,14 @@
 	let seenRequest = 0;
 	let suppress = false;
 	$effect(() => {
-		const { id, request } = view.focus;
+		const { id, request, edge } = view.focus;
 		if (request === seenRequest) return;
 		seenRequest = request;
 		untrack(() => {
 			const target =
-				id === null
-					? viewport
-					: (svg.querySelector<SVGElement>(`[data-state="${id}"]`) ?? viewport);
+				id !== null
+					? (svg.querySelector<SVGElement>(`[data-state="${id}"]`) ?? viewport)
+					: ((edge ? edgeNode(edge) : null) ?? viewport);
 			suppress = true;
 			target.focus();
 			suppress = false;
@@ -449,7 +520,12 @@
 
 	function onfocusin(event: FocusEvent) {
 		const id = stateIdOf(event.target);
-		if (id === undefined) return;
+		if (id === undefined) {
+			// An edge that the focus reaches with Tab is selected (a press selects it by itself).
+			const edge = edgeOf(event.target);
+			if (edge && !suppress && lastInput === 'keyboard') editor.selectEdge(edge.from, edge.to);
+			return;
+		}
 		if (suppress || lastInput === 'pointer') {
 			editor.noteFocus(id);
 		} else {
@@ -461,7 +537,13 @@
 	function onfocusout(event: FocusEvent) {
 		// The name box and the menu come and go: when one is removed, the focus is not lost, it is
 		// moved by the view (see above), and a late "left" must not cancel that move.
-		if (event.target !== viewport && stateIdOf(event.target) === undefined) return;
+		if (
+			event.target !== viewport &&
+			stateIdOf(event.target) === undefined &&
+			edgeOf(event.target) === undefined
+		) {
+			return;
+		}
 		const next = event.relatedTarget as Node | null;
 		if (next && viewport.contains(next)) return;
 		// The focus left the canvas: a series of keyboard moves ends here.
@@ -481,7 +563,9 @@
 		// focus from a box that the tap has just opened. A listener is needed (and not the CSS
 		// touch-action alone) because it must be able to cancel, so it cannot be passive.
 		const keepTouch = (event: TouchEvent) => {
-			if (stateIdOf(event.target) !== undefined) event.preventDefault();
+			if (stateIdOf(event.target) !== undefined || (edgesHit() && edgeOf(event.target))) {
+				event.preventDefault();
+			}
 		};
 		svg.addEventListener('touchstart', keepTouch, { passive: false });
 		return () => svg.removeEventListener('touchstart', keepTouch);
@@ -519,7 +603,7 @@
 		{ondblclick}
 	>
 		<rect class="ground" width={WORLD.width} height={WORLD.height} />
-		<DiagramDrawing {shapes} {arrow} {selected} interactive />
+		<DiagramDrawing {shapes} {arrow} {selected} selectedEdge={view.edge} interactive />
 		{#if preview}
 			<line
 				class="preview"

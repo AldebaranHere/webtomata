@@ -92,6 +92,10 @@ export const id = {
 	'editor.edge_removed': 'Transisi dari {from} ke {to} dihapus.',
 	'document.invalid_symbol':
 		'Simbol "{symbol}" tidak bisa dipakai: tidak boleh kosong, terlalu panjang, atau berisi karakter terlarang.',
+	'editor.edge': 'Transisi dari {from} ke {to}: {symbols}',
+	'editor.edge_selected': 'Transisi dari {from} ke {to}: {symbols} dipilih.',
+	'editor.menu.edit': 'Ubah simbol',
+	'editor.menu.link': 'Tambah transisi dari sini',
 	'document.limit_exceeded': 'Batas tercapai: {what}, paling banyak {limit}.',
 	'soal.description': 'Soal latihan mesin berhingga dengan umpan balik yang tenang dan spesifik.',
 	'panduan.description': 'Panduan pola merancang DFSM, NDFSM dan ekspresi reguler.',

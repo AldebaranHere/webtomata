@@ -23,19 +23,28 @@ describe('the menu', () => {
 			{ action: 'rename' },
 			{ action: 'start', checked: true },
 			{ action: 'accepting', checked: false },
+			{ action: 'link' },
 			{ action: 'delete' }
 		]);
 		expect(menuItems({ kind: 'state', id: 1 }, doc(), [1])).toEqual([
 			{ action: 'rename' },
 			{ action: 'start', checked: false },
 			{ action: 'accepting', checked: true },
+			{ action: 'link' },
 			{ action: 'delete' }
 		]);
 	});
 
-	it('on several states: no rename and no start; accepting is on only when all are', () => {
+	it('on several states: no rename, start or link; accepting is on only when all are', () => {
 		expect(menuItems({ kind: 'state', id: 0 }, doc(), [0, 1])).toEqual([
 			{ action: 'accepting', checked: false },
+			{ action: 'delete' }
+		]);
+	});
+
+	it('on an edge: change the symbols, and delete', () => {
+		expect(menuItems({ kind: 'edge', from: 0, to: 1 }, doc(), [])).toEqual([
+			{ action: 'edit' },
 			{ action: 'delete' }
 		]);
 	});

@@ -281,6 +281,15 @@ Errors from the document keep their own keys (`document.duplicate_name` and so o
 - **A finger on a state (found on a real phone):** the editor cancels the browser's own handling of that touch (a non-passive `touchstart`), so a drag is not taken over by a scroll and the browser does not send the mouse events that follow a tap. Those events landed on the state under the finger and took the focus from a box that the tap had just opened. As a second defence, a name box or label box takes the focus back if it loses it in its first 400 ms. Playwright's `tap()` does not send those mouse events; the tests use real touch events (`e2e/touch.ts`).
 - **Not yet (S4c-2):** selecting, editing and deleting an edge, the menu items for an edge, and "Tambah transisi dari sini".
 
+## Decisions made while building S4c-2
+
+- **One edge at a time (a decision to revisit after U5):** the selection is either states or one edge, never both. A rectangle selects states only. So the rule "leave out edges of deleted states" in the delete batch is not needed: an edge is deleted alone, as one `batch` of `removeTransition`, one for each symbol.
+- **Hit areas:** every edge has an invisible line 44 units wide (and a box over its label) under the circles, so a state always wins where they overlap. In the State and Transisi tools the edges are part of the empty canvas (a click near a line still adds a state or cancels a choice).
+- **Keyboard:** each edge is a button ("Transisi dari q0 ke q1: a, b"). `Tab` reaches the states first and then the edges, and an edge that gets the focus by `Tab` is selected. `Enter` or `F2` edits it, `Delete` removes it, `Esc` clears it. After an edit the focus returns to the edge, or to its source state if the edge is gone.
+- **Pointer:** a click, a tap or a double-click on the line or its label selects it or edits it. In Hapus a click removes it. A touch that starts on an edge is the editor's (no scroll), as for a state, in Pilih and Hapus.
+- **Menu:** an edge has "Ubah simbol" and "Hapus". A state has "Tambah transisi dari sini" (one state only), which switches to Transisi with that state as the source.
+- **Delete toast:** deleting an edge shows the same toast with **Urungkan** ("Transisi dari q0 ke q1 dihapus.").
+
 ## What each interaction needs from S3
 
 Every interaction uses an existing command. No new command is needed for S4.

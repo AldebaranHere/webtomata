@@ -35,3 +35,21 @@ export async function touchDrag(page: Page, from: Locator, to: Locator): Promise
 	await cdp.detach();
 	await page.waitForTimeout(150);
 }
+
+/** A tap on a point of the page. */
+export async function touchTapAt(page: Page, at: { x: number; y: number }): Promise<void> {
+	const cdp = await page.context().newCDPSession(page);
+	await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at] });
+	await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+	await cdp.detach();
+	await page.waitForTimeout(150);
+}
+
+/** A finger that stays on a point for longer than a long-press. */
+export async function touchLongPressAt(page: Page, at: { x: number; y: number }): Promise<void> {
+	const cdp = await page.context().newCDPSession(page);
+	await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at] });
+	await page.waitForTimeout(700);
+	await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+	await cdp.detach();
+}

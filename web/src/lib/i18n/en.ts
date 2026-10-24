@@ -92,6 +92,10 @@ export const en: Record<MessageKey, string> = {
 	'editor.edge_removed': 'Transition from {from} to {to} removed.',
 	'document.invalid_symbol':
 		'The symbol "{symbol}" cannot be used: it must not be empty, too long, or contain forbidden characters.',
+	'editor.edge': 'Transition from {from} to {to}: {symbols}',
+	'editor.edge_selected': 'Transition from {from} to {to}: {symbols} selected.',
+	'editor.menu.edit': 'Change symbols',
+	'editor.menu.link': 'Add transition from here',
 	'document.limit_exceeded': 'Limit reached: {what}, at most {limit}.',
 	'soal.description': 'Practice questions on finite state machines with calm, specific feedback.',
 	'panduan.description':

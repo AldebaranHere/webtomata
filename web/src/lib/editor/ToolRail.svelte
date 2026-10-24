@@ -111,11 +111,16 @@
 			border-right: 0;
 			border-top: 1px solid var(--color-border);
 		}
+		/* The buttons share the bar. A long name wraps to a second line and never touches the edge. */
 		.tool {
-			width: 4.5rem;
+			flex: 1 1 0;
+			width: auto;
+			min-width: 0;
 			min-height: 3.5rem;
+			padding: var(--space-1) var(--space-2);
 			font-size: var(--text-2xs);
 			text-align: center;
+			overflow-wrap: anywhere;
 		}
 		.label {
 			position: static;
@@ -123,6 +128,7 @@
 			height: auto;
 			overflow: visible;
 			clip-path: none;
+			white-space: normal;
 		}
 		/* On a phone, undo and redo are in the title bar. */
 		.gap,

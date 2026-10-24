@@ -159,3 +159,38 @@ test('the editor texts follow the language', async ({ page }) => {
 	await expect(page.getByRole('application', { name: 'Machine canvas' })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Undo' }).first()).toBeVisible();
 });
+
+test('phone: every tool name stays inside its button with some room around it', async ({
+	page,
+	isMobile
+}) => {
+	test.skip(!isMobile, 'a phone only');
+	// The widest case: a narrow phone (the project phone is wider).
+	for (const width of [320, 412]) {
+		await page.setViewportSize({ width, height: 700 });
+		await openSandbox(page);
+		const bar = page.getByRole('toolbar', { name: 'Alat editor' });
+		for (const button of await bar.getByRole('button').all()) {
+			const label = button.locator('.label');
+			if ((await label.count()) === 0) continue;
+			const outer = (await button.boundingBox())!;
+			const inner = await label.evaluate((el) => {
+				const range = document.createRange();
+				range.selectNodeContents(el);
+				const r = range.getBoundingClientRect();
+				return { left: r.left, right: r.right };
+			});
+			const name = await label.innerText();
+			expect(inner.left - outer.x, `${name} at ${width}: left room`).toBeGreaterThanOrEqual(6);
+			expect(
+				outer.x + outer.width - inner.right,
+				`${name} at ${width}: right room`
+			).toBeGreaterThanOrEqual(6);
+		}
+		// The bar itself does not go beyond the screen.
+		const scroll = await page.evaluate(
+			() => document.documentElement.scrollWidth - document.documentElement.clientWidth
+		);
+		expect(scroll).toBeLessThanOrEqual(0);
+	}
+});
