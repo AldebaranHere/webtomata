@@ -1,0 +1,256 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "WebTomata question",
+	"description": "One file per question in content/questions/. Everything in the file is read as text; numbers and true/false are read where this schema asks for them, so an unquoted 0110 stays \"0110\". Start from _template.yaml. Rules that need the engine (the solution is valid, meets the constraints and agrees with the examples) are checked by `pnpm check:questions`.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"id",
+		"title",
+		"statement",
+		"type",
+		"alphabet",
+		"difficulty",
+		"week",
+		"pattern",
+		"examples",
+		"solution"
+	],
+	"properties": {
+		"schemaVersion": {
+			"description": "The version of this format. Old files are never broken: a new version comes with a migration.",
+			"type": "integer",
+			"const": 1
+		},
+		"id": {
+			"description": "The name of the question. It must equal the name of the file, without .yaml.",
+			"type": "string",
+			"pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+			"maxLength": 64
+		},
+		"title": { "$ref": "#/definitions/text120" },
+		"statement": {
+			"description": "Plain text. `backticks` mark code (a string, a symbol, an alphabet). A blank line starts a new paragraph. No Markdown and no HTML.",
+			"$ref": "#/definitions/text4000"
+		},
+		"type": {
+			"description": "build-dfsm: the student builds a DFSM. build-ndfsm: an NDFSM. write-regex: a regular expression. Practice in determinizing or minimizing is build-dfsm with minimal: true.",
+			"enum": ["build-dfsm", "build-ndfsm", "write-regex"]
+		},
+		"alphabet": {
+			"description": "The symbols of the question. A symbol has no space, comma or ε, and is not the word eps.",
+			"type": "array",
+			"minItems": 1,
+			"maxItems": 64,
+			"uniqueItems": true,
+			"items": { "$ref": "#/definitions/symbol" }
+		},
+		"constraints": {
+			"description": "What an answer must also satisfy. maxStates: any machine. complete (default true) and minimal: build-dfsm. allowEpsilon (default true): build-ndfsm.",
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"maxStates": { "type": "integer", "minimum": 1, "maximum": 100 },
+				"complete": { "type": "boolean" },
+				"minimal": { "type": "boolean" },
+				"allowEpsilon": { "type": "boolean" }
+			}
+		},
+		"difficulty": {
+			"description": "1 mudah, 2 sedang, 3 sulit.",
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 3
+		},
+		"week": {
+			"description": "The week of the syllabus, 1 to 14.",
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 14
+		},
+		"pattern": {
+			"description": "The design pattern that the question practises. It is the name of a guide in content/guides.",
+			"type": "string",
+			"pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+			"maxLength": 64
+		},
+		"references": {
+			"description": "Sections of the textbooks, for example rich: [\"5.2\"].",
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"rich": { "$ref": "#/definitions/sections" },
+				"sipser": { "$ref": "#/definitions/sections" }
+			}
+		},
+		"hints": {
+			"description": "Shown one at a time, only when the student asks.",
+			"type": "array",
+			"maxItems": 5,
+			"items": { "$ref": "#/definitions/text600" }
+		},
+		"examples": {
+			"description": "Strings that the answer accepts and rejects. The empty string is \"\" (or ε). `pnpm check:questions` runs each one through the solution.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["accept", "reject"],
+			"properties": {
+				"accept": { "$ref": "#/definitions/examples" },
+				"reject": { "$ref": "#/definitions/examples" }
+			}
+		},
+		"solution": {
+			"description": "For write-regex: the regular expression (∪ for union, ε, ∅). For a machine: states (optional), start, accepting and transitions written \"from symbol to\", where several symbols may be written 0,1 and ε is ε or eps."
+		}
+	},
+	"allOf": [
+		{
+			"if": {
+				"properties": { "type": { "const": "write-regex" } },
+				"required": ["type"]
+			},
+			"then": {
+				"properties": {
+					"solution": { "type": "string", "minLength": 1, "maxLength": 500 },
+					"constraints": { "additionalProperties": false, "properties": {} }
+				}
+			},
+			"else": {
+				"properties": { "solution": { "$ref": "#/definitions/machine" } }
+			}
+		},
+		{
+			"if": {
+				"properties": { "type": { "const": "build-dfsm" } },
+				"required": ["type"]
+			},
+			"then": {
+				"properties": {
+					"constraints": {
+						"properties": { "allowEpsilon": false }
+					}
+				}
+			}
+		},
+		{
+			"if": {
+				"properties": { "type": { "const": "build-ndfsm" } },
+				"required": ["type"]
+			},
+			"then": {
+				"properties": {
+					"constraints": {
+						"properties": { "complete": false, "minimal": false }
+					}
+				}
+			}
+		},
+		{
+			"description": "minimal needs complete: the minimal DFSM is counted with its dead state.",
+			"if": {
+				"properties": {
+					"constraints": {
+						"properties": { "minimal": { "type": "boolean", "const": true } },
+						"required": ["minimal"]
+					}
+				},
+				"required": ["constraints"]
+			},
+			"then": {
+				"properties": {
+					"constraints": {
+						"properties": { "complete": { "type": "boolean", "const": true } }
+					}
+				}
+			}
+		}
+	],
+	"definitions": {
+		"symbol": {
+			"type": "string",
+			"pattern": "^[^\\s,ε\\p{Cc}]{1,32}$",
+			"not": { "const": "eps" }
+		},
+		"text": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id"],
+			"properties": {
+				"id": { "type": "string", "minLength": 1 },
+				"en": { "type": "string", "minLength": 1 }
+			}
+		},
+		"text120": {
+			"allOf": [
+				{ "$ref": "#/definitions/text" },
+				{
+					"properties": {
+						"id": { "maxLength": 120 },
+						"en": { "maxLength": 120 }
+					}
+				}
+			]
+		},
+		"text600": {
+			"allOf": [
+				{ "$ref": "#/definitions/text" },
+				{
+					"properties": {
+						"id": { "maxLength": 600 },
+						"en": { "maxLength": 600 }
+					}
+				}
+			]
+		},
+		"text4000": {
+			"allOf": [
+				{ "$ref": "#/definitions/text" },
+				{
+					"properties": {
+						"id": { "maxLength": 4000 },
+						"en": { "maxLength": 4000 }
+					}
+				}
+			]
+		},
+		"sections": {
+			"type": "array",
+			"maxItems": 10,
+			"items": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)*$" }
+		},
+		"examples": {
+			"type": "array",
+			"minItems": 2,
+			"maxItems": 20,
+			"items": { "type": "string", "maxLength": 64 }
+		},
+		"stateName": { "type": "string", "pattern": "^[^\\s,]{1,32}$" },
+		"machine": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["start", "accepting", "transitions"],
+			"properties": {
+				"states": {
+					"type": "array",
+					"maxItems": 100,
+					"uniqueItems": true,
+					"items": { "$ref": "#/definitions/stateName" }
+				},
+				"start": { "$ref": "#/definitions/stateName" },
+				"accepting": {
+					"type": "array",
+					"maxItems": 100,
+					"uniqueItems": true,
+					"items": { "$ref": "#/definitions/stateName" }
+				},
+				"transitions": {
+					"type": "array",
+					"minItems": 1,
+					"maxItems": 2000,
+					"items": { "type": "string", "minLength": 5, "maxLength": 120 }
+				}
+			}
+		}
+	}
+}
