@@ -1,37 +1,43 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/id.ts';
 	import DiagramDrawing from './diagram/DiagramDrawing.svelte';
 	import { edgeGeometry } from './diagram/geometry.ts';
+	import ContextMenu from './ContextMenu.svelte';
 	import type { MachineDocument } from './document.ts';
+	import RenameField from './RenameField.svelte';
 	import { WORLD } from './interaction/canvas.ts';
 	import type { Point } from './interaction/canvas.ts';
 	import type { Editor, EditorState } from './interaction/editor.ts';
 	import { keyAction } from './interaction/keys.ts';
+	import { menuItems } from './interaction/menu.ts';
+	import type { MenuItem, MenuTarget } from './interaction/menu.ts';
 	import { nearestInDirection } from './interaction/selection.ts';
 
 	// The canvas of the editor: the drawing, and the pointer and keyboard. It turns what the user
 	// does into calls of the editor (interaction/editor.ts), where the rules are. The world is
 	// 1600 by 1000 units shown at 100%, and the browser scrolls it (S4d adds pan and zoom).
-	let { editor, state }: { editor: Editor; state: EditorState } = $props();
+	let { editor, state: view }: { editor: Editor; state: EditorState } = $props();
 
 	const uid = $props.id();
 	const arrow = `${uid}-arrow`;
 
 	// While a drag is under way, the states are drawn at their preview places.
 	const shown = $derived.by((): MachineDocument => {
-		const preview = state.preview;
-		if (!preview) return state.doc;
+		const preview = view.preview;
+		if (!preview) return view.doc;
 		return {
-			...state.doc,
-			states: state.doc.states.map((s) => {
+			...view.doc,
+			states: view.doc.states.map((s) => {
 				const place = preview.get(s.id);
 				return place ? { ...s, x: place.x, y: place.y } : s;
 			})
 		};
 	});
 	const shapes = $derived(edgeGeometry(shown, { startLabel: t('diagram.start') }));
-	const selected = $derived(new Set(state.selection));
+	const selected = $derived(new Set(view.selection));
+	const renamed = $derived(view.doc.states.find((s) => s.id === view.renaming));
 
 	let viewport: HTMLDivElement;
 	let svg: SVGSVGElement;
@@ -62,7 +68,15 @@
 	const threshold = (type: string) => (type === 'mouse' ? 4 : 8);
 
 	type Press =
-		| { kind: 'state'; id: number; pointerId: number; type: string; from: Point; dragging: boolean }
+		| {
+				kind: 'state';
+				id: number;
+				pointerId: number;
+				type: string;
+				from: Point;
+				dragging: boolean;
+				consumed: boolean;
+		  }
 		| {
 				kind: 'empty';
 				pointerId: number;
@@ -70,6 +84,7 @@
 				from: Point;
 				marquee: boolean;
 				moved: boolean;
+				consumed: boolean;
 		  };
 	let press: Press | null = null;
 	let lastInput: 'pointer' | 'keyboard' = 'pointer';
@@ -87,33 +102,126 @@
 		if (!frame) frame = requestAnimationFrame(flush);
 	}
 
+	// ---- the menu: a right-click, or a long-press with a finger ----
+
+	const LONG_PRESS_MS = 500;
+	let menu = $state<{
+		target: MenuTarget;
+		x: number;
+		y: number;
+		at: Point;
+		touch: boolean;
+	} | null>(null);
+	let longPress: ReturnType<typeof setTimeout> | undefined;
+	let refused = $state<string | null>(null);
+
+	function openMenu(
+		target: MenuTarget,
+		screen: { x: number; y: number },
+		at: Point,
+		touch = false
+	) {
+		if (target.kind === 'state' && !view.selection.includes(target.id)) {
+			editor.selectOnly(target.id);
+		}
+		menu = { target, x: screen.x, y: screen.y, at, touch };
+	}
+
+	function closeMenu() {
+		const open = menu;
+		menu = null;
+		// The focus goes back to what was pressed.
+		if (open?.target.kind === 'state') {
+			editor.focusState(open.target.id, { keepSelection: true });
+		} else {
+			viewport.focus({ preventScroll: true });
+		}
+	}
+
+	function pick(item: MenuItem) {
+		const open = menu;
+		menu = null;
+		viewport.focus({ preventScroll: true });
+		switch (item.action) {
+			case 'rename':
+				refused = null;
+				editor.startRename();
+				break;
+			case 'start':
+				editor.toggleStart();
+				break;
+			case 'accepting':
+				editor.toggleAccepting();
+				break;
+			case 'delete':
+				editor.deleteSelected();
+				break;
+			case 'add':
+				if (open) editor.addStateAt(open.at);
+				break;
+		}
+	}
+
+	function oncontextmenu(event: MouseEvent) {
+		// The browser's own menu would cover ours.
+		event.preventDefault();
+		const id = stateIdOf(event.target);
+		let screen = { x: event.clientX, y: event.clientY };
+		if (id !== undefined && screen.x === 0 && screen.y === 0) {
+			// From the keyboard (the menu key): at the state.
+			const box = (event.target as Element).closest('[data-state]')!.getBoundingClientRect();
+			screen = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+		}
+		openMenu(
+			id === undefined ? { kind: 'canvas' } : { kind: 'state', id },
+			screen,
+			toCanvas(event)
+		);
+	}
+
 	function onpointerdown(event: PointerEvent) {
 		if (event.button !== 0 || press) return;
 		lastInput = 'pointer';
 		const id = stateIdOf(event.target);
 		const from = toCanvas(event);
 		if (id !== undefined) {
+			// A mouse press does not move the focus by itself (it is prevented below): the keys
+			// (A, M, Enter, Delete) must reach the state that was pressed.
+			(event.target as Element).closest<SVGElement>('[data-state]')?.focus({ preventScroll: true });
 			press = {
 				kind: 'state',
 				id,
 				pointerId: event.pointerId,
 				type: event.pointerType,
 				from,
-				dragging: false
+				dragging: false,
+				consumed: false
 			};
 		} else {
 			// A rectangle with Shift and a mouse; a finger on empty canvas scrolls the page instead.
-			const marquee = state.tool === 'select' && event.shiftKey && event.pointerType === 'mouse';
+			const marquee = view.tool === 'select' && event.shiftKey && event.pointerType === 'mouse';
 			press = {
 				kind: 'empty',
 				pointerId: event.pointerId,
 				type: event.pointerType,
 				from,
 				marquee,
-				moved: false
+				moved: false,
+				consumed: false
 			};
 			if (marquee) editor.startMarquee(from);
 			viewport.focus({ preventScroll: true });
+		}
+		// A finger that stays in place opens the menu.
+		if (event.pointerType !== 'mouse') {
+			const target: MenuTarget = id === undefined ? { kind: 'canvas' } : { kind: 'state', id };
+			const screen = { x: event.clientX, y: event.clientY };
+			clearTimeout(longPress);
+			longPress = setTimeout(() => {
+				if (!press) return;
+				press.consumed = true;
+				openMenu(target, screen, from, true);
+			}, LONG_PRESS_MS);
 		}
 		// The pointer stays ours until it is released, also outside the canvas.
 		svg.setPointerCapture(event.pointerId);
@@ -124,8 +232,10 @@
 		if (!press || event.pointerId !== press.pointerId) return;
 		const point = toCanvas(event);
 		const far = Math.hypot(point.x - press.from.x, point.y - press.from.y) >= threshold(press.type);
+		if (far) clearTimeout(longPress);
+		if (press.consumed) return;
 		if (press.kind === 'state') {
-			if (!press.dragging && far && state.tool !== 'delete') {
+			if (!press.dragging && far && view.tool !== 'delete') {
 				press.dragging = true;
 				editor.beginDrag(press.id, press.from);
 			}
@@ -141,12 +251,14 @@
 		if (!press || event.pointerId !== press.pointerId) return;
 		const done = press;
 		press = null;
+		clearTimeout(longPress);
 		if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+		if (done.consumed) return;
 		if (done.kind === 'state') {
 			if (done.dragging) {
 				flush();
 				editor.endDrag();
-			} else if (state.tool === 'delete') {
+			} else if (view.tool === 'delete') {
 				editor.deleteStates([done.id]);
 			} else if (event.shiftKey || event.ctrlKey || event.metaKey) {
 				editor.toggle(done.id);
@@ -157,8 +269,8 @@
 			editor.endMarquee();
 		} else if (!done.moved) {
 			// A click or a tap on empty canvas.
-			if (state.tool === 'addState') editor.addStateAt(toCanvas(event));
-			else if (state.tool === 'select') editor.clearSelection();
+			if (view.tool === 'addState') editor.addStateAt(toCanvas(event));
+			else if (view.tool === 'select') editor.clearSelection();
 		}
 	}
 
@@ -168,14 +280,25 @@
 		const done = press;
 		press = null;
 		pending = null;
+		clearTimeout(longPress);
 		if (done.kind === 'state' && done.dragging) editor.cancelDrag();
 		if (done.kind === 'empty' && done.marquee) editor.escape();
 	}
 
-	/** A double-click on empty canvas adds a state, in any tool (the State tool already adds on a click). */
+	/**
+	 * A double-click on a state in Pilih toggles accepting. On empty canvas it adds a state, in any
+	 * tool (the State tool already adds on a click).
+	 */
 	function ondblclick(event: MouseEvent) {
-		if (stateIdOf(event.target) !== undefined || state.tool === 'addState') return;
-		editor.addStateAt(toCanvas(event));
+		// While a pointer is captured the target is the svg: ask for what is at the pointer.
+		const id = stateIdOf(document.elementFromPoint(event.clientX, event.clientY));
+		if (id !== undefined) {
+			if (view.tool !== 'select') return;
+			if (view.selection.length !== 1 || view.selection[0] !== id) editor.selectOnly(id);
+			editor.toggleAccepting();
+		} else if (view.tool !== 'addState') {
+			editor.addStateAt(toCanvas(event));
+		}
 	}
 
 	// ---- the keyboard ----
@@ -190,7 +313,7 @@
 				shift: event.shiftKey,
 				alt: event.altKey
 			},
-			{ fieldOpen: false }
+			{ fieldOpen: view.renaming !== null || menu !== null }
 		);
 		if (!action) return;
 		event.preventDefault();
@@ -219,17 +342,28 @@
 			case 'nudge':
 				editor.nudge(action.dx, action.dy);
 				break;
+			case 'toggleAccepting':
+				editor.toggleAccepting();
+				break;
+			case 'toggleStart':
+				editor.toggleStart();
+				break;
+			case 'rename':
+				// Enter on a button is a press: only a selected state is renamed.
+				refused = null;
+				editor.startRename();
+				break;
 			case 'toggleSelection':
-				if (state.focus.id !== null) editor.toggle(state.focus.id);
+				if (view.focus.id !== null) editor.toggle(view.focus.id);
 				break;
 			case 'focus': {
-				const from = state.focus.id ?? state.selection[0] ?? state.doc.states[0]?.id;
+				const from = view.focus.id ?? view.selection[0] ?? view.doc.states[0]?.id;
 				if (from === undefined) break;
 				// With no focus yet, the first arrow goes to the state that the selection or the id order names.
 				const next =
-					state.focus.id === null && state.doc.states.length > 0
+					view.focus.id === null && view.doc.states.length > 0
 						? from
-						: nearestInDirection(state.doc, from, action.direction);
+						: nearestInDirection(view.doc, from, action.direction);
 				if (next !== undefined) editor.focusState(next, { keepSelection: action.keepSelection });
 				break;
 			}
@@ -243,7 +377,7 @@
 	let seenRequest = 0;
 	let suppress = false;
 	$effect(() => {
-		const { id, request } = state.focus;
+		const { id, request } = view.focus;
 		if (request === seenRequest) return;
 		seenRequest = request;
 		untrack(() => {
@@ -269,6 +403,9 @@
 	}
 
 	function onfocusout(event: FocusEvent) {
+		// The name box and the menu come and go: when one is removed, the focus is not lost, it is
+		// moved by the view (see above), and a late "left" must not cancel that move.
+		if (event.target !== viewport && stateIdOf(event.target) === undefined) return;
 		const next = event.relatedTarget as Node | null;
 		if (next && viewport.contains(next)) return;
 		// The focus left the canvas: a series of keyboard moves ends here.
@@ -299,6 +436,7 @@
 	{onkeydown}
 	{onfocusin}
 	{onfocusout}
+	{oncontextmenu}
 >
 	<svg
 		class="world"
@@ -315,17 +453,40 @@
 	>
 		<rect class="ground" width={WORLD.width} height={WORLD.height} />
 		<DiagramDrawing {shapes} {arrow} {selected} interactive />
-		{#if state.marquee}
+		{#if view.marquee}
 			<rect
 				class="marquee"
-				x={Math.min(state.marquee.x, state.marquee.x + state.marquee.width)}
-				y={Math.min(state.marquee.y, state.marquee.y + state.marquee.height)}
-				width={Math.abs(state.marquee.width)}
-				height={Math.abs(state.marquee.height)}
+				x={Math.min(view.marquee.x, view.marquee.x + view.marquee.width)}
+				y={Math.min(view.marquee.y, view.marquee.y + view.marquee.height)}
+				width={Math.abs(view.marquee.width)}
+				height={Math.abs(view.marquee.height)}
 			/>
 		{/if}
 	</svg>
-	{#if state.doc.states.length === 0}
+	{#if renamed}
+		<RenameField
+			x={renamed.x}
+			y={renamed.y}
+			name={renamed.name}
+			problem={refused}
+			oncommit={(name) => {
+				const problem = editor.commitRename(name);
+				refused = problem ? t(problem.key as MessageKey, problem.params) : null;
+			}}
+			oncancel={() => editor.cancelRename()}
+		/>
+	{/if}
+	{#if menu}
+		<ContextMenu
+			items={menuItems(menu.target, view.doc, view.selection)}
+			x={menu.x}
+			y={menu.y}
+			guarded={menu.touch}
+			onpick={pick}
+			onclose={closeMenu}
+		/>
+	{/if}
+	{#if view.doc.states.length === 0}
 		<p class="hint">{t('editor.hint_empty')}</p>
 	{/if}
 </div>

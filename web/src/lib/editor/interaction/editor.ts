@@ -45,6 +45,16 @@ export interface EditorState {
 	/** The document is not the one that the editor was opened with. */
 	dirty: boolean;
 	announcement: Announcement | null;
+	/** The state whose name is being edited. */
+	renaming: number | null;
+	/** What the last delete removed, for the message with Urungkan. It goes with the next change. */
+	toast: Announcement | null;
+}
+
+/** A message of the document, as a key with parameters. */
+export interface Refusal {
+	key: MessageKey;
+	params: Params;
 }
 
 export interface Editor {
@@ -73,6 +83,14 @@ export interface Editor {
 	nudge(dx: number, dy: number): void;
 	deleteSelected(): void;
 	deleteStates(ids: readonly number[]): void;
+	toggleAccepting(): void;
+	toggleStart(): void;
+	/** Opens the name field for the one selected state. */
+	startRename(): void;
+	/** Sends a name. Returns null when the field closed, or why the name was refused (it stays open). */
+	commitRename(name: string): Refusal | null;
+	cancelRename(): void;
+	dismissToast(): void;
 
 	undo(): void;
 	redo(): void;
@@ -84,7 +102,7 @@ export interface Editor {
 const clamp = (n: number, low: number, high: number) => Math.min(high, Math.max(low, n));
 
 /** A message of the document as an announcement; one that has no text becomes the general refusal. */
-function refusal(error: Message): { key: MessageKey; params: Params } {
+function refusal(error: Message): Refusal {
 	return Object.hasOwn(messages, error.key)
 		? { key: error.key as MessageKey, params: error.params as Params }
 		: { key: 'editor.refused', params: {} };
@@ -123,7 +141,9 @@ export function createEditor(initial: MachineDocument): Editor {
 		canUndo: false,
 		canRedo: false,
 		dirty: false,
-		announcement: null
+		announcement: null,
+		renaming: null,
+		toast: null
 	};
 
 	const say = (key: MessageKey, params: Params = {}): Announcement => ({
@@ -144,6 +164,7 @@ export function createEditor(initial: MachineDocument): Editor {
 	/** Takes the document and the history as they are now, plus other changes, in one notification. */
 	function commit(patch: Partial<EditorState> = {}) {
 		const doc = history.doc;
+		const before = state.doc;
 		const selection = prune(patch.selection ?? state.selection, doc);
 		const focus = patch.focus ?? state.focus;
 		state = {
@@ -159,6 +180,11 @@ export function createEditor(initial: MachineDocument): Editor {
 			canRedo: history.canRedo,
 			dirty: !documentsEqual(initial, doc)
 		};
+		// The name field closes with its state, and the toast goes with the next change of the document.
+		const renaming = patch.renaming === undefined ? state.renaming : patch.renaming;
+		state.renaming =
+			renaming !== null && doc.states.some((s) => s.id === renaming) ? renaming : null;
+		if (patch.toast === undefined && doc !== before) state.toast = null;
 		notify();
 	}
 
@@ -187,8 +213,11 @@ export function createEditor(initial: MachineDocument): Editor {
 		commit({ selection: next, announcement: describe(next) });
 	}
 
+	/** A drag under way, or a name field that is open: nothing else edits the document. */
+	const busy = () => drag !== null || state.renaming !== null;
+
 	function addStateAt(point: Point) {
-		if (drag) return;
+		if (busy()) return;
 		history.seal();
 		const x = clamp(Math.round(point.x), MARGIN, WORLD.width - MARGIN);
 		const y = clamp(Math.round(point.y), MARGIN, WORLD.height - MARGIN);
@@ -207,7 +236,7 @@ export function createEditor(initial: MachineDocument): Editor {
 	}
 
 	function deleteStates(ids: readonly number[]) {
-		if (drag) return;
+		if (busy()) return;
 		const doomed = history.doc.states.filter((s) => ids.includes(s.id));
 		if (doomed.length === 0) return;
 		history.seal();
@@ -226,13 +255,58 @@ export function createEditor(initial: MachineDocument): Editor {
 		}
 		const commands: Command[] = doomed.map((s) => ({ type: 'removeState', id: s.id }));
 		history.execute(commands.length === 1 ? commands[0]! : { type: 'batch', commands });
+		const message =
+			doomed.length === 1
+				? say('editor.deleted_state', { name: doomed[0]!.name })
+				: say('editor.deleted_states', { count: doomed.length });
 		commit({
 			selection: [],
 			focus: { id: target, request: ++focusRequest },
+			announcement: message,
+			toast: message
+		});
+	}
+
+	function toggleAccepting() {
+		const ids = state.selection;
+		if (busy() || ids.length === 0) return;
+		history.seal();
+		const on = !ids.every((id) => history.doc.accepting.includes(id));
+		const commands: Command[] = ids.map((id) => ({ type: 'setAccepting', id, accepting: on }));
+		history.execute(commands.length === 1 ? commands[0]! : { type: 'batch', commands });
+		commit({
 			announcement:
-				doomed.length === 1
-					? say('editor.deleted_state', { name: doomed[0]!.name })
-					: say('editor.deleted_states', { count: doomed.length })
+				ids.length === 1
+					? say(on ? 'editor.accepting_on' : 'editor.accepting_off', {
+							name: stateOf(ids[0]!)?.name ?? ''
+						})
+					: say('editor.accepting_changed', { count: ids.length })
+		});
+	}
+
+	function toggleStart() {
+		if (busy()) return;
+		const [id] = state.selection;
+		if (id === undefined || state.selection.length !== 1) {
+			set({ announcement: say('editor.need_one_state') });
+			return;
+		}
+		history.seal();
+		const clear = history.doc.start === id;
+		history.execute({ type: 'setStart', id: clear ? null : id });
+		commit({
+			announcement: clear
+				? say('editor.start_cleared')
+				: say('editor.start_set', { name: stateOf(id)?.name ?? '' })
+		});
+	}
+
+	function closeRename(patch: Partial<EditorState> = {}) {
+		const id = state.renaming;
+		commit({
+			renaming: null,
+			focus: { id, request: ++focusRequest },
+			...patch
 		});
 	}
 
@@ -323,7 +397,7 @@ export function createEditor(initial: MachineDocument): Editor {
 		},
 
 		nudge(dx, dy) {
-			if (drag || state.selection.length === 0) return;
+			if (busy() || state.selection.length === 0) return;
 			const originals = originalsOf(state.selection);
 			const before = history.doc;
 			history.execute(moveStates(dragPlaces(originals, { x: dx, y: dy }, false)), {
@@ -339,12 +413,44 @@ export function createEditor(initial: MachineDocument): Editor {
 		},
 		deleteSelected: () => deleteStates(state.selection),
 		deleteStates,
+		toggleAccepting,
+		toggleStart,
+
+		startRename() {
+			if (busy() || state.selection.length !== 1) return;
+			history.seal();
+			set({ renaming: state.selection[0]! });
+		},
+		commitRename(name) {
+			const id = state.renaming;
+			if (id === null) return null;
+			const before = history.doc;
+			const result = history.execute({ type: 'renameState', id, name });
+			if (!result.ok) {
+				const problem = refusal(result.error);
+				set({ announcement: say(problem.key, problem.params) });
+				return problem;
+			}
+			closeRename(history.doc === before ? {} : { announcement: say('editor.renamed', { name }) });
+			return null;
+		},
+		cancelRename() {
+			if (state.renaming !== null) closeRename();
+		},
+		dismissToast() {
+			if (state.toast) set({ toast: null });
+		},
 
 		undo() {
 			if (drag || !history.canUndo) return;
 			history.seal();
+			// With a toast on the screen the undo may come from its button, which then goes away.
+			const refocus = state.toast !== null;
 			history.undo();
-			commit({ announcement: say('editor.undone') });
+			commit({
+				announcement: say('editor.undone'),
+				...(refocus ? { focus: { id: null, request: ++focusRequest } } : {})
+			});
 		},
 		redo() {
 			if (drag || !history.canRedo) return;
@@ -353,7 +459,9 @@ export function createEditor(initial: MachineDocument): Editor {
 			commit({ announcement: say('editor.redone') });
 		},
 		escape() {
-			if (drag) {
+			if (state.renaming !== null) {
+				closeRename();
+			} else if (drag) {
 				drag = null;
 				set({ dragging: false, preview: null });
 			} else if (marqueeStart) {

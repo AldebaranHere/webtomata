@@ -34,7 +34,6 @@ export const en: Record<MessageKey, string> = {
 	'engine.retry': 'Try again',
 
 	'sandbox.description': 'Build, run and convert finite state machines right in the browser.',
-	'sandbox.preview': 'A preview of how a machine is drawn. The editor is coming soon.',
 
 	'diagram.label': '{kind} with {count} state(s)',
 	'diagram.start': 'start',
@@ -64,6 +63,24 @@ export const en: Record<MessageKey, string> = {
 	'editor.undone': 'Undone.',
 	'editor.redone': 'Redone.',
 	'editor.refused': 'That could not be done.',
+	'editor.accepting_on': '{name} is now an accepting state.',
+	'editor.accepting_off': '{name} is no longer an accepting state.',
+	'editor.accepting_changed': 'Accepting state changed on {count} state(s).',
+	'editor.start_set': '{name} is now the start state.',
+	'editor.start_cleared': 'Start state cleared.',
+	'editor.need_one_state': 'Select exactly one state first.',
+	'editor.renamed': 'The state is now named {name}.',
+	'editor.rename_field': 'State name',
+	'editor.menu': 'State menu',
+	'editor.toast': 'Message',
+	'editor.menu.rename': 'Rename',
+	'editor.menu.start': 'Make start state',
+	'editor.menu.accepting': 'Accepting state',
+	'editor.menu.delete': 'Delete',
+	'editor.menu.add': 'Add state here',
+	'document.duplicate_name': 'The name {name} is used by another state.',
+	'document.invalid_name':
+		'A name cannot be empty, start or end with a space, or be longer than 32 characters.',
 	'document.limit_exceeded': 'Limit reached: {what}, at most {limit}.',
 	'soal.description': 'Practice questions on finite state machines with calm, specific feedback.',
 	'panduan.description':

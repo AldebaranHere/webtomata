@@ -7,6 +7,7 @@
 	import type { MachineDocument } from './document.ts';
 	import { createEditor } from './interaction/editor.ts';
 	import ToolRail from './ToolRail.svelte';
+	import Toast from './Toast.svelte';
 
 	// The editor of a machine: the tools, the canvas and the title bar. It starts from `doc`; later
 	// changes to the prop are not read (the editor owns the document and its history).
@@ -48,6 +49,11 @@
 			</span>
 		</div>
 		<EditorCanvas {editor} state={snapshot} />
+		<Toast
+			toast={snapshot.toast}
+			onundo={() => editor.undo()}
+			ondismiss={() => editor.dismissToast()}
+		/>
 	</div>
 	<Announcer announcement={snapshot.announcement} />
 </div>
@@ -59,6 +65,7 @@
 		min-height: 0;
 	}
 	.work {
+		position: relative;
 		display: flex;
 		flex: 1;
 		flex-direction: column;

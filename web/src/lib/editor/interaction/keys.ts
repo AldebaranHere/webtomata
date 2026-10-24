@@ -26,7 +26,10 @@ export type Action =
 	| { type: 'redo' }
 	| { type: 'nudge'; dx: number; dy: number }
 	| { type: 'focus'; direction: Direction; keepSelection: boolean }
-	| { type: 'toggleSelection' };
+	| { type: 'toggleSelection' }
+	| { type: 'toggleAccepting' }
+	| { type: 'toggleStart' }
+	| { type: 'rename' };
 
 const ARROWS: Record<string, Direction> = {
 	ArrowLeft: 'left',
@@ -69,6 +72,13 @@ export function keyAction(input: KeyInput, context: KeyContext): Action | undefi
 			return { type: 'tool', tool: 'addState' };
 		case 'n':
 			return { type: 'newState' };
+		case 'a':
+			return { type: 'toggleAccepting' };
+		case 'm':
+			return { type: 'toggleStart' };
+		case 'Enter':
+		case 'F2':
+			return { type: 'rename' };
 		case 'Delete':
 		case 'Backspace':
 			return { type: 'delete' };

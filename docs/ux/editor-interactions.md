@@ -259,6 +259,16 @@ Errors from the document keep their own keys (`document.duplicate_name` and so o
 - **Layout:** on a laptop the tools and undo/redo are a column at the left. On a phone the tools are a bar at the bottom and undo/redo are in the title bar. Targets are at least 44 px.
 - **Sandbox page:** it fills the screen and has no footer. Until autosave (S10a) a "leave the page?" warning protects unsaved changes.
 
+## Decisions made while building S4b-2
+
+- **Focus follows a press:** pressing a state with the mouse or a finger also gives it the keyboard focus, so `A`, `M`, `Enter` and `Delete` act on it at once.
+- **Name field:** a text box in canvas units (it scrolls with the canvas), 44 px high, text 16 px, the name selected when it opens. Leaving the box without `Enter` (a tap elsewhere) cancels. The field closes by itself if its state is gone. While it is open, the other editing is blocked and the keys of the canvas do not reach it.
+- **Refused names:** `document.duplicate_name` and `document.invalid_name` have their own texts, shown under the box and said by the live region.
+- **Menu:** opens with a right-click, the menu key, or a long-press of 500 ms (cancelled when the finger moves 8 px). Pressing a state that is not selected selects it first. For one state: Ubah nama, Jadikan start state, Accepting state, Hapus. For several: Accepting state, Hapus. For empty canvas: Tambah state di sini, at the press. A finger lifted within 350 ms of a long-press does not choose an item.
+- **Toast:** it is not a live region itself, because the live region of the editor already says the same words. It stays while the pointer or the focus is on it. After **Urungkan**, the focus goes back to the canvas. Any change to the document removes it.
+- **Double-click** reads the state under the pointer, not the event target, because the browser reports the captured svg as the target.
+- **Not yet:** the menu item "Tambah transisi dari sini" and the items for an edge come with S4c, and the Transisi button of the dock too.
+
 ## What each interaction needs from S3
 
 Every interaction uses an existing command. No new command is needed for S4.

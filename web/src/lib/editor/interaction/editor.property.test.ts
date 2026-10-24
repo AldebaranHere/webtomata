@@ -70,8 +70,16 @@ function act(rng: Random, editor: Editor) {
 		editor.moveMarquee(point(rng));
 		if (rng.chance(0.7)) editor.endMarquee();
 		else editor.escape();
-	} else if (roll < 97) editor.focusState(someId(rng, editor), { keepSelection: rng.chance(0.5) });
-	else editor.noteFocus(rng.chance(0.2) ? null : someId(rng, editor));
+	} else if (roll < 96) editor.focusState(someId(rng, editor), { keepSelection: rng.chance(0.5) });
+	else if (roll < 97) editor.toggleAccepting();
+	else if (roll < 98) editor.toggleStart();
+	else if (roll < 99) {
+		// A name field: opened, then a name that may be refused, or a cancel.
+		editor.startRename();
+		const name = rng.pick(['q0', 'q1', 'x', '', ' y', 'Genap']);
+		if (rng.chance(0.7)) editor.commitRename(name);
+		if (rng.chance(0.5)) editor.cancelRename();
+	} else editor.noteFocus(rng.chance(0.2) ? null : someId(rng, editor));
 }
 
 describe('random sequences of actions in the editor', () => {
@@ -90,6 +98,9 @@ describe('random sequences of actions in the editor', () => {
 				expect([...s.selection], where).toEqual([...new Set(s.selection)].sort((a, b) => a - b));
 				for (const id of s.selection) expect(ids, `${where}: selected ${id}`).toContain(id);
 				if (s.focus.id !== null) expect(ids, `${where}: focus`).toContain(s.focus.id);
+				if (s.renaming !== null) expect(ids, `${where}: renaming`).toContain(s.renaming);
+				// The start state is a state that exists.
+				if (s.doc.start !== null) expect(ids, `${where}: start`).toContain(s.doc.start);
 				// A drag that is not under way leaves no preview.
 				if (!s.dragging) expect(s.preview, where).toBeNull();
 				// Every state is inside the world.
