@@ -20,4 +20,4 @@ The engine reads Rich's syntax (textbook section 6.1, rules 1 to 8) and writes i
 
 Only `∪` is accepted for union. The UI offers buttons for `∪`, `ε` and `∅`, and a small note that other tools write union differently: JFLAP uses `+` (and `!` for ε), and programming languages use `|`. Here `+` always means "one or more".
 
-TODO(review): the course slides lost the union and ε glyphs when the text was extracted. They read as `∪` and `ε` in context (for example `(ab ∪ b)*(a ∪ ε)`), but check them against the slide images. Also confirm the Rich transition notation (Δ, yields) against the book.
+The slides draw union as `∪` and the empty string as `ε` (checked by the owner on 2026-10-24; the text extraction of the PDFs loses these glyphs). TODO(review): confirm the Rich transition notation (Δ, yields) against the book.
