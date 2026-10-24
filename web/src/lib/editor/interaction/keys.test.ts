@@ -201,3 +201,46 @@ describe('keys that must not be taken', () => {
 		}
 	});
 });
+
+// Every key of the table "Keys" in docs/ux/editor-interactions.md. If a key of the spec stops
+// working, or the spec gets a key that the code does not have, this list says so.
+describe('the whole key table of the spec', () => {
+	const rows: [string, KeyInput][] = [
+		['V: Pilih', key('v')],
+		['S: Tambah state', key('s')],
+		['T: Tambah transisi', key('t')],
+		['Esc', key('Escape')],
+		['N: a new state', key('n')],
+		['Enter: rename or edit', key('Enter')],
+		['F2: rename or edit', key('F2')],
+		['A: accepting', key('a')],
+		['M: start', key('m')],
+		['Delete', key('Delete')],
+		['Backspace', key('Backspace')],
+		['Alt+Arrow: move by 10', key('ArrowRight', { alt: true })],
+		['Alt+Shift+Arrow: move by 50', key('ArrowRight', { alt: true, shift: true })],
+		['Arrow: focus', key('ArrowRight')],
+		['Shift+Arrow: pan', key('ArrowRight', { shift: true })],
+		['+: zoom in', key('+', { shift: true })],
+		['-: zoom out', key('-')],
+		['0: 100%', key('0')],
+		['1: fit', key('1')],
+		['Ctrl+A', key('a', { ctrl: true })],
+		['Cmd+A', key('a', { meta: true })],
+		['Ctrl+Z', key('z', { ctrl: true })],
+		['Cmd+Z', key('z', { meta: true })],
+		['Ctrl+Y', key('y', { ctrl: true })],
+		['Ctrl+Shift+Z', key('Z', { ctrl: true, shift: true })],
+		['Cmd+Shift+Z', key('z', { meta: true, shift: true })]
+	];
+
+	for (const [name, input] of rows) {
+		it(`${name} does something`, () => {
+			expect(keyAction(input, ctx)).toBeDefined();
+		});
+	}
+
+	it('and Ctrl+E is for the label box, which handles it itself (no action on the canvas)', () => {
+		expect(keyAction(key('e', { ctrl: true }), ctx)).toBeUndefined();
+	});
+});

@@ -7,6 +7,7 @@ import {
 	centerOf,
 	fit,
 	panBy,
+	pinch,
 	percent,
 	reveal,
 	toScreen,
@@ -174,5 +175,48 @@ describe('the wheel', () => {
 
 	it('a wheel counted in lines is turned into pixels', () => {
 		expect(wheel(IDENTITY, { ...base, deltaMode: 1, deltaY: 3 }).y).toBe(-48);
+	});
+});
+
+describe('pinch', () => {
+	const start = { x: 40, y: -30, scale: 1 };
+	const from = { a: { x: 300, y: 300 }, b: { x: 500, y: 300 } };
+
+	it('moving the fingers apart zooms in around the point between them, which stays under it', () => {
+		const to = { a: { x: 200, y: 300 }, b: { x: 600, y: 300 } };
+		const after = pinch(start, from, to);
+		close(after.scale, 2);
+		const was = toWorld(start, { x: 400, y: 300 });
+		const now = toWorld(after, { x: 400, y: 300 });
+		close(now.x, was.x);
+		close(now.y, was.y);
+	});
+
+	it('moving them together zooms out', () => {
+		const to = { a: { x: 350, y: 300 }, b: { x: 450, y: 300 } };
+		close(pinch(start, from, to).scale, 0.5);
+	});
+
+	it('fingers that move together without changing their distance pan the view', () => {
+		const to = { a: { x: 330, y: 340 }, b: { x: 530, y: 340 } };
+		const after = pinch(start, from, to);
+		close(after.scale, 1);
+		close(after.x, start.x + 30);
+		close(after.y, start.y + 40);
+	});
+
+	it('stays between 25% and 400%, and keeps the point between the fingers where it is', () => {
+		const to = { a: { x: 0, y: 300 }, b: { x: 5000, y: 300 } };
+		const after = pinch(start, from, to);
+		expect(after.scale).toBe(MAX_SCALE);
+		const small = pinch(start, from, { a: { x: 399, y: 300 }, b: { x: 401, y: 300 } });
+		expect(small.scale).toBe(MIN_SCALE);
+	});
+
+	it('fingers that start on the same point do not divide by zero', () => {
+		const same = { a: { x: 100, y: 100 }, b: { x: 100, y: 100 } };
+		const after = pinch(start, same, { a: { x: 90, y: 100 }, b: { x: 110, y: 100 } });
+		expect(Number.isFinite(after.scale)).toBe(true);
+		expect(Number.isFinite(after.x)).toBe(true);
 	});
 });

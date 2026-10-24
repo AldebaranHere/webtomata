@@ -72,3 +72,44 @@ export async function touchLongPressAt(page: Page, at: { x: number; y: number })
 	await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 	await cdp.detach();
 }
+
+/**
+ * Several fingers at once, step by step. Each call gives all the fingers that are down at that
+ * moment (the browser works out which finger went down, moved or lifted).
+ */
+export async function touchSession(page: Page) {
+	const cdp = await page.context().newCDPSession(page);
+	type Points = { x: number; y: number; id: number }[];
+	const send = (type: 'touchStart' | 'touchMove' | 'touchEnd', touchPoints: Points) =>
+		cdp.send('Input.dispatchTouchEvent', { type, touchPoints });
+	return {
+		/** A finger goes down (give every finger that is down, the new one included). */
+		down: (points: Points) => send('touchStart', points),
+		move: (points: Points) => send('touchMove', points),
+		/** Every finger is lifted. */
+		up: async () => {
+			await send('touchEnd', []);
+			await page.waitForTimeout(150);
+		},
+		close: () => cdp.detach()
+	};
+}
+
+/** Two fingers that go apart (or together) around a point, in steps. */
+export async function touchPinch(
+	page: Page,
+	middle: { x: number; y: number },
+	gapFrom: number,
+	gapTo: number
+): Promise<void> {
+	const session = await touchSession(page);
+	const at = (gap: number) => [
+		{ x: middle.x - gap / 2, y: middle.y, id: 1 },
+		{ x: middle.x + gap / 2, y: middle.y, id: 2 }
+	];
+	await session.down(at(gapFrom).slice(0, 1));
+	await session.down(at(gapFrom));
+	for (let i = 1; i <= 8; i++) await session.move(at(gapFrom + ((gapTo - gapFrom) * i) / 8));
+	await session.up();
+	await session.close();
+}

@@ -3,7 +3,7 @@
 // zoom. The maths has unit tests (interaction/camera.test.ts); this checks the browser.
 import { expect, expectNoAxeViolations, openSandbox, test } from './fixtures.ts';
 import type { Locator, Page } from '@playwright/test';
-import { touchDragAt } from './touch.ts';
+import { touchDragAt, touchPinch, touchSession } from './touch.ts';
 
 const nodes = (page: Page) => page.locator('svg.world g.node');
 const canvas = (page: Page) => page.getByRole('application', { name: 'Kanvas mesin' });
@@ -296,6 +296,89 @@ test.describe('with a finger', () => {
 		await fit.tap();
 		near(await center(q(page, 'q1')), before);
 		await expectNoAxeViolations(page);
+	});
+
+	test('two fingers pinch: the zoom follows the distance and the point between them stays', async ({
+		page
+	}) => {
+		await openSandbox(page);
+		const middle = await center(q(page, 'q1'));
+		const size = (await q(page, 'q1').locator('circle.state').boundingBox())!.width;
+		await touchPinch(page, middle, 110, 220);
+		const bigger = (await q(page, 'q1').locator('circle.state').boundingBox())!.width;
+		expect(bigger / size).toBeGreaterThan(1.8);
+		expect(bigger / size).toBeLessThan(2.2);
+		near(await center(q(page, 'q1')), middle, 3);
+
+		await touchPinch(page, middle, 220, 110);
+		const back = (await q(page, 'q1').locator('circle.state').boundingBox())!.width;
+		expect(Math.abs(back - size)).toBeLessThan(size * 0.1);
+		await expectNoAxeViolations(page);
+	});
+
+	test('a second finger drops a drag that the first one began: the state goes back', async ({
+		page
+	}) => {
+		await openSandbox(page);
+		const from = await center(q(page, 'q1'));
+		const area = (await canvas(page).boundingBox())!;
+		const session = await touchSession(page);
+		await session.down([{ ...from, id: 1 }]);
+		for (let i = 1; i <= 4; i++) {
+			await session.move([{ x: from.x + i * 10, y: from.y + i * 8, id: 1 }]);
+		}
+		const moved = await center(q(page, 'q1'));
+		expect(Math.abs(moved.x - from.x)).toBeGreaterThan(20);
+		const other = { x: area.x + 30, y: area.y + 40, id: 2 };
+		await session.down([{ x: from.x + 40, y: from.y + 32, id: 1 }, other]);
+		await page.waitForTimeout(100);
+		near(await center(q(page, 'q1')), from, 1);
+		await session.up();
+		await session.close();
+		near(await center(q(page, 'q1')), from, 1);
+		// No step was made: there is nothing to undo.
+		await expect(page.getByRole('button', { name: 'Urungkan' }).first()).toBeDisabled();
+	});
+
+	test('a second finger stops a long-press: no menu opens', async ({ page }) => {
+		await openSandbox(page);
+		const on = await center(q(page, 'q1'));
+		const area = (await canvas(page).boundingBox())!;
+		const session = await touchSession(page);
+		await session.down([{ ...on, id: 1 }]);
+		await page.waitForTimeout(250);
+		await session.down([
+			{ ...on, id: 1 },
+			{ x: area.x + 30, y: area.y + 40, id: 2 }
+		]);
+		await page.waitForTimeout(700);
+		await expect(page.getByRole('menu')).toBeHidden();
+		await session.up();
+		await session.close();
+	});
+
+	test('after a pinch, the finger that is left does not pan or select until it is lifted', async ({
+		page
+	}) => {
+		await openSandbox(page);
+		const middle = await center(q(page, 'q1'));
+		const session = await touchSession(page);
+		const two = [
+			{ x: middle.x - 55, y: middle.y + 90, id: 1 },
+			{ x: middle.x + 55, y: middle.y + 90, id: 2 }
+		];
+		await session.down(two.slice(0, 1));
+		await session.down(two);
+		await session.move(two.map((p) => ({ ...p, x: p.x + (p.id === 1 ? -20 : 20) })));
+		// One finger is lifted (the second one stays), and moves over a state.
+		const still = [{ x: middle.x + 75, y: middle.y + 90, id: 2 }];
+		await session.move(still);
+		const before = await center(q(page, 'q1'));
+		await session.move([{ x: middle.x + 75, y: middle.y + 140, id: 2 }]);
+		await page.waitForTimeout(100);
+		near(await center(q(page, 'q1')), before, 20);
+		await session.up();
+		await session.close();
 	});
 
 	test('a finger drag that starts on a state still moves the state, not the view', async ({

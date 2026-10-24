@@ -118,3 +118,27 @@ export function wheel(c: Camera, e: WheelInput): Camera {
 	}
 	return panBy(c, -e.deltaX * unit, -e.deltaY * unit);
 }
+
+interface Fingers {
+	a: Point;
+	b: Point;
+}
+
+/**
+ * Two fingers: the zoom follows the distance between them, and the point of the world that was
+ * between them at the start stays between them as they move (so the fingers also pan). `start` is the
+ * camera when the second finger touched; `from` and `to` are the fingers then and now.
+ */
+export function pinch(start: Camera, from: Fingers, to: Fingers): Camera {
+	const before = Math.hypot(from.b.x - from.a.x, from.b.y - from.a.y);
+	const now = Math.hypot(to.b.x - to.a.x, to.b.y - to.a.y);
+	const scale = clamp(
+		before > 0 ? start.scale * (now / before) : start.scale,
+		MIN_SCALE,
+		MAX_SCALE
+	);
+	const middleBefore = { x: (from.a.x + from.b.x) / 2, y: (from.a.y + from.b.y) / 2 };
+	const middleNow = { x: (to.a.x + to.b.x) / 2, y: (to.a.y + to.b.y) / 2 };
+	const world = toWorld(start, middleBefore);
+	return { scale, x: middleNow.x - world.x * scale, y: middleNow.y - world.y * scale };
+}

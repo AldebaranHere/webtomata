@@ -17,6 +17,7 @@
 		fit,
 		panBy,
 		percent,
+		pinch,
 		reveal,
 		toScreen,
 		wheel,
@@ -81,7 +82,10 @@
 	/** The group that is moved and scaled by the camera. */
 	let world: SVGGElement;
 	let size = $state({ width: 0, height: 0 });
-	let camera = $state<Camera>(IDENTITY);
+	// A raw state: a camera is replaced, never changed, and a comparison by reference is wanted.
+	let camera = $state.raw<Camera>(IDENTITY);
+	/** The camera that "fit" made, while the user has not moved it. Then a new size of the view refits. */
+	let fitted: Camera | null = null;
 	const screenOf = (p: Point) => toScreen(camera, p);
 	// The dots of the background move and scale with the camera (a sparser grid when it is small).
 	const dotGap = $derived((camera.scale < 0.5 ? 80 : 20) * camera.scale);
@@ -95,6 +99,17 @@
 	const machineBounds = () => (view.doc.states.length === 0 ? null : shapes.bounds);
 	const viewSize = () => ({ width: viewport.clientWidth, height: viewport.clientHeight });
 
+	// The view gets its final size a moment after the first draw (fonts, the bars): until the user
+	// moves the camera, a new size fits the machine again.
+	$effect(() => {
+		const { width, height } = size;
+		if (width <= 0 || height <= 0) return;
+		untrack(() => {
+			if (fitted !== null && camera === fitted)
+				camera = fitted = fit(machineBounds(), { width, height });
+		});
+	});
+
 	/** The buttons and the keys of the zoom. All of them zoom around the middle of the view. */
 	export function zoom(mode: 'in' | 'out' | 'reset' | 'fit') {
 		const now = viewSize();
@@ -102,7 +117,7 @@
 		if (mode === 'in') camera = zoomBy(camera, middle, ZOOM_STEP);
 		else if (mode === 'out') camera = zoomBy(camera, middle, 1 / ZOOM_STEP);
 		else if (mode === 'reset') camera = zoomAt(camera, middle, 1);
-		else camera = fit(machineBounds(), now);
+		else camera = fitted = fit(machineBounds(), now);
 	}
 
 	// ---- coordinates: from the screen to the canvas, with the matrix of the moved group ----
@@ -174,6 +189,78 @@
 	let pressClient = { x: 0, y: 0 };
 	let panFrom: Camera | null = null;
 	let spaceDown = false;
+
+	// ---- two fingers: a pinch ----
+
+	// The fingers that are on the canvas, on the screen. A second finger ends whatever the first one
+	// began (a drag, a long-press, an arrow) and starts a pinch: the zoom follows the distance between
+	// the fingers, and the point between them stays between them. Until every finger is lifted, no
+	// finger starts anything new.
+	let fingers: { id: number; x: number; y: number }[] = [];
+	const touchAt = (id: number) => fingers.find((f) => f.id === id);
+	const touchSet = (id: number, x: number, y: number) => {
+		fingers = [...fingers.filter((f) => f.id !== id), { id, x, y }];
+	};
+	let pinching: { camera: Camera; ids: [number, number]; from: { a: Point; b: Point } } | null =
+		null;
+	let waitForLift = false;
+
+	/** A point of the screen as a point of the view (the camera works in the view). */
+	function inView(p: { x: number; y: number }): Point {
+		const box = viewport.getBoundingClientRect();
+		return { x: p.x - box.left, y: p.y - box.top };
+	}
+
+	/** What the first finger began is dropped: a drag goes back, a long-press does not open. */
+	function abortPress() {
+		clearTimeout(longPress);
+		pending = null;
+		const done = press;
+		press = null;
+		panFrom = null;
+		if (!done) return;
+		if (svg.hasPointerCapture(done.pointerId)) svg.releasePointerCapture(done.pointerId);
+		if (done.kind === 'state' && done.dragging) {
+			if (view.tool === 'transition') editor.finishLink(null);
+			else editor.cancelDrag();
+		}
+		if (done.kind === 'empty' && done.marquee) editor.escape();
+	}
+
+	/** Returns true when the event belongs to a pinch (or to a finger that must wait). */
+	function fingerDown(event: PointerEvent): boolean {
+		touchSet(event.pointerId, event.clientX, event.clientY);
+		if (fingers.length === 2) {
+			abortPress();
+			waitForLift = true;
+			svg.setPointerCapture(event.pointerId);
+			const [a, b] = fingers as [(typeof fingers)[number], (typeof fingers)[number]];
+			pinching = { camera, ids: [a.id, b.id], from: { a: inView(a), b: inView(b) } };
+			return true;
+		}
+		return fingers.length > 2 || waitForLift;
+	}
+
+	function fingerMove(event: PointerEvent): boolean {
+		if (!touchAt(event.pointerId)) return false;
+		touchSet(event.pointerId, event.clientX, event.clientY);
+		if (!pinching) return waitForLift;
+		const [a, b] = pinching.ids;
+		const pa = touchAt(a);
+		const pb = touchAt(b);
+		if (pa && pb) camera = pinch(pinching.camera, pinching.from, { a: inView(pa), b: inView(pb) });
+		return true;
+	}
+
+	/** A finger is up or was taken away. Returns true if it was part of a pinch or had to wait. */
+	function fingerUp(event: PointerEvent): boolean {
+		if (!touchAt(event.pointerId)) return false;
+		fingers = fingers.filter((f) => f.id !== event.pointerId);
+		const was = waitForLift;
+		if (pinching && pinching.ids.includes(event.pointerId)) pinching = null;
+		if (fingers.length === 0) waitForLift = false;
+		return was;
+	}
 
 	// The preview is updated at most once for each frame, and the last place wins.
 	let pending: { point: Point; snap: boolean; link: boolean } | null = null;
@@ -300,6 +387,7 @@
 	function onpointerdown(event: PointerEvent) {
 		// The middle button always pans, wherever it is pressed.
 		const middle = event.button === 1;
+		if (event.pointerType === 'touch' && fingerDown(event)) return;
 		if ((event.button !== 0 && !middle) || press) return;
 		lastInput = 'pointer';
 		const id = middle ? undefined : stateIdOf(event.target);
@@ -375,6 +463,7 @@
 	}
 
 	function onpointermove(event: PointerEvent) {
+		if (event.pointerType === 'touch' && fingerMove(event)) return;
 		// With a source chosen, the preview follows a mouse that is not pressed.
 		if (!press && view.link && event.pointerType === 'mouse') dragTo(toCanvas(event), false, true);
 		if (!press || event.pointerId !== press.pointerId) return;
@@ -410,6 +499,10 @@
 	}
 
 	function onpointerup(event: PointerEvent) {
+		if (event.pointerType === 'touch' && fingerUp(event)) {
+			if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+			return;
+		}
 		if (!press || event.pointerId !== press.pointerId) return;
 		const done = press;
 		press = null;
@@ -448,6 +541,7 @@
 	}
 
 	function onpointercancel(event: PointerEvent) {
+		if (event.pointerType === 'touch' && fingerUp(event)) return;
 		if (!press || event.pointerId !== press.pointerId) return;
 		// The browser took the touch (to scroll the page, for example).
 		const done = press;
@@ -636,7 +730,7 @@
 
 	// Open with the whole machine in view; an empty canvas opens at 100% at the origin.
 	onMount(() => {
-		camera = fit(machineBounds(), viewSize());
+		camera = fitted = fit(machineBounds(), viewSize());
 
 		// The wheel and the trackpad: Ctrl or Cmd zooms around the pointer (a trackpad pinch arrives
 		// like this too), and without them the view pans. The page itself never scrolls.
