@@ -40,7 +40,7 @@ export interface EditorState {
 	/** The rectangle that is being drawn to select states. */
 	marquee: { x: number; y: number; width: number; height: number } | null;
 	/** Where the focus is, and a number that grows when the view must move it to `id`. */
-	focus: { id: number | null; request: number };
+	focus: { id: number | null; request: number; edge?: { from: number; to: number } };
 	canUndo: boolean;
 	canRedo: boolean;
 	/** The document is not the one that the editor was opened with. */
@@ -52,6 +52,8 @@ export interface EditorState {
 	link: { from: number; pointer: Point | null } | null;
 	/** The box for the symbols of the edge from → to. `ask` is a long part that needs an answer. */
 	labeling: { from: number; to: number; ask: string | null } | null;
+	/** The selected edge (the transitions from → to). One edge, and never together with states. */
+	edge: { from: number; to: number } | null;
 	/** What the last delete removed, for the message with Urungkan. It goes with the next change. */
 	toast: Announcement | null;
 }
@@ -112,6 +114,13 @@ export interface Editor {
 	 */
 	commitLabel(text: string, split?: 'split' | 'whole'): Refusal | SplitQuestion | null;
 	cancelLabel(): void;
+	selectEdge(from: number, to: number): void;
+	/** Opens the label box for the selected edge. */
+	editEdge(): void;
+	/** Removes all the symbols of an edge, as one step. */
+	deleteEdge(from: number, to: number): void;
+	/** The menu item "Tambah transisi dari sini": the Transisi tool, with this state as the source. */
+	linkFrom(id: number): void;
 	dismissToast(): void;
 
 	undo(): void;
@@ -167,6 +176,7 @@ export function createEditor(initial: MachineDocument): Editor {
 		renaming: null,
 		link: null,
 		labeling: null,
+		edge: null,
 		toast: null
 	};
 
@@ -198,7 +208,8 @@ export function createEditor(initial: MachineDocument): Editor {
 			selection,
 			focus: {
 				id: focus.id !== null && doc.states.some((s) => s.id === focus.id) ? focus.id : null,
-				request: focus.request
+				request: focus.request,
+				...(focus.edge ? { edge: focus.edge } : {})
 			},
 			canUndo: history.canUndo,
 			canRedo: history.canRedo,
@@ -214,6 +225,14 @@ export function createEditor(initial: MachineDocument): Editor {
 		if (state.link && (doc !== before || !has(state.link.from))) state.link = null;
 		if (state.labeling && !(has(state.labeling.from) && has(state.labeling.to))) {
 			state.labeling = null;
+		}
+		// Selecting states drops the selected edge. An edge goes when its transitions are gone.
+		if (patch.selection !== undefined && patch.edge === undefined) state.edge = null;
+		const live = (e: { from: number; to: number } | null | undefined) =>
+			e != null && doc.transitions.some((t) => t.from === e.from && t.to === e.to);
+		if (!live(state.edge)) state.edge = null;
+		if (state.focus.edge && !live(state.focus.edge)) {
+			state.focus = { id: state.focus.id, request: state.focus.request };
 		}
 		notify();
 	}
@@ -239,7 +258,7 @@ export function createEditor(initial: MachineDocument): Editor {
 			[...new Set(ids)].sort((a, b) => a - b),
 			history.doc
 		);
-		if (sameList(next, state.selection)) return;
+		if (sameList(next, state.selection) && state.edge === null) return;
 		commit({ selection: next, announcement: describe(next) });
 	}
 
@@ -333,10 +352,52 @@ export function createEditor(initial: MachineDocument): Editor {
 
 	function closeLabel(patch: Partial<EditorState> = {}) {
 		const open = state.labeling;
+		// An edge that is selected and still there gets the focus back; otherwise its source does.
+		const edge = state.edge;
+		const onEdge =
+			open !== null &&
+			edge !== null &&
+			edge.from === open.from &&
+			edge.to === open.to &&
+			history.doc.transitions.some((t) => t.from === open.from && t.to === open.to);
 		commit({
 			labeling: null,
-			focus: { id: open?.from ?? null, request: ++focusRequest },
+			focus: onEdge
+				? { id: null, request: ++focusRequest, edge }
+				: { id: open?.from ?? null, request: ++focusRequest },
 			...patch
+		});
+	}
+
+	const nameOf = (id: number) => stateOf(id)?.name ?? '';
+
+	function selectEdge(from: number, to: number) {
+		const symbols = labelOf(history.doc, from, to);
+		if (symbols === '') return;
+		if (state.edge?.from === from && state.edge.to === to && state.selection.length === 0) return;
+		history.seal();
+		commit({
+			selection: [],
+			edge: { from, to },
+			announcement: say('editor.edge_selected', { from: nameOf(from), to: nameOf(to), symbols })
+		});
+	}
+
+	function deleteEdge(from: number, to: number) {
+		if (busy()) return;
+		const symbols = history.doc.transitions
+			.filter((t) => t.from === from && t.to === to)
+			.map((t) => t.on);
+		if (symbols.length === 0) return;
+		history.seal();
+		const commands: Command[] = symbols.map((on) => ({ type: 'removeTransition', from, on, to }));
+		history.execute(commands.length === 1 ? commands[0]! : { type: 'batch', commands });
+		const message = say('editor.edge_removed', { from: nameOf(from), to: nameOf(to) });
+		commit({
+			selection: [],
+			focus: { id: from, request: ++focusRequest },
+			announcement: message,
+			toast: message
 		});
 	}
 
@@ -477,7 +538,21 @@ export function createEditor(initial: MachineDocument): Editor {
 					: say('editor.moved_many', { count: state.selection.length })
 			});
 		},
-		deleteSelected: () => deleteStates(state.selection),
+		deleteSelected: () =>
+			state.edge ? deleteEdge(state.edge.from, state.edge.to) : deleteStates(state.selection),
+		selectEdge,
+		deleteEdge,
+		editEdge() {
+			if (busy() || !state.edge) return;
+			history.seal();
+			set({ labeling: { from: state.edge.from, to: state.edge.to, ask: null } });
+		},
+		linkFrom(id) {
+			if (busy() || !stateOf(id)) return;
+			history.seal();
+			set({ tool: 'transition', link: null });
+			startLink(id);
+		},
 		deleteStates,
 		toggleAccepting,
 		toggleStart,
@@ -592,7 +667,7 @@ export function createEditor(initial: MachineDocument): Editor {
 			} else if (marqueeStart) {
 				marqueeStart = null;
 				set({ marquee: null });
-			} else if (state.selection.length > 0) {
+			} else if (state.selection.length > 0 || state.edge) {
 				select([]);
 			} else if (state.tool !== 'select') {
 				history.seal();

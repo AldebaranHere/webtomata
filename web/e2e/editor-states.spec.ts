@@ -117,7 +117,7 @@ test.describe('the menu', () => {
 		await state(page, 'q1').click({ button: 'right' });
 		await expect(menu(page)).toBeVisible();
 		const items = menu(page).getByRole('menuitem');
-		await expect(items).toHaveCount(2); // rename, delete
+		await expect(items).toHaveCount(3); // rename, link, delete
 		await expect(menu(page).getByRole('menuitemcheckbox')).toHaveCount(2); // start, accepting
 		await expect(items.first()).toBeFocused();
 		await expectNoAxeViolations(page);

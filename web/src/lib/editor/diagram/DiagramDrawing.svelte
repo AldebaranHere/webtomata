@@ -7,20 +7,30 @@
 	// editor both use it. All the places come from edgeGeometry (geometry.ts).
 	//
 	// With `interactive`, each state is a button that the keyboard can reach, with a name for screen
-	// readers, a ring when it is selected, and a ring when it has the focus. The pointer and key
-	// handlers are on the svg that holds this (they find a state by its `data-state`).
+	// readers, a ring when it is selected, and a ring when it has the focus. Each edge has a wide
+	// invisible line under the circles (so a finger can hit it, and a state always wins), and a button
+	// after the circles for the keyboard (states come first in the Tab order, then edges). The pointer
+	// and key handlers are on the svg that holds this (they find a state by its `data-state` and an
+	// edge by its `data-edge`, "from>to").
 	let {
 		shapes,
 		arrow,
 		selected = new Set<number>(),
+		selectedEdge = null,
 		interactive = false
 	}: {
 		shapes: DiagramShapes;
 		/** The id of the arrowhead (it must be unique in the page). */
 		arrow: string;
 		selected?: ReadonlySet<number>;
+		/** The edge that is selected: all the transitions from → to. */
+		selectedEdge?: { from: number; to: number } | null;
 		interactive?: boolean;
 	} = $props();
+
+	const chosen = (edge: { from: number; to: number }) =>
+		selectedEdge !== null && selectedEdge.from === edge.from && selectedEdge.to === edge.to;
+	const nameOfId = (id: number) => shapes.states.find((s) => s.id === id)?.name ?? '';
 
 	/** "State q1, start state, accepting state". */
 	function nameOf(state: StateShape): string {
@@ -49,7 +59,21 @@
 
 <g class="lines">
 	{#each shapes.edges as edge (`${edge.from}>${edge.to}`)}
-		<path class="line" d={edge.path} marker-end="url(#{arrow})" />
+		{#if interactive}
+			<g class="edge" class:chosen={chosen(edge)} data-edge="{edge.from}>{edge.to}">
+				<path class="hit" d={edge.path} />
+				<rect
+					class="hit-label"
+					x={edge.label.box.x}
+					y={edge.label.box.y}
+					width={edge.label.box.width}
+					height={edge.label.box.height}
+				/>
+				<path class="line" d={edge.path} marker-end="url(#{arrow})" />
+			</g>
+		{:else}
+			<path class="line" d={edge.path} marker-end="url(#{arrow})" />
+		{/if}
 	{/each}
 	{#if shapes.start}
 		<path class="line" d={shapes.start.path} marker-end="url(#{arrow})" />
@@ -95,9 +119,32 @@
 	{/each}
 </g>
 
+{#if interactive}
+	<g class="edge-buttons">
+		{#each shapes.edges as edge (`${edge.from}>${edge.to}`)}
+			<g
+				class="edge-node"
+				data-edge="{edge.from}>{edge.to}"
+				role="button"
+				tabindex="0"
+				aria-label={t('editor.edge', {
+					from: nameOfId(edge.from),
+					to: nameOfId(edge.to),
+					symbols: edge.label.text
+				})}
+				aria-pressed={chosen(edge)}
+			>
+				<path class="ring" d={edge.path} />
+			</g>
+		{/each}
+	</g>
+{/if}
+
 <g class="labels">
 	{#each shapes.edges as edge (`${edge.from}>${edge.to}`)}
-		<text class="label" x={edge.label.center.x} y={edge.label.center.y}>{edge.label.text}</text>
+		<text class="label" class:chosen={chosen(edge)} x={edge.label.center.x} y={edge.label.center.y}>
+			{edge.label.text}
+		</text>
 	{/each}
 	{#if shapes.start}
 		<text class="start-label" x={shapes.start.label.center.x} y={shapes.start.label.center.y}>
@@ -174,6 +221,42 @@
 		visibility: hidden;
 	}
 	.node:focus-visible .focus-ring {
+		visibility: visible;
+	}
+	/* The edges of the editor. The invisible lines are what a pointer hits; the circles are above them. */
+	.edge {
+		cursor: pointer;
+	}
+	.hit {
+		fill: none;
+		stroke: transparent;
+		stroke-width: 44px;
+		stroke-linecap: round;
+		pointer-events: stroke;
+	}
+	.hit-label {
+		fill: transparent;
+		pointer-events: all;
+	}
+	.edge.chosen .line {
+		stroke: var(--color-accent);
+		stroke-width: 3;
+	}
+	.label.chosen {
+		fill: var(--color-accent-ink);
+		font-weight: var(--weight-strong);
+	}
+	.edge-node {
+		outline: none;
+		pointer-events: none;
+	}
+	.ring {
+		fill: none;
+		stroke: var(--focus-ring-color);
+		stroke-width: calc(var(--focus-ring-width) * 2);
+		visibility: hidden;
+	}
+	.edge-node:focus-visible .ring {
 		visibility: visible;
 	}
 	.node[aria-pressed='true'] .state {
