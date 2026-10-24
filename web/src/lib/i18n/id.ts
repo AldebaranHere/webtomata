@@ -102,6 +102,22 @@ export const id = {
 	'editor.zoom_reset': 'Atur ke 100%',
 	'editor.zoom_is': 'Perbesaran {percent}%',
 	'editor.fit': 'Pas',
+	'storage.saved': 'Tersimpan di perangkat ini',
+	'storage.saving': 'Menyimpan…',
+	'storage.failed': 'Belum tersimpan',
+	'storage.unavailable': 'Tidak tersimpan',
+	'storage.failed_hint':
+		'Penyimpanan di perangkat ini gagal, mungkin karena penuh. Pekerjaan masih ada di layar; jangan tutup halaman ini dulu.',
+	'storage.unavailable_hint':
+		'Peramban ini tidak menyediakan penyimpanan (mungkin jendela pribadi). Mesin hanya ada selama halaman ini terbuka.',
+	'storage.skipped_corrupt':
+		'Mesin "{title}" tidak bisa dibuka karena datanya rusak. Datanya tidak dihapus.',
+	'storage.skipped_newer':
+		'Mesin "{title}" dibuat dengan versi WebTomata yang lebih baru, jadi belum bisa dibuka. Datanya tidak dihapus.',
+	'storage.skipped_unsupported':
+		'Mesin "{title}" memakai format lama yang tidak lagi bisa dibuka. Datanya tidak dihapus.',
+	'storage.skipped_many': '{count} mesin tidak bisa dibuka. Datanya tidak dihapus.',
+	'storage.dismiss': 'Tutup pesan',
 	'document.limit_exceeded': 'Batas tercapai: {what}, paling banyak {limit}.',
 	'soal.description': 'Soal latihan mesin berhingga dengan umpan balik yang tenang dan spesifik.',
 	'panduan.description': 'Panduan pola merancang DFSM, NDFSM dan ekspresi reguler.',

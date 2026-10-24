@@ -102,6 +102,22 @@ export const en: Record<MessageKey, string> = {
 	'editor.zoom_reset': 'Reset to 100%',
 	'editor.zoom_is': 'Zoom {percent}%',
 	'editor.fit': 'Fit',
+	'storage.saved': 'Saved on this device',
+	'storage.saving': 'Saving…',
+	'storage.failed': 'Not saved yet',
+	'storage.unavailable': 'Not saved',
+	'storage.failed_hint':
+		'Saving on this device failed, maybe because it is full. The work is still on the screen; do not close this page yet.',
+	'storage.unavailable_hint':
+		'This browser gives no storage (maybe a private window). The machine exists only while this page is open.',
+	'storage.skipped_corrupt':
+		'The machine "{title}" could not be opened because its data is damaged. The data was not deleted.',
+	'storage.skipped_newer':
+		'The machine "{title}" was made with a newer version of WebTomata, so it cannot be opened yet. The data was not deleted.',
+	'storage.skipped_unsupported':
+		'The machine "{title}" uses an old format that can no longer be opened. The data was not deleted.',
+	'storage.skipped_many': '{count} machines could not be opened. The data was not deleted.',
+	'storage.dismiss': 'Dismiss the message',
 	'document.limit_exceeded': 'Limit reached: {what}, at most {limit}.',
 	'soal.description': 'Practice questions on finite state machines with calm, specific feedback.',
 	'panduan.description':
