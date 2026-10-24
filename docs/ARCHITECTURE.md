@@ -22,6 +22,7 @@ flowchart LR
 | Engine client | `web/src/lib/engine` | Only `worker.ts` imports the WASM package (ESLint enforces it). The UI talks to the worker through `client.ts`, which is typed with `types.ts` (generated from the Rust types). |
 | UI | `web/src` | SvelteKit, prerendered by `adapter-static`. |
 | Content | `content/` | Questions and guides as plain files, compiled at build time. |
+| Design tokens | `web/src/lib/styles` | `tokens.css` is the one place for colors and sizes; components use only its names (`pnpm check:tokens`). Every color pair is checked for WCAG AA contrast (`pnpm check:contrast`). See `docs/ux/design-system.md`. |
 
 ## Engine API
 

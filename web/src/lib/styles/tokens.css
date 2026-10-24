@@ -1,0 +1,106 @@
+/*
+ * Design tokens. This is the one place for raw colors and sizes; components use only these names
+ * (tools/check-tokens-usage.mjs fails CI on a raw color anywhere else). Names say what a value is
+ * for, not what it looks like, so a dark theme can later redefine them.
+ *
+ * Every color pair that is used for text or for a graphic is listed in tools/contrast-pairs.mjs and
+ * checked by tools/check-contrast.mjs (WCAG 2.2: 4.5:1 for text, 3:1 for graphics and the edges of
+ * controls). docs/ux/design-system.md says how to use each token.
+ */
+:root {
+	color-scheme: light;
+
+	/* Surfaces */
+	--color-ground: #f6f7f9; /* the page and the canvas */
+	--color-surface: #ffffff; /* cards, panels, inputs */
+
+	/* Text */
+	--color-ink: #16181d; /* body text and headings */
+	--color-muted: #5b6270; /* secondary text, labels, hints */
+	--color-on-ink: #ffffff; /* text on --color-ink (the selected tab) */
+
+	/* Lines. The light border is a separator and may be faint; a control that has no other edge
+	   uses --color-border-strong (3:1 against its background). */
+	--color-border: #dde1e7;
+	--color-border-strong: #737b88;
+
+	/* Accent: the current state, links and the main action */
+	--color-accent: #2f5bd3;
+	--color-on-accent: #ffffff; /* text on --color-accent */
+	--color-accent-ink: #1e3f9e; /* text on the accent tint */
+	--color-accent-tint: #eaf0fd;
+
+	/* Success: valid, saved, accepted */
+	--color-success: #1f7a4d;
+	--color-success-ink: #165c3a;
+	--color-success-tint: #e4f4ea;
+
+	/* Warning: the wrong part of an answer. --color-warning is for lines and fills only (3.99:1 on
+	   white); text uses --color-warning-ink. */
+	--color-warning: #b86e00;
+	--color-warning-ink: #6b3d00;
+	--color-warning-tint: #fff4e0;
+
+	/* Neutral: chips, badges and the strokes of the diagram */
+	--color-neutral-ink: #3b414c;
+	--color-neutral-tint: #eef0f3;
+
+	/* The dots of the canvas (decorative) */
+	--color-canvas-dot: #d3d8e0;
+
+	/* Type. Two weights only: regular and strong. */
+	--font-ui: 'Plus Jakarta Sans', system-ui, sans-serif;
+	--font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace;
+	--weight-regular: 400;
+	--weight-strong: 600;
+
+	--text-2xs: 0.6875rem; /* 11px: labels under icons */
+	--text-xs: 0.75rem; /* 12px: chips, hints */
+	--text-sm: 0.8125rem; /* 13px */
+	--text-base: 0.875rem; /* 14px: the base size of the interface */
+	--text-md: 1rem; /* 16px: question text, input text (no zoom on iOS) */
+	--text-lg: 1.25rem; /* 20px */
+	--text-xl: 1.5rem; /* 24px: page title */
+	--text-2xl: clamp(1.75rem, 4vw, 2.5rem);
+
+	--leading-tight: 1.25;
+	--leading-normal: 1.5;
+	--leading-relaxed: 1.6;
+
+	/* Space, on a 4px grid */
+	--space-1: 0.25rem; /* 4px */
+	--space-1-5: 0.375rem; /* 6px */
+	--space-2: 0.5rem; /* 8px */
+	--space-3: 0.75rem; /* 12px */
+	--space-4: 1rem; /* 16px */
+	--space-5: 1.25rem; /* 20px */
+	--space-6: 1.5rem; /* 24px */
+	--space-8: 2rem; /* 32px */
+	--space-10: 2.5rem; /* 40px */
+	--space-14: 3.5rem; /* 56px */
+	--space-16: 4rem; /* 64px */
+
+	/* Radii */
+	--radius-sm: 0.375rem; /* 6px */
+	--radius-md: 0.5rem; /* 8px */
+	--radius-lg: 0.625rem; /* 10px */
+	--radius-xl: 0.75rem; /* 12px */
+	--radius-2xl: 1rem; /* 16px: sheets */
+	--radius-pill: 999px;
+
+	/* Touch targets are at least 44 x 44 px (CLAUDE.md, section 6) */
+	--target-min: 2.75rem;
+
+	/* Focus ring: always visible on keyboard focus. 5.5:1 on the ground, 5.9:1 on a surface. */
+	--focus-ring-color: var(--color-accent);
+	--focus-ring-width: 2px;
+	--focus-ring-offset: 2px;
+
+	/* Elevation */
+	--shadow-popover: 0 1px 2px rgb(10 20 40 / 0.08), 0 12px 32px rgb(10 20 40 / 0.1);
+
+	/* Motion. Turned off by prefers-reduced-motion in base.css. */
+	--duration-fast: 120ms;
+	--duration-base: 200ms;
+	--ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
