@@ -153,7 +153,7 @@ Rules that keep the budgets:
 ## 10. How to work in this repo
 
 1. The human names one task from `MD_FILES/ROADMAP.md` (for example "do E3"). Work only on that task.
-2. **Plan first.** Read the relevant code, then state the plan, the files you will touch and the tests you will write. Wait for approval on anything that changes a decision in this file.
+2. **Plan first.** Read the relevant code, then state the plan, the files you will touch and the tests you will write. Wait for approval on anything that changes a decision in this file. For low-risk tasks (docs only, tests only, small refactors with no behavior change) the plan may be five lines, and no risk analysis is needed unless the human asks for one.
 3. Write tests first, then code. Keep the change small.
 4. Run all checks before you finish:
    - `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`
