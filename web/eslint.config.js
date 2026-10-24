@@ -5,7 +5,16 @@ import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 
 export default ts.config(
-	{ ignores: ['build/', '.svelte-kit/', '.wrangler/', 'node_modules/'] },
+	{
+		ignores: [
+			'build/',
+			'.svelte-kit/',
+			'.wrangler/',
+			'node_modules/',
+			'test-results/',
+			'playwright-report/'
+		]
+	},
 	js.configs.recommended,
 	...ts.configs.recommended,
 	...svelte.configs.recommended,

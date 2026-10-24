@@ -5,6 +5,6 @@
 		"noUncheckedIndexedAccess": true,
 		"noImplicitOverride": true
 	},
-	"include": ["src", "test", "*"],
+	"include": ["src", "test", "e2e", "*"],
 	"exclude": ["src/service-worker", "src/lib/engine/wasm"]
 }

@@ -1,5 +1,5 @@
 // A static server for a build folder, gzipping like the real host does. Used by the Lighthouse
-// check and the smoke test.
+// check, the smoke test and the browser tests (web/e2e).
 import { createServer } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
@@ -15,8 +15,8 @@ const TYPES = {
 	'.txt': 'text/plain'
 };
 
-/** Starts the server on a free port. Returns `{ origin, close }`. */
-export async function serveBuild(dir) {
+/** Starts the server on `port` (a free port if it is 0). Returns `{ origin, close }`. */
+export async function serveBuild(dir, port = 0) {
 	const buildDir = resolve(dir);
 	const server = createServer((req, res) => {
 		let path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname));
@@ -28,7 +28,7 @@ export async function serveBuild(dir) {
 		res.writeHead(200, { 'content-type': type, 'content-encoding': 'gzip' });
 		createReadStream(file).pipe(createGzip()).pipe(res);
 	});
-	await new Promise((ok) => server.listen(0, '127.0.0.1', ok));
+	await new Promise((ok) => server.listen(port, '127.0.0.1', ok));
 	return {
 		origin: `http://127.0.0.1:${server.address().port}`,
 		close: () => server.close()
