@@ -15,7 +15,7 @@
     "check": "pnpm --filter web check",
     "lint:rust": "cargo fmt --check && cargo clippy --all-targets -- -D warnings",
     "test": "cargo test",
-    "verify": "pnpm lint:rust && pnpm build:wasm && pnpm lint && pnpm format:check && pnpm check && pnpm test && pnpm test:wasm && pnpm test:web && pnpm test:tools && pnpm build && pnpm size && pnpm smoke && pnpm lighthouse",
+    "verify": "pnpm lint:rust && pnpm build:wasm && pnpm lint && pnpm format:check && pnpm check && pnpm test && pnpm test:wasm && pnpm test:web && pnpm test:tools && pnpm check:workflows && pnpm build && pnpm size && pnpm smoke && pnpm lighthouse",
     "build:types": "cargo test -p engine-core --features ts --test ts_export",
     "build:wasm": "wasm-pack build crates/engine-wasm --target web --release --out-dir ../../web/src/lib/engine/wasm && pnpm build:types",
     "test:wasm": "wasm-pack test --node crates/engine-wasm",
@@ -23,7 +23,8 @@
     "size": "node tools/check-size.mjs",
     "lighthouse": "node tools/check-lighthouse.mjs",
     "smoke": "node tools/smoke.mjs --build web/build",
-    "test:tools": "node --test \"tools/*.test.mjs\""
+    "test:tools": "node --test \"tools/*.test.mjs\"",
+    "check:workflows": "node tools/check-workflows.mjs"
   },
   "devDependencies": {
     "chrome-launcher": "1.2.2",

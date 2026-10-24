@@ -53,6 +53,8 @@ jobs:
       - run: pnpm check
       - run: pnpm test:web
       - run: pnpm test:tools
+      # The Cloudflare key stays in one job; every action is pinned (docs/decisions/0015).
+      - run: pnpm check:workflows
       - run: pnpm --filter web build
       - run: pnpm size
       # Opens the production build in headless Chrome and checks that the app runs.

@@ -52,7 +52,7 @@ One WASM call for each user action. Every function takes text and returns one te
 
 ## Build and deploy
 
-`pnpm build` runs `wasm-pack` (release, `wasm-opt -Oz`) and then `vite build` into `web/build/`. CI checks formatting, lint, types, tests, size budgets and Lighthouse budgets (`tools/budgets.mjs`). Merges to `main` deploy `web/build/` to Cloudflare; pull requests get a preview URL. After each deploy, CI checks the security headers and runs a smoke test (headless Chrome loads the site and waits for the engine version) on the production and the preview URL. A weekly workflow audits the Rust and npm dependencies for known vulnerabilities; it is not a required check.
+`pnpm build` runs `wasm-pack` (release, `wasm-opt -Oz`) and then `vite build` into `web/build/`. CI checks formatting, lint, types, tests, size budgets and Lighthouse budgets (`tools/budgets.mjs`). Merges to `main` deploy `web/build/` to Cloudflare; pull requests get a preview URL. The deploy is three jobs: `build` (no secrets; compiles and bundles, and saves the site), `deploy` (the only job with the Cloudflare key; a fresh computer that installs without running scripts and runs only `wrangler`), and `verify` (no secrets; checks the security headers and runs a smoke test, where headless Chrome loads the site and waits for the engine version, on the production and the preview URL). `tools/check-workflows.mjs` keeps the key in the deploy job and every action pinned to a full commit (ADR 0015). Security reports and the steps after a key leak are in `SECURITY.md` and `docs/runbook-leaked-key.md`. A weekly workflow audits the Rust and npm dependencies for known vulnerabilities; it is not a required check.
 
 ## Performance and benchmarks
 
