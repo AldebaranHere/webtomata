@@ -257,7 +257,7 @@ Errors from the document keep their own keys (`document.duplicate_name` and so o
 - **Drag:** the drag is a preview; one batch of `moveState` is committed on release, and `Esc` cancels. A nudge with `Alt+Arrow` is one undo step until the selection changes or the canvas loses focus.
 - **Thresholds:** a drag starts after 4 px with a mouse and 8 px with a finger.
 - **Layout:** on a laptop the tools and undo/redo are a column at the left. On a phone the tools are a bar at the bottom and undo/redo are in the title bar. Targets are at least 44 px.
-- **Sandbox page:** it fills the screen and has no footer. Until autosave (S10a) a "leave the page?" warning protects unsaved changes.
+- **Sandbox page:** it fills the screen and has no footer. A "leave the page?" warning protects changes that are not saved on the device yet (S10a-1).
 
 ## Decisions made while building S4b-2
 
@@ -309,6 +309,13 @@ Errors from the document keep their own keys (`document.duplicate_name` and so o
 - **The first view refits** when the view gets its final size a moment after the first draw (fonts, the bars), or when the phone turns, until the user moves the camera. After **Pas**, it refits again.
 - **The key table is a test:** `keys.test.ts` lists every row of the table "Keys" above. A key of the spec that stops working fails it.
 - **The acceptance of S4** is `e2e/editor-flows.spec.ts`: a 4-state DFSM is built from nothing, by mouse and keyboard on a laptop and by touch (real touch events) on a phone, and axe finds no violation. On a phone the start and accepting marks are made with the long-press menu.
+
+## Decisions made while building S10a-1
+
+- **Status next to the title:** "Tersimpan di perangkat ini" (the wording of the glossary, not "Disimpan" of the wireframe), "Menyimpan…", "Belum tersimpan" (a write was refused) or "Tidak tersimpan" (the browser gives no storage). On a phone the good states are only a mark (the words are for a screen reader). A problem also has a strip of text under the bar that is an alert.
+- **The editor opens a moment after the page:** the prerendered page has an empty frame of the same size, and the editor takes its place when the saved machine has been read. A reload shows no sample first.
+- **A machine that cannot be read** is skipped and kept, and a message above the editor says so and can be closed. See ADR 0023.
+- **Not yet (S10a-2):** the list "Mesin saya" with new, open, rename, duplicate and delete.
 
 ## What each interaction needs from S3
 
