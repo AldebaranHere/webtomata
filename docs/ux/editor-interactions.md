@@ -301,7 +301,14 @@ Errors from the document keep their own keys (`document.duplicate_name` and so o
 - **Boxes and menus** are placed by screen position and keep their own size (16 px text) at every zoom. The hit line of an edge is 44 px on the screen at every zoom (a non-scaling stroke).
 - **Distances on the screen:** the 4 px and 8 px thresholds for a drag are screen pixels, whatever the zoom; a drag of a state moves it by the distance in the world.
 - **No inline style attribute:** the page's security policy blocks one, so the background dots (they move with the camera) are set through the CSS object model.
-- **Not yet (S4d-2):** two-finger pinch, and a second finger cancelling a drag or a long-press.
+
+## Decisions made while building S4d-2
+
+- **Pinch:** two fingers on the canvas zoom by the distance between them, and the point of the world that was between them stays between them as they move, so the fingers also pan. The zoom stays between 25% and 400%.
+- **A second finger ends what the first one began:** a state drag goes back to where it was (no undo step), an arrow that was being drawn is cancelled, a rectangle is dropped, and a long-press that has not opened its menu never will. Until every finger is lifted, no finger starts anything new (a third finger, or the finger that is left after a pinch).
+- **The first view refits** when the view gets its final size a moment after the first draw (fonts, the bars), or when the phone turns, until the user moves the camera. After **Pas**, it refits again.
+- **The key table is a test:** `keys.test.ts` lists every row of the table "Keys" above. A key of the spec that stops working fails it.
+- **The acceptance of S4** is `e2e/editor-flows.spec.ts`: a 4-state DFSM is built from nothing, by mouse and keyboard on a laptop and by touch (real touch events) on a phone, and axe finds no violation. On a phone the start and accepting marks are made with the long-press menu.
 
 ## What each interaction needs from S3
 
