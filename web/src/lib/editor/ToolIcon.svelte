@@ -1,6 +1,6 @@
 <script lang="ts">
 	// The icons of the tools (from the wireframes). They are decoration: the button has the name.
-	let { name }: { name: 'select' | 'state' | 'delete' | 'undo' | 'redo' } = $props();
+	let { name }: { name: 'select' | 'state' | 'transition' | 'delete' | 'undo' | 'redo' } = $props();
 </script>
 
 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -8,6 +8,9 @@
 		<path d="M5 3l14 8-6 2-2 6z" stroke-linejoin="round" />
 	{:else if name === 'state'}
 		<circle cx="12" cy="12" r="8" />
+	{:else if name === 'transition'}
+		<circle cx="5" cy="12" r="3" />
+		<path d="M9 12h10M15 8l4 4-4 4" stroke-linecap="round" stroke-linejoin="round" />
 	{:else if name === 'delete'}
 		<path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" stroke-linecap="round" />
 	{:else if name === 'undo'}

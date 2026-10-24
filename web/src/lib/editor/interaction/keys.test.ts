@@ -20,6 +20,12 @@ describe('the tools', () => {
 		expect(keyAction(key('s'), ctx)).toEqual({ type: 'tool', tool: 'addState' });
 	});
 
+	it('T is the Transisi tool', () => {
+		expect(keyAction(key('t'), ctx)).toEqual({ type: 'tool', tool: 'transition' });
+		expect(keyAction(key('t', { ctrl: true }), ctx)).toBeUndefined();
+		expect(keyAction(key('t'), { fieldOpen: true })).toBeUndefined();
+	});
+
 	it('N adds a state at the center of the view', () => {
 		expect(keyAction(key('n'), ctx)).toEqual({ type: 'newState' });
 	});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WORLD, clampDelta, dragPlaces, snapTo } from './canvas.ts';
+import { WORLD, clampDelta, dragPlaces, linkLine, snapTo } from './canvas.ts';
 
 const places = (...entries: [number, number, number][]) =>
 	new Map(entries.map(([id, x, y]) => [id, { x, y }]));
@@ -56,5 +56,31 @@ describe('dragPlaces', () => {
 		expect([...dragPlaces(originals, { x: 12, y: 9 }, true)]).toEqual([
 			...dragPlaces(originals, { x: 12, y: 9 }, true)
 		]);
+	});
+});
+
+describe('the preview of a transition', () => {
+	const states = [
+		{ id: 0, x: 100, y: 100 },
+		{ id: 1, x: 400, y: 100 }
+	];
+
+	it('starts at the circle of the source and ends at the pointer', () => {
+		expect(linkLine(states, 0, { x: 250, y: 100 })).toEqual({
+			from: { x: 132, y: 100 },
+			to: { x: 250, y: 100 }
+		});
+	});
+
+	it('snaps to a state under the pointer and ends at its circle', () => {
+		expect(linkLine(states, 0, { x: 410, y: 110 })).toEqual({
+			from: { x: 132, y: 100 },
+			to: { x: 368, y: 100 }
+		});
+	});
+
+	it('has no arrow over the source (a loop), or for a source that is gone', () => {
+		expect(linkLine(states, 0, { x: 110, y: 110 })).toBeNull();
+		expect(linkLine(states, 9, { x: 250, y: 100 })).toBeNull();
 	});
 });

@@ -269,6 +269,17 @@ Errors from the document keep their own keys (`document.duplicate_name` and so o
 - **Double-click** reads the state under the pointer, not the event target, because the browser reports the captured svg as the target.
 - **Not yet:** the menu item "Tambah transisi dari sini" and the items for an edge come with S4c, and the Transisi button of the dock too.
 
+## Decisions made while building S4c-1
+
+- **Tool and key:** Tambah transisi is the fourth tool (`T`). With one state selected, `T` also makes that state the source. A drag from a state in this tool is an arrow, never a move.
+- **Two ways with the mouse and one with the finger:** press, drag and release on the target; or click the source and then the target; on touch, tap the source and then the target (a drag works too). A release on empty canvas, `Esc`, another tool, an undo, a new state or a delete cancels the half-made transition. A click on empty canvas cancels it too.
+- **Keyboard:** with the tool, `Enter` on the selected state chooses the source. The arrows or `Tab` move the focus to the target while the selection stays on the source, and `Enter` chooses it.
+- **While choosing:** the source has the selection ring, a dashed preview arrow follows the mouse and ends at the circle of a state under it, and a hint line (`editor.hint_pick_source`, `editor.hint_pick_target`) says what to do. The same words are said by the live region.
+- **Label box:** it sits on the label of the edge, or above the source for a loop, or over the middle of the new edge. The edge text is in the order of the alphabet with ε last, as it is drawn. An edge that exists opens its box with its symbols; an empty text then removes it (one step).
+- **ε:** the **Ketik ε** button is in the box, not in the dock (the dock is hidden behind the keyboard on some phones; the box is scrolled into view). A press on it does not take the focus from the text. `Ctrl/Cmd+E` and the words `eps` and `ε` work too.
+- **Leaving the box:** a text that changed is sent; a text that did not change, or is refused, or needs an answer, cancels.
+- **Not yet (S4c-2):** selecting, editing and deleting an edge, the menu items for an edge, and "Tambah transisi dari sini".
+
 ## What each interaction needs from S3
 
 Every interaction uses an existing command. No new command is needed for S4.

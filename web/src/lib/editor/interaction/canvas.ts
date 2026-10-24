@@ -59,3 +59,30 @@ export function dragPlaces(
 	}
 	return result;
 }
+
+/**
+ * The arrow that previews a transition: from the circle of the source toward the pointer. Over
+ * another state it snaps to that state, and ends at its circle. Over the source itself (a loop)
+ * there is no arrow. `states` are the places of the states.
+ */
+export function linkLine(
+	states: readonly { id: number; x: number; y: number }[],
+	from: number,
+	pointer: Point
+): { from: Point; to: Point } | null {
+	const source = states.find((s) => s.id === from);
+	if (!source) return null;
+	const over = states.find(
+		(s) => s.id !== from && Math.hypot(s.x - pointer.x, s.y - pointer.y) <= RADIUS + 8
+	);
+	const goal = over ?? pointer;
+	const distance = Math.hypot(goal.x - source.x, goal.y - source.y);
+	if (distance <= RADIUS + 4) return null;
+	const ux = (goal.x - source.x) / distance;
+	const uy = (goal.y - source.y) / distance;
+	const start = { x: source.x + ux * RADIUS, y: source.y + uy * RADIUS };
+	const end = over
+		? { x: over.x - ux * RADIUS, y: over.y - uy * RADIUS }
+		: { x: goal.x, y: goal.y };
+	return { from: start, to: end };
+}
