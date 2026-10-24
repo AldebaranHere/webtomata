@@ -1,5 +1,6 @@
 //! Pure Rust finite state machine engine. No browser or OS code.
 
+pub mod api;
 mod closure;
 mod determinize;
 mod equivalence;

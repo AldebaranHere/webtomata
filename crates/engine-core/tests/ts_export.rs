@@ -47,6 +47,9 @@ fn the_types_match_the_json() {
         "JffState",
         "Jff",
         "Nondeterminism",
+        "SimulationReport",
+        "EquivalenceReport",
+        "RegexOutcome",
     ] {
         assert!(
             text.contains(&format!("export type {name} =")),
@@ -64,6 +67,10 @@ fn the_types_match_the_json() {
         "export type Param = number | string;",
         "maxSteps: number",
         "maxChecks: number",
+        "export type EngineResult<T> =",
+        "export const sampleSimulate = {\"ok\":true,\"value\":{\"input\":[\"a\",\"b\"],",
+        "export const sampleLoadMachineError = {\"ok\":false,\"error\":",
+        "satisfies EngineResult<EquivalenceReport>;",
     ] {
         assert!(text.contains(part), "missing: {part}");
     }

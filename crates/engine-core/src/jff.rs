@@ -11,7 +11,7 @@
 use crate::fsm::{Alphabet, Fsm, FsmKind, MAX_STATES, StateId, Transition};
 use crate::message::Message;
 use roxmltree::{Document, Node, ParsingOptions};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Write;
 use std::str::FromStr;
@@ -19,7 +19,8 @@ use std::str::FromStr;
 pub const MAX_JFF_BYTES: usize = 1024 * 1024;
 
 /// A state as the file describes it. Names and positions belong to the UI, not to the machine.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct JffState {
     pub id: StateId,
