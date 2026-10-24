@@ -70,3 +70,35 @@ jobs:
       # accessibility violation (docs/decisions/0018-playwright.md). Uses the Chrome of the runner.
       - run: pnpm test:e2e
       - run: pnpm lighthouse
+
+  # The small set of browser tests in Firefox and in WebKit (an iPhone), next to the Chrome tests
+  # of the job above (docs/decisions/0022-cross-browser-tests.md). It has no secrets and read-only
+  # rights. The two browsers are downloaded by Playwright, at the exact version of the lockfile.
+  cross-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - run: cargo install wasm-pack --locked
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:wasm
+      - run: pnpm --filter web build
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: browsers
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm --filter web exec playwright install --with-deps firefox webkit
+        if: steps.browsers.outputs.cache-hit != 'true'
+      # A cached browser still needs the system libraries.
+      - run: pnpm --filter web exec playwright install-deps firefox webkit
+        if: steps.browsers.outputs.cache-hit == 'true'
+      - run: pnpm test:e2e:cross

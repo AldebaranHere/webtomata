@@ -6,7 +6,7 @@ Status: accepted
 The editor (S4) needs tests that act like a user (click, type, touch) and an accessibility scan, in CI, on the production build. `CLAUDE.md` names Playwright and axe-core. We already run the production build in headless Chrome for the smoke test and Lighthouse, so the runner has Chrome.
 
 ## Decision
-- **Playwright with the installed Chrome** (`channel: 'chrome'`, or `CHROME_PATH`). Playwright downloads no browser. Firefox and WebKit need a download of about 150 MB each from a CDN; we decide them at the start of M2, when there are real flows to test. Until then the tests cover Chrome only.
+- **Playwright with the installed Chrome** (`channel: 'chrome'`, or `CHROME_PATH`). Chrome tests download no browser. Firefox and WebKit run a small set of tests (decided in ADR 0022, ahead of M2): they are downloaded by Playwright, in the CI job `cross-browser`.
 - **Packages** (devDependencies of `web/`, exact versions, each at least two weeks old when added): `@playwright/test` 1.64.0 and `@axe-core/playwright` 4.13.0. With their dependencies (`playwright`, `playwright-core`, `axe-core`) this adds five packages, none with an install script.
 - **Two projects**: `desktop` (1440 × 900) and `phone` (Pixel 7 emulation, with touch). Every test runs in both.
 - **The build is served by `tools/serve-build.mjs`**, the server of the smoke test and Lighthouse, on a fixed port (4599), started in `globalSetup`. The tests run on the production build, under the CSP of its meta tag.
