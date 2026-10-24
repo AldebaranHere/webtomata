@@ -1,6 +1,7 @@
 // Turns the typed calls of `EngineApi` into calls of the WASM functions, which take text.
 // It gets the WASM module as a parameter, so tests can use the real module and `worker.ts` is
 // the only file that imports it.
+import { METHODS } from './protocol.ts';
 import type { EngineApi, EngineMethod } from './protocol.ts';
 import type { EngineResult } from './types.ts';
 
@@ -70,4 +71,15 @@ export function run(handlers: Handlers, method: string, args: unknown[]): Engine
 		: undefined;
 	if (handler === undefined) throw new TypeError(`unknown engine method: ${method}`);
 	return JSON.parse(handler(...args)) as EngineResult<unknown>;
+}
+
+/**
+ * The engine as plain calls with no worker: for tests and for tools that run in Node (the check
+ * of the questions). The app never uses it, because it would run the engine on the main thread.
+ */
+export function createSyncEngine(wasm: Wasm): EngineApi {
+	const handlers = createHandlers(wasm);
+	return Object.fromEntries(
+		METHODS.map((method) => [method, (...args: unknown[]) => run(handlers, method, args)])
+	) as unknown as EngineApi;
 }

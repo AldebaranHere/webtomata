@@ -60,6 +60,8 @@ jobs:
       - run: pnpm check:tokens
       # Every user-facing string is a message (no hard-coded text in components).
       - run: pnpm check:strings
+      # Question files: the shape, and the solution against the engine (needs the WASM built above).
+      - run: pnpm check:questions
       - run: pnpm --filter web build
       - run: pnpm size
       # Opens the production build in headless Chrome and checks that the app runs.

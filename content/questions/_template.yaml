@@ -1,0 +1,70 @@
+# yaml-language-server: $schema=./schema.json
+#
+# A template for a question. Copy it to content/questions/<id>.yaml: the name of the file is the id.
+# A file whose name starts with _ is not a question, so this one is skipped by the check.
+#
+#   pnpm check:questions              checks every file, with the engine
+#   pnpm check:questions --report     also prints the first strings that each solution accepts,
+#                                     so that you can compare them with your statement
+#   pnpm check:questions --schema-only  only the shape of the files (no Rust or WASM needed)
+#
+# Everything is read as text: 0110 stays 0110 and yes stays yes. Questions must be original:
+# never copy or closely paraphrase current or past homework or exams.
+
+schemaVersion: 1
+id: nama-soal # lowercase letters, digits and single hyphens; the same as the name of the file
+
+title:
+  id: Berakhiran 1
+  en: Ends with 1 # optional
+
+# Plain text. `backticks` mark code. A blank line starts a new paragraph. No Markdown, no HTML.
+statement:
+  id: Buat DFSM atas alfabet `Σ = {0, 1}` yang menerima semua string yang diakhiri `1`.
+  en: Build a DFSM over `Σ = {0, 1}` that accepts every string that ends with `1`.
+
+# build-dfsm, build-ndfsm or write-regex.
+# Practice in determinizing or minimizing is build-dfsm with minimal: true.
+type: build-dfsm
+
+# No space, no comma, no ε, and not the word eps. With symbols of more than one character
+# (num, plus), write strings with a space between the symbols: "num plus num".
+alphabet: [0, 1]
+
+# Optional. maxStates: any machine. complete (default true) and minimal: build-dfsm. minimal needs
+# complete. allowEpsilon (default true): build-ndfsm. write-regex has no constraints.
+constraints:
+  maxStates: 2
+
+difficulty: 1 # 1 mudah, 2 sedang, 3 sulit
+week: 1 # the week of the syllabus, 1 to 14
+pattern: berakhiran-x # the guide that teaches this pattern (a name in content/guides)
+
+# Optional: sections of the textbooks.
+references:
+  rich: ["5.2"]
+  sipser: ["1.1"]
+
+# Optional, at most 5. Shown one at a time, only when the student asks.
+hints:
+  - id: Cukup ingat apakah simbol terakhir yang dibaca adalah `1`.
+    en: It is enough to remember whether the last symbol read was `1`.
+
+# At least 2 strings to accept and 2 to reject. The empty string is "" (or ε).
+# `pnpm check:questions` runs every one of them through the solution.
+examples:
+  accept: [1, 01, 101]
+  reject: ["", 0, 10]
+
+# For write-regex: a regular expression, for example solution: "(0∪1)*1" (∪ is union).
+# For a machine: transitions are "from symbol to". 0,1 is one transition for each symbol, and ε
+# (or eps) is the empty string. The states are named by what the transitions mention; add a
+# "states:" list if you want to choose their order or keep a state without a transition.
+solution:
+  start: q0
+  accepting: [q1]
+  transitions:
+    - q0 0 q0
+    - q0 1 q1
+    - q1 0 q0
+    - q1 1 q1

@@ -33,7 +33,8 @@ export default ts.config(
 		ignores: [
 			'src/lib/engine/worker.ts',
 			'src/lib/engine/handlers.test.ts',
-			'src/lib/editor/document.wasm.test.ts'
+			'src/lib/editor/document.wasm.test.ts',
+			'src/lib/questions/check.wasm.test.ts'
 		],
 		rules: {
 			'no-restricted-imports': [

@@ -35,6 +35,10 @@ The seed is fixed. The same versions give the same files, on any computer.
 
 `pnpm check:strings` reads every `web/src/**/*.svelte` with the Svelte compiler and fails on user-facing text that is not a message: literal text with a Latin letter in the markup, a literal in `aria-label`, `alt`, `title`, `placeholder` or the description of the page, or a string literal in braces. Greek letters (ε, Σ), digits and punctuation are allowed; the script and the style are not read. The message files are in `web/src/lib/i18n`. Its tests run with `pnpm test:tools`.
 
+## Question files (`check-questions.mjs`)
+
+`pnpm check:questions` checks every `content/questions/*.yaml` (a name that starts with `_` is a template). First the shape, against `content/questions/schema.json`, and that the id is the name of the file. Then, with the real WASM engine, that the solution is valid, meets the constraints and agrees with the examples. Messages name the file, the line and the field. `--schema-only` skips the engine, so it works without Rust or WASM (on Windows, the full check needs `pnpm build:wasm` in WSL; CI runs it in full). `--report` prints the first strings that each solution accepts, for a reviewer to compare with the statement. The logic is TypeScript in `web/src/lib/questions/`, which Node runs directly; see `docs/decisions/0021-question-format.md`. Its tests run with `pnpm test:tools` (the engine ones need the WASM package).
+
 ## Audits
 
 `.github/workflows/audit.yml` runs `cargo audit` and `pnpm audit` weekly, when a lockfile changes, and by hand. It is not a required check.
