@@ -19,6 +19,10 @@ The seed is fixed. The same versions give the same files, on any computer.
 
 `node tools/smoke.mjs <url>` opens a page in headless Chrome and checks that the app runs: the home page must show the engine version (so the script, the worker and the WASM module loaded), and there must be no console error, uncaught exception, failed request, bad response or CSP violation. `pnpm smoke` runs it on the production build (served locally), and `deploy.yml` runs it on the production and preview URLs after each deploy. It talks to Chrome through a small DevTools client (`cdp.mjs`) with no extra package. `smoke-judge.mjs` decides pass or fail and is tested by `pnpm test:tools` (Node's test runner). Playwright (Phase 2) will take over the real user flows.
 
+## Workflow guard rails (`check-workflows.mjs`)
+
+`pnpm check:workflows` reads `.github/workflows/*.yml` and fails if the Cloudflare key (`secrets.`) is used outside the job `deploy` of `deploy.yml`, if that job installs without `--ignore-scripts` or runs build code, if an action is not pinned to a full commit, or if `pull_request_target` is used. See `docs/decisions/0015-deploy-isolation.md`. Its tests run with `pnpm test:tools`.
+
 ## Audits
 
 `.github/workflows/audit.yml` runs `cargo audit` and `pnpm audit` weekly, when a lockfile changes, and by hand. It is not a required check.

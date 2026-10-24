@@ -2,6 +2,13 @@ name: Deploy
 
 # Production: every push to main. Preview: every pull request from this repository.
 # Fork PRs get no secrets, so they skip the upload.
+#
+# Three jobs, so that the Cloudflare key never sits on a computer where build code ran:
+#   build  - no secrets. Builds the site (compilers and bundlers run here) and saves it.
+#   deploy - the only job with the key. A fresh computer: it installs without running scripts,
+#            takes the saved site and runs wrangler. No build code runs here.
+#   verify - no secrets. Checks the security headers and runs the smoke test on the deployed URL.
+# tools/check-workflows.mjs keeps it that way (see docs/decisions/0015-deploy-isolation.md).
 on:
   push:
     branches: [main]
@@ -15,7 +22,33 @@ env:
   WRANGLER_SEND_METRICS: "false"
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    # A fork pull request gets no key and no deploy, so there is nothing to build for it.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - run: cargo install wasm-pack --locked
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site
+          path: web/build
+          if-no-files-found: error
+          retention-days: 7
+
   deploy:
+    needs: build
     runs-on: ubuntu-latest
     # Production deploys must never overlap or be cancelled half way.
     concurrency:
@@ -24,9 +57,11 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    outputs:
+      url: ${{ steps.production.outputs.url || steps.preview.outputs.url }}
     steps:
-      # The Cloudflare secrets are set only on the steps that need them, never on
-      # third-party actions or on dependency installs.
+      # The Cloudflare secrets are set only on the steps that need them, and only this job
+      # may use them (tools/check-workflows.mjs checks it).
       - name: Check Cloudflare secrets
         id: secrets
         env:
@@ -42,12 +77,6 @@ jobs:
         if: steps.secrets.outputs.present == 'true'
         with:
           persist-credentials: false
-      - if: steps.secrets.outputs.present == 'true'
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-        if: steps.secrets.outputs.present == 'true'
-      - if: steps.secrets.outputs.present == 'true'
-        run: cargo install wasm-pack --locked
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         if: steps.secrets.outputs.present == 'true'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -55,12 +84,17 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+      # No install scripts: they would run project code before the key is used.
       - if: steps.secrets.outputs.present == 'true'
-        run: pnpm install --frozen-lockfile
-      - if: steps.secrets.outputs.present == 'true'
-        run: pnpm build
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: steps.secrets.outputs.present == 'true'
+        with:
+          name: site
+          path: web/build
 
       - name: Deploy to production
+        id: production
         if: steps.secrets.outputs.present == 'true' && github.event_name == 'push'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -68,28 +102,15 @@ jobs:
         run: |
           pnpm --filter web exec wrangler deploy --message "$GITHUB_SHA" | tee deploy.log
           url=$(grep -o 'https://[a-z0-9.-]*\.workers\.dev' deploy.log | head -n 1)
+          if [ -z "$url" ]; then
+            echo "The deploy gave no URL."
+            exit 1
+          fi
           echo "Deployed to $url"
-          # A new version can take a few seconds to reach every edge, so retry.
-          for attempt in 1 2 3 4 5 6; do
-            node tools/check-headers.mjs "$url/" && exit 0
-            echo "Header check failed (attempt $attempt); retrying in 5s"
-            sleep 5
-          done
-          exit 1
-
-      - name: Smoke test the production site
-        if: steps.secrets.outputs.present == 'true' && github.event_name == 'push'
-        run: |
-          url=$(grep -o 'https://[a-z0-9.-]*\.workers\.dev' deploy.log | head -n 1)
-          # The new version can take a few seconds to reach every edge, so retry.
-          for attempt in 1 2 3 4; do
-            node tools/smoke.mjs "$url/" && exit 0
-            echo "Smoke test failed (attempt $attempt); retrying in 10s"
-            sleep 10
-          done
-          exit 1
+          echo "url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Upload preview
+        id: preview
         if: steps.secrets.outputs.present == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -105,19 +126,43 @@ jobs:
           pnpm --filter web exec wrangler versions upload --preview-alias "pr-$PR" --message "PR $PR $GITHUB_SHA" | tee preview.log
           url=$(grep -o 'https://pr-[a-z0-9.-]*\.workers\.dev' preview.log | head -n 1)
           if [ -n "$url" ]; then
+            echo "url=$url" >> "$GITHUB_OUTPUT"
             gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body "Preview: $url (commit ${GITHUB_SHA::7})"
           fi
 
-      - name: Smoke test the preview
-        if: steps.secrets.outputs.present == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+  verify:
+    needs: deploy
+    if: needs.deploy.outputs.url != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Check the security headers
+        # Only production: the headers of a preview are the same file, checked on production.
+        if: github.event_name == 'push'
+        env:
+          URL: ${{ needs.deploy.outputs.url }}
         run: |
-          url=$(grep -o 'https://pr-[a-z0-9.-]*\.workers\.dev' preview.log | head -n 1)
-          if [ -z "$url" ]; then
-            echo "No preview was uploaded; skipping."
-            exit 0
-          fi
+          # A new version can take a few seconds to reach every edge, so retry.
+          for attempt in 1 2 3 4 5 6; do
+            node tools/check-headers.mjs "$URL/" && exit 0
+            echo "Header check failed (attempt $attempt); retrying in 5s"
+            sleep 5
+          done
+          exit 1
+      - name: Smoke test
+        env:
+          URL: ${{ needs.deploy.outputs.url }}
+        run: |
           for attempt in 1 2 3 4; do
-            node tools/smoke.mjs "$url/" && exit 0
+            node tools/smoke.mjs "$URL/" && exit 0
             echo "Smoke test failed (attempt $attempt); retrying in 10s"
             sleep 10
           done
