@@ -21,6 +21,7 @@
     "test:wasm": "wasm-pack test --node crates/engine-wasm",
     "test:web": "pnpm --filter web test",
     "test:e2e": "pnpm --filter web test:e2e",
+    "test:e2e:cross": "pnpm --filter web test:e2e:cross",
     "size": "node tools/check-size.mjs",
     "lighthouse": "node tools/check-lighthouse.mjs",
     "smoke": "node tools/smoke.mjs --build web/build",

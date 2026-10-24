@@ -17,7 +17,8 @@
 		"format:check": "prettier --check .",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
 		"test": "vitest run",
-		"test:e2e": "playwright test"
+		"test:e2e": "playwright test --project=desktop --project=phone",
+		"test:e2e:cross": "playwright test --project=firefox --project=webkit-phone"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "4.13.0",
