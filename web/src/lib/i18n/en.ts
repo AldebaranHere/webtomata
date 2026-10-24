@@ -26,6 +26,13 @@ export const en: Record<MessageKey, string> = {
 	'home.panduan_hint': 'Design patterns for machines, one at a time.',
 	'home.engine': 'Engine version',
 
+	'engine.crashed.title': 'The engine stopped.',
+	'engine.crashed.body': 'Something went wrong while calculating. Try again.',
+	'engine.timeout.title': 'The calculation took too long.',
+	'engine.timeout.body':
+		'The calculation was stopped after {seconds} seconds. Try a smaller machine.',
+	'engine.retry': 'Try again',
+
 	'sandbox.description': 'Build, run and convert finite state machines right in the browser.',
 	'soal.description': 'Practice questions on finite state machines with calm, specific feedback.',
 	'panduan.description':

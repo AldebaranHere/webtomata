@@ -30,6 +30,7 @@ Indonesian terms used in the UI and guides. Source: the ToC slides, quizzes and 
 | yields-in-one-step | yields-in-one-step | Slides keep the English name. |
 | accept / reject | menerima / menolak | "diterima" for the passive form. |
 | computation | komputasi | The sequence of configurations of a run. The UI says "komputasi" for a simulation run, not "jejak". |
+| engine | engine | The part that does the calculations (the WASM module). Kept in English because "mesin" already means the machine that the student draws. TODO(review) |
 | step (of an algorithm) | langkah | The UI says "langkah" for a step of a conversion. |
 | regular expression | ekspresi reguler (regex) | "regex" is fine in short labels. |
 | regular language | bahasa reguler | |

@@ -26,6 +26,13 @@ export const id = {
 	'home.panduan_hint': 'Pola merancang mesin, satu per satu.',
 	'home.engine': 'Versi engine',
 
+	'engine.crashed.title': 'Engine berhenti.',
+	'engine.crashed.body': 'Terjadi masalah saat menjalankan perhitungan. Coba lagi.',
+	'engine.timeout.title': 'Perhitungan terlalu lama.',
+	'engine.timeout.body':
+		'Perhitungan dihentikan setelah {seconds} detik. Coba dengan mesin yang lebih kecil.',
+	'engine.retry': 'Coba lagi',
+
 	'sandbox.description': 'Bangun, jalankan dan ubah mesin berhingga langsung di peramban.',
 	'soal.description': 'Soal latihan mesin berhingga dengan umpan balik yang tenang dan spesifik.',
 	'panduan.description': 'Panduan pola merancang DFSM, NDFSM dan ekspresi reguler.',
