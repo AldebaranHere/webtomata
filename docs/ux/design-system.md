@@ -68,6 +68,10 @@ The wireframes pass AA except four things. They are fixed in the tokens:
 - **Elevation:** `--shadow-popover` for menus and sheets.
 - **Motion:** `--duration-fast` 120ms, `--duration-base` 200ms, `--ease-standard`. `base.css` turns animations and transitions off for people who set `prefers-reduced-motion`.
 
+## Layout
+
+One breakpoint: 40rem (640px). Below it the header shows a Menu button and the layout is one column; from it the links sit in the bar. A media query cannot use a CSS variable, so this one value is written in the components that need it (`SiteHeader.svelte`). Page content has a maximum width of 40rem for text.
+
 ## Contrast results
 
 Made by `node tools/check-contrast.mjs --markdown` (run it again when a token changes). WCAG 2.2: 4.5:1 for text (1.4.3), 3:1 for graphics, the edges of controls and the focus ring (1.4.11).
