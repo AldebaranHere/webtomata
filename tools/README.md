@@ -31,6 +31,10 @@ The seed is fixed. The same versions give the same files, on any computer.
 
 `pnpm check:contrast` (`check-contrast.mjs`) reads `web/src/lib/styles/tokens.css` and checks the color pairs in `contrast-pairs.mjs` against WCAG 2.2 (4.5:1 for text, 3:1 for graphics and the edges of controls). It also fails if a color token is in no pair and is not marked decorative. `--markdown` prints the table for `docs/ux/design-system.md`. `pnpm check:tokens` (`check-tokens-usage.mjs`) fails if a component or a css file other than `tokens.css` has a raw color. Their tests run with `pnpm test:tools`.
 
+## No hard-coded text (`check-strings.mjs`)
+
+`pnpm check:strings` reads every `web/src/**/*.svelte` with the Svelte compiler and fails on user-facing text that is not a message: literal text with a Latin letter in the markup, a literal in `aria-label`, `alt`, `title`, `placeholder` or the description of the page, or a string literal in braces. Greek letters (ε, Σ), digits and punctuation are allowed; the script and the style are not read. The message files are in `web/src/lib/i18n`. Its tests run with `pnpm test:tools`.
+
 ## Audits
 
 `.github/workflows/audit.yml` runs `cargo audit` and `pnpm audit` weekly, when a lockfile changes, and by hand. It is not a required check.
