@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { WORLD, clampDelta, dragPlaces, linkLine, snapTo } from './canvas.ts';
+import { LIMIT, clampDelta, dragPlaces, linkLine, snapTo } from './canvas.ts';
 
 const places = (...entries: [number, number, number][]) =>
 	new Map(entries.map(([id, x, y]) => [id, { x, y }]));
 
-describe('the world', () => {
-	it('is 1600 by 1000 units, until the canvas can pan and zoom (S4d)', () => {
-		expect(WORLD).toMatchObject({ width: 1600, height: 1000 });
+describe('the limit', () => {
+	it('is the limit of the document: a state may be anywhere within ±1,000,000', () => {
+		expect(LIMIT).toBe(1_000_000);
 	});
 });
 
@@ -20,13 +20,17 @@ describe('snapTo', () => {
 });
 
 describe('clampDelta', () => {
-	it('keeps a group inside the world as a whole, so that its shape does not change', () => {
+	it('keeps a group inside the limit as a whole, so that its shape does not change', () => {
 		const originals = places([0, 100, 100], [1, 300, 100]);
-		// Far to the left: the left state stops at the margin, and the right one follows.
-		const { x } = clampDelta(originals, { x: -1000, y: 0 });
-		expect(x).toBe(40 - 100);
-		const { y } = clampDelta(originals, { x: 0, y: 5000 });
-		expect(y).toBe(WORLD.height - 40 - 100);
+		// Far to the left: the left state stops at the limit, and the right one follows.
+		const { x } = clampDelta(originals, { x: -5_000_000, y: 0 });
+		expect(x).toBe(-LIMIT - 100);
+		const { y } = clampDelta(originals, { x: 0, y: 5_000_000 });
+		expect(y).toBe(LIMIT - 100);
+	});
+
+	it('lets a state go far beyond the old area of 1600 by 1000', () => {
+		expect(clampDelta(places([0, 100, 100]), { x: 5000, y: -3000 })).toEqual({ x: 5000, y: -3000 });
 	});
 
 	it('does not change a move that stays inside', () => {
@@ -46,9 +50,9 @@ describe('dragPlaces', () => {
 		expect(result.get(0)).toEqual({ x: 100, y: 120 });
 	});
 
-	it('keeps the states inside the world', () => {
-		const result = dragPlaces(places([0, 100, 100]), { x: -500, y: -500 }, false);
-		expect(result.get(0)).toEqual({ x: 40, y: 40 });
+	it('keeps the states inside the limit', () => {
+		const result = dragPlaces(places([0, 100, 100]), { x: -5_000_000, y: -5_000_000 }, false);
+		expect(result.get(0)).toEqual({ x: -LIMIT, y: -LIMIT });
 	});
 
 	it('gives the same places for the same input', () => {

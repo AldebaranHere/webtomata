@@ -39,7 +39,7 @@ test('the Sandbox opens with the sample, and the page does not scroll', async ({
 	await expectNoAxeViolations(page);
 });
 
-test('a state appears where the pointer clicked, also after the canvas scrolled', async ({
+test('a state appears where the pointer clicked, also after the view was panned', async ({
 	page,
 	isMobile
 }) => {
@@ -47,10 +47,10 @@ test('a state appears where the pointer clicked, also after the canvas scrolled'
 	await emptyCanvas(page);
 	await page.getByRole('button', { name: 'Tambah state' }).click();
 	const area = (await canvas(page).boundingBox())!;
-	await canvas(page).evaluate((el) => {
-		el.scrollLeft = 130;
-		el.scrollTop = 70;
-	});
+	// Pan the view with the wheel (the canvas has no native scroll).
+	await page.mouse.move(area.x + 20, area.y + 20);
+	await page.mouse.wheel(130, 70);
+	await page.waitForTimeout(100);
 	const at = { x: area.x + 200, y: area.y + 150 };
 	await page.mouse.click(at.x, at.y);
 	await expect(nodes(page)).toHaveCount(1);

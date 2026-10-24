@@ -18,6 +18,7 @@
 	let ready = $state(false);
 	onMount(() => (ready = true));
 	let snapshot = $state(editor.getState());
+	let canvas: EditorCanvas;
 	$effect(() => editor.subscribe(() => (snapshot = editor.getState())));
 
 	// Until the machine is saved on the device (S10a), leaving the page loses the changes: ask first.
@@ -42,6 +43,8 @@
 		<div class="bar">
 			<p class="title">{snapshot.doc.title || t('editor.untitled')}</p>
 			<p class="count">{t('editor.count', { count: snapshot.doc.states.length })}</p>
+			<button type="button" class="fit" onclick={() => canvas.zoom('fit')}>{t('editor.fit')}</button
+			>
 			<span class="phone-history">
 				<HistoryButtons
 					canUndo={snapshot.canUndo}
@@ -56,7 +59,7 @@
 				{t(snapshot.link ? 'editor.hint_pick_target' : 'editor.hint_pick_source')}
 			</p>
 		{/if}
-		<EditorCanvas {editor} state={snapshot} />
+		<EditorCanvas bind:this={canvas} {editor} state={snapshot} />
 		<Toast
 			toast={snapshot.toast}
 			onundo={() => editor.undo()}
@@ -106,6 +109,23 @@
 	.phone-history {
 		display: none;
 	}
+	/* A phone zooms by pinching; this button brings the whole machine back into view. */
+	.fit {
+		display: none;
+		min-width: var(--target-min);
+		min-height: var(--target-min);
+		padding: 0 var(--space-3);
+		border: 0;
+		border-radius: var(--radius-lg);
+		background: transparent;
+		color: var(--color-ink);
+		font: inherit;
+		font-weight: var(--weight-strong);
+		cursor: pointer;
+	}
+	.fit:hover {
+		background: var(--color-neutral-tint);
+	}
 	/* What to do next while a transition is being made. The same words are said by the live region. */
 	.hint-line {
 		position: absolute;
@@ -131,8 +151,10 @@
 		.bar {
 			padding: 0 var(--space-2) 0 var(--space-4);
 		}
-		.phone-history {
+		.phone-history,
+		.fit {
 			display: flex;
+			align-items: center;
 		}
 	}
 </style>

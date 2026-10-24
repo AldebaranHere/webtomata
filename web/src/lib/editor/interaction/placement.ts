@@ -1,7 +1,7 @@
 // Where a new state goes when it is added with the keyboard (the key N): at the center of the
 // visible area, or, if a state is already there, at the nearest free spot on a grid of 80.
 import type { MachineDocument } from '../document.ts';
-import { MARGIN, WORLD } from './canvas.ts';
+import { LIMIT } from './canvas.ts';
 import type { Point } from './canvas.ts';
 
 /** A new state is this far (center to center) from every other state, at least. */
@@ -9,8 +9,7 @@ const MIN_DISTANCE = 72;
 const GRID = 80;
 const RINGS = 25;
 
-const inside = (p: Point) =>
-	p.x >= MARGIN && p.x <= WORLD.width - MARGIN && p.y >= MARGIN && p.y <= WORLD.height - MARGIN;
+const inside = (p: Point) => Math.abs(p.x) <= LIMIT && Math.abs(p.y) <= LIMIT;
 
 export function freeSpot(doc: MachineDocument, wanted: Point): Point {
 	const spot = { x: Math.round(wanted.x), y: Math.round(wanted.y) };
@@ -36,9 +35,9 @@ export function freeSpot(doc: MachineDocument, wanted: Point): Point {
 		const found = candidates.find(free);
 		if (found) return found;
 	}
-	// The world is full around the spot. Put it there anyway, inside the world.
+	// It is full around the spot. Put it there anyway, inside the limit.
 	return {
-		x: Math.min(Math.max(spot.x, MARGIN), WORLD.width - MARGIN),
-		y: Math.min(Math.max(spot.y, MARGIN), WORLD.height - MARGIN)
+		x: Math.min(Math.max(spot.x, -LIMIT), LIMIT),
+		y: Math.min(Math.max(spot.y, -LIMIT), LIMIT)
 	};
 }

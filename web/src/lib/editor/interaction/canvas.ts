@@ -1,20 +1,15 @@
-// The numbers of the canvas that do not depend on the browser: the size of the world, snapping,
-// and where a group of states ends up when it is dragged. Pure functions, tested without a DOM.
+// The numbers of the canvas that do not depend on the browser: the limit, snapping, and where a
+// group of states ends up when it is dragged. Pure functions, tested without a DOM.
 import { RADIUS } from '../diagram/geometry.ts';
+import { LIMITS } from '../document.ts';
 
 export interface Point {
 	x: number;
 	y: number;
 }
 
-/**
- * The canvas is a fixed area of 1600 by 1000 units, shown at 100% and scrolled by the browser.
- * Real pan and zoom come with S4d and replace this.
- */
-export const WORLD = { width: 1600, height: 1000 } as const;
-
-/** A state keeps its whole circle, and a little more, inside the world. */
-export const MARGIN = RADIUS + 8;
+/** The canvas has no edge. A state may be anywhere within this distance of the origin (the limit of the document). */
+export const LIMIT = LIMITS.coordinate;
 
 export const GRID = 20;
 
@@ -24,7 +19,7 @@ export const snapTo = (n: number, grid: number): number => Math.round(n / grid) 
 
 /**
  * The most that a group of places may move: the move is cut so that the whole group stays inside
- * the world. The group keeps its shape, which clamping each state alone would not.
+ * the limit. The group keeps its shape, which clamping each state alone would not.
  */
 export function clampDelta(originals: ReadonlyMap<number, Point>, delta: Point): Point {
 	const places = [...originals.values()];
@@ -32,14 +27,14 @@ export function clampDelta(originals: ReadonlyMap<number, Point>, delta: Point):
 	const xs = places.map((p) => p.x);
 	const ys = places.map((p) => p.y);
 	return {
-		x: clamp(delta.x, MARGIN - Math.min(...xs), WORLD.width - MARGIN - Math.max(...xs)),
-		y: clamp(delta.y, MARGIN - Math.min(...ys), WORLD.height - MARGIN - Math.max(...ys))
+		x: clamp(delta.x, -LIMIT - Math.min(...xs), LIMIT - Math.max(...xs)),
+		y: clamp(delta.y, -LIMIT - Math.min(...ys), LIMIT - Math.max(...ys))
 	};
 }
 
 /**
  * Where the states of a drag are, when the pointer has moved by `delta` since the press. Whole
- * numbers; with `snap`, on a grid of 20 (the Shift key); always inside the world.
+ * numbers; with `snap`, on a grid of 20 (the Shift key); always inside the limit.
  */
 export function dragPlaces(
 	originals: ReadonlyMap<number, Point>,
@@ -52,8 +47,8 @@ export function dragPlaces(
 		let x = Math.round(place.x + moved.x);
 		let y = Math.round(place.y + moved.y);
 		if (snap) {
-			x = clamp(snapTo(x, GRID), MARGIN, WORLD.width - MARGIN);
-			y = clamp(snapTo(y, GRID), MARGIN, WORLD.height - MARGIN);
+			x = clamp(snapTo(x, GRID), -LIMIT, LIMIT);
+			y = clamp(snapTo(y, GRID), -LIMIT, LIMIT);
 		}
 		result.set(id, { x, y });
 	}

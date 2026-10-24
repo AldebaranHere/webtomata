@@ -290,6 +290,19 @@ Errors from the document keep their own keys (`document.duplicate_name` and so o
 - **Menu:** an edge has "Ubah simbol" and "Hapus". A state has "Tambah transisi dari sini" (one state only), which switches to Transisi with that state as the source.
 - **Delete toast:** deleting an edge shows the same toast with **Urungkan** ("Transisi dari q0 ke q1 dihapus.").
 
+## Decisions made while building S4d-1
+
+- **No edge to the canvas.** The 1600 × 1000 area is gone. A state may be anywhere within ±1,000,000 of the origin (the limit of the document). The view is a camera (`interaction/camera.ts`): `screen = world × scale + offset`. It is not part of the document or the history.
+- **Zoom** is 25% to 400%, around the pointer for the wheel, and around the middle of the view for the keys and buttons. A step is ×1.25. One turn of a mouse wheel zooms by a modest step, and a trackpad pinch (which arrives as Ctrl and wheel) zooms smoothly.
+- **Pan:** the wheel and the trackpad scroll (without Ctrl or Cmd), a drag on empty canvas in Pilih, `Space` and drag in any tool, the middle button, one finger on empty canvas, and `Shift+Arrow` (100 px; the content moves the other way). A drag that pans never adds a state or clears the selection.
+- **Keys:** `+` and `=` zoom in, `-` and `_` zoom out, `0` is 100%, `1` fits the machine. With Ctrl, Cmd or Alt they belong to the browser.
+- **First view:** on opening, the whole machine is fitted (never enlarged beyond 100%, never below 25%), centered, with 48 px around it. An empty canvas opens at 100% at the origin. A state that gets the focus (a new one, or one reached with the arrows) and is off the screen moves the view just enough to show its whole circle.
+- **Zoom control (laptop):** −, the percentage (a press sets 100%), +, and Pas (fit), each 44 px, at the bottom right. The percentage is said by a polite live region. **A phone has no control but a Pas button in the title bar** (44 px), so that a user who pinched or panned away can come back. This adds one button to the wireframe.
+- **Boxes and menus** are placed by screen position and keep their own size (16 px text) at every zoom. The hit line of an edge is 44 px on the screen at every zoom (a non-scaling stroke).
+- **Distances on the screen:** the 4 px and 8 px thresholds for a drag are screen pixels, whatever the zoom; a drag of a state moves it by the distance in the world.
+- **No inline style attribute:** the page's security policy blocks one, so the background dots (they move with the camera) are set through the CSS object model.
+- **Not yet (S4d-2):** two-finger pinch, and a second finger cancelling a drag or a long-press.
+
 ## What each interaction needs from S3
 
 Every interaction uses an existing command. No new command is needed for S4.
