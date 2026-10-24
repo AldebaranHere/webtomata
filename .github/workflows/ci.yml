@@ -28,6 +28,8 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
+      # Runs each benchmark case once, so that the benchmarks cannot break unnoticed.
+      - run: cargo test -p engine-core --benches
 
   web:
     runs-on: ubuntu-latest

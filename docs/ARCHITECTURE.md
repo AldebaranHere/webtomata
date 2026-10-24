@@ -56,4 +56,46 @@ One WASM call for each user action. Every function takes text and returns one te
 
 ## Performance and benchmarks
 
-Budgets are in `CLAUDE.md` §7 and enforced in CI. Engine benchmarks (E13) will be recorded here. The `.wasm` file with the full API is about 163 KB gzip (budget 250 KB).
+Budgets are in `CLAUDE.md` §7 and enforced in CI. The `.wasm` file with the full API is about 163 KB gzip (budget 250 KB).
+
+### Engine benchmarks (E13)
+
+**How to run them.** `cargo bench -p engine-core` times `determinize`, `minimize` and `equivalent` natively with Criterion (`crates/engine-core/benches/engine.rs`). `pnpm build:wasm` and then `node tools/bench-wasm.mjs` time the same machines through the WASM module in Node, as the worker calls it: the machine as JSON text in, the answer as JSON text out. `cargo test -p engine-core --benches` runs each case once, and checks that every case finishes with the size that its family promises. Benchmarks do not run in CI, because shared runners are too noisy.
+
+**The numbers are for this one computer.** Measured on 2026-10-24, on commit `b3c4f9f` plus the benchmark files: Intel Core i7-1255U (a hybrid CPU: 2 fast P-cores with 4 threads, and 8 slow E-cores), 16 GB, Windows 11, mains power, the Balanced power plan, Rust 1.99.1 (the benchmark uses the release settings of the workspace, `opt-level = "z"`, as the shipped engine does), Node 24.21.0.
+
+- **Quiet machine, pinned.** Only Claude Desktop and two small tray programs were running (about 13% CPU, part of it the measurement itself). The benchmark was pinned to two P-core threads with high priority. Each table shows the lowest and the highest value of **three runs**. The runs differ by at most 8% natively and 12% in WASM.
+- **Why pinned.** On this CPU, Windows moves a thread between P-cores and E-cores. A first set of runs with other programs open was up to 60% apart between two runs, and 25 to 40% slower. The numbers below are therefore close to the best this computer can do. A real browser is not pinned: it took 1.1 to 1.4 times the pinned Node time for the 500-state cases (see the browser check below).
+- **A phone is slower.** WASM through the API took about 1.7 to 3.3 times the native time at 500 states (and more at 10 states, where the JSON text costs more than the engine), and a mid-range Android phone is typically several times slower than a laptop CPU. We did not measure a phone. Do not read these numbers as a promise for phones.
+
+| What is timed (native) | 10 states | 100 states | 500 states |
+| --- | --- | --- | --- |
+| `determinize`: NFA "ends in n−1 a's", n states in, n out | 27 µs – 28 µs | 0.82 ms – 0.89 ms | 18 ms – 19 ms |
+| `minimize`: random complete DFSM, 3 symbols | 38 µs – 40 µs | 1.5 ms | 33 ms – 34 ms |
+| `minimize`: chain of n states, already minimal (about n rounds of splitting) | 28 µs | 1.3 ms | 32 ms – 33 ms |
+| `equivalent`: a counter modulo n and the same machine renumbered (the whole product is explored) | 20 µs | 0.23 ms – 0.24 ms | 0.94 ms – 0.97 ms |
+| `equivalent`: a counter modulo n and modulo n+2 (a witness is found, and up to 5 wrong strings of length ≤ 8 are listed on each side) | 0.25 ms – 0.26 ms | 0.52 ms – 0.53 ms | 1.3 ms |
+
+| `determinize`: "the k-th symbol from the end is a" (k+1 states in, 2^k out) | k = 6 (64 states) | k = 8 (256 states) | k = 10 (1,024 states) |
+| --- | --- | --- | --- |
+| Native | 0.12 ms – 0.13 ms | 0.53 ms – 0.55 ms | 2.6 ms – 2.7 ms |
+| WASM through the API, in Node | 0.49 ms – 0.54 ms | 2.1 ms | 8.5 ms – 8.7 ms |
+
+WASM through the API, in Node, for the same cases as the first table:
+
+| What is timed | 10 states | 100 states | 500 states |
+| --- | --- | --- | --- |
+| `determinize` ends_with_a | 0.13 ms – 0.14 ms | 2.0 ms – 2.1 ms | 32 ms – 33 ms |
+| `minimize` random | 0.18 ms | 3.6 ms – 3.8 ms | 57 ms |
+| `minimize` chain | 0.11 ms – 0.12 ms | 2.8 ms – 2.9 ms | 54 ms – 56 ms |
+| `equivalent` same language | 70 µs | 0.47 ms – 0.48 ms | 2.3 ms – 2.4 ms |
+| `equivalent` different | 0.26 ms – 0.29 ms | 0.84 ms – 0.88 ms | 3.1 ms |
+
+**Browser check.** The same calls in the real browser (Chromium inside Claude Desktop, through the worker, not pinned): `determinize` ends_with_a 500 took 35 ms (pinned Node: 32 ms), `minimize` random 500 took 77 ms (pinned Node: 57 ms), and `minimize` on a chain of 2,000 states took 1.4 s (pinned Node: 0.65 s).
+
+**What the numbers show**
+- `determinize` and `minimize` grow roughly with the square of the number of states: from 100 to 500 states (5 times more), `determinize` ends_with_a takes about 21 times longer and `minimize` random about 22 times longer. `equivalent` grows 2.5 to 4 times, roughly in step with the number of state pairs, so it is cheap.
+- The worst case of subset construction is limited by `MAX_STATES`: k = 10 (1,024 states) takes under 3 ms natively, so the 2,000-state limit is not a time problem.
+- **A slow case, found while checking the web budgets.** `minimize` on a chain of 2,000 states (the largest machine the engine accepts) takes 0.65 to 0.69 s pinned in Node and 1.4 s in the real browser on this computer. The web budget `maxSteps: 20000` does not stop it, because the number of trace steps does not bound the running time. On a phone this could take several seconds. A student can cancel the call (`engine.cancel()`), and the machines in a course are far smaller (500 states take under 0.1 s), but a very large imported file could hit this. This is not fixed in E13. Options for a later task: a faster implementation that keeps Rich's trace, or a smaller limit on the machine size for `minimize` in the web client.
+- **`fsmToRegex` and the budget `maxNodes: 500`.** Time is not the limit here: every call took under 4 ms. Machines of textbook size (up to 12 states with few transitions) finish within 500 nodes, but a dense random machine of 6 states already stops at 500, and the engine default of 2,000 nodes finishes up to about 10 states (an expression of about 1,800 characters, which no student can read). The budget is a bound on readability, not on time.
+- The other web budgets from E12 hold: `determinize` on a 2,000-state input stops at 500 states after about 30 ms (without the budget it takes 0.44 s), and `equivalent` needs about 10 ms for 2,000 pairs, so 20,000 pairs is about 0.1 s.
