@@ -29,7 +29,8 @@
 		problem: EngineProblem | undefined;
 		/** What the step says, for a screen reader. */
 		said: Message | undefined;
-		onstart: (input: string) => void;
+		/** `play`: run it by itself. Otherwise it waits at step one for the next press. */
+		onstart: (input: string, play: boolean) => void;
 		onplay: () => void;
 		onpause: () => void;
 		onstep: () => void;
@@ -57,6 +58,13 @@
 		names.length === 0 ? '∅' : names.length === 1 ? names[0]! : `{${names.join(', ')}}`;
 	const line = (row: RunRow) => `${set(row.from)} –${row.symbol}→ ${set(row.to)}`;
 
+	// With no run yet, the step button makes one and shows its first step: a student who types a
+	// string and presses it wants to go one step at a time.
+	function step() {
+		if (ready) onstep();
+		else onstart(text, false);
+	}
+
 	function submit(event: SubmitEvent) {
 		event.preventDefault();
 		if (status === 'working') return;
@@ -64,7 +72,7 @@
 			if (view!.playing) onpause();
 			else onplay();
 		} else {
-			onstart(text);
+			onstart(text, true);
 		}
 	}
 </script>
@@ -133,8 +141,8 @@
 				type="button"
 				class="icon"
 				aria-label={t('run.step_forward')}
-				disabled={!ready || view?.atEnd}
-				onclick={onstep}
+				disabled={status === 'working' || (ready && view?.atEnd)}
+				onclick={step}
 			>
 				<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
 					<path d="M8 5l9 7-9 7z" />
@@ -146,7 +154,7 @@
 	{#if status === 'refused'}
 		<p class="note">{t(refusalText(refusal).key, refusalText(refusal).params)}</p>
 	{:else if status === 'failed' && problem}
-		<EngineNotice {problem} onretry={() => onstart(text)} />
+		<EngineNotice {problem} onretry={() => onstart(text, true)} />
 	{/if}
 
 	{#if ready && view}

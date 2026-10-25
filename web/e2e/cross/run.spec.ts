@@ -136,7 +136,7 @@ test('a change of the machine or of the string clears the run', async ({ page })
 	await field(page).fill('011');
 	await expect(active(page)).toHaveCount(0);
 	await expect(chips(page)).toHaveCount(0);
-	await expect(button(page, 'Langkah berikutnya')).toBeDisabled();
+	await expect(button(page, 'Langkah sebelumnya')).toBeDisabled();
 
 	// Editing the machine; the string stays in the field.
 	await runAndStop(page, '011');
@@ -148,6 +148,27 @@ test('a change of the machine or of the string clears the run', async ({ page })
 	}).toPass();
 	await expect(chips(page)).toHaveCount(0);
 	await expect(field(page)).toHaveValue('011');
+});
+
+test('the next-step button starts a run too, at step one, and does not play', async ({ page }) => {
+	await openSandbox(page);
+	await field(page).fill('010');
+	await button(page, 'Langkah berikutnya').click();
+	await expect(chips(page).getByRole('listitem')).toHaveText(['0', '1', '0']);
+	await expect(active(page)).toHaveAttribute('aria-label', /^State q1/);
+	// It waits for the next press: nothing moves by itself.
+	await page.waitForTimeout(1500);
+	await expect(active(page)).toHaveAttribute('aria-label', /^State q1/);
+	await expect(go(page)).toHaveText('Jalankan');
+	await button(page, 'Langkah berikutnya').click();
+	await expect(active(page)).toHaveAttribute('aria-label', /^State q2/);
+});
+
+test('the next-step button says why a string cannot run', async ({ page }) => {
+	await openSandbox(page);
+	await field(page).fill('012');
+	await button(page, 'Langkah berikutnya').click();
+	await expect(panel(page).getByText('Simbol "2" (posisi 3) tidak ada di alfabet.')).toBeVisible();
 });
 
 test('pressing Enter in the field runs it', async ({ page }) => {

@@ -115,9 +115,10 @@
 	});
 	const active = $derived(new Set(run.view?.active ?? []));
 	const taken = $derived(new Set(run.view?.taken.map((e) => `${e.from}>${e.to}`) ?? []));
-	async function startRun(input: string) {
+	async function startRun(input: string, play: boolean) {
 		await runner.start(editor.getState().doc, input);
-		runner.play();
+		if (play) runner.play();
+		else runner.step();
 	}
 
 	// Saving: each new document goes to the autosave. When the tab is hidden or closed, what waits
@@ -233,7 +234,7 @@
 			refusal={run.refusal}
 			problem={run.problem}
 			said={run.said}
-			onstart={(input) => void startRun(input)}
+			onstart={(input, play) => void startRun(input, play)}
 			onplay={() => runner.play()}
 			onpause={() => runner.pause()}
 			onstep={() => runner.step()}
