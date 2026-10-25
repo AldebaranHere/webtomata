@@ -6,7 +6,11 @@
 	import ChecksList from './ChecksList.svelte';
 	import RunPanel from './RunPanel.svelte';
 	import SidePanel from './SidePanel.svelte';
+	import TestList from './TestList.svelte';
 	import { createRunner } from './run.ts';
+	import type { Text } from './run-text.ts';
+	import { addTest, readTests, removeTest } from './test-list.ts';
+	import { createTester } from './tester.ts';
 	import { createChecker } from './checker.ts';
 	import { flagsOf } from './checks.ts';
 	import SaveStatusLine from './SaveStatusLine.svelte';
@@ -31,7 +35,8 @@
 		autosave,
 		persistent = true,
 		titles,
-		library
+		library,
+		tests: savedTests
 	}: {
 		doc: MachineDocument;
 		autosave?: Autosave;
@@ -40,6 +45,8 @@
 		titles?: Titles;
 		/** The list of saved machines: how many, and how to open it (a phone has its button here). */
 		library?: { count: number; onopen: () => void };
+		/** The test strings that were saved with the machine (read again here: anything may be in the record). */
+		tests?: unknown;
 	} = $props();
 
 	/** The title of the machine, as one undo step (the list "Mesin saya" calls this). */
@@ -113,6 +120,47 @@
 			runner.dispose();
 		};
 	});
+	// The test strings: saved with the machine (not in the document, not in the undo history), and
+	// run in the engine after each change of the machine or of the list.
+	const tester = createTester({
+		run: (d, inputs) => engine.simulateMany(toMachine(d), inputs)
+	});
+	let testList = $state.raw(readTests(untrack(() => savedTests)));
+	const readTesting = () => ({
+		status: tester.status(),
+		problem: tester.problem(),
+		rows: testList.map((text) => ({ text, outcome: tester.outcome(text) }))
+	});
+	let testing = $state.raw(readTesting());
+	$effect(() => {
+		const stop = tester.subscribe(() => (testing = readTesting()));
+		let last = untrack(() => editor.getState().doc);
+		const stopEditor = editor.subscribe(() => {
+			const next = editor.getState().doc;
+			if (next === last) return;
+			last = next;
+			tester.schedule(next, testList);
+		});
+		// Not tracked: a change of the list must not end this effect (that would end the tester).
+		untrack(() => tester.schedule(last, testList));
+		return () => {
+			stop();
+			stopEditor();
+			tester.dispose();
+		};
+	});
+	function changeTests(list: string[]) {
+		testList = list;
+		autosave?.scheduleTests(list);
+		tester.schedule(editor.getState().doc, list);
+	}
+	function addString(text: string): Text | null {
+		const added = addTest(testList, text);
+		if (!added.ok) return added.error;
+		changeTests(added.list);
+		return null;
+	}
+
 	const active = $derived(new Set(run.view?.active ?? []));
 	const taken = $derived(new Set(run.view?.taken.map((e) => `${e.from}>${e.to}`) ?? []));
 	async function startRun(input: string, play: boolean) {
@@ -241,6 +289,14 @@
 			onback={() => runner.back()}
 			onreset={() => runner.toStart()}
 			onedit={() => runner.clear()}
+		/>
+		<TestList
+			rows={testing.rows}
+			status={testing.status}
+			problem={testing.problem}
+			onadd={addString}
+			onremove={(text) => changeTests(removeTest(testList, text))}
+			onretry={() => tester.retry()}
 		/>
 		<ChecksList
 			status={checks.status}

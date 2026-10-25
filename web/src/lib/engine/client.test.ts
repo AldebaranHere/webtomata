@@ -113,6 +113,8 @@ describe('the web budgets', () => {
 		expect(simulate!.args[2]).toEqual(WEB_BUDGETS.simulate);
 		expect(determinize!.args[1]).toEqual(WEB_BUDGETS.determinize);
 		expect(equivalent!.args[2]).toEqual(WEB_BUDGETS.equivalent);
+		void engine.simulateMany(machine, ['a']);
+		expect(workers[0]!.posted[3]!.args[2]).toEqual(WEB_BUDGETS.simulateMany);
 	});
 
 	it('give way to the fields of the call, field by field', () => {

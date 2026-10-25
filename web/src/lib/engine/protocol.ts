@@ -20,14 +20,24 @@ import type {
 	RegexOutcome,
 	SimplifyBudget,
 	SimulateBudget,
-	SimulationReport
+	SimulationReport,
+	StopReason
 } from './types.ts';
+
+import type { Message } from './types.ts';
 
 /**
  * The engine, as the app sees it. Each method is one call to the WASM engine and answers with
  * `{ ok: true, value }` or `{ ok: false, error }` (a message key with parameters). A budget
  * can be partial: a missing field keeps the default. See `docs/ARCHITECTURE.md`.
  */
+/** What happened to one string of `simulateMany`. */
+export type StringOutcome =
+	| { input: string; result: 'accepted' | 'rejected' }
+	| { input: string; result: 'stopped'; reason: StopReason }
+	/** The string cannot be run (a symbol that is not in the alphabet) or the machine cannot (no start state). */
+	| { input: string; result: 'refused'; error: Message };
+
 export interface EngineApi {
 	version(): EngineResult<string>;
 	/** Reads a saved or shared machine (JSON text) and checks it. */
@@ -40,6 +50,15 @@ export interface EngineApi {
 		input: string,
 		budget?: Partial<SimulateBudget>
 	): EngineResult<SimulationReport>;
+	/**
+	 * Runs many strings on one machine, in one call: the verdict of each, in the order given. The
+	 * budget is for each string.
+	 */
+	simulateMany(
+		machine: Machine,
+		inputs: string[],
+		budget?: Partial<SimulateBudget>
+	): EngineResult<StringOutcome[]>;
 	determinize(machine: Machine, budget?: Partial<ConversionBudget>): EngineResult<Conversion>;
 	minimize(machine: Machine, budget?: Partial<MinimizeBudget>): EngineResult<Minimization>;
 	equivalent(
@@ -79,6 +98,7 @@ export const METHODS = [
 	'nondeterministicStates',
 	'addTrapState',
 	'simulate',
+	'simulateMany',
 	'determinize',
 	'minimize',
 	'equivalent',

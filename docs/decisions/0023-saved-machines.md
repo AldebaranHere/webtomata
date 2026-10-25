@@ -32,3 +32,10 @@ A student must be able to build a machine, close the page and find it again (S10
 - **What is shown:** while the title of the document is one of the two, the page shows the one of the language that is active (the title bar, the rows of the list, the toast of a delete). The document keeps the title of the language that was active when the machine was made. A title that the user chooses is the user’s, never translated, and the record then drops `titles`; an undo that brings the first title back brings `titles` back.
 - **Not retroactive:** a sample that was saved before this change has no `titles` and stays as it was. A student can rename it.
 - **Export (S10b)** writes the title of the language that is active.
+
+## Test strings (S6-3)
+- **A field of the record, not of the document.** The record may have `tests`, a list of strings (at most 50, each at most 200 characters, no repeats). `recordVersion` stays 1: the field is optional and only adds. A new machine has none, and an empty list leaves no field. The list is not in the document, so it is not in the undo history, and it is not in a file or a link (S10b may add it).
+- **Written by the same autosave.** `scheduleTests` puts the list in the same single write queue and with the same delay as the document, so neither can overwrite the other (a test runs random orders of changes). A change of the list alone does not touch the document text, the title or the titles of the content.
+- **Read with `readTests`, never trusted.** Anything that is not a list gives an empty one, what is not a string is dropped, a long string is cut, repeats are removed, and only the first 50 are kept. Reading never writes: a record with a bad field is still listed and opened, and the next save cleans it. A duplicate copies the (clean) list; a rename keeps the record's own field.
+- **Results are not saved.** They are worked out again after each change of the machine, so they cannot be old.
+- **A downgrade loses the list:** an older version of the app that saves the machine writes the record without `tests`. We accept that.

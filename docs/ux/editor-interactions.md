@@ -367,3 +367,12 @@ Copy and paste, dragging an edge to change its ends, editing an edge's curve by 
 - **Calm.** A rejection is a neutral sentence with the reason ("Tidak ada state aktif yang accepting."), not an error. The verdict shows only at the last step, so a student cannot read the answer from the first step. The computation list shows the lines up to the current step (the last 50 when it is long). A symbol outside the alphabet, no start state, and a run that the budget stopped each have their own sentence.
 - **Screen readers.** A live region (`aria-live`, not a second `role="status"`) says each step: "Membaca 0 (1 dari 2). State aktif: q1." and the verdict at the end.
 - **The texts** (`run.*`, `sim.*`, `input.unknown_symbol`) are a draft with `TODO(review)` until the feedback guide (U4). A test reads the engine's keys from the Rust source, so a new key cannot be added without a text.
+
+## Decisions made while building S6-3
+
+- **The block "Uji banyak string"** sits in the side panel under the run: a row for each string (the string, a badge, a remove button of 44 px), then a field with "Tambah". The empty string is added with an empty field and shown as ε. Strings are trimmed at the ends (a phone keyboard adds a space); a string that is there already, or is too long, or one too many gets a calm sentence and stays in the field.
+- **The results follow the machine.** One call to the engine (`simulateMany`, a loop in the worker handlers: no Rust change, one call for all the strings) runs the strings that have no answer yet. A change of the machine forgets every badge at once (it shows "Memeriksa…", never a badge for an older machine) and asks again 300 ms later; a new string is asked at once and alone. An answer for an older machine is thrown away.
+- **Not "Ditolak" when it cannot run.** A string with a symbol that is not in the alphabet, a machine without a start state, and a run that the budget stopped have their own badge ("Tidak bisa dijalankan", "Dihentikan") and the same calm sentence as the run.
+- **Saved with the machine** (the record, see ADR 0023), not in the undo history. Removing a row has no Urungkan: the list is small and cheap to type again.
+- **The panel scrolls inside itself.** The canvas and the panel keep their size when the list grows (a test checks it).
+- **The texts** (`test.*`) are a draft with `TODO(review)` until the feedback guide (U4).
