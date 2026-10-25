@@ -7,7 +7,8 @@ import type { Selection } from './selection.ts';
 export type MenuTarget =
 	{ kind: 'state'; id: number } | { kind: 'edge'; from: number; to: number } | { kind: 'canvas' };
 
-export type MenuAction = 'rename' | 'start' | 'accepting' | 'link' | 'edit' | 'delete' | 'add';
+export type MenuAction =
+	'rename' | 'start' | 'accepting' | 'link' | 'edit' | 'delete' | 'add' | 'layout';
 
 export interface MenuItem {
 	action: MenuAction;
@@ -20,7 +21,10 @@ export function menuItems(
 	doc: MachineDocument,
 	selection: Selection
 ): MenuItem[] {
-	if (target.kind === 'canvas') return [{ action: 'add' }];
+	// Auto layout needs states to place.
+	if (target.kind === 'canvas') {
+		return doc.states.length > 0 ? [{ action: 'add' }, { action: 'layout' }] : [{ action: 'add' }];
+	}
 	if (target.kind === 'edge') return [{ action: 'edit' }, { action: 'delete' }];
 	const items: MenuItem[] = [];
 	if (selection.length === 1) {

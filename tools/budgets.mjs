@@ -1,5 +1,9 @@
 // Performance budgets from CLAUDE.md §7. Raising a number needs the human's approval.
-export const SIZE_KB_GZIP = { initialJsPerRoute: 170, wasm: 250 };
+// `layoutWorker`: the layout library (dagre) in its own worker file, loaded only when auto layout is used.
+export const SIZE_KB_GZIP = { initialJsPerRoute: 170, wasm: 250, layoutWorker: 40 };
+
+// A name that is inside the layout library and nowhere else. It must not be in the first load of a page.
+export const LAYOUT_LIBRARY_MARKER = 'nestingEdge';
 
 const SANDBOX = { performance: 90, accessibility: 95, 'best-practices': 95, seo: 90 };
 

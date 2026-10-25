@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
+	import type { MessageKey } from '#lib/i18n/id.ts';
+	import type { Params } from '#lib/i18n/translate.ts';
 	import type { Component } from 'svelte';
 	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
 	import { engine } from '#lib/engine/client.ts';
@@ -18,6 +20,8 @@
 	import type { Kind } from './document.ts';
 	import { addTest, readTests, removeTest } from './test-list.ts';
 	import { createTester } from './tester.ts';
+	import { LayoutCancelled, LayoutTimeout, layoutClient } from './layout-client.ts';
+	import { layoutGraph, placeAll, refusalOf } from './layout.ts';
 	import { createChecker } from './checker.ts';
 	import { flagsOf } from './checks.ts';
 	import SaveStatusLine from './SaveStatusLine.svelte';
@@ -215,6 +219,53 @@
 		}
 	});
 
+	// Auto layout ("Tata letak otomatis"): the places come from a worker that is started now (the
+	// library is not in the first load). The result is one undo step, with a message with Urungkan.
+	// A machine that changed meanwhile, a machine that is too big, a failure and a timeout each say so
+	// calmly and change nothing.
+	let laying = $state(false);
+	let layoutNote = $state<{ key: MessageKey; params: Params } | null>(null);
+	$effect(() => {
+		if (!layoutNote) return;
+		const timer = setTimeout(() => (layoutNote = null), 6000);
+		return () => clearTimeout(timer);
+	});
+	async function autoLayout() {
+		if (laying) return;
+		const doc = editor.getState().doc;
+		if (doc.states.length === 0) return;
+		const refusal = refusalOf(doc);
+		if (refusal) {
+			layoutNote = refusal;
+			return;
+		}
+		laying = true;
+		layoutNote = null;
+		try {
+			const positions = await layoutClient.run(layoutGraph(doc));
+			if (editor.getState().doc !== doc) {
+				layoutNote = { key: 'layout.stale', params: {} };
+				return;
+			}
+			const command = placeAll(doc, positions);
+			if (command) {
+				editor.apply(command, { say: { key: 'layout.done' }, toast: true });
+			} else {
+				layoutNote = { key: 'layout.done', params: {} };
+			}
+			canvas.zoom('fit');
+		} catch (error) {
+			if (error instanceof LayoutCancelled) return;
+			layoutNote = {
+				key: error instanceof LayoutTimeout ? 'layout.timeout' : 'layout.failed',
+				params: {}
+			};
+		} finally {
+			laying = false;
+		}
+	}
+	$effect(() => () => layoutClient.cancel());
+
 	const active = $derived(new Set(run.view?.active ?? []));
 	const taken = $derived(new Set(run.view?.taken.map((e) => `${e.from}>${e.to}`) ?? []));
 	async function startRun(input: string, play: boolean) {
@@ -290,6 +341,11 @@
 			{#if autosave}
 				<SaveStatusLine status={saveStatus} {persistent} />
 			{/if}
+			{#if snapshot.doc.states.length > 0}
+				<button type="button" class="layout" aria-busy={laying} onclick={() => void autoLayout()}>
+					{t('editor.menu.layout')}
+				</button>
+			{/if}
 			<button type="button" class="fit" onclick={() => canvas.zoom('fit')}>{t('editor.fit')}</button
 			>
 			{#if onhelp}
@@ -331,7 +387,18 @@
 				{t(snapshot.link ? 'editor.hint_pick_target' : 'editor.hint_pick_source')}
 			</p>
 		{/if}
-		<EditorCanvas bind:this={canvas} {editor} state={snapshot} {flags} {active} {taken} />
+		<EditorCanvas
+			bind:this={canvas}
+			{editor}
+			state={snapshot}
+			{flags}
+			{active}
+			{taken}
+			onlayout={() => void autoLayout()}
+		/>
+		{#if layoutNote}
+			<p class="layout-note" aria-live="polite">{t(layoutNote.key, layoutNote.params)}</p>
+		{/if}
 		{#if showFirstRun && firstRun}
 			<div class="first-run">
 				<FirstRun
@@ -465,6 +532,36 @@
 		font-weight: var(--weight-strong);
 		cursor: pointer;
 	}
+	.layout {
+		min-height: var(--target-min);
+		padding: 0 var(--space-3);
+		border: 1px solid var(--color-border-strong);
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+		color: var(--color-ink);
+		font: inherit;
+		cursor: pointer;
+	}
+	.layout:hover {
+		background: var(--color-neutral-tint);
+	}
+	.layout-note {
+		position: absolute;
+		top: calc(var(--target-min) + var(--space-3));
+		left: 0;
+		right: 0;
+		z-index: 2;
+		width: max-content;
+		max-width: calc(100% - 2 * var(--space-4));
+		margin: 0 auto;
+		padding: var(--space-2) var(--space-4);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-pill);
+		background: var(--color-surface);
+		color: var(--color-ink);
+		font-size: var(--text-sm);
+		pointer-events: none;
+	}
 	.fit:hover,
 	.help:hover,
 	.machines:hover {
@@ -545,6 +642,10 @@
 		}
 		.bar {
 			padding: 0 var(--space-2) 0 var(--space-4);
+		}
+		/* The bar is full: on a phone, auto layout is in the menu of the empty canvas. */
+		.layout {
+			display: none;
 		}
 		.phone-history,
 		.fit,

@@ -46,7 +46,7 @@ Change these only when the human approves it in this file first.
 | Frontend | TypeScript (strict) + Svelte 5 + SvelteKit with `adapter-static` (prerender guide and question pages for SEO) |
 | Engine execution | Inside a dedicated Web Worker, never on the main thread |
 | Diagram rendering | SVG (no canvas library) |
-| Auto layout | `elkjs`, lazy-loaded, run in a worker |
+| Auto layout | `@dagrejs/dagre` (MIT), lazy-loaded, run in a worker (see ADR 0026; it replaced `elkjs`, owner's decision of 2026-10-26) |
 | Local storage | IndexedDB through a small wrapper (for example `idb`) |
 | i18n | Compile-time, tree-shaken messages (for example Paraglide JS) or a small typed dictionary; no heavy runtime i18n library |
 | Guides | Markdown compiled at build time (for example `mdsvex`) |
@@ -122,7 +122,7 @@ Measured with Lighthouse CI, mobile preset, on the production build.
 
 Lab metrics targets: LCP ≤ 2.5 s, CLS ≤ 0.1, TBT ≤ 200 ms.
 
-Size budgets (gzip): initial JS for any route ≤ 170 KB; engine `.wasm` ≤ 250 KB; `elkjs` loaded only when auto layout is used. Build with `opt-level = "z"`, LTO, and `wasm-opt -Oz`.
+Size budgets (gzip): initial JS for any route ≤ 170 KB; engine `.wasm` ≤ 250 KB; the layout library (`dagre`, about 16 KB gzip, in its own worker file) ≤ 40 KB and loaded only when auto layout is used. Build with `opt-level = "z"`, LTO, and `wasm-opt -Oz`.
 
 Rules that keep the budgets:
 - Guide pages ship close to zero JavaScript unless they embed an editor.

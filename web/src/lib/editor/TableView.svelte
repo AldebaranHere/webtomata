@@ -421,7 +421,11 @@
 				</tbody>
 			</table>
 		</div>
-		<p class="muted hint">{t('table.hint')}</p>
+		<ul class="muted hints">
+			<li>{t('table.hint_move')}</li>
+			<li>{t('table.hint_edit')}</li>
+			<li>{t('table.hint_delete')}</li>
+		</ul>
 	{/if}
 
 	{#if note}
@@ -459,6 +463,14 @@
 	.muted {
 		color: var(--color-muted);
 		font-size: var(--text-sm);
+	}
+	.hints {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+		margin: 0;
+		padding: 0;
+		list-style: none;
 	}
 	.wrap {
 		overflow-x: auto;

@@ -14,8 +14,12 @@ const doc = () =>
 	});
 
 describe('the menu', () => {
-	it('on empty canvas has one item: add a state here', () => {
-		expect(menuItems({ kind: 'canvas' }, doc(), [])).toEqual([{ action: 'add' }]);
+	it('on empty canvas: add a state here, and auto layout when there are states to place', () => {
+		expect(menuItems({ kind: 'canvas' }, doc(), [])).toEqual([
+			{ action: 'add' },
+			{ action: 'layout' }
+		]);
+		expect(menuItems({ kind: 'canvas' }, build({ states: [] }), [])).toEqual([{ action: 'add' }]);
 	});
 
 	it('on a single state: rename, start, accepting and delete, with the marks', () => {
