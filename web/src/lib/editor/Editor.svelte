@@ -4,11 +4,16 @@
 	import { engine } from '#lib/engine/client.ts';
 	import Announcer from './Announcer.svelte';
 	import ChecksList from './ChecksList.svelte';
+	import DefinitionView from './DefinitionView.svelte';
+	import KindSwitch from './KindSwitch.svelte';
 	import RunPanel from './RunPanel.svelte';
 	import SidePanel from './SidePanel.svelte';
 	import TestList from './TestList.svelte';
 	import { createRunner } from './run.ts';
 	import type { Text } from './run-text.ts';
+	import { readTab, saveTab } from './panel-tab.ts';
+	import type { PanelTab } from './panel-tab.ts';
+	import type { Kind } from './document.ts';
 	import { addTest, readTests, removeTest } from './test-list.ts';
 	import { createTester } from './tester.ts';
 	import { createChecker } from './checker.ts';
@@ -186,6 +191,20 @@
 		firstRun !== undefined && !leftFirstRun && snapshot.doc.states.length === 0
 	);
 
+	// The tabs of the panel; the last one that was open is remembered on this device.
+	let tab = $state<PanelTab>(readTab());
+	function chooseTab(next: PanelTab) {
+		tab = next;
+		saveTab(next);
+	}
+	// DFSM or NDFSM: one undo step, and a screen reader hears the new type.
+	function chooseKind(kind: Kind) {
+		editor.apply(
+			{ type: 'setKind', kind },
+			{ say: { key: 'editor.kind_set', params: { kind: t(`kind.${kind}`) } } }
+		);
+	}
+
 	const active = $derived(new Set(run.view?.active ?? []));
 	const taken = $derived(new Set(run.view?.taken.map((e) => `${e.from}>${e.to}`) ?? []));
 	async function startRun(input: string, play: boolean) {
@@ -321,36 +340,46 @@
 			ondismiss={() => editor.dismissToast()}
 		/>
 	</div>
-	<SidePanel>
-		<RunPanel
-			status={run.status}
-			view={run.view}
-			refusal={run.refusal}
-			problem={run.problem}
-			said={run.said}
-			onstart={(input, play) => void startRun(input, play)}
-			onplay={() => runner.play()}
-			onpause={() => runner.pause()}
-			onstep={() => runner.step()}
-			onback={() => runner.back()}
-			onreset={() => runner.toStart()}
-			onedit={() => runner.clear()}
-		/>
-		<TestList
-			rows={testing.rows}
-			status={testing.status}
-			problem={testing.problem}
-			onadd={addString}
-			onremove={(text) => changeTests(removeTest(testList, text))}
-			onretry={() => tester.retry()}
-		/>
-		<ChecksList
-			status={checks.status}
-			items={checks.items}
-			problem={checks.problem}
-			onretry={() => checker.retry()}
-			onselect={(id) => editor.focusState(id, { keepSelection: false })}
-		/>
+	<SidePanel {tab} ontab={chooseTab}>
+		{#snippet simulation()}
+			<RunPanel
+				status={run.status}
+				view={run.view}
+				refusal={run.refusal}
+				problem={run.problem}
+				said={run.said}
+				onstart={(input, play) => void startRun(input, play)}
+				onplay={() => runner.play()}
+				onpause={() => runner.pause()}
+				onstep={() => runner.step()}
+				onback={() => runner.back()}
+				onreset={() => runner.toStart()}
+				onedit={() => runner.clear()}
+			/>
+			<TestList
+				rows={testing.rows}
+				status={testing.status}
+				problem={testing.problem}
+				onadd={addString}
+				onremove={(text) => changeTests(removeTest(testList, text))}
+				onretry={() => tester.retry()}
+			/>
+			<ChecksList
+				status={checks.status}
+				items={checks.items}
+				problem={checks.problem}
+				onretry={() => checker.retry()}
+				onselect={(id) => editor.focusState(id, { keepSelection: false })}
+			/>
+		{/snippet}
+		{#snippet table()}
+			<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} />
+			<p class="soon">{t('page.soon')}</p>
+		{/snippet}
+		{#snippet definition()}
+			<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} />
+			<DefinitionView doc={snapshot.doc} />
+		{/snippet}
 	</SidePanel>
 	<Announcer announcement={snapshot.announcement} />
 </div>
@@ -394,6 +423,11 @@
 	}
 	.phone-history {
 		display: none;
+	}
+	.soon {
+		margin: 0;
+		color: var(--color-muted);
+		font-size: var(--text-sm);
 	}
 	.problem {
 		margin: 0;

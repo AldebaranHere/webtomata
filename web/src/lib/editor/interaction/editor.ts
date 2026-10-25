@@ -124,6 +124,15 @@ export interface Editor {
 	dismissToast(): void;
 	/** The title of the machine, as one undo step. Returns why the document refused it, or null. */
 	setTitle(title: string): Refusal | null;
+	/**
+	 * Runs any command of the document as one undo step: the way that the table and the definition
+	 * view change the machine. `say` is what a screen reader hears, and `toast` also shows it with
+	 * Urungkan. Returns why the document refused the command (nothing changes), or null.
+	 */
+	apply(
+		command: Command,
+		note?: { say?: { key: MessageKey; params?: Params }; toast?: boolean }
+	): Refusal | null;
 
 	undo(): void;
 	redo(): void;
@@ -641,6 +650,19 @@ export function createEditor(initial: MachineDocument): Editor {
 			const result = history.execute({ type: 'setTitle', title });
 			if (!result.ok) return refusal(result.error);
 			if (history.doc !== before) commit({ announcement: say('editor.title_set', { title }) });
+			return null;
+		},
+		apply(command, note) {
+			history.seal();
+			const before = history.doc;
+			const result = history.execute(command);
+			if (!result.ok) return refusal(result.error);
+			if (history.doc !== before) {
+				const said = note?.say ? say(note.say.key, note.say.params ?? {}) : undefined;
+				commit(
+					said ? (note?.toast ? { announcement: said, toast: said } : { announcement: said }) : {}
+				);
+			}
 			return null;
 		},
 		dismissToast() {

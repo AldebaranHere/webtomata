@@ -5,7 +5,7 @@ import type { Page } from '@playwright/test';
 
 const nodes = (page: Page) => page.locator('svg.world g.node');
 const canvas = (page: Page) => page.getByRole('application', { name: 'Kanvas mesin' });
-const panel = (page: Page) => page.getByRole('complementary', { name: 'Simulasi' });
+const panel = (page: Page) => page.getByRole('complementary', { name: 'Panel' });
 const summary = (page: Page) => panel(page).getByRole('button', { name: /hal perlu dilihat/ });
 const state = (page: Page, name: string) =>
 	page.getByRole('button', { name: new RegExp(`^State ${name}(,|$)`) });

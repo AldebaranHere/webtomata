@@ -182,17 +182,14 @@ test('the ? button opens the tour at any time, also after the tour was seen, and
 
 test('the run field ignores a space at the ends of the string', async ({ page }) => {
 	await openSandbox(page);
+	await page.getByRole('complementary', { name: 'Panel' }).getByLabel('String masukan').fill('01 ');
 	await page
-		.getByRole('complementary', { name: 'Simulasi' })
-		.getByLabel('String masukan')
-		.fill('01 ');
-	await page
-		.getByRole('complementary', { name: 'Simulasi' })
+		.getByRole('complementary', { name: 'Panel' })
 		.getByRole('button', { name: 'Langkah berikutnya' })
 		.click();
 	await expect(
 		page
-			.getByRole('complementary', { name: 'Simulasi' })
+			.getByRole('complementary', { name: 'Panel' })
 			.getByRole('list', { name: 'Simbol yang dibaca' })
 			.getByRole('listitem')
 	).toHaveText(['0', '1']);
