@@ -65,4 +65,4 @@ Added in X1, with no source yet (`TODO(review)`): Coba contoh (try an example), 
 
 Added in S5-1, with no source yet (`TODO(review)`): Panel, Tab panel, Jenis mesin (machine type), Definisi formal (formal definition), himpunan state (the set of states), himpunan accepting state, fungsi transisi (the transition function), relasi transisi (the transition relation), Salin / Tersalin (copy / copied).
 
-Added in S5-2, with no source yet (`TODO(review)`): Tabel transisi (transition table), Terima (the column of accepting states in the table; "accept" in English), belum ada (none yet), lebih dari satu tujuan (more than one target), + State, Tambah simbol (add a symbol), Simbol baru (new symbol), Tambah… (add…).
+Added in S5-2, with no source yet (`TODO(review)`): Ubah lebar panel (resize the panel), Tabel transisi (transition table), Terima (the column of accepting states in the table; "accept" in English), belum ada (none yet), lebih dari satu tujuan (more than one target), + State, Tambah simbol (add a symbol), Simbol baru (new symbol), Tambah… (add…).

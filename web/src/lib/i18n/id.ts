@@ -197,6 +197,7 @@ export const id = {
 	'definition.copy': 'Salin',
 	'definition.copied': 'Tersalin.',
 	'definition.copy_failed': 'Tidak bisa menyalin. Pilih teksnya, lalu salin sendiri.',
+	'panel.resize': 'Ubah lebar panel',
 	'panel.hide': 'Sembunyikan panel',
 	'panel.show': 'Tampilkan panel',
 	'check.title': 'Pemeriksaan',

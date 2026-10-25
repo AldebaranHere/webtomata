@@ -195,6 +195,7 @@ export const en: Record<MessageKey, string> = {
 	'definition.copy': 'Copy',
 	'definition.copied': 'Copied.',
 	'definition.copy_failed': 'Could not copy. Select the text and copy it yourself.',
+	'panel.resize': 'Resize the panel',
 	'panel.hide': 'Hide the panel',
 	'panel.show': 'Show the panel',
 	'check.title': 'Checks',

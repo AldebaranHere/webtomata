@@ -5,6 +5,16 @@
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { PANEL_TABS, nextTab } from './panel-tab.ts';
 	import type { PanelTab } from './panel-tab.ts';
+	import {
+		DEFAULT_REM,
+		MIN_REM,
+		clampRem,
+		maxRem,
+		pxToRem,
+		readWidth,
+		saveWidth,
+		stepRem
+	} from './panel-width.ts';
 
 	// The panel next to the canvas: a column on a laptop, and a panel under the canvas on a phone
 	// with a bar that hides it (the choice is remembered on this device). It has tabs: Simulasi (the
@@ -33,13 +43,65 @@
 		definition: 'panel.tab_definition'
 	};
 
+	// The width on a laptop: the panel is pulled wider by its left edge (for the table), and the
+	// width is remembered on this device. A phone has no handle, and its panel keeps its share of the
+	// height.
+	let aside = $state<HTMLElement>();
+	let width = $state(DEFAULT_REM);
+	let widest = $state(maxRem(1440));
+	let dragging = $state(false);
+	let drag: { startX: number; startRem: number } | null = null;
+
 	onMount(() => {
 		try {
 			hidden = localStorage.getItem(KEY) === 'hidden';
 		} catch {
 			// Storage is blocked: the panel starts open.
 		}
+		width = readWidth(window.innerWidth);
+		widest = maxRem(window.innerWidth);
+		// A smaller window brings the width back inside the limits.
+		const onresize = () => {
+			widest = maxRem(window.innerWidth);
+			width = clampRem(width, window.innerWidth);
+		};
+		window.addEventListener('resize', onresize);
+		return () => window.removeEventListener('resize', onresize);
 	});
+	// Through the CSS object model: the page does not allow an inline style attribute.
+	$effect(() => {
+		aside?.style.setProperty('--panel-width', `${width}rem`);
+	});
+
+	function grab(event: PointerEvent) {
+		if (event.pointerType === 'mouse' && event.button !== 0) return;
+		event.preventDefault();
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		drag = { startX: event.clientX, startRem: width };
+		dragging = true;
+	}
+	function pull(event: PointerEvent) {
+		if (!drag) return;
+		// The handle is on the left edge: to the left is wider.
+		width = clampRem(drag.startRem + pxToRem(drag.startX - event.clientX), window.innerWidth);
+	}
+	function release() {
+		if (!drag) return;
+		drag = null;
+		dragging = false;
+		saveWidth(width);
+	}
+	function stepWidth(event: KeyboardEvent) {
+		const next = stepRem(width, event.key, event.shiftKey, window.innerWidth);
+		if (next === null) return;
+		event.preventDefault();
+		width = next;
+		saveWidth(next);
+	}
+	function resetWidth() {
+		width = DEFAULT_REM;
+		saveWidth(width);
+	}
 
 	function toggle() {
 		hidden = !hidden;
@@ -71,7 +133,27 @@
 	}
 </script>
 
-<aside class="panel" class:hidden aria-label={t('panel.title')}>
+<aside class="panel" class:hidden bind:this={aside} aria-label={t('panel.title')}>
+	<!-- A separator that can be moved (the "window splitter" pattern of the ARIA guide): with a value
+	     and a tab stop it is an interactive widget, which the checker of Svelte does not know. A laptop only. -->
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+	<div
+		class="resize"
+		class:dragging
+		role="separator"
+		aria-orientation="vertical"
+		aria-label={t('panel.resize')}
+		aria-valuemin={MIN_REM}
+		aria-valuemax={Math.floor(widest)}
+		aria-valuenow={Math.round(width)}
+		tabindex="0"
+		onpointerdown={grab}
+		onpointermove={pull}
+		onpointerup={release}
+		onpointercancel={release}
+		onkeydown={stepWidth}
+		ondblclick={resetWidth}
+	></div>
 	<button
 		type="button"
 		class="handle"
@@ -129,9 +211,10 @@
 
 <style>
 	.panel {
+		position: relative;
 		display: flex;
 		flex-direction: column;
-		width: 22rem;
+		width: var(--panel-width, 22rem);
 		flex: none;
 		min-height: 0;
 		border-left: 1px solid var(--color-border);
@@ -139,6 +222,37 @@
 	}
 	.handle {
 		display: none;
+	}
+	/* The handle to pull the panel wider: 24 px across, over the border, and it shows itself when
+	   it is hovered, focused or held. */
+	.resize {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: -12px;
+		z-index: 3;
+		width: 24px;
+		cursor: col-resize;
+		touch-action: none;
+		outline: none;
+	}
+	.resize::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 11px;
+		width: 2px;
+		background: transparent;
+	}
+	.resize:hover::after,
+	.resize:focus-visible::after,
+	.resize.dragging::after {
+		background: var(--color-accent);
+	}
+	.resize:focus-visible {
+		outline: var(--focus-ring-width) solid var(--focus-ring-color);
+		outline-offset: calc(var(--focus-ring-width) * -1);
 	}
 	.content {
 		display: flex;
@@ -195,6 +309,9 @@
 	@media (max-width: 39.99rem) {
 		/* A fixed share of the height, not the height of the content: when the checks arrive the canvas
 		   must not change its size (it would move the view under a finger). */
+		.resize {
+			display: none;
+		}
 		.panel {
 			width: auto;
 			height: 40%;

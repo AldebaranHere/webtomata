@@ -403,3 +403,10 @@ Copy and paste, dragging an edge to change its ends, editing an edge's curve by 
 - **Keyboard.** One cell of the table is a Tab stop (roving tabindex). The arrows move between cells and stop at the edge, Home and End go to the ends of the row, Ctrl with them to the first and the last cell. Enter or F2 edits the cell: the picker (or the name field) takes the focus, and Escape gives the focus back to the cell. Delete empties a cell, and removes the symbol on a header cell. Space or Enter on Start or Terima toggles it. Keys inside a picker or a field are the control's own.
 - **The table and the diagram share the selection.** A row that gets the focus selects that state on the diagram, and a state selected on the diagram marks its row.
 - **A machine without states** says "Belum ada state." and "+ State" starts it.
+
+## The width of the panel (S5-2, suggested in the phone test of PR 59)
+
+- **A laptop can pull the panel wider** by its left edge, for a student who likes to fill in the table. The handle is 24 px across, over the border; it shows an accent line when it is hovered, focused or held. It is a separator that can be moved (the "window splitter" pattern): a tab stop with `aria-valuenow`, `aria-valuemin` and `aria-valuemax` in rem. Left and Right change the width by 1 rem (4 rem with Shift), Home and End go to the limits, and a double click or double tap puts it back to 22 rem. The pointer is captured, so a drag never selects text or reaches the canvas.
+- **Limits.** At least 22 rem (the width before), at most 60% of the window and 56 rem, and the canvas keeps at least 20 rem. A window that gets smaller brings a wide panel back inside the limits. The width is remembered on the device (`webtomata.panel.width`, in rem); a missing, blocked, bad or out of range value is the default or the nearest limit.
+- **The canvas** only gets narrower or wider: its left edge stays, so the machine does not slide under the pointer.
+- **A phone has no handle.** The panel is under the canvas with its share of the height, and the table scrolls sideways inside it with its first column fixed. A taller phone panel can come later.
