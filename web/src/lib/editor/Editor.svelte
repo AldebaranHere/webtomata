@@ -1,11 +1,17 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
+	import { engine } from '#lib/engine/client.ts';
 	import Announcer from './Announcer.svelte';
+	import ChecksList from './ChecksList.svelte';
+	import SidePanel from './SidePanel.svelte';
+	import { createChecker } from './checker.ts';
+	import { flagsOf } from './checks.ts';
 	import SaveStatusLine from './SaveStatusLine.svelte';
 	import type { Autosave, SaveStatus } from '#lib/storage/index.ts';
 	import EditorCanvas from './EditorCanvas.svelte';
 	import HistoryButtons from './HistoryButtons.svelte';
+	import { toMachine } from './document.ts';
 	import type { MachineDocument } from './document.ts';
 	import { createEditor } from './interaction/editor.ts';
 	import ToolRail from './ToolRail.svelte';
@@ -41,6 +47,36 @@
 	let snapshot = $state(editor.getState());
 	let canvas: EditorCanvas;
 	$effect(() => editor.subscribe(() => (snapshot = editor.getState())));
+
+	// The checks: the engine (in its worker) looks at the machine a moment after each change, and
+	// the states that have something to look at get a mark on the diagram.
+	const checker = createChecker({ validate: (d) => engine.validate(toMachine(d)) });
+	let checks = $state.raw({
+		status: checker.status(),
+		items: checker.items(),
+		problem: checker.problem()
+	});
+	$effect(() => {
+		const read = () =>
+			(checks = { status: checker.status(), items: checker.items(), problem: checker.problem() });
+		const stop = checker.subscribe(read);
+		// A new check only when the document is a new one (not for a selection or a tool).
+		let last = untrack(() => editor.getState().doc);
+		const stopEditor = editor.subscribe(() => {
+			const next = editor.getState().doc;
+			if (next === last) return;
+			last = next;
+			checker.schedule(next);
+		});
+		// The first check, after the first draw.
+		checker.schedule(last);
+		return () => {
+			stop();
+			stopEditor();
+			checker.dispose();
+		};
+	});
+	const flags = $derived(flagsOf(checks.items));
 
 	// Saving: each new document goes to the autosave. When the tab is hidden or closed, what waits
 	// is saved at once.
@@ -139,13 +175,22 @@
 				{t(snapshot.link ? 'editor.hint_pick_target' : 'editor.hint_pick_source')}
 			</p>
 		{/if}
-		<EditorCanvas bind:this={canvas} {editor} state={snapshot} />
+		<EditorCanvas bind:this={canvas} {editor} state={snapshot} {flags} />
 		<Toast
 			toast={snapshot.toast}
 			onundo={() => editor.undo()}
 			ondismiss={() => editor.dismissToast()}
 		/>
 	</div>
+	<SidePanel>
+		<ChecksList
+			status={checks.status}
+			items={checks.items}
+			problem={checks.problem}
+			onretry={() => checker.retry()}
+			onselect={(id) => editor.focusState(id, { keepSelection: false })}
+		/>
+	</SidePanel>
 	<Announcer announcement={snapshot.announcement} />
 </div>
 
@@ -251,8 +296,18 @@
 	}
 
 	@media (max-width: 39.99rem) {
+		/* Top to bottom: the canvas, the panel, the tools. */
 		.editor {
-			flex-direction: column-reverse;
+			flex-direction: column;
+		}
+		.editor > :global(.work) {
+			order: 1;
+		}
+		.editor > :global(aside) {
+			order: 2;
+		}
+		.editor > :global(.rail) {
+			order: 3;
 		}
 		.bar {
 			padding: 0 var(--space-2) 0 var(--space-4);

@@ -38,7 +38,16 @@
 	// does into calls of the editor (interaction/editor.ts), where the rules are. The canvas has no
 	// edge: a camera (interaction/camera.ts) says where the world is on the screen and how big. The
 	// camera is not part of the document.
-	let { editor, state: view }: { editor: Editor; state: EditorState } = $props();
+	let {
+		editor,
+		state: view,
+		flags = new Map()
+	}: {
+		editor: Editor;
+		state: EditorState;
+		/** The states that have something to look at (the checks), for a mark on the diagram. */
+		flags?: ReadonlyMap<number, 'error' | 'warning'>;
+	} = $props();
 
 	const uid = $props.id();
 	const arrow = `${uid}-arrow`;
@@ -793,7 +802,7 @@
 		{ondblclick}
 	>
 		<g bind:this={world} transform="translate({camera.x} {camera.y}) scale({camera.scale})">
-			<DiagramDrawing {shapes} {arrow} {selected} selectedEdge={view.edge} interactive />
+			<DiagramDrawing {shapes} {arrow} {selected} selectedEdge={view.edge} {flags} interactive />
 			{#if preview}
 				<line
 					class="preview"

@@ -17,6 +17,7 @@
 		arrow,
 		selected = new Set<number>(),
 		selectedEdge = null,
+		flags = new Map(),
 		interactive = false
 	}: {
 		shapes: DiagramShapes;
@@ -25,6 +26,8 @@
 		selected?: ReadonlySet<number>;
 		/** The edge that is selected: all the transitions from → to. */
 		selectedEdge?: { from: number; to: number } | null;
+		/** A state that has something to look at (the checks) gets a small mark. */
+		flags?: ReadonlyMap<number, 'error' | 'warning'>;
 		interactive?: boolean;
 	} = $props();
 
@@ -37,7 +40,8 @@
 		return (
 			t('editor.state', { name: state.name }) +
 			(shapes.start?.state === state.id ? t('editor.flag_start') : '') +
-			(state.accepting ? t('editor.flag_accepting') : '')
+			(state.accepting ? t('editor.flag_accepting') : '') +
+			(flags.has(state.id) ? t('editor.flag_issue') : '')
 		);
 	}
 </script>
@@ -103,6 +107,12 @@
 				<text class="name" x={state.x} y={state.y} font-size={state.text.fontSize}>
 					{state.text.content}
 				</text>
+				{#if flags.has(state.id)}
+					<g class="flag" data-flag={flags.get(state.id)} aria-hidden="true">
+						<circle cx={state.x + RADIUS * 0.72} cy={state.y - RADIUS * 0.72} r="9" />
+						<text x={state.x + RADIUS * 0.72} y={state.y - RADIUS * 0.72}>!</text>
+					</g>
+				{/if}
 			</g>
 		{:else}
 			<g>
@@ -208,6 +218,23 @@
 		cursor: pointer;
 		touch-action: none;
 		outline: none;
+	}
+	/* The mark of a check: small, warm and quiet. It is not part of the picture of the machine. */
+	.flag {
+		pointer-events: none;
+	}
+	.flag circle {
+		fill: var(--color-warning-tint);
+		stroke: var(--color-warning);
+		stroke-width: 1.5;
+	}
+	.flag text {
+		text-anchor: middle;
+		dominant-baseline: central;
+		font-family: var(--font-ui);
+		font-size: 12px;
+		font-weight: var(--weight-strong);
+		fill: var(--color-warning-ink);
 	}
 	.selection {
 		fill: none;
