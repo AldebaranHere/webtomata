@@ -166,6 +166,7 @@ export const en: Record<MessageKey, string> = {
 	'definition.cap_dfsm': 'the transition function',
 	'definition.cap_ndfsm': 'the transition relation',
 	'definition.no_transitions': 'No transitions yet.',
+	'definition.empty': 'No states to define yet.',
 	'definition.copy': 'Copy',
 	'definition.copied': 'Copied.',
 	'definition.copy_failed': 'Could not copy. Select the text and copy it yourself.',

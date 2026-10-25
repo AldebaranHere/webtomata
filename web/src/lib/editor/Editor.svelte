@@ -340,47 +340,50 @@
 			ondismiss={() => editor.dismissToast()}
 		/>
 	</div>
-	<SidePanel {tab} ontab={chooseTab}>
-		{#snippet simulation()}
-			<RunPanel
-				status={run.status}
-				view={run.view}
-				refusal={run.refusal}
-				problem={run.problem}
-				said={run.said}
-				onstart={(input, play) => void startRun(input, play)}
-				onplay={() => runner.play()}
-				onpause={() => runner.pause()}
-				onstep={() => runner.step()}
-				onback={() => runner.back()}
-				onreset={() => runner.toStart()}
-				onedit={() => runner.clear()}
-			/>
-			<TestList
-				rows={testing.rows}
-				status={testing.status}
-				problem={testing.problem}
-				onadd={addString}
-				onremove={(text) => changeTests(removeTest(testList, text))}
-				onretry={() => tester.retry()}
-			/>
-			<ChecksList
-				status={checks.status}
-				items={checks.items}
-				problem={checks.problem}
-				onretry={() => checker.retry()}
-				onselect={(id) => editor.focusState(id, { keepSelection: false })}
-			/>
-		{/snippet}
-		{#snippet table()}
-			<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} />
-			<p class="soon">{t('page.soon')}</p>
-		{/snippet}
-		{#snippet definition()}
-			<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} />
-			<DefinitionView doc={snapshot.doc} />
-		{/snippet}
-	</SidePanel>
+	<!-- Nothing to run, test or copy exists before a machine is chosen: the panel waits for one. -->
+	{#if !showFirstRun}
+		<SidePanel {tab} ontab={chooseTab}>
+			{#snippet simulation()}
+				<RunPanel
+					status={run.status}
+					view={run.view}
+					refusal={run.refusal}
+					problem={run.problem}
+					said={run.said}
+					onstart={(input, play) => void startRun(input, play)}
+					onplay={() => runner.play()}
+					onpause={() => runner.pause()}
+					onstep={() => runner.step()}
+					onback={() => runner.back()}
+					onreset={() => runner.toStart()}
+					onedit={() => runner.clear()}
+				/>
+				<TestList
+					rows={testing.rows}
+					status={testing.status}
+					problem={testing.problem}
+					onadd={addString}
+					onremove={(text) => changeTests(removeTest(testList, text))}
+					onretry={() => tester.retry()}
+				/>
+				<ChecksList
+					status={checks.status}
+					items={checks.items}
+					problem={checks.problem}
+					onretry={() => checker.retry()}
+					onselect={(id) => editor.focusState(id, { keepSelection: false })}
+				/>
+			{/snippet}
+			{#snippet table()}
+				<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} />
+				<p class="soon">{t('page.soon')}</p>
+			{/snippet}
+			{#snippet definition()}
+				<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} />
+				<DefinitionView doc={snapshot.doc} />
+			{/snippet}
+		</SidePanel>
+	{/if}
 	<Announcer announcement={snapshot.announcement} />
 </div>
 

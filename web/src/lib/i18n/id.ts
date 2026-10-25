@@ -168,6 +168,7 @@ export const id = {
 	'definition.cap_dfsm': 'fungsi transisi',
 	'definition.cap_ndfsm': 'relasi transisi',
 	'definition.no_transitions': 'Belum ada transisi.',
+	'definition.empty': 'Belum ada state untuk didefinisikan.',
 	'definition.copy': 'Salin',
 	'definition.copied': 'Tersalin.',
 	'definition.copy_failed': 'Tidak bisa menyalin. Pilih teksnya, lalu salin sendiri.',

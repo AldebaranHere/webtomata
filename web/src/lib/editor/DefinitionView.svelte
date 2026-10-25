@@ -26,58 +26,62 @@
 	});
 </script>
 
-<section class="definition" aria-labelledby="definition-title">
-	<div class="head">
-		<h3 id="definition-title">{t('definition.title')}</h3>
-		<button type="button" class="copy" onclick={copy}>{t('definition.copy')}</button>
-	</div>
-	<p class="note" aria-live="polite">
-		{copied === 'copied'
-			? t('definition.copied')
-			: copied === 'failed'
-				? t('definition.copy_failed')
-				: ''}
-	</p>
+{#if doc.states.length === 0}
+	<p class="muted">{t('definition.empty')}</p>
+{:else}
+	<section class="definition" aria-labelledby="definition-title">
+		<div class="head">
+			<h3 id="definition-title">{t('definition.title')}</h3>
+			<button type="button" class="copy" onclick={copy}>{t('definition.copy')}</button>
+		</div>
+		<p class="note" aria-live="polite">
+			{copied === 'copied'
+				? t('definition.copied')
+				: copied === 'failed'
+					? t('definition.copy_failed')
+					: ''}
+		</p>
 
-	<p class="tuple">{def.heading}</p>
-	<dl>
-		<div>
-			<dt>{t('notation.states')}</dt>
-			<dd>= {def.states}</dd>
-			<dd class="caption">{t('definition.cap_states')}</dd>
-		</div>
-		<div>
-			<dt>{t('notation.alphabet')}</dt>
-			<dd>= {def.alphabet}</dd>
-			<dd class="caption">{t('definition.cap_alphabet')}</dd>
-		</div>
-		<div>
-			<dt>{t('notation.start')}</dt>
-			<dd>= {def.start ?? '—'}</dd>
-			<dd class="caption">{t('definition.cap_start')}</dd>
-		</div>
-		<div>
-			<dt>{t('notation.accepting')}</dt>
-			<dd>= {def.accepting}</dd>
-			<dd class="caption">{t('definition.cap_accepting')}</dd>
-		</div>
-		<div>
-			<dt>{t(def.kind === 'ndfsm' ? 'notation.delta_n' : 'notation.delta')}</dt>
-			<dd class="caption">
-				{t(def.kind === 'ndfsm' ? 'definition.cap_ndfsm' : 'definition.cap_dfsm')}
-			</dd>
-		</div>
-	</dl>
-	{#if def.transitions.length === 0}
-		<p class="muted">{t('definition.no_transitions')}</p>
-	{:else}
-		<ul class="transitions">
-			{#each def.transitions as line, i (i)}
-				<li>{line}</li>
-			{/each}
-		</ul>
-	{/if}
-</section>
+		<p class="tuple">{def.heading}</p>
+		<dl>
+			<div>
+				<dt>{t('notation.states')}</dt>
+				<dd>= {def.states}</dd>
+				<dd class="caption">{t('definition.cap_states')}</dd>
+			</div>
+			<div>
+				<dt>{t('notation.alphabet')}</dt>
+				<dd>= {def.alphabet}</dd>
+				<dd class="caption">{t('definition.cap_alphabet')}</dd>
+			</div>
+			<div>
+				<dt>{t('notation.start')}</dt>
+				<dd>= {def.start ?? '—'}</dd>
+				<dd class="caption">{t('definition.cap_start')}</dd>
+			</div>
+			<div>
+				<dt>{t('notation.accepting')}</dt>
+				<dd>= {def.accepting}</dd>
+				<dd class="caption">{t('definition.cap_accepting')}</dd>
+			</div>
+			<div>
+				<dt>{t(def.kind === 'ndfsm' ? 'notation.delta_n' : 'notation.delta')}</dt>
+				<dd class="caption">
+					{t(def.kind === 'ndfsm' ? 'definition.cap_ndfsm' : 'definition.cap_dfsm')}
+				</dd>
+			</div>
+		</dl>
+		{#if def.transitions.length === 0}
+			<p class="muted">{t('definition.no_transitions')}</p>
+		{:else}
+			<ul class="transitions">
+				{#each def.transitions as line, i (i)}
+					<li>{line}</li>
+				{/each}
+			</ul>
+		{/if}
+	</section>
+{/if}
 
 <style>
 	.definition {
