@@ -122,6 +122,8 @@ export interface Editor {
 	/** The menu item "Tambah transisi dari sini": the Transisi tool, with this state as the source. */
 	linkFrom(id: number): void;
 	dismissToast(): void;
+	/** The title of the machine, as one undo step. Returns why the document refused it, or null. */
+	setTitle(title: string): Refusal | null;
 
 	undo(): void;
 	redo(): void;
@@ -632,6 +634,14 @@ export function createEditor(initial: MachineDocument): Editor {
 		},
 		cancelRename() {
 			if (state.renaming !== null) closeRename();
+		},
+		setTitle(title) {
+			history.seal();
+			const before = history.doc;
+			const result = history.execute({ type: 'setTitle', title });
+			if (!result.ok) return refusal(result.error);
+			if (history.doc !== before) commit({ announcement: say('editor.title_set', { title }) });
+			return null;
 		},
 		dismissToast() {
 			if (state.toast) set({ toast: null });

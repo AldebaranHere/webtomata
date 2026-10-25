@@ -19,8 +19,20 @@
 	let {
 		doc,
 		autosave,
-		persistent = true
-	}: { doc: MachineDocument; autosave?: Autosave; persistent?: boolean } = $props();
+		persistent = true,
+		library
+	}: {
+		doc: MachineDocument;
+		autosave?: Autosave;
+		persistent?: boolean;
+		/** The list of saved machines: how many, and how to open it (a phone has its button here). */
+		library?: { count: number; onopen: () => void };
+	} = $props();
+
+	/** The title of the machine, as one undo step (the list "Mesin saya" calls this). */
+	export function setTitle(title: string) {
+		return editor.setTitle(title);
+	}
 
 	const editor = createEditor(untrack(() => doc));
 	// The page is drawn before it takes keys and touches; the tests wait for this mark.
@@ -39,10 +51,18 @@
 		saveStatus = save.status();
 		return save.subscribe(() => (saveStatus = save.status()));
 	});
-	const initial = untrack(() => doc);
+	// The store is asked, not the reactive copy of its state: that is a proxy, and a proxy of a
+	// document is never the same object as the document.
 	$effect(() => {
-		const current = snapshot.doc;
-		if (current !== initial) untrack(() => autosave?.schedule(current));
+		if (!autosave) return;
+		const save = autosave;
+		let last = editor.getState().doc;
+		return editor.subscribe(() => {
+			const next = editor.getState().doc;
+			if (next === last) return;
+			last = next;
+			save.schedule(next);
+		});
 	});
 	$effect(() => {
 		if (!autosave) return;
@@ -89,6 +109,19 @@
 			{/if}
 			<button type="button" class="fit" onclick={() => canvas.zoom('fit')}>{t('editor.fit')}</button
 			>
+			{#if library}
+				<button
+					type="button"
+					class="machines"
+					aria-label={t('library.open_button', { count: library.count })}
+					onclick={library.onopen}
+				>
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+						<path d="M4 7l8-4 8 4-8 4z" stroke-linejoin="round" />
+						<path d="M4 12l8 4 8-4M4 16.5l8 4 8-4" stroke-linecap="round" stroke-linejoin="round" />
+					</svg>
+				</button>
+			{/if}
 			<span class="phone-history">
 				<HistoryButtons
 					canUndo={snapshot.canUndo}
@@ -177,8 +210,27 @@
 		font-weight: var(--weight-strong);
 		cursor: pointer;
 	}
-	.fit:hover {
+	.fit:hover,
+	.machines:hover {
 		background: var(--color-neutral-tint);
+	}
+	/* On a laptop the button "Mesin saya" is in the header; a phone has it here. */
+	.machines {
+		display: none;
+		align-items: center;
+		justify-content: center;
+		width: var(--target-min);
+		height: var(--target-min);
+		padding: 0;
+		border: 0;
+		border-radius: var(--radius-lg);
+		background: transparent;
+		color: var(--color-ink);
+		cursor: pointer;
+	}
+	.machines svg {
+		stroke: currentColor;
+		stroke-width: 1.8;
 	}
 	/* What to do next while a transition is being made. The same words are said by the live region. */
 	.hint-line {
@@ -206,9 +258,17 @@
 			padding: 0 var(--space-2) 0 var(--space-4);
 		}
 		.phone-history,
-		.fit {
+		.fit,
+		.machines {
 			display: flex;
 			align-items: center;
+		}
+		/* The bar is full: the number of states is in the table (S5). */
+		.count {
+			display: none;
+		}
+		.title {
+			flex-grow: 1;
 		}
 	}
 </style>

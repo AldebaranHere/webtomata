@@ -21,3 +21,8 @@ A student must be able to build a machine, close the page and find it again (S10
 - **A write that starts at the moment the page closes can be lost.** Hiding the tab saves at once, and while a change is unsaved the page asks before it is left; this is the guard, and we do not rely on the last moment.
 - **The tests cannot make a real disk full.** A refused write is simulated by making `put` throw `QuotaExceededError`.
 - The record keeps `recordVersion` apart from the document's `schemaVersion`, so the shape of a record can change without a change of the document.
+
+## The list (S10a-2)
+- **Delete with a time to undo.** A machine that is deleted leaves the list at once and is removed from the store after six seconds, unless **Urungkan** is pressed. If the page is closed inside the six seconds, the machine stays: it is never removed unless its time ends. Several deletes can wait at once; the toast offers Urungkan for the last one.
+- **Rename of the open machine** goes through the editor, so that it is one undo step and the autosave writes it. Another machine is changed in its record, with the same title rule as the document.
+- **The list reads every record** each time it is opened (title, kind, dates, and whether the document can be read), so it is never out of date after a change in another tab.

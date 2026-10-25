@@ -3,57 +3,8 @@
 // browser without storage still lets the editor work, with a warning. IndexedDB is where the
 // engines differ, so this runs in Chrome, Firefox and WebKit.
 import { expect, openSandbox, test } from '../fixtures.ts';
+import { putRow, records } from './db.ts';
 import type { Locator, Page } from '@playwright/test';
-
-interface Row {
-	id: string;
-	recordVersion: number;
-	title: string;
-	kind: string;
-	createdAt: number;
-	updatedAt: number;
-	openedAt: number;
-	doc: string;
-}
-
-/** The records in the database of the page, read the way any code of the page could read them. */
-const records = (page: Page) =>
-	page.evaluate(
-		() =>
-			new Promise<Row[]>((resolve, reject) => {
-				const open = indexedDB.open('webtomata');
-				open.onerror = () => reject(open.error);
-				open.onsuccess = () => {
-					const db = open.result;
-					const all = db.transaction('machines').objectStore('machines').getAll();
-					all.onsuccess = () => {
-						db.close();
-						resolve(all.result as Row[]);
-					};
-					all.onerror = () => reject(all.error);
-				};
-			})
-	);
-
-const putRow = (page: Page, row: Partial<Row> & { id: string }) =>
-	page.evaluate(
-		(value) =>
-			new Promise<void>((resolve, reject) => {
-				const open = indexedDB.open('webtomata');
-				open.onerror = () => reject(open.error);
-				open.onsuccess = () => {
-					const db = open.result;
-					const tx = db.transaction('machines', 'readwrite');
-					tx.objectStore('machines').put(value);
-					tx.oncomplete = () => {
-						db.close();
-						resolve();
-					};
-					tx.onerror = () => reject(tx.error);
-				};
-			}),
-		row
-	);
 
 const state = (page: Page, name: string) =>
 	page.getByRole('button', { name: new RegExp(`^State ${name}(,|$)`) });
@@ -189,7 +140,7 @@ test('a browser that refuses storage: the editor works, with a warning that noth
 		};
 	});
 	await openSandbox(page);
-	await expect(page.getByRole('alert')).toContainText('tidak menyediakan penyimpanan');
+	await expect(page.getByRole('alert')).toContainText('memblokir penyimpanan');
 	await expect(status(page)).toHaveClass(/unavailable/);
 	// Editing goes on.
 	await rename(page, isMobile, 'q1', 'Tetap');

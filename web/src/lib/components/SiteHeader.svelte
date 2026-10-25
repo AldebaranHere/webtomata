@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { t } from '#lib/i18n/index.svelte.ts';
+	import { library } from '#lib/storage/library.svelte.ts';
 	import LanguageSwitch from './LanguageSwitch.svelte';
 
 	const links = [
@@ -40,6 +41,11 @@
 			{/each}
 		</ul>
 	</nav>
+	{#if page.route.id === '/sandbox' && library.ready}
+		<button type="button" class="machines" onclick={library.show}>
+			{t('library.open_button', { count: library.count })}
+		</button>
+	{/if}
 	<LanguageSwitch />
 </header>
 
@@ -109,10 +115,31 @@
 		cursor: pointer;
 	}
 
+	/* "Mesin saya": in the header on a laptop; a phone has its button in the title bar of the editor. */
+	.machines {
+		display: none;
+		min-height: var(--target-min);
+		padding: 0 var(--space-4);
+		border: 1px solid var(--color-border-strong);
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+		color: var(--color-ink);
+		font: inherit;
+		font-weight: var(--weight-strong);
+		cursor: pointer;
+	}
+	.machines:hover {
+		background: var(--color-neutral-tint);
+	}
+
 	/* The one breakpoint: from here the links sit in the bar and the Menu button goes away. */
 	@media (min-width: 40rem) {
 		.menu {
 			display: none;
+		}
+		.machines {
+			display: inline-flex;
+			align-items: center;
 		}
 		nav {
 			order: 0;

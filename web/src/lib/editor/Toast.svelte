@@ -39,7 +39,12 @@
 <style>
 	.toast {
 		position: absolute;
-		left: 50%;
+		/* Centered with auto margins: with left: 50% the box could be only half as wide as its parent,
+		   and the button went past its edge. */
+		left: 0;
+		right: 0;
+		margin: 0 auto;
+		width: max-content;
 		bottom: var(--space-4);
 		z-index: 5;
 		display: flex;
@@ -51,9 +56,13 @@
 		background: var(--color-ink);
 		color: var(--color-on-ink);
 		box-shadow: var(--shadow-popover);
-		transform: translateX(-50%);
+	}
+	.toast span {
+		min-width: 0;
+		overflow-wrap: anywhere;
 	}
 	button {
+		flex: none;
 		min-width: var(--target-min);
 		min-height: var(--target-min);
 		padding: 0 var(--space-4);
