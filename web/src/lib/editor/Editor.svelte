@@ -4,7 +4,9 @@
 	import { engine } from '#lib/engine/client.ts';
 	import Announcer from './Announcer.svelte';
 	import ChecksList from './ChecksList.svelte';
+	import RunPanel from './RunPanel.svelte';
 	import SidePanel from './SidePanel.svelte';
+	import { createRunner } from './run.ts';
 	import { createChecker } from './checker.ts';
 	import { flagsOf } from './checks.ts';
 	import SaveStatusLine from './SaveStatusLine.svelte';
@@ -82,6 +84,41 @@
 		};
 	});
 	const flags = $derived(flagsOf(checks.items));
+
+	// Running one string: one call to the engine, and then the page steps through the answer. Any
+	// change of the document makes the run old, so it is cleared (a run is not part of the history).
+	const runner = createRunner({
+		simulate: (d, input) => engine.simulate(toMachine(d), input)
+	});
+	const readRun = () => ({
+		status: runner.status(),
+		view: runner.view(),
+		refusal: runner.refusal(),
+		problem: runner.problem(),
+		said: runner.announcement()
+	});
+	let run = $state.raw(readRun());
+	$effect(() => {
+		const stop = runner.subscribe(() => (run = readRun()));
+		let last = untrack(() => editor.getState().doc);
+		const stopEditor = editor.subscribe(() => {
+			const next = editor.getState().doc;
+			if (next === last) return;
+			last = next;
+			runner.clear();
+		});
+		return () => {
+			stop();
+			stopEditor();
+			runner.dispose();
+		};
+	});
+	const active = $derived(new Set(run.view?.active ?? []));
+	const taken = $derived(new Set(run.view?.taken.map((e) => `${e.from}>${e.to}`) ?? []));
+	async function startRun(input: string) {
+		await runner.start(editor.getState().doc, input);
+		runner.play();
+	}
 
 	// Saving: each new document goes to the autosave. When the tab is hidden or closed, what waits
 	// is saved at once.
@@ -182,7 +219,7 @@
 				{t(snapshot.link ? 'editor.hint_pick_target' : 'editor.hint_pick_source')}
 			</p>
 		{/if}
-		<EditorCanvas bind:this={canvas} {editor} state={snapshot} {flags} />
+		<EditorCanvas bind:this={canvas} {editor} state={snapshot} {flags} {active} {taken} />
 		<Toast
 			toast={snapshot.toast}
 			onundo={() => editor.undo()}
@@ -190,6 +227,20 @@
 		/>
 	</div>
 	<SidePanel>
+		<RunPanel
+			status={run.status}
+			view={run.view}
+			refusal={run.refusal}
+			problem={run.problem}
+			said={run.said}
+			onstart={(input) => void startRun(input)}
+			onplay={() => runner.play()}
+			onpause={() => runner.pause()}
+			onstep={() => runner.step()}
+			onback={() => runner.back()}
+			onreset={() => runner.toStart()}
+			onedit={() => runner.clear()}
+		/>
 		<ChecksList
 			status={checks.status}
 			items={checks.items}

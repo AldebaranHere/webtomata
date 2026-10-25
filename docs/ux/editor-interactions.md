@@ -357,3 +357,12 @@ Two checks decide what S4 must test again in the browser: that a dragged state i
 ## Not in v1
 
 Copy and paste, dragging an edge to change its ends, editing an edge's curve by hand, selecting several items on touch, labels that wrap or move to find room (the user moves a state), and grid snap that stays on. Each is a decision after the usability tests (U5).
+
+## Decisions made while building S6-2
+
+- **One call, then local steps.** "Jalankan" asks the engine once (`simulate`, in the worker, with the web budget of 10,000 steps) and the page steps through the whole answer: play (700 ms a step), pause, forward, back, and back to the start. The engine gives the active states of each step, not the edges, so the page works the taken edges out from the document (the transitions on the symbol read, from the states before, and the ε transitions that followed). Only the active states and the taken edges are drawn on the diagram (a filled state with a thick line, and an accent edge); no color is the only sign.
+- **Jalankan is also Jeda.** While it plays the same button says "Jeda". Pressing it after a pause goes on from the same step; at the last step it starts again from the first.
+- **A run is not part of the document or of the history.** Any change of the document, or of the text in the field, clears the run (and its timer). The text stays in the field. An answer of an older call is thrown away.
+- **Calm.** A rejection is a neutral sentence with the reason ("Tidak ada state aktif yang accepting."), not an error. The verdict shows only at the last step, so a student cannot read the answer from the first step. The computation list shows the lines up to the current step (the last 50 when it is long). A symbol outside the alphabet, no start state, and a run that the budget stopped each have their own sentence.
+- **Screen readers.** A live region (`aria-live`, not a second `role="status"`) says each step: "Membaca 0 (1 dari 2). State aktif: q1." and the verdict at the end.
+- **The texts** (`run.*`, `sim.*`, `input.unknown_symbol`) are a draft with `TODO(review)` until the feedback guide (U4). A test reads the engine's keys from the Rust source, so a new key cannot be added without a text.
