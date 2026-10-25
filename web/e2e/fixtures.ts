@@ -43,6 +43,16 @@ export async function openSandbox(page: Page): Promise<void> {
 	await page.locator('.editor[data-ready]').waitFor();
 }
 
+/**
+ * Waits until the engine has answered once (the first check of the machine is done). A test that
+ * reloads the page right after it opened must wait for this: the reload cancels the load of the
+ * worker and of the WASM file that is still under way, and the page then logs a failed request
+ * (seen in WebKit on a slow runner).
+ */
+export async function engineSettled(page: Page): Promise<void> {
+	await expect(page.getByText('Memeriksa…')).toHaveCount(0);
+}
+
 /** Fails, and names every rule that was broken, if axe finds a violation on the page. */
 export async function expectNoAxeViolations(page: Page): Promise<void> {
 	const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();

@@ -2,7 +2,7 @@
 // device and is there after a reload, a record that cannot be read is skipped and kept, and a
 // browser without storage still lets the editor work, with a warning. IndexedDB is where the
 // engines differ, so this runs in Chrome, Firefox and WebKit.
-import { expect, openSandbox, test } from '../fixtures.ts';
+import { engineSettled, expect, openSandbox, test } from '../fixtures.ts';
 import { putRow, records } from './db.ts';
 import type { Locator, Page } from '@playwright/test';
 
@@ -75,6 +75,7 @@ test('leaving the page asks first while a change is not saved, and not after', a
 test('a machine that cannot be read is skipped and kept, with a message', async ({ page }) => {
 	await openSandbox(page);
 	await expect.poll(async () => (await records(page)).length).toBe(1);
+	await engineSettled(page);
 	const [good] = await records(page);
 	await putRow(page, {
 		...good!,
@@ -96,6 +97,7 @@ test('a machine that cannot be read is skipped and kept, with a message', async 
 test('a machine of a newer version is skipped and kept, never overwritten', async ({ page }) => {
 	await openSandbox(page);
 	await expect.poll(async () => (await records(page)).length).toBe(1);
+	await engineSettled(page);
 	const [good] = await records(page);
 	const future = JSON.stringify({ ...JSON.parse(good!.doc), schemaVersion: 2 });
 	await putRow(page, {
@@ -120,6 +122,7 @@ test('when every machine is unreadable a new one is made, and none is deleted', 
 }) => {
 	await openSandbox(page);
 	await expect.poll(async () => (await records(page)).length).toBe(1);
+	await engineSettled(page);
 	const [good] = await records(page);
 	await putRow(page, { ...good!, doc: 'not json at all', openedAt: good!.openedAt + 1000 });
 	await page.reload();
