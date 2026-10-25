@@ -59,8 +59,8 @@ async function build(page: Page, touch: boolean) {
 		await q(page, 'q3').click();
 		await page.keyboard.press('a');
 	}
-	await expect(q(page, 'q0')).toHaveAttribute('aria-label', 'State q0, start state');
-	await expect(q(page, 'q3')).toHaveAttribute('aria-label', 'State q3, accepting state');
+	await expect(q(page, 'q0')).toHaveAttribute('aria-label', /^State q0, start state/);
+	await expect(q(page, 'q3')).toHaveAttribute('aria-label', /^State q3, accepting state/);
 
 	// Five transitions. In Tambah transisi: the source, the target, the symbols.
 	await press(tool(page, 'Tambah transisi'));
@@ -88,9 +88,12 @@ async function centerOf(target: Locator) {
 
 async function expectMachine(page: Page) {
 	await expect(nodes(page)).toHaveCount(4);
-	await expect(q(page, 'q0')).toHaveAttribute('aria-label', 'State q0, start state');
-	await expect(q(page, 'q3')).toHaveAttribute('aria-label', 'State q3, accepting state');
-	await expect(q(page, 'q1')).toHaveAttribute('aria-label', 'State q1');
+	await expect(q(page, 'q0')).toHaveAttribute('aria-label', /^State q0, start state/);
+	await expect(q(page, 'q3')).toHaveAttribute('aria-label', /^State q3, accepting state/);
+	await expect(q(page, 'q1')).toHaveAttribute(
+		'aria-label',
+		/^State q1(, ada hal yang perlu dilihat)?$/
+	);
 	// The edges, by (from, to): 0→1 a, 1→1 a, 1→2 b, 2→3 a, 3→0 b. Their names say it too.
 	await expect(labels(page)).toHaveText(['a', 'a', 'b', 'a', 'b']);
 	await expect(page.getByRole('button', { name: /^Transisi dari q0 ke q1: a$/ })).toBeAttached();

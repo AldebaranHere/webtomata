@@ -326,6 +326,13 @@ Errors from the document keep their own keys (`document.duplicate_name` and so o
 - **A machine that cannot be read** is in the list, marked "Tidak bisa dibuka", with only **Hapus**.
 - **Safari and a field that is added later:** the attribute `autofocus` does not work, so the rename field takes the focus in code.
 
+## Decisions made while building S6-1
+
+- **The panel:** a column of 22 rem at the right of the canvas on a laptop. On a phone it is under the canvas with a fixed share of the height (40%), so that the canvas does not change its size when the checks arrive (that would move the view under a finger), and a bar of 44 px hides it; the choice is remembered on the device. For now it holds "Simulasi" and the checks. The tabs of the wireframe come with S5, S9 and S7.
+- **The checks** are asked of the engine (in its worker) 200 ms after the last change, never on the main thread, and an answer for an older machine is thrown away. A failed engine shows the calm notice with a way to try again, and the editor goes on.
+- **Calm:** "Pemeriksaan" shows one line (a count, or "lengkap") and the list only when asked for. A half-built DFSM always has something to look at: that is not an alarm. A check about a state puts a small mark on it (the name of the state also says "ada hal yang perlu dilihat"), and pressing the check selects and focuses that state.
+- **The texts** (`check.*`) are a draft with `TODO(review)` until the feedback guide (U4). A test reads the keys from the Rust source, so a new check cannot be added without a text.
+
 ## What each interaction needs from S3
 
 Every interaction uses an existing command. No new command is needed for S4.
