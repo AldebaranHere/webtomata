@@ -1,0 +1,39 @@
+name: Usul contoh mesin / An example machine
+description: Sebuah pola yang layak jadi contoh di "Coba contoh". / A pattern that deserves a place in "Coba contoh".
+title: "[Contoh / Example] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Contoh adalah **pola**, bukan jawaban tugas. Jangan usulkan mesin dari tugas, kuis, atau ujian mata kuliah mana pun.
+        An example is a **pattern**, never an answer to homework. Please do not suggest a machine from any assignment, quiz or exam.
+
+        Mau membuatnya sendiri? Sebuah contoh hanya satu berkas JSON di `content/examples/`; lihat CONTRIBUTING.md.
+        Want to write it yourself? An example is one JSON file in `content/examples/`; see CONTRIBUTING.md.
+  - type: input
+    id: pattern
+    attributes:
+      label: Nama polanya / The name of the pattern
+      description: Misalnya "Kelipatan 3 dalam biner" atau "Berisi substring ab". / For example "A multiple of 3 in binary" or "Contains the substring ab".
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Apa yang diajarkan contoh ini? / What does this example teach?
+      description: Satu atau dua kalimat. / One or two sentences.
+    validations:
+      required: true
+  - type: textarea
+    id: strings
+    attributes:
+      label: Alfabet dan contoh string / The alphabet and some strings
+      description: "Misalnya: alfabet {0, 1}; diterima: 11, 110; ditolak: 1, 10. / For example: alphabet {0, 1}; accepted: 11, 110; rejected: 1, 10."
+  - type: checkboxes
+    id: original
+    attributes:
+      label: Keaslian / Originality
+      options:
+        - label: Ini pola umum yang kubuat sendiri, bukan dari tugas, kuis, atau ujian. / This is a general pattern that I made myself, not from an assignment, quiz or exam.
+          required: true
