@@ -34,6 +34,7 @@ export default ts.config(
 			'src/lib/engine/worker.ts',
 			'src/lib/engine/handlers.test.ts',
 			'src/lib/editor/document.wasm.test.ts',
+			'src/lib/editor/run.wasm.test.ts',
 			'src/lib/questions/check.wasm.test.ts'
 		],
 		rules: {

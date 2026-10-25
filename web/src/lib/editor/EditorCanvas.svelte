@@ -41,12 +41,17 @@
 	let {
 		editor,
 		state: view,
-		flags = new Map()
+		flags = new Map(),
+		active = new Set<number>(),
+		taken = new Set<string>()
 	}: {
 		editor: Editor;
 		state: EditorState;
 		/** The states that have something to look at (the checks), for a mark on the diagram. */
 		flags?: ReadonlyMap<number, 'error' | 'warning'>;
+		/** The states that are active at this step of a run, and the edges ("from>to") that led to them. */
+		active?: ReadonlySet<number>;
+		taken?: ReadonlySet<string>;
 	} = $props();
 
 	const uid = $props.id();
@@ -802,7 +807,16 @@
 		{ondblclick}
 	>
 		<g bind:this={world} transform="translate({camera.x} {camera.y}) scale({camera.scale})">
-			<DiagramDrawing {shapes} {arrow} {selected} selectedEdge={view.edge} {flags} interactive />
+			<DiagramDrawing
+				{shapes}
+				{arrow}
+				{selected}
+				selectedEdge={view.edge}
+				{flags}
+				{active}
+				{taken}
+				interactive
+			/>
 			{#if preview}
 				<line
 					class="preview"

@@ -18,6 +18,8 @@
 		selected = new Set<number>(),
 		selectedEdge = null,
 		flags = new Map(),
+		active = new Set<number>(),
+		taken = new Set<string>(),
 		interactive = false
 	}: {
 		shapes: DiagramShapes;
@@ -28,6 +30,10 @@
 		selectedEdge?: { from: number; to: number } | null;
 		/** A state that has something to look at (the checks) gets a small mark. */
 		flags?: ReadonlyMap<number, 'error' | 'warning'>;
+		/** The states that are active at this step of a run. */
+		active?: ReadonlySet<number>;
+		/** The edges ("from>to") that led to the active states at this step of a run. */
+		taken?: ReadonlySet<string>;
 		interactive?: boolean;
 	} = $props();
 
@@ -64,7 +70,13 @@
 <g class="lines">
 	{#each shapes.edges as edge (`${edge.from}>${edge.to}`)}
 		{#if interactive}
-			<g class="edge" class:chosen={chosen(edge)} data-edge="{edge.from}>{edge.to}">
+			<g
+				class="edge"
+				class:chosen={chosen(edge)}
+				class:taken={taken.has(`${edge.from}>${edge.to}`)}
+				data-edge="{edge.from}>{edge.to}"
+				data-taken={taken.has(`${edge.from}>${edge.to}`) || undefined}
+			>
 				<path class="hit" d={edge.path} />
 				<rect
 					class="hit-label"
@@ -89,6 +101,8 @@
 		{#if interactive}
 			<g
 				class="node"
+				class:active={active.has(state.id)}
+				data-active={active.has(state.id) || undefined}
 				data-state={state.id}
 				role="button"
 				tabindex="0"
@@ -152,7 +166,13 @@
 
 <g class="labels">
 	{#each shapes.edges as edge (`${edge.from}>${edge.to}`)}
-		<text class="label" class:chosen={chosen(edge)} x={edge.label.center.x} y={edge.label.center.y}>
+		<text
+			class="label"
+			class:chosen={chosen(edge)}
+			class:taken={taken.has(`${edge.from}>${edge.to}`)}
+			x={edge.label.center.x}
+			y={edge.label.center.y}
+		>
 			{edge.label.text}
 		</text>
 	{/each}
@@ -267,13 +287,24 @@
 		fill: transparent;
 		pointer-events: all;
 	}
-	.edge.chosen .line {
+	.edge.chosen .line,
+	.edge.taken .line {
 		stroke: var(--color-accent);
 		stroke-width: 3;
 	}
-	.label.chosen {
+	.label.chosen,
+	.label.taken {
 		fill: var(--color-accent-ink);
 		font-weight: var(--weight-strong);
+	}
+	/* A run: the active states are filled and drawn with a thick line (not by color alone). */
+	.node.active .state {
+		fill: var(--color-accent-tint);
+		stroke: var(--color-accent);
+		stroke-width: 3.5;
+	}
+	.node.active .inner {
+		stroke: var(--color-accent);
 	}
 	.edge-node {
 		outline: none;
