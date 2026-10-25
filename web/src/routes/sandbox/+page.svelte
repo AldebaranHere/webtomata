@@ -3,10 +3,10 @@
 	import type { Component } from 'svelte';
 	import Editor from '#lib/editor/Editor.svelte';
 	import Toast from '#lib/editor/Toast.svelte';
-	import { endsWith01 } from '#lib/editor/diagram/samples.ts';
-	import { t } from '#lib/i18n/index.svelte.ts';
+	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
 	import { library } from '#lib/storage/library.svelte.ts';
+	import { makeSample } from '#lib/storage/titles.ts';
 
 	// The Sandbox opens the machine of the last visit, saved on this device (docs/decisions/0023).
 	// With nothing saved it opens the sample, until the first-run screen (X1) replaces that. The page
@@ -17,7 +17,7 @@
 
 	onMount(() => {
 		skipped = false;
-		void library.start(endsWith01);
+		void library.start(() => makeSample(getLocale()));
 	});
 	onDestroy(() => {
 		library.hide();
@@ -65,6 +65,7 @@
 			doc={library.current.opened.doc}
 			autosave={library.current.autosave}
 			persistent={library.persistent}
+			titles={library.current.opened.record.titles}
 			library={{ count: library.count, onopen: library.show }}
 		/>
 	{/key}

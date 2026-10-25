@@ -29,7 +29,7 @@
 			"pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
 			"maxLength": 64
 		},
-		"title": { "$ref": "#/definitions/text120" },
+		"title": { "$ref": "#/definitions/title120" },
 		"statement": {
 			"description": "Plain text. `backticks` mark code (a string, a symbol, an alphabet). A blank line starts a new paragraph. No Markdown and no HTML.",
 			"$ref": "#/definitions/text4000"
@@ -180,6 +180,12 @@
 				"id": { "type": "string", "minLength": 1 },
 				"en": { "type": "string", "minLength": 1 }
 			}
+		},
+		"title120": {
+			"allOf": [
+				{ "$ref": "#/definitions/text120" },
+				{ "properties": { "id": {}, "en": {} }, "required": ["id", "en"] }
+			]
 		},
 		"text120": {
 			"allOf": [

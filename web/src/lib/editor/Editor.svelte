@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import { t } from '#lib/i18n/index.svelte.ts';
+	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
 	import { engine } from '#lib/engine/client.ts';
 	import Announcer from './Announcer.svelte';
 	import ChecksList from './ChecksList.svelte';
@@ -9,6 +9,8 @@
 	import { flagsOf } from './checks.ts';
 	import SaveStatusLine from './SaveStatusLine.svelte';
 	import type { Autosave, SaveStatus } from '#lib/storage/index.ts';
+	import type { Titles } from '#lib/storage/store.ts';
+	import { localizedTitle } from '#lib/storage/titles.ts';
 	import EditorCanvas from './EditorCanvas.svelte';
 	import HistoryButtons from './HistoryButtons.svelte';
 	import { toMachine } from './document.ts';
@@ -26,11 +28,14 @@
 		doc,
 		autosave,
 		persistent = true,
+		titles,
 		library
 	}: {
 		doc: MachineDocument;
 		autosave?: Autosave;
 		persistent?: boolean;
+		/** The titles of a machine from our content: the bar shows the one of the language. */
+		titles?: Titles;
 		/** The list of saved machines: how many, and how to open it (a phone has its button here). */
 		library?: { count: number; onopen: () => void };
 	} = $props();
@@ -138,7 +143,9 @@
 	/>
 	<div class="work">
 		<div class="bar">
-			<p class="title">{snapshot.doc.title || t('editor.untitled')}</p>
+			<p class="title">
+				{localizedTitle(titles, snapshot.doc.title, getLocale()) || t('editor.untitled')}
+			</p>
 			<p class="count">{t('editor.count', { count: snapshot.doc.states.length })}</p>
 			{#if autosave}
 				<SaveStatusLine status={saveStatus} {persistent} />

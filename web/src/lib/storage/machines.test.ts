@@ -6,6 +6,8 @@ import { createMachine, openLatest } from './machines.ts';
 import { createMemoryStore } from './memory.ts';
 import type { SavedMachine } from './store.ts';
 
+const sample = () => ({ doc: endsWith01() });
+
 const saved = (
 	id: string,
 	doc: MachineDocument,
@@ -25,7 +27,7 @@ const saved = (
 describe('openLatest', () => {
 	it('with nothing saved, saves the sample as the first machine and opens it', async () => {
 		const store = createMemoryStore();
-		const opened = await openLatest(store, endsWith01, () => 500);
+		const opened = await openLatest(store, sample, () => 500);
 		expect(opened.skipped).toEqual([]);
 		expect(opened.doc.title).toBe('Berakhiran 01');
 		const all = await store.list();
@@ -39,7 +41,7 @@ describe('openLatest', () => {
 		await store.put(saved('a', a, 100));
 		await store.put(saved('b', { ...a, title: 'B' }, 300));
 		await store.put(saved('c', { ...a, title: 'C' }, 200));
-		const opened = await openLatest(store, endsWith01, () => 900);
+		const opened = await openLatest(store, sample, () => 900);
 		expect(opened.record.id).toBe('b');
 		expect(opened.doc.title).toBe('B');
 		expect((await store.get('b'))!.openedAt).toBe(900);
@@ -51,7 +53,7 @@ describe('openLatest', () => {
 		const a = endsWith01();
 		await store.put(saved('good', a, 100));
 		await store.put(saved('bad', { ...a, title: 'Rusak' }, 300, '{"broken'));
-		const opened = await openLatest(store, endsWith01, () => 900);
+		const opened = await openLatest(store, sample, () => 900);
 		expect(opened.record.id).toBe('good');
 		expect(opened.skipped).toEqual([{ id: 'bad', title: 'Rusak', reason: 'corrupt' }]);
 		expect(await store.get('bad')).toEqual(saved('bad', { ...a, title: 'Rusak' }, 300, '{"broken'));
@@ -62,7 +64,7 @@ describe('openLatest', () => {
 		const a = endsWith01();
 		const future = JSON.stringify({ ...JSON.parse(serializeDocument(a)), schemaVersion: 2 });
 		await store.put(saved('future', a, 300, future));
-		const opened = await openLatest(store, endsWith01, () => 900);
+		const opened = await openLatest(store, sample, () => 900);
 		expect(opened.skipped).toEqual([{ id: 'future', title: a.title, reason: 'newer' }]);
 		expect(opened.record.id).not.toBe('future');
 		expect((await store.get('future'))!.doc).toBe(future);
@@ -74,7 +76,7 @@ describe('openLatest', () => {
 		const a = endsWith01();
 		await store.put(saved('x', a, 100, 'nope'));
 		await store.put(saved('y', a, 200, '{}'));
-		const opened = await openLatest(store, endsWith01, () => 900);
+		const opened = await openLatest(store, sample, () => 900);
 		expect(opened.skipped.map((s) => s.id).sort()).toEqual(['x', 'y']);
 		expect((await store.list()).map((r) => r.id).sort()).toEqual(
 			['x', 'y', opened.record.id].sort()
@@ -90,7 +92,7 @@ describe('openLatest', () => {
 				throw new Error('denied');
 			}
 		};
-		const opened = await openLatest(store, endsWith01, () => 900);
+		const opened = await openLatest(store, sample, () => 900);
 		expect(opened.record.id).toBe('a');
 	});
 
@@ -99,7 +101,7 @@ describe('openLatest', () => {
 		const a = endsWith01();
 		await store.put(saved('b', a, 100));
 		await store.put(saved('a', a, 100));
-		expect((await openLatest(store, endsWith01, () => 900)).record.id).toBe('a');
+		expect((await openLatest(store, sample, () => 900)).record.id).toBe('a');
 	});
 });
 

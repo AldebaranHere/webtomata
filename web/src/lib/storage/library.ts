@@ -7,7 +7,7 @@ import type { Kind } from '../editor/document.ts';
 import { readStoredDocument } from './migrate.ts';
 import type { Unreadable } from './migrate.ts';
 import { newId } from './store.ts';
-import type { MachineStore, SavedMachine } from './store.ts';
+import type { MachineStore, SavedMachine, Titles } from './store.ts';
 
 /** What a row of the list needs. */
 export interface Entry {
@@ -16,6 +16,8 @@ export interface Entry {
 	kind: Kind;
 	updatedAt: number;
 	openedAt: number;
+	/** Set for a machine from our content: the page shows the title of its language. */
+	titles?: Titles;
 	readable: boolean;
 	/** Why a machine cannot be opened (it is kept as it is). */
 	reason?: Unreadable;
@@ -39,6 +41,7 @@ export async function listEntries(store: MachineStore): Promise<Entry[]> {
 				kind: record.kind,
 				updatedAt: record.updatedAt,
 				openedAt: record.openedAt,
+				...(record.titles ? { titles: record.titles } : {}),
 				readable: read.ok,
 				...(read.ok ? {} : { reason: read.reason })
 			};
@@ -94,7 +97,16 @@ export async function renameStored(
 	const result = applyCommand(read.doc, { type: 'setTitle', title });
 	if (!result.ok)
 		return { key: result.error.key, params: result.error.params as Problem['params'] };
-	await store.put({ ...source, title, updatedAt: now(), doc: serializeDocument(result.doc) });
+	const renamed: SavedMachine = {
+		...source,
+		title,
+		updatedAt: now(),
+		doc: serializeDocument(result.doc)
+	};
+	// A title that the user chooses is theirs: the titles of the content are not kept.
+	if (!source.titles || (title !== source.titles.id && title !== source.titles.en))
+		delete renamed.titles;
+	await store.put(renamed);
 	return null;
 }
 

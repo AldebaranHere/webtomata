@@ -4,7 +4,13 @@ import type { MachineDocument } from '../editor/document.ts';
 import { readStoredDocument } from './migrate.ts';
 import type { Unreadable } from './migrate.ts';
 import { newId } from './store.ts';
-import type { MachineStore, SavedMachine } from './store.ts';
+import type { MachineStore, SavedMachine, Titles } from './store.ts';
+
+/** What the Sandbox opens when nothing is saved: a document, and its titles if it is from our content. */
+export interface Sample {
+	doc: MachineDocument;
+	titles?: Titles;
+}
 
 export interface Skipped {
 	id: string;
@@ -23,7 +29,8 @@ export interface Opened {
 export async function createMachine(
 	store: MachineStore,
 	doc: MachineDocument,
-	now: () => number = Date.now
+	now: () => number = Date.now,
+	titles?: Titles
 ): Promise<SavedMachine> {
 	const time = now();
 	const record: SavedMachine = {
@@ -34,7 +41,8 @@ export async function createMachine(
 		createdAt: time,
 		updatedAt: time,
 		openedAt: time,
-		doc: serializeDocument(doc)
+		doc: serializeDocument(doc),
+		...(titles ? { titles } : {})
 	};
 	await store.put(record);
 	return record;
@@ -47,7 +55,7 @@ export async function createMachine(
  */
 export async function openLatest(
 	store: MachineStore,
-	makeSample: () => MachineDocument,
+	makeSample: () => Sample,
 	now: () => number = Date.now
 ): Promise<Opened> {
 	const records = (await store.list()).sort(
@@ -68,6 +76,10 @@ export async function openLatest(
 		}
 		return { record: opened, doc: read.doc, skipped };
 	}
-	const doc = makeSample();
-	return { record: await createMachine(store, doc, now), doc, skipped };
+	const sample = makeSample();
+	return {
+		record: await createMachine(store, sample.doc, now, sample.titles),
+		doc: sample.doc,
+		skipped
+	};
 }

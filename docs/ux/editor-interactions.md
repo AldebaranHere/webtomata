@@ -333,6 +333,10 @@ Errors from the document keep their own keys (`document.duplicate_name` and so o
 - **Calm:** "Pemeriksaan" shows one line (a count, or "lengkap") and the list only when asked for. A half-built DFSM always has something to look at: that is not an alarm. A check about a state puts a small mark on it (the name of the state also says "ada hal yang perlu dilihat"), and pressing the check selects and focuses that state.
 - **The texts** (`check.*`) are a draft with `TODO(review)` until the feedback guide (U4). A test reads the keys from the Rust source, so a new check cannot be added without a text.
 
+## Decisions made for the titles of machines from content
+
+- A machine from our content has its title in both languages, and the page shows the one of the language that is active, in the title bar and in "Mesin saya". A title that the user chose is shown as it is, in any language. See ADR 0023.
+
 ## What each interaction needs from S3
 
 Every interaction uses an existing command. No new command is needed for S4.

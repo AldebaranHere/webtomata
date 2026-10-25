@@ -227,3 +227,55 @@ describe('relativeTime', () => {
 		expect(relativeTime(0, 5 * minute)).toEqual(relativeTime(0, 5 * minute));
 	});
 });
+
+describe('titles that come with the content', () => {
+	const titles = { id: 'Berakhiran 01', en: 'Ending in 01' };
+
+	it('the list gives them along, so that a row can show the language of the page', async () => {
+		const store = createMemoryStore();
+		const record = await createMachine(
+			store,
+			titled(endsWith01(), 'Berakhiran 01'),
+			() => 1,
+			titles
+		);
+		const [entry] = await listEntries(store);
+		expect(entry).toMatchObject({ id: record.id, titles });
+	});
+
+	it('a rename of a machine that is not open drops them (the title is the user’s now)', async () => {
+		const store = createMemoryStore();
+		const record = await createMachine(
+			store,
+			titled(endsWith01(), 'Berakhiran 01'),
+			() => 1,
+			titles
+		);
+		await renameStored(store, record.id, 'Genap a', () => 2);
+		expect((await store.get(record.id))!.titles).toBeUndefined();
+	});
+
+	it('a rename to the same title keeps them', async () => {
+		const store = createMemoryStore();
+		const record = await createMachine(
+			store,
+			titled(endsWith01(), 'Berakhiran 01'),
+			() => 1,
+			titles
+		);
+		await renameStored(store, record.id, 'Ending in 01', () => 2);
+		expect((await store.get(record.id))!.titles).toEqual(titles);
+	});
+
+	it('a copy has none: its title is "… (salinan)", which is its own', async () => {
+		const store = createMemoryStore();
+		const record = await createMachine(
+			store,
+			titled(endsWith01(), 'Berakhiran 01'),
+			() => 1,
+			titles
+		);
+		const copy = await duplicateMachine(store, record.id, () => 2);
+		expect(copy!.titles).toBeUndefined();
+	});
+});

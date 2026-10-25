@@ -209,3 +209,35 @@ describe('autosave', () => {
 		expect((await store.get('m1'))!.title).toBe(first.title);
 	});
 });
+
+describe('titles that come with the content', () => {
+	const titles = { id: 'Berakhiran 01', en: 'Ending in 01' };
+
+	it('are kept while the title of the document is one of them, and dropped when the user chooses another', async () => {
+		const store = createMemoryStore();
+		const first = edit(endsWith01(), 'Berakhiran 01');
+		const base = { ...record(first), titles };
+		await store.put(base);
+		const save = createAutosave({ store, base, delayMs: 10 });
+		save.schedule(edit(first, 'Genap a'));
+		await save.flush();
+		expect((await store.get('m1'))!.titles).toBeUndefined();
+		// The user goes back to the first title with undo: the titles come back.
+		save.schedule(first);
+		await save.flush();
+		expect((await store.get('m1'))!.titles).toEqual(titles);
+	});
+
+	it('are kept when other things change', async () => {
+		const store = createMemoryStore();
+		const first = edit(endsWith01(), 'Ending in 01');
+		const base = { ...record(first), titles };
+		await store.put(base);
+		const save = createAutosave({ store, base, delayMs: 10 });
+		const moved = applyCommand(first, { type: 'moveState', id: 0, x: 111, y: 222 });
+		if (!moved.ok) throw new Error('move');
+		save.schedule(moved.doc);
+		await save.flush();
+		expect((await store.get('m1'))!.titles).toEqual(titles);
+	});
+});

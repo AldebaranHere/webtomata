@@ -3,6 +3,7 @@ export const BASE = `schemaVersion: 1
 id: berakhiran-10
 title:
   id: String yang diakhiri 10
+  en: Strings that end with 10
 statement:
   id: Buat DFSM atas alfabet \`Σ = {0, 1}\` yang menerima string yang diakhiri \`10\`.
 type: build-dfsm
