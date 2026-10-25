@@ -289,12 +289,16 @@ test('a toast fits its box: the message wraps and Urungkan is whole, on a narrow
 	isMobile
 }) => {
 	test.skip(!isMobile, 'a phone only');
-	for (const width of [320, page.viewportSize()!.width]) {
+	const wide = page.viewportSize()!.width;
+	// One copy to delete, made once; each width deletes it, looks at the toast and brings it back.
+	await openSandbox(page);
+	await openList(page, true);
+	await actions(page, 'Berakhiran 01', true);
+	await press(row(page, 'Berakhiran 01').getByRole('button', { name: 'Duplikat' }), true);
+	await closeList(page, true);
+	for (const width of [320, wide]) {
 		await page.setViewportSize({ width, height: 700 });
-		await openSandbox(page);
 		await openList(page, true);
-		await actions(page, 'Berakhiran 01', true);
-		await press(row(page, 'Berakhiran 01').getByRole('button', { name: 'Duplikat' }), true);
 		await actions(page, 'Berakhiran 01 (salinan)', true);
 		await press(row(page, 'Berakhiran 01 (salinan)').getByRole('button', { name: 'Hapus' }), true);
 		const toast = dialog(page).getByRole('group', { name: 'Pesan' });
@@ -319,6 +323,7 @@ test('a toast fits its box: the message wraps and Urungkan is whole, on a narrow
 			insideScreen: true
 		});
 		await press(toast.getByRole('button', { name: 'Urungkan' }), true);
+		await expect(row(page, 'Berakhiran 01 (salinan)')).toBeVisible();
 		await closeList(page, true);
 	}
 });
