@@ -4,7 +4,7 @@ import { expect, openSandbox, test } from './fixtures.ts';
 import type { Page } from '@playwright/test';
 
 const canvas = (page: Page) => page.getByRole('application', { name: 'Kanvas mesin' });
-const panel = (page: Page) => page.getByRole('complementary', { name: 'Simulasi' });
+const panel = (page: Page) => page.getByRole('complementary', { name: 'Panel' });
 
 test('laptop: the panel is a column of 22 rem at the right of the canvas', async ({
 	page,

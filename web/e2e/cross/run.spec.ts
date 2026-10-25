@@ -5,7 +5,7 @@ import { expect, expectNoAxeViolations, openSandbox, test } from '../fixtures.ts
 import type { Page } from '@playwright/test';
 
 const canvas = (page: Page) => page.getByRole('application', { name: 'Kanvas mesin' });
-const panel = (page: Page) => page.getByRole('complementary', { name: 'Simulasi' });
+const panel = (page: Page) => page.getByRole('complementary', { name: 'Panel' });
 const field = (page: Page) => panel(page).getByLabel('String masukan');
 const go = (page: Page) => panel(page).getByRole('button', { name: /^(Jalankan|Jeda)$/ });
 const button = (page: Page, name: string) => panel(page).getByRole('button', { name });

@@ -5,7 +5,7 @@ import type { Page } from '@playwright/test';
 import { touchTap } from './touch.ts';
 
 const canvas = (page: Page) => page.getByRole('application', { name: 'Kanvas mesin' });
-const panel = (page: Page) => page.getByRole('complementary', { name: 'Simulasi' });
+const panel = (page: Page) => page.getByRole('complementary', { name: 'Panel' });
 const field = (page: Page) => panel(page).getByLabel('Tambah string');
 const rows = (page: Page) => panel(page).locator('.tests li');
 

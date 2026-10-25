@@ -182,17 +182,14 @@ test('the ? button opens the tour at any time, also after the tour was seen, and
 
 test('the run field ignores a space at the ends of the string', async ({ page }) => {
 	await openSandbox(page);
+	await page.getByRole('complementary', { name: 'Panel' }).getByLabel('String masukan').fill('01 ');
 	await page
-		.getByRole('complementary', { name: 'Simulasi' })
-		.getByLabel('String masukan')
-		.fill('01 ');
-	await page
-		.getByRole('complementary', { name: 'Simulasi' })
+		.getByRole('complementary', { name: 'Panel' })
 		.getByRole('button', { name: 'Langkah berikutnya' })
 		.click();
 	await expect(
 		page
-			.getByRole('complementary', { name: 'Simulasi' })
+			.getByRole('complementary', { name: 'Panel' })
 			.getByRole('list', { name: 'Simbol yang dibaca' })
 			.getByRole('listitem')
 	).toHaveText(['0', '1']);
@@ -295,3 +292,52 @@ for (const width of [320, 375, 412]) {
 		}
 	});
 }
+
+// Nothing to run, test or copy exists before a machine is chosen: the panel waits for one.
+const sidePanel = (page: Page) => page.getByRole('complementary', { name: 'Panel' });
+
+test('while Coba contoh is up there is no panel, and an example brings it', async ({ page }) => {
+	await openSandbox(page, { example: false });
+	await expect(card(page)).toBeVisible();
+	await expect(sidePanel(page)).toHaveCount(0);
+	await expect(page.getByRole('tab')).toHaveCount(0);
+	await example(page, /^Berakhiran 01/).click();
+	await expect(sidePanel(page)).toBeVisible();
+	await expect(sidePanel(page).getByRole('tab')).toHaveCount(3);
+});
+
+test('"Mulai dari kanvas kosong" brings the panel', async ({ page }) => {
+	await openSandbox(page, { example: false });
+	await expect(sidePanel(page)).toHaveCount(0);
+	await card(page).getByRole('button', { name: 'Mulai dari kanvas kosong' }).click();
+	await expect(sidePanel(page)).toBeVisible();
+});
+
+test('a state added with the keyboard brings the panel too', async ({ page }) => {
+	await openSandbox(page, { example: false });
+	await expect(async () => {
+		await canvas(page).focus();
+		await page.keyboard.press('n');
+		expect(await nodes(page).count()).toBe(1);
+	}).toPass();
+	await expect(sidePanel(page)).toBeVisible();
+});
+
+test('a machine that has no state has nothing to copy: Definisi says so, with no Salin', async ({
+	page
+}) => {
+	await openSandbox(page, { example: false });
+	await card(page).getByRole('button', { name: 'Mulai dari kanvas kosong' }).click();
+	await sidePanel(page).getByRole('tab', { name: 'Definisi' }).click();
+	const pane = sidePanel(page).getByRole('tabpanel', { name: 'Definisi' });
+	await expect(pane.getByText('Belum ada state untuk didefinisikan.')).toBeVisible();
+	await expect(pane.getByRole('button', { name: 'Salin' })).toHaveCount(0);
+	await expect(pane.getByText('M = (K, Σ, δ, s, A)', { exact: true })).toHaveCount(0);
+	// The first state brings the definition.
+	await expect(async () => {
+		await canvas(page).focus();
+		await page.keyboard.press('n');
+		expect(await nodes(page).count()).toBe(1);
+	}).toPass();
+	await expect(pane.getByRole('button', { name: 'Salin' })).toBeVisible();
+});

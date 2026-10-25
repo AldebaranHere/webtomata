@@ -4,7 +4,7 @@ import { expect, expectNoAxeViolations, openSandbox, test } from '../fixtures.ts
 import { records } from './db.ts';
 import type { Page } from '@playwright/test';
 
-const panel = (page: Page) => page.getByRole('complementary', { name: 'Simulasi' });
+const panel = (page: Page) => page.getByRole('complementary', { name: 'Panel' });
 const rows = (page: Page) => panel(page).locator('.tests li');
 const field = (page: Page) => panel(page).getByLabel('Tambah string');
 const state = (page: Page, name: string) =>
