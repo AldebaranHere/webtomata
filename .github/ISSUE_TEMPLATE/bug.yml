@@ -1,0 +1,48 @@
+name: Bug / Ada yang rusak
+description: Sesuatu tidak jalan seperti seharusnya. / Something does not work as it should.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Terima kasih sudah melapor. Satu laporan untuk satu masalah ya.
+        Thanks for reporting. One report for one problem, please.
+
+        Jangan tempel data pribadi. Untuk masalah keamanan, jangan pakai formulir ini: pakai tautan "Masalah keamanan" di halaman pilihan issue.
+        Please do not paste personal data. For a security problem, do not use this form: use the "A security problem" link on the issue choice page.
+  - type: dropdown
+    id: where
+    attributes:
+      label: Di bagian mana? / Where?
+      options:
+        - Sandbox
+        - Soal
+        - Panduan
+        - Beranda / Home
+        - Lainnya / Other
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: Apa yang terjadi? / What happened?
+      description: Tulis dengan kata-katamu sendiri. Satu atau dua kalimat sudah cukup. / In your own words. One or two sentences are enough.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Langkah untuk mengulanginya / Steps to repeat it
+      description: Misalnya, "Buka contoh Berakhiran 01, ketik string 0101, tekan Jalankan." / For example, "Open the example Ending in 01, type 0101, press Run."
+  - type: textarea
+    id: expected
+    attributes:
+      label: Apa yang kamu harapkan? / What did you expect?
+  - type: input
+    id: device
+    attributes:
+      label: Perangkat dan peramban / Device and browser
+      description: Misalnya "Samsung Galaxy A54, Chrome" atau "Laptop Windows, Firefox". / For example "Samsung Galaxy A54, Chrome" or "Windows laptop, Firefox".
+    validations:
+      required: true

@@ -1,0 +1,31 @@
+name: Kesalahan isi / A content error
+description: Contoh, soal, panduan, atau istilah yang salah atau membingungkan. / A wrong or confusing example, question, guide or term.
+title: "[Isi / Content] "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ini untuk isi yang salah, bukan tampilan yang rusak (untuk itu pakai formulir Bug).
+        This is for content that is wrong, not for a broken screen (use the Bug form for that).
+
+        Jangan tempel teks dari buku atau soal kuliah. Cukup tulis nama bagian dan nomor halamannya.
+        Please do not paste text from a textbook or a course. The name of the section and the page number are enough.
+  - type: input
+    id: where
+    attributes:
+      label: Di mana? / Where?
+      description: Nama contoh, soal, atau panduan, atau tautan halamannya. / The name of the example, question or guide, or the link of the page.
+    validations:
+      required: true
+  - type: textarea
+    id: wrong
+    attributes:
+      label: Apa yang salah atau membingungkan? / What is wrong or confusing?
+    validations:
+      required: true
+  - type: textarea
+    id: better
+    attributes:
+      label: Bagaimana seharusnya? / What should it say?
+      description: Kalau kamu punya usul kalimat atau istilah. / If you have a suggestion for the wording or the term.

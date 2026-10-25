@@ -1,0 +1,6 @@
+# Blank issues stay allowed: a question or an idea does not always fit a form.
+blank_issues_enabled: true
+contact_links:
+  - name: Masalah keamanan / A security problem
+    url: https://github.com/AldebaranHere/webtomata/security/advisories/new
+    about: Jangan buka issue publik. Laporkan secara pribadi di sini. / Do not open a public issue. Report it privately here.
