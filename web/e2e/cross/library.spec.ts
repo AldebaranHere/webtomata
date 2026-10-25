@@ -283,3 +283,42 @@ test('phone: the list is a sheet from the bottom, and every control is at least 
 	await page.touchscreen.tap(size.width / 2, 20);
 	await expect(dialog(page)).toBeHidden();
 });
+
+test('a toast fits its box: the message wraps and Urungkan is whole, on a narrow screen too', async ({
+	page,
+	isMobile
+}) => {
+	test.skip(!isMobile, 'a phone only');
+	for (const width of [320, page.viewportSize()!.width]) {
+		await page.setViewportSize({ width, height: 700 });
+		await openSandbox(page);
+		await openList(page, true);
+		await actions(page, 'Berakhiran 01', true);
+		await press(row(page, 'Berakhiran 01').getByRole('button', { name: 'Duplikat' }), true);
+		await actions(page, 'Berakhiran 01 (salinan)', true);
+		await press(row(page, 'Berakhiran 01 (salinan)').getByRole('button', { name: 'Hapus' }), true);
+		const toast = dialog(page).getByRole('group', { name: 'Pesan' });
+		await expect(toast).toBeVisible();
+		const fits = await toast.evaluate((el) => {
+			const box = el.getBoundingClientRect();
+			const button = el.querySelector('button')!.getBoundingClientRect();
+			const range = document.createRange();
+			range.selectNodeContents(el.querySelector('button')!);
+			const word = range.getBoundingClientRect();
+			return {
+				noOverflow: el.scrollWidth <= el.clientWidth + 1,
+				buttonInside: button.right <= box.right + 0.5 && button.left >= box.left - 0.5,
+				wordInside: word.right <= box.right - 4 && word.left >= box.left,
+				insideScreen: box.left >= 0 && box.right <= window.innerWidth
+			};
+		});
+		expect(fits, `at ${width}`).toEqual({
+			noOverflow: true,
+			buttonInside: true,
+			wordInside: true,
+			insideScreen: true
+		});
+		await press(toast.getByRole('button', { name: 'Urungkan' }), true);
+		await closeList(page, true);
+	}
+});
