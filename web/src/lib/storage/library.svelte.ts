@@ -6,8 +6,8 @@ import { createDocument } from '../editor/document.ts';
 import type { Announcement } from '../editor/interaction/editor.ts';
 import { createAutosave } from './autosave.ts';
 import type { Autosave } from './autosave.ts';
-import { createMachine, openLatest } from './machines.ts';
-import type { Opened, Sample, Skipped } from './machines.ts';
+import { createMachine, openLatest, placeExample } from './machines.ts';
+import type { Opened, Placeable, Sample, Skipped } from './machines.ts';
 import { createPendingDeletes, duplicateMachine, listEntries, renameStored } from './library.ts';
 import type { Entry, PendingDeletes, Problem } from './library.ts';
 import { getLocale } from '#lib/i18n/index.svelte.ts';
@@ -20,6 +20,8 @@ import type { MachineStore } from './store.ts';
 export interface Current {
 	opened: Opened;
 	autosave: Autosave;
+	/** Changes each time the editor must be made again, also for the same record (an example was put in it). */
+	key: number;
 }
 
 class Library {
@@ -41,6 +43,7 @@ class Library {
 
 	private pending: PendingDeletes | null = null;
 	private sequence = 0;
+	private keys = 0;
 	/** The editor sets this, so that the title of the open machine is changed through it (undo works). */
 	renameCurrent: (title: string) => Problem | null = () => null;
 
@@ -63,7 +66,11 @@ class Library {
 		this.store = store;
 		this.persistent = persistent;
 		this.skipped = opened.skipped;
-		this.current = { opened, autosave: createAutosave({ store, base: opened.record }) };
+		this.current = {
+			opened,
+			autosave: createAutosave({ store, base: opened.record }),
+			key: ++this.keys
+		};
 		this.pending = createPendingDeletes({ store, onChange: () => void this.afterPendingChange() });
 		await this.refresh();
 		this.ready = true;
@@ -128,11 +135,41 @@ class Library {
 		}
 		this.current = {
 			opened: { record: opened, doc: read.doc, skipped: [] },
-			autosave: createAutosave({ store, base: opened })
+			autosave: createAutosave({ store, base: opened }),
+			key: ++this.keys
 		};
 		this.skipped = [];
 		this.problem = null;
 		if (!keepOpen) this.hide();
+		await this.refresh();
+		return null;
+	}
+
+	/**
+	 * Opens an example from the first-run card: in the place of the open machine when that is empty
+	 * and untouched, otherwise as a machine of its own (see `placeExample`). Returns why it could
+	 * not, or null.
+	 */
+	async openExample(example: Placeable): Promise<Problem | null> {
+		const store = this.store;
+		if (!store) return null;
+		// What the student has done is saved first, so that the record is what is on the screen. The
+		// autosave goes on until the example is placed: a refused write leaves everything as it was.
+		await this.current?.autosave.flush();
+		let placed;
+		try {
+			placed = await placeExample(store, this.current?.opened.record.id, example);
+		} catch {
+			return this.fail({ key: 'storage.failed', params: {} });
+		}
+		if (!placed.replaced) return await this.openMachine(placed.record.id, true);
+		this.current?.autosave.dispose();
+		this.current = {
+			opened: { record: placed.record, doc: example.doc, skipped: [] },
+			autosave: createAutosave({ store, base: placed.record }),
+			key: ++this.keys
+		};
+		this.problem = null;
 		await this.refresh();
 		return null;
 	}

@@ -376,3 +376,11 @@ Copy and paste, dragging an edge to change its ends, editing an edge's curve by 
 - **Saved with the machine** (the record, see ADR 0023), not in the undo history. Removing a row has no Urungkan: the list is small and cheap to type again.
 - **The panel scrolls inside itself.** The canvas and the panel keep their size when the list grows (a test checks it).
 - **The texts** (`test.*`) are a draft with `TODO(review)` until the feedback guide (U4).
+
+## Decisions made while building X1
+
+- **First run.** The first visit makes an empty machine and shows "Coba contoh" over the canvas (a sheet at the bottom on a phone): a card for each example (title, one line, DFSM or NDFSM), "Mulai dari kanvas kosong", the optional "Tur 1 menit", and "Tersimpan di perangkat ini. Tanpa akun, tanpa pelacakan." The card goes away for good, in that editor, when a state is added or the blank canvas is chosen, so it never covers the canvas of a student who deleted everything. It is not drawn over the bar.
+- **One click opens an example** in the place of the empty machine (a new machine when the open one has any work), with its strings in "Uji banyak string". "Buka file .jff atau JSON" is not there yet (S10b), and the regex example comes with S7.
+- **The "?" button** (44 px, in the bar, also on a phone) opens the tour at any time. The tour is five steps in a dialog: add states, connect with transitions and ε, mark start and accepting, run one string, test many strings. It links to Panduan.
+- **Seen.** The tour is seen when it is closed in any way; the card then stops offering it, and "?" still opens it.
+- **The run field trims the ends** of the string, as the list of test strings does (a phone keyboard likes to add a space after the last symbol).

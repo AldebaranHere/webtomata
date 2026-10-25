@@ -62,7 +62,7 @@
 	// string and presses it wants to go one step at a time.
 	function step() {
 		if (ready) onstep();
-		else onstart(text, false);
+		else onstart(text.trim(), false);
 	}
 
 	function submit(event: SubmitEvent) {
@@ -72,7 +72,7 @@
 			if (view!.playing) onpause();
 			else onplay();
 		} else {
-			onstart(text, true);
+			onstart(text.trim(), true);
 		}
 	}
 </script>
@@ -154,7 +154,7 @@
 	{#if status === 'refused'}
 		<p class="note">{t(refusalText(refusal).key, refusalText(refusal).params)}</p>
 	{:else if status === 'failed' && problem}
-		<EngineNotice {problem} onretry={() => onstart(text, true)} />
+		<EngineNotice {problem} onretry={() => onstart(text.trim(), true)} />
 	{/if}
 
 	{#if ready && view}

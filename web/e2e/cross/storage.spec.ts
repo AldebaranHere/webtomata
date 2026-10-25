@@ -59,6 +59,8 @@ test('leaving the page asks first while a change is not saved, and not after', a
 	isMobile
 }) => {
 	await openSandbox(page);
+	// The strings of the example were just removed: wait until that is saved too.
+	await expect(status(page)).toHaveClass(/saved/);
 	const asks = () =>
 		page.evaluate(() => {
 			const event = new Event('beforeunload', { cancelable: true });
@@ -127,7 +129,8 @@ test('when every machine is unreadable a new one is made, and none is deleted', 
 	await putRow(page, { ...good!, doc: 'not json at all', openedAt: good!.openedAt + 1000 });
 	await page.reload();
 	await page.locator('.editor[data-ready]').waitFor();
-	await expect(state(page, 'q0')).toBeVisible();
+	// The new machine is empty, so "Coba contoh" is over it.
+	await expect(page.getByRole('region', { name: 'Coba contoh' })).toBeVisible();
 	const all = await records(page);
 	expect(all).toHaveLength(2);
 	expect(all.find((r) => r.id === good!.id)!.doc).toBe('not json at all');

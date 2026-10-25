@@ -37,10 +37,35 @@ export const test = base.extend<{ watch: void; allowedProblem: RegExp | undefine
 // WCAG 2.0, 2.1 and 2.2 levels A and AA, and axe's best practices. No violation is allowed.
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
 
-/** Opens the Sandbox and waits until the editor takes keys and touches (the page is drawn before that). */
-export async function openSandbox(page: Page): Promise<void> {
+/**
+ * Opens the Sandbox and waits until the editor takes keys and touches (the page is drawn before
+ * that). A first visit shows "Coba contoh" over an empty machine. Unless `example` is false, this
+ * opens the example "Berakhiran 01" from it, so that a test starts with the three states that most
+ * tests use. That example comes with test strings; they are removed unless `tests` is "keep", so
+ * that the panel of a test is what it was before the examples existed.
+ */
+export async function openSandbox(
+	page: Page,
+	options: { example?: false; tests?: 'keep' } = {}
+): Promise<void> {
 	await page.goto('/sandbox');
 	await page.locator('.editor[data-ready]').waitFor();
+	if (options.example === false) return;
+	const example = page.getByRole('button', { name: /^(Berakhiran 01|Ending in 01)/ });
+	if ((await example.count()) === 0) return;
+	await example.click();
+	await example.waitFor({ state: 'detached' });
+	await page.locator('.editor[data-ready]').waitFor();
+	if (options.tests !== 'keep') await clearTests(page);
+}
+
+/** Removes every test string of the open machine (an example opens with some). */
+export async function clearTests(page: Page): Promise<void> {
+	const remove = page.getByRole('button', { name: /^(Hapus|Remove) / });
+	while ((await remove.count()) > 0) {
+		await remove.first().click();
+	}
+	await expect(page.locator('.tests li')).toHaveCount(0);
 }
 
 /**

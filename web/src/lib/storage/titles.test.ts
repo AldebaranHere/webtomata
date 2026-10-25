@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SAMPLE_TITLES, localizedTitle, makeSample } from './titles.ts';
+import { localizedTitle } from './titles.ts';
 
 describe('localizedTitle', () => {
 	const titles = { id: 'Berakhiran 01', en: 'Ending in 01' };
@@ -19,15 +19,5 @@ describe('localizedTitle', () => {
 
 	it('a machine without titles shows its own title', () => {
 		expect(localizedTitle(undefined, 'Berakhiran 01', 'en')).toBe('Berakhiran 01');
-	});
-});
-
-describe('makeSample', () => {
-	it('is the sample with the title of the language, and both titles for the record', () => {
-		const english = makeSample('en');
-		expect(english.doc.title).toBe('Ending in 01');
-		expect(english.titles).toEqual(SAMPLE_TITLES);
-		expect(makeSample('id').doc.title).toBe('Berakhiran 01');
-		expect(english.doc.states).toHaveLength(3);
 	});
 });
