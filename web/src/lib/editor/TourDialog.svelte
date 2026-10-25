@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import type { MessageKey } from '#lib/i18n/id.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
-	import { TOUR_STEPS } from './tour.ts';
+	import TourTool from './TourTool.svelte';
+	import { TOUR, TOUR_STEPS } from './tour.ts';
 
 	// "Tur 1 menit": five short steps in a dialog (a sheet from the bottom on a phone). It is plain
 	// on purpose: a spotlight over the interface is fragile on a small screen. A native <dialog>
@@ -18,8 +18,7 @@
 
 	onMount(() => dialog.showModal());
 
-	const title = $derived(t(`tour.s${step}_title` as MessageKey));
-	const body = $derived(t(`tour.s${step}_body` as MessageKey));
+	const current = $derived(TOUR[step - 1]!);
 
 	function onBackdrop(event: MouseEvent) {
 		if (event.target === dialog) dialog.close();
@@ -51,8 +50,22 @@
 
 		<div class="body">
 			<p class="progress">{t('tour.progress', { current: step, total: TOUR_STEPS })}</p>
-			<h2>{title}</h2>
-			<p id="tour-body">{body}</p>
+			<h2>{t(current.title)}</h2>
+			<p id="tour-body">{t(current.body)}</p>
+			<!-- The controls of this step, drawn as they look: the text above says the same in words. -->
+			<div class="shows" aria-hidden="true">
+				{#each current.items as item, i (i)}
+					<TourTool {item} />
+				{/each}
+			</div>
+			<p class="where">
+				<span class="wide">
+					{t(current.where === 'tools' ? 'tour.where_tools_wide' : 'tour.where_panel_wide')}
+				</span>
+				<span class="narrow">
+					{t(current.where === 'tools' ? 'tour.where_tools_narrow' : 'tour.where_panel_narrow')}
+				</span>
+			</p>
 			<a class="guides" href={resolve('/panduan')} onclick={() => dialog.close()}
 				>{t('tour.guides')}</a
 			>
@@ -139,6 +152,30 @@
 	.progress {
 		color: var(--color-muted);
 		font-size: var(--text-sm);
+	}
+	.shows {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-3) var(--space-4);
+		padding: var(--space-3);
+		border-radius: var(--radius-lg);
+		background: var(--color-ground);
+	}
+	.where {
+		color: var(--color-muted);
+		font-size: var(--text-sm);
+	}
+	/* The words follow the layout: the tool bar is at the left on a laptop and at the bottom on a phone. */
+	.narrow {
+		display: none;
+	}
+	@media (max-width: 39.99rem) {
+		.wide {
+			display: none;
+		}
+		.narrow {
+			display: inline;
+		}
 	}
 	#tour-body {
 		line-height: var(--leading-normal);

@@ -221,20 +221,29 @@ export const en: Record<MessageKey, string> = {
 	'tour.finish': 'Done',
 	'tour.close': 'Close the tour',
 	'tour.guides': 'Open the guides',
+	'tour.where_tools_wide': 'Find it in the tool bar, left of the canvas.',
+	'tour.where_tools_narrow': 'Find it in the tool bar, at the bottom of the screen.',
+	'tour.where_panel_wide': 'Find it in the Simulation panel, right of the canvas.',
+	'tour.where_panel_narrow': 'Find it in the Simulation panel, under the canvas.',
+	'tour.dblclick': 'Double-click',
+	'tour.cap_start': 'Make it the start state',
+	'tour.cap_accepting': 'Make it accepting',
+	'tour.shortcut': 'Shortcut: {key}',
 	'tour.s1_title': 'Add states',
-	'tour.s1_body': 'Choose the State tool, then tap or click the canvas. Each circle is one state.',
+	'tour.s1_body':
+		'Choose the Add state tool, then tap or click the canvas. Each circle is one state.',
 	'tour.s2_title': 'Connect with transitions',
 	'tour.s2_body':
-		'Choose the Transition tool, then pick the source state and the target state, and write the symbol. For ε, type eps.',
+		'Choose the Add transition tool, then pick the source state and the target state, and write the symbol. For ε, type eps.',
 	'tour.s3_title': 'Mark start and accepting',
 	'tour.s3_body':
-		'Select a state and press M to make it the start state. Double-click a state to make it accepting. On a phone, press and hold a state to open its menu.',
+		'With the Select tool, select a state and press M to make it the start state. Double-click a state to make it accepting. On a phone, press and hold a state to open its menu.',
 	'tour.s4_title': 'Run one string',
 	'tour.s4_body':
-		'Write a string in the Simulation panel, then press Run. The active states light up on the diagram. The arrow buttons run one step.',
+		'Write a string in the Simulation panel, then press Run. The active states light up on the diagram. The Next step button runs one step.',
 	'tour.s5_title': 'Test many strings',
 	'tour.s5_body':
-		'Add some strings under "Test many strings". Their results change when the machine changes. Everything is saved on this device.',
+		'Write a string in the "Add a string" field, then press Add. Its result changes when the machine changes. Everything is saved on this device.',
 	'document.limit_exceeded': 'Limit reached: {what}, at most {limit}.',
 	'soal.description': 'Practice questions on finite state machines with calm, specific feedback.',
 	'panduan.description':

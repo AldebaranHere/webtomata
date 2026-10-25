@@ -223,3 +223,75 @@ test('a student who deletes every state is working: the card does not come back'
 	await page.locator('.editor[data-ready]').waitFor();
 	await expect(card(page)).toBeVisible();
 });
+
+// What each step of the tour shows: the controls as pictures, with the names and keys of the real
+// buttons (they are read from the same list), and where to find them.
+const STEPS = [
+	['Tambah state', ['Tambah state', 'S']],
+	['Hubungkan dengan transisi', ['Tambah transisi', 'T']],
+	[
+		'Tandai start dan accepting',
+		['Pilih', 'V', 'M', 'Jadikan start state', 'Klik dua kali', 'Jadikan accepting']
+	],
+	['Jalankan satu string', ['Jalankan', 'Langkah berikutnya']],
+	['Uji banyak string', ['Tambah string', 'Tambah']]
+] as const;
+
+test('every step of the tour draws the control that it is about, with the name of the real button', async ({
+	page,
+	isMobile
+}) => {
+	await openSandbox(page, { example: false });
+	// The names of the real tools, before the dialog makes the page inert.
+	const rail = page.getByRole('toolbar', { name: 'Alat editor' });
+	for (const name of ['Tambah state', 'Tambah transisi', 'Pilih']) {
+		await expect(rail.getByRole('button', { name })).toHaveCount(1);
+	}
+	await tourLink(page).click();
+	for (const [index, [title, shown]] of STEPS.entries()) {
+		await expect(tour(page).getByRole('heading', { name: title })).toBeVisible();
+		const pictures = tour(page).locator('.shows');
+		await expect(pictures).toBeVisible();
+		for (const text of shown) await expect(pictures).toContainText(text);
+		// Where to find them: the words follow the layout.
+		const where = index < 3 ? 'bilah alat' : 'panel Simulasi';
+		const place = isMobile
+			? index < 3
+				? 'di bagian bawah layar'
+				: 'di bawah kanvas'
+			: index < 3
+				? 'di kiri kanvas'
+				: 'di kanan kanvas';
+		await expect(tour(page).getByText(`Ada di ${where}, ${place}.`)).toBeVisible();
+		await expectNoAxeViolations(page);
+		if (index < STEPS.length - 1)
+			await tour(page).getByRole('button', { name: 'Berikutnya' }).click();
+	}
+});
+
+for (const width of [320, 375, 412]) {
+	test(`the tour fits a screen ${width} px wide: the pictures, the words and the buttons are all reachable`, async ({
+		page
+	}) => {
+		await page.setViewportSize({ width, height: 640 });
+		await openSandbox(page, { example: false });
+		await tourLink(page).click();
+		for (let index = 0; index < STEPS.length; index++) {
+			const box = (await tour(page).boundingBox())!;
+			expect(box.x, `step ${index + 1}`).toBeGreaterThanOrEqual(0);
+			expect(box.x + box.width).toBeLessThanOrEqual(width);
+			expect(box.y + box.height).toBeLessThanOrEqual(640);
+			const next = tour(page).getByRole('button', {
+				name: index < STEPS.length - 1 ? 'Berikutnya' : 'Selesai'
+			});
+			await expect(next).toBeInViewport();
+			expect((await next.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+			// Nothing in the pictures is cut off sideways.
+			const overflow = await tour(page)
+				.locator('.shows')
+				.evaluate((e) => e.scrollWidth - e.clientWidth);
+			expect(overflow).toBeLessThanOrEqual(0);
+			if (index < STEPS.length - 1) await next.click();
+		}
+	});
+}
