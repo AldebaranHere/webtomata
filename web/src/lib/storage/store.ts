@@ -27,6 +27,12 @@ export interface SavedMachine {
 	 * chooses is the user’s, and the record does not keep this any more.
 	 */
 	titles?: Titles;
+	/**
+	 * The strings that the student tests the machine with (S6-3), in the order they were added. It
+	 * is a field of the record, not of the document: it is not in the undo history and not in a
+	 * file. Anything may have written it, so it is read with `readTests`.
+	 */
+	tests?: string[];
 }
 
 /** The place where the records are kept. A write is whole or it is not made. */

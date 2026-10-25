@@ -58,3 +58,5 @@ No course source. These come from the wireframes and stay unless the owner or th
 Added in S4d-1, with no source yet (`TODO(review)`: the owner or the lecturer may change them): Pas (fit the machine in the view; from the wireframes), Perbesar and Perkecil (zoom in and out), Perbesaran (zoom), Atur ke 100% (reset the zoom).
 
 Added in S6-2, with no source yet (`TODO(review)`: the owner or the lecturer may change them): Jalankan (run), Jeda (pause), Langkah berikutnya / Langkah sebelumnya (next / previous step), Kembali ke awal (back to the start), String masukan (input string), Diterima / Ditolak (accepted / rejected).
+
+Added in S6-3, with no source yet (`TODO(review)`): Uji banyak string (test many strings), Tambah string (add a string), Tidak bisa dijalankan (cannot run), Dihentikan (stopped).

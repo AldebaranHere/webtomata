@@ -66,6 +66,7 @@
 			autosave={library.current.autosave}
 			persistent={library.persistent}
 			titles={library.current.opened.record.titles}
+			tests={library.current.opened.record.tests}
 			library={{ count: library.count, onopen: library.show }}
 		/>
 	{/key}

@@ -71,6 +71,40 @@ describe('every method reaches the engine', () => {
 		});
 	});
 
+	it('simulates many strings in one call, one outcome for each', () => {
+		const answer = call('simulateMany', even, ['', 'ab', 'a', 'abc', 'abab'], { maxSteps: 2 });
+		expect(answer).toMatchObject({ ok: true });
+		expect((answer as { value: unknown }).value).toEqual([
+			{ input: '', result: 'accepted' },
+			{ input: 'ab', result: 'accepted' },
+			{ input: 'a', result: 'rejected' },
+			{
+				input: 'abc',
+				result: 'refused',
+				error: { key: 'input.unknown_symbol', params: { symbol: 'c', position: 2 } }
+			},
+			{ input: 'abab', result: 'stopped', reason: 'max_steps' }
+		]);
+	});
+
+	it('says for each string when the machine has no start state', () => {
+		const answer = call('simulateMany', { ...even, start: null }, ['a', 'b']);
+		expect((answer as { value: { result: string; error: { key: string } }[] }).value).toMatchObject(
+			[
+				{ result: 'refused', error: { key: 'sim.no_start_state' } },
+				{ result: 'refused', error: { key: 'sim.no_start_state' } }
+			]
+		);
+	});
+
+	it('gives an empty list for no strings', () => {
+		expect(call('simulateMany', even, [])).toEqual({ ok: true, value: [] });
+	});
+
+	it('fails as a whole when the budget is not a budget', () => {
+		expect(call('simulateMany', even, ['a'], { nonsense: 1 })).toMatchObject({ ok: false });
+	});
+
 	it('converts and compares', () => {
 		expect(call('determinize', even)).toMatchObject({ ok: true, value: { result: 'finished' } });
 		expect(call('minimize', even)).toMatchObject({ ok: true, value: { result: 'finished' } });

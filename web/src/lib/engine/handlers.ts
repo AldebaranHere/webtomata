@@ -3,7 +3,8 @@
 // the only file that imports it.
 import { METHODS } from './protocol.ts';
 import type { EngineApi, EngineMethod } from './protocol.ts';
-import type { EngineResult } from './types.ts';
+import type { EngineResult, Message, SimulationReport } from './types.ts';
+import type { StringOutcome } from './protocol.ts';
 
 /** The functions of the WASM package (see `crates/engine-wasm`). */
 export interface Wasm {
@@ -34,6 +35,9 @@ const text = (value: unknown): string => JSON.stringify(value);
 const optional = (value: unknown): string | undefined =>
 	value === undefined ? undefined : text(value);
 
+/** The keys of an answer that is about the call, not about the string. */
+const isBudgetProblem = (error: Message) => error.key === 'api.invalid_budget';
+
 /** Every handler answers with the text of the envelope, as the WASM functions do. */
 export function createHandlers(wasm: Wasm): Handlers {
 	return {
@@ -43,6 +47,30 @@ export function createHandlers(wasm: Wasm): Handlers {
 		nondeterministicStates: (machine) => wasm.nondeterministicStates(text(machine)),
 		addTrapState: (machine) => wasm.addTrapState(text(machine)),
 		simulate: (machine, input, budget) => wasm.simulate(text(machine), input, optional(budget)),
+		simulateMany: (machine, inputs, budget) => {
+			const machineText = text(machine);
+			const budgetText = optional(budget);
+			const outcomes: StringOutcome[] = [];
+			for (const input of inputs) {
+				const answer = JSON.parse(
+					wasm.simulate(machineText, input, budgetText)
+				) as EngineResult<SimulationReport>;
+				if (answer.ok) {
+					const { simulation } = answer.value;
+					outcomes.push(
+						simulation.result === 'stopped'
+							? { input, result: 'stopped', reason: simulation.reason }
+							: { input, result: simulation.accepted ? 'accepted' : 'rejected' }
+					);
+				} else if (isBudgetProblem(answer.error)) {
+					// The budget is the same for every string: the whole call fails.
+					return text(answer);
+				} else {
+					outcomes.push({ input, result: 'refused', error: answer.error });
+				}
+			}
+			return text({ ok: true, value: outcomes });
+		},
 		determinize: (machine, budget) => wasm.determinize(text(machine), optional(budget)),
 		minimize: (machine, budget) => wasm.minimize(text(machine), optional(budget)),
 		equivalent: (candidate, reference, budget) =>

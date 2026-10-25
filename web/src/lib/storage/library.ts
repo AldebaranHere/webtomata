@@ -4,6 +4,7 @@
 import { applyCommand } from '../editor/commands.ts';
 import { LIMITS, serializeDocument } from '../editor/document.ts';
 import type { Kind } from '../editor/document.ts';
+import { readTests } from '../editor/test-list.ts';
 import { readStoredDocument } from './migrate.ts';
 import type { Unreadable } from './migrate.ts';
 import { newId } from './store.ts';
@@ -79,6 +80,9 @@ export async function duplicateMachine(
 		openedAt: source.openedAt - 1,
 		doc: serializeDocument(titled.doc)
 	};
+	// The strings that the machine is tested with go with the copy (the record may hold a bad field).
+	const tests = readTests(source.tests);
+	if (tests.length > 0) record.tests = tests;
 	await store.put(record);
 	return record;
 }
