@@ -10,6 +10,9 @@ async function center(target: Locator) {
 
 /** A tap on the middle of the element (for a state: its circle). */
 export async function touchTap(page: Page, target: Locator): Promise<void> {
+	// A control inside a box that scrolls (the panel) may be out of sight: a finger would hit what is
+	// there instead, so it is scrolled into view first, as the person would do.
+	await target.scrollIntoViewIfNeeded();
 	const at = await center(target.locator('circle.state').or(target).first());
 	const cdp = await page.context().newCDPSession(page);
 	await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at] });
