@@ -27,7 +27,7 @@ Aturan ini berlaku di semua ruang proyek ini (issue, pull request, komentar, dis
 
 ### Penegakan
 
-Laporkan perilaku yang melanggar secara pribadi ke **aldebaran26adhitya@gmail.com**. Setiap laporan dibaca dan ditangani dengan adil dan dirahasiakan dari pihak lain. Pemelihara boleh menghapus komentar, issue, atau kontribusi yang melanggar, dan boleh memberi peringatan, membatasi sementara, atau melarang seseorang berkontribusi, sesuai beratnya pelanggaran. Pemelihara yang terlibat dalam suatu laporan tidak ikut memutuskannya.
+Laporkan perilaku yang melanggar secara pribadi ke **webtomata@gmail.com**. Setiap laporan dibaca dan ditangani dengan adil dan dirahasiakan dari pihak lain. Pemelihara boleh menghapus komentar, issue, atau kontribusi yang melanggar, dan boleh memberi peringatan, membatasi sementara, atau melarang seseorang berkontribusi, sesuai beratnya pelanggaran. Pemelihara yang terlibat dalam suatu laporan tidak ikut memutuskannya.
 
 Untuk masalah keamanan pada kode, jangan pakai alamat ini: ikuti [SECURITY.md](SECURITY.md).
 
@@ -62,7 +62,7 @@ This applies in every space of this project (issues, pull requests, comments, di
 
 ### Enforcement
 
-Report conduct that breaks these rules privately to **aldebaran26adhitya@gmail.com**. Every report is read and handled fairly, and kept private from others. The maintainers may remove comments, issues or contributions that break the rules, and may warn, temporarily restrict, or ban a person from contributing, according to how serious the matter is. A maintainer who is involved in a report does not take part in deciding it.
+Report conduct that breaks these rules privately to **webtomata@gmail.com**. Every report is read and handled fairly, and kept private from others. The maintainers may remove comments, issues or contributions that break the rules, and may warn, temporarily restrict, or ban a person from contributing, according to how serious the matter is. A maintainer who is involved in a report does not take part in deciding it.
 
 For a security problem in the code, do not use this address: follow [SECURITY.md](SECURITY.md).
 
