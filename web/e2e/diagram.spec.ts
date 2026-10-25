@@ -1,10 +1,10 @@
 // The diagram of a machine, as the browser draws it: the sample on the Sandbox page. The
 // geometry has its own unit tests; this checks what only a real browser can: that the text is
 // there, that the fonts fit the boxes, and that nothing overlaps on the screen.
-import { expect, expectNoAxeViolations, test } from './fixtures.ts';
+import { expect, expectNoAxeViolations, openSandbox, test } from './fixtures.ts';
 
 test('the Sandbox draws the sample machine', async ({ page }) => {
-	await page.goto('/sandbox');
+	await openSandbox(page);
 	const diagram = page.locator('svg.world');
 	await expect(diagram).toBeVisible();
 
@@ -25,7 +25,7 @@ test('the Sandbox draws the sample machine', async ({ page }) => {
 test('the labels do not overlap each other or a state, as drawn by the browser', async ({
 	page
 }) => {
-	await page.goto('/sandbox');
+	await openSandbox(page);
 	await page.locator('svg.world text.label').first().waitFor();
 	// The fonts must have loaded, or the widths are those of a fallback font.
 	await page.evaluate(() => document.fonts.ready);
@@ -62,7 +62,7 @@ test('the labels do not overlap each other or a state, as drawn by the browser',
 
 test('the diagram follows the language: the description and the start label', async ({ page }) => {
 	await page.addInitScript(() => localStorage.setItem('webtomata.lang', 'en'));
-	await page.goto('/sandbox');
+	await openSandbox(page);
 	await expect(page.getByRole('button', { name: 'State q0, start state' })).toBeVisible();
 	await expect(page.locator('svg.world text.start-label')).toHaveText('start');
 });

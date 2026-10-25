@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "berakhiran-01",
+  "order": 1,
+  "title": { "id": "Berakhiran 01", "en": "Ending in 01" },
+  "description": {
+    "id": "Menerima string yang diakhiri 01.",
+    "en": "Accepts the strings that end with 01."
+  },
+  "kind": "dfsm",
+  "alphabet": ["0", "1"],
+  "states": [
+    { "name": "q0", "x": 160, "y": 200 },
+    { "name": "q1", "x": 380, "y": 200 },
+    { "name": "q2", "x": 600, "y": 200 }
+  ],
+  "start": "q0",
+  "accepting": ["q2"],
+  "transitions": [
+    { "from": "q0", "on": "1", "to": "q0" },
+    { "from": "q0", "on": "0", "to": "q1" },
+    { "from": "q1", "on": "0", "to": "q1" },
+    { "from": "q1", "on": "1", "to": "q2" },
+    { "from": "q2", "on": "0", "to": "q1" },
+    { "from": "q2", "on": "1", "to": "q0" }
+  ],
+  "accept": ["01", "101"],
+  "reject": ["", "0", "10"]
+}

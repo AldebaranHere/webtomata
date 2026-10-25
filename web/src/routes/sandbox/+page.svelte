@@ -3,21 +3,24 @@
 	import type { Component } from 'svelte';
 	import Editor from '#lib/editor/Editor.svelte';
 	import Toast from '#lib/editor/Toast.svelte';
+	import { createDocument } from '#lib/editor/document.ts';
+	import { markTourSeen, tourSeen } from '#lib/editor/tour.ts';
+	import { EXAMPLES, buildExample } from '#lib/examples/examples.ts';
 	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
 	import { library } from '#lib/storage/library.svelte.ts';
-	import { makeSample } from '#lib/storage/titles.ts';
 
 	// The Sandbox opens the machine of the last visit, saved on this device (docs/decisions/0023).
-	// With nothing saved it opens the sample, until the first-run screen (X1) replaces that. The page
-	// is prerendered with an empty frame the size of the editor, and the editor takes its place when
-	// the machine has been read, so that a reload does not show the sample for a moment.
+	// With nothing saved it opens an empty machine, and the editor shows "Coba contoh" over it (X1).
+	// The page is prerendered with an empty frame the size of the editor, and the editor takes its
+	// place when the machine has been read, so that a reload does not show the card for a moment.
 	let editor = $state<Editor | undefined>();
 	let skipped = $state(true);
 
 	onMount(() => {
 		skipped = false;
-		void library.start(() => makeSample(getLocale()));
+		seen = tourSeen();
+		void library.start(() => ({ doc: createDocument() }));
 	});
 	onDestroy(() => {
 		library.hide();
@@ -28,6 +31,30 @@
 	$effect(() => {
 		library.renameCurrent = (title) => editor?.setTitle(title) ?? null;
 	});
+
+	// The tour: code that is needed only when it is opened. It is seen when it is closed in any way.
+	let seen = $state(false);
+	let tourOpen = $state(false);
+	let Tour = $state<Component<{ onclose: () => void }> | null>(null);
+	function openTour() {
+		tourOpen = true;
+		if (!Tour) {
+			void import('#lib/editor/TourDialog.svelte').then((module) => (Tour = module.default));
+		}
+	}
+	function closeTour() {
+		tourOpen = false;
+		markTourSeen();
+		seen = true;
+	}
+
+	// An example from "Coba contoh": in the place of the empty machine (see placeExample).
+	let exampleFailed = $state(false);
+	async function openExample(id: string) {
+		const example = EXAMPLES.find((e) => e.id === id);
+		if (!example) return;
+		exampleFailed = (await library.openExample(buildExample(example, getLocale()))) !== null;
+	}
 
 	// The list is code that is needed only when it is opened: it is loaded then.
 	let Dialog = $state<Component | null>(null);
@@ -59,7 +86,7 @@
 	</p>
 {/if}
 {#if library.current}
-	{#key library.current.opened.record.id}
+	{#key library.current.key}
 		<Editor
 			bind:this={editor}
 			doc={library.current.opened.doc}
@@ -68,12 +95,21 @@
 			titles={library.current.opened.record.titles}
 			tests={library.current.opened.record.tests}
 			library={{ count: library.count, onopen: library.show }}
+			firstRun={{
+				examples: EXAMPLES,
+				tourSeen: seen,
+				failed: exampleFailed,
+				onexample: (id) => void openExample(id),
+				ontour: openTour
+			}}
+			onhelp={openTour}
 		/>
 	{/key}
 {:else}
 	<div class="frame" aria-busy="true"></div>
 {/if}
 {#if Dialog}<Dialog />{/if}
+{#if tourOpen && Tour}<Tour onclose={closeTour} />{/if}
 {#if library.deleted && !library.open}
 	<div class="toast-slot">
 		<Toast

@@ -18,6 +18,8 @@
 	import type { Titles } from '#lib/storage/store.ts';
 	import { localizedTitle } from '#lib/storage/titles.ts';
 	import EditorCanvas from './EditorCanvas.svelte';
+	import FirstRun from './FirstRun.svelte';
+	import type { Example } from '#lib/examples/examples.ts';
 	import HistoryButtons from './HistoryButtons.svelte';
 	import { toMachine } from './document.ts';
 	import type { MachineDocument } from './document.ts';
@@ -36,7 +38,9 @@
 		persistent = true,
 		titles,
 		library,
-		tests: savedTests
+		tests: savedTests,
+		firstRun,
+		onhelp
 	}: {
 		doc: MachineDocument;
 		autosave?: Autosave;
@@ -47,6 +51,16 @@
 		library?: { count: number; onopen: () => void };
 		/** The test strings that were saved with the machine (read again here: anything may be in the record). */
 		tests?: unknown;
+		/** With this, an empty machine shows "Coba contoh" over the canvas. */
+		firstRun?: {
+			examples: readonly Example[];
+			tourSeen: boolean;
+			failed: boolean;
+			onexample: (id: string) => void;
+			ontour: () => void;
+		};
+		/** The "?" button of the bar: the tour. */
+		onhelp?: () => void;
 	} = $props();
 
 	/** The title of the machine, as one undo step (the list "Mesin saya" calls this). */
@@ -161,6 +175,17 @@
 		return null;
 	}
 
+	// "Coba contoh" is over the canvas while the machine is empty. It goes away for good (in this
+	// editor) when a state is added or the student chooses to start from an empty canvas: a student who
+	// deletes everything is working, and the card must not cover the canvas again.
+	let leftFirstRun = $state(false);
+	$effect(() => {
+		if (snapshot.doc.states.length > 0) leftFirstRun = true;
+	});
+	const showFirstRun = $derived(
+		firstRun !== undefined && !leftFirstRun && snapshot.doc.states.length === 0
+	);
+
 	const active = $derived(new Set(run.view?.active ?? []));
 	const taken = $derived(new Set(run.view?.taken.map((e) => `${e.from}>${e.to}`) ?? []));
 	async function startRun(input: string, play: boolean) {
@@ -238,6 +263,15 @@
 			{/if}
 			<button type="button" class="fit" onclick={() => canvas.zoom('fit')}>{t('editor.fit')}</button
 			>
+			{#if onhelp}
+				<button type="button" class="help" aria-label={t('help.open')} onclick={onhelp}>
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+						<circle cx="12" cy="12" r="9" />
+						<path d="M9.6 9.4a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1.1.9-1.1 1.6" stroke-linecap="round" />
+						<path d="M12 16.8h.01" stroke-linecap="round" />
+					</svg>
+				</button>
+			{/if}
 			{#if library}
 				<button
 					type="button"
@@ -269,6 +303,18 @@
 			</p>
 		{/if}
 		<EditorCanvas bind:this={canvas} {editor} state={snapshot} {flags} {active} {taken} />
+		{#if showFirstRun && firstRun}
+			<div class="first-run">
+				<FirstRun
+					examples={firstRun.examples}
+					tourSeen={firstRun.tourSeen}
+					failed={firstRun.failed}
+					onexample={firstRun.onexample}
+					onblank={() => (leftFirstRun = true)}
+					ontour={firstRun.ontour}
+				/>
+			</div>
+		{/if}
 		<Toast
 			toast={snapshot.toast}
 			onundo={() => editor.undo()}
@@ -371,8 +417,32 @@
 		cursor: pointer;
 	}
 	.fit:hover,
+	.help:hover,
 	.machines:hover {
 		background: var(--color-neutral-tint);
+	}
+	.help {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: var(--target-min);
+		height: var(--target-min);
+		padding: 0;
+		border: 0;
+		border-radius: var(--radius-lg);
+		background: transparent;
+		color: var(--color-ink);
+		cursor: pointer;
+	}
+	.help svg {
+		stroke: currentColor;
+		stroke-width: 1.8;
+	}
+	/* The place of "Coba contoh": the canvas, under the bar. */
+	.first-run {
+		position: absolute;
+		inset: var(--target-min) 0 0 0;
+		pointer-events: none;
 	}
 	/* On a laptop the button "Mesin saya" is in the header; a phone has it here. */
 	.machines {

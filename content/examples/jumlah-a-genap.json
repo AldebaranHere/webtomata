@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "jumlah-a-genap",
+  "order": 2,
+  "title": { "id": "Jumlah a genap", "en": "Even number of a" },
+  "description": {
+    "id": "Dua state yang saling bergantian.",
+    "en": "Two states that take turns."
+  },
+  "kind": "dfsm",
+  "alphabet": ["a", "b"],
+  "states": [
+    { "name": "q0", "x": 200, "y": 200 },
+    { "name": "q1", "x": 480, "y": 200 }
+  ],
+  "start": "q0",
+  "accepting": ["q0"],
+  "transitions": [
+    { "from": "q0", "on": "a", "to": "q1" },
+    { "from": "q0", "on": "b", "to": "q0" },
+    { "from": "q1", "on": "a", "to": "q0" },
+    { "from": "q1", "on": "b", "to": "q1" }
+  ],
+  "accept": ["aa", "bb", "abab"],
+  "reject": ["a", "ab", "bab"]
+}

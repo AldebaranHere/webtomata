@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "pilihan-epsilon",
+  "order": 3,
+  "title": { "id": "Pilihan dengan transisi ε", "en": "A choice with ε-transitions" },
+  "description": {
+    "id": "Mesin nondeterministik: lihat semua state aktif.",
+    "en": "A nondeterministic machine: watch every active state."
+  },
+  "kind": "ndfsm",
+  "alphabet": ["a", "b"],
+  "states": [
+    { "name": "q0", "x": 160, "y": 200 },
+    { "name": "q1", "x": 440, "y": 100 },
+    { "name": "q2", "x": 440, "y": 300 }
+  ],
+  "start": "q0",
+  "accepting": ["q1", "q2"],
+  "transitions": [
+    { "from": "q0", "on": null, "to": "q1" },
+    { "from": "q0", "on": null, "to": "q2" },
+    { "from": "q1", "on": "a", "to": "q1" },
+    { "from": "q2", "on": "b", "to": "q2" }
+  ],
+  "accept": ["", "aaa", "bb"],
+  "reject": ["ab", "ba"]
+}

@@ -60,3 +60,5 @@ Added in S4d-1, with no source yet (`TODO(review)`: the owner or the lecturer ma
 Added in S6-2, with no source yet (`TODO(review)`: the owner or the lecturer may change them): Jalankan (run), Jeda (pause), Langkah berikutnya / Langkah sebelumnya (next / previous step), Kembali ke awal (back to the start), String masukan (input string), Diterima / Ditolak (accepted / rejected).
 
 Added in S6-3, with no source yet (`TODO(review)`): Uji banyak string (test many strings), Tambah string (add a string), Tidak bisa dijalankan (cannot run), Dihentikan (stopped).
+
+Added in X1, with no source yet (`TODO(review)`): Coba contoh (try an example), Mulai dari kanvas kosong (start from an empty canvas), Tur 1 menit (one-minute tour), Berikutnya / Kembali / Lewati / Selesai (next / back / skip / done), Buka Panduan (open the guides), Tanpa judul (untitled).

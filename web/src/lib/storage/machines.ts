@@ -1,6 +1,7 @@
 // Opening and making saved machines: what the Sandbox does when the page opens.
 import { serializeDocument } from '../editor/document.ts';
 import type { MachineDocument } from '../editor/document.ts';
+import { readTests } from '../editor/test-list.ts';
 import { readStoredDocument } from './migrate.ts';
 import type { Unreadable } from './migrate.ts';
 import { newId } from './store.ts';
@@ -30,7 +31,8 @@ export async function createMachine(
 	store: MachineStore,
 	doc: MachineDocument,
 	now: () => number = Date.now,
-	titles?: Titles
+	titles?: Titles,
+	tests: readonly string[] = []
 ): Promise<SavedMachine> {
 	const time = now();
 	const record: SavedMachine = {
@@ -42,10 +44,55 @@ export async function createMachine(
 		updatedAt: time,
 		openedAt: time,
 		doc: serializeDocument(doc),
-		...(titles ? { titles } : {})
+		...(titles ? { titles } : {}),
+		...(tests.length > 0 ? { tests: [...tests] } : {})
 	};
 	await store.put(record);
 	return record;
+}
+
+/** An example from our content, ready to be a machine: the document, its titles and its test strings. */
+export interface Placeable {
+	doc: MachineDocument;
+	titles: Titles;
+	tests: readonly string[];
+}
+
+/**
+ * Puts an example in the place of the machine that is open, when that machine is empty and the
+ * student has not touched it (no state, no test string, no title): the same record is rewritten,
+ * so that "Mesin saya" has no empty machine left behind. In every other case (also a machine that
+ * cannot be read, or one that is gone) the example becomes a new machine, and nothing that exists
+ * is changed. If the store refuses the write, this throws and the record is as it was.
+ */
+export async function placeExample(
+	store: MachineStore,
+	openId: string | undefined,
+	example: Placeable,
+	now: () => number = Date.now
+): Promise<{ record: SavedMachine; replaced: boolean }> {
+	const current = openId === undefined ? undefined : await store.get(openId);
+	if (current && current.title === '' && readTests(current.tests).length === 0) {
+		const read = readStoredDocument(current.doc);
+		if (read.ok && read.doc.states.length === 0) {
+			const time = now();
+			const record: SavedMachine = {
+				...current,
+				title: example.doc.title,
+				kind: example.doc.kind,
+				updatedAt: time,
+				openedAt: time,
+				doc: serializeDocument(example.doc),
+				titles: example.titles
+			};
+			if (example.tests.length > 0) record.tests = [...example.tests];
+			else delete record.tests;
+			await store.put(record);
+			return { record, replaced: true };
+		}
+	}
+	const record = await createMachine(store, example.doc, now, example.titles, example.tests);
+	return { record, replaced: false };
 }
 
 /**

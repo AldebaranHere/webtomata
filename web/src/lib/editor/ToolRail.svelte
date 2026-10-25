@@ -3,6 +3,7 @@
 	import HistoryButtons from './HistoryButtons.svelte';
 	import type { Tool } from './interaction/editor.ts';
 	import ToolIcon from './ToolIcon.svelte';
+	import { TOOLS } from './tools.ts';
 
 	// The tools, as a column on a laptop (with undo and redo) and as a bar at the bottom of a phone.
 	let {
@@ -20,17 +21,10 @@
 		onundo: () => void;
 		onredo: () => void;
 	} = $props();
-
-	const tools = [
-		{ tool: 'select', label: 'editor.tool.select', icon: 'select', keys: 'V' },
-		{ tool: 'addState', label: 'editor.tool.add_state', icon: 'state', keys: 'S' },
-		{ tool: 'transition', label: 'editor.tool.transition', icon: 'transition', keys: 'T' },
-		{ tool: 'delete', label: 'editor.tool.delete', icon: 'delete', keys: 'Delete' }
-	] as const;
 </script>
 
 <div class="rail" role="toolbar" aria-label={t('editor.rail')}>
-	{#each tools as item (item.tool)}
+	{#each TOOLS as item (item.tool)}
 		<button
 			type="button"
 			class="tool"

@@ -65,7 +65,7 @@ These do not block M1. Each has an owner task.
 
 1. **Selecting several items on touch** is not in v1 (U5 decides after the first usability round).
 2. **The one-minute tour.** The first-run screen links to it, but its steps are not designed. X1 writes them, shortest possible, and the owner approves them.
-3. **The example machines** in "Coba contoh" are a proposal. X1 confirms the list. They must be patterns, never course homework.
+3. **The example machines** in "Coba contoh": X1 ships three (Berakhiran 01, Jumlah a genap, a union through ε); the regex example of the wireframe joins with S7, and "Buka file .jff atau JSON" with S10b. They must be patterns, never course homework.
 4. **Section numbers** "Rich 5.2 · Sipser 1.1" come from the first wireframes and are not verified. Check them in G3 and Q6 before they ship.
 5. **Question titles** in the guide ("Soal terkait") are placeholders until Q6.
 6. **Screens not drawn yet:** the Soal list page (Q3), the Tabel and Definisi tabs (S5), the Konversi tab and a conversion step view (S7), the "compare with regex" view (S8), and error and stopped states of the engine (S2). Each needs a wireframe before its task starts, and the owner approves it.
