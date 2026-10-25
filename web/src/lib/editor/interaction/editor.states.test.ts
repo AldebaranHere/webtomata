@@ -201,3 +201,33 @@ describe('the delete toast', () => {
 		expect(editor.getState().toast).toBeNull();
 	});
 });
+
+describe('the title', () => {
+	it('is changed with one undo step, and says so', () => {
+		const editor = createEditor(three());
+		expect(editor.setTitle('Genap')).toBeNull();
+		expect(editor.getState().doc.title).toBe('Genap');
+		expect(editor.getState().announcement).toMatchObject({
+			key: 'editor.title_set',
+			params: { title: 'Genap' }
+		});
+		editor.undo();
+		expect(editor.getState().doc.title).toBe('');
+		expect(editor.getState().canUndo).toBe(false);
+	});
+
+	it('a title that the document refuses changes nothing and is returned as a message', () => {
+		const editor = createEditor(three());
+		const problem = editor.setTitle('x'.repeat(101));
+		expect(problem).toMatchObject({ key: 'document.invalid_title' });
+		expect(editor.getState().canUndo).toBe(false);
+	});
+
+	it('the same title is not a step', () => {
+		const editor = createEditor(three());
+		editor.setTitle('A');
+		editor.setTitle('A');
+		editor.undo();
+		expect(editor.getState().canUndo).toBe(false);
+	});
+});

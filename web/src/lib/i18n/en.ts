@@ -109,7 +109,7 @@ export const en: Record<MessageKey, string> = {
 	'storage.failed_hint':
 		'Saving on this device failed, maybe because it is full. The work is still on the screen; do not close this page yet.',
 	'storage.unavailable_hint':
-		'This browser gives no storage (maybe a private window). The machine exists only while this page is open.',
+		'This browser blocks storage for this site (maybe in its settings). The machine exists only while this page is open.',
 	'storage.skipped_corrupt':
 		'The machine "{title}" could not be opened because its data is damaged. The data was not deleted.',
 	'storage.skipped_newer':
@@ -118,6 +118,31 @@ export const en: Record<MessageKey, string> = {
 		'The machine "{title}" uses an old format that can no longer be opened. The data was not deleted.',
 	'storage.skipped_many': '{count} machines could not be opened. The data was not deleted.',
 	'storage.dismiss': 'Dismiss the message',
+	'editor.title_set': 'The title is now {title}.',
+	'document.invalid_title':
+		'A title cannot be longer than 100 characters or contain forbidden characters.',
+	'library.open_button': 'My machines ({count})',
+	'library.title': 'My machines',
+	'library.close': 'Close',
+	'library.new': 'New machine',
+	'library.current': 'Open now',
+	'library.edited': 'edited {when}',
+	'library.when_now': 'just now',
+	'library.when_minutes': '{n} min ago',
+	'library.when_hours': '{n} h ago',
+	'library.when_yesterday': 'yesterday',
+	'library.when_days': '{n} days ago',
+	'library.when_long': 'more than a month ago',
+	'library.unreadable_chip': 'Cannot be opened',
+	'library.actions': 'Actions for {title}',
+	'library.rename': 'Rename',
+	'library.duplicate': 'Duplicate',
+	'library.delete': 'Delete',
+	'library.rename_field': 'Machine name',
+	'library.deleted': 'The machine "{title}" was deleted.',
+	'library.missing': 'This machine is gone.',
+	'library.unreadable': 'This machine cannot be opened, so it cannot be changed.',
+	'library.footer_note': 'Clearing the site data of the browser also deletes these machines.',
 	'document.limit_exceeded': 'Limit reached: {what}, at most {limit}.',
 	'soal.description': 'Practice questions on finite state machines with calm, specific feedback.',
 	'panduan.description':

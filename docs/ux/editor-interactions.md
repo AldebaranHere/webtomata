@@ -315,7 +315,16 @@ Errors from the document keep their own keys (`document.duplicate_name` and so o
 - **Status next to the title:** "Tersimpan di perangkat ini" (the wording of the glossary, not "Disimpan" of the wireframe), "Menyimpan…", "Belum tersimpan" (a write was refused) or "Tidak tersimpan" (the browser gives no storage). On a phone the good states are only a mark (the words are for a screen reader). A problem also has a strip of text under the bar that is an alert.
 - **The editor opens a moment after the page:** the prerendered page has an empty frame of the same size, and the editor takes its place when the saved machine has been read. A reload shows no sample first.
 - **A machine that cannot be read** is skipped and kept, and a message above the editor says so and can be closed. See ADR 0023.
-- **Not yet (S10a-2):** the list "Mesin saya" with new, open, rename, duplicate and delete.
+
+## Decisions made while building S10a-2
+
+- **"Mesin saya (n)"** is in the header on a laptop, and an icon button (44 px, with the same name) in the title bar on a phone, where the header has no room. A phone also hides the number of states in the title bar. This differs a little from the wireframe, which puts the button in the header only.
+- **The list** is a native `<dialog>` (a sheet from the bottom on a phone), loaded only when it is first opened. A row opens a machine; the "…" button shows **Ubah nama**, **Duplikat** and **Hapus**. "Buka file" and "Ekspor .jff" are not there: they are S10b. The footer says that clearing site data deletes the machines.
+- **Open:** the machine that is left is saved first. **Mesin baru** is an empty DFSM called "Tanpa judul", saved and opened. **Duplikat** makes "… (salinan)" right under the original and does not open it.
+- **Rename:** the open machine through the editor (one undo step); another machine in its record. A title that the document refuses is shown under the field.
+- **Delete:** the row goes away at once and the machine is removed for good after six seconds, with a toast and **Urungkan**. Closing the page inside the six seconds keeps the machine. Deleting the open machine opens another one first (a new empty one if it was the only one), and the list stays open.
+- **A machine that cannot be read** is in the list, marked "Tidak bisa dibuka", with only **Hapus**.
+- **Safari and a field that is added later:** the attribute `autofocus` does not work, so the rename field takes the focus in code.
 
 ## What each interaction needs from S3
 
