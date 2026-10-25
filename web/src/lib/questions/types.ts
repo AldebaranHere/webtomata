@@ -34,7 +34,8 @@ export interface SolutionMachine {
 export interface Question {
 	schemaVersion: 1;
 	id: string;
-	title: Text;
+	/** The title in both languages: the page shows the one of the language that is active. */
+	title: { id: string; en: string };
 	statement: Text;
 	type: QuestionType;
 	alphabet: string[];

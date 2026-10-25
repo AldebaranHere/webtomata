@@ -4,6 +4,12 @@
 // copies in the record. See docs/decisions/0023-saved-machines.md.
 import type { Kind } from '../editor/document.ts';
 
+/** The title of a machine that comes from our own content, in both languages. */
+export interface Titles {
+	id: string;
+	en: string;
+}
+
 export interface SavedMachine {
 	id: string;
 	/** The shape of this record (not of the document, which has its own `schemaVersion`). */
@@ -15,6 +21,12 @@ export interface SavedMachine {
 	/** When the machine was last opened: the Sandbox opens the one with the biggest value. */
 	openedAt: number;
 	doc: string;
+	/**
+	 * Set for a machine that comes from our content (the sample, an example). While the title of the
+	 * document is one of these, the page shows the one of its language. A title that the user
+	 * chooses is the user’s, and the record does not keep this any more.
+	 */
+	titles?: Titles;
 }
 
 /** The place where the records are kept. A write is whole or it is not made. */

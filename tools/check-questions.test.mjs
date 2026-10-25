@@ -62,7 +62,7 @@ describe('the shape of the files (--schema-only, no engine)', () => {
 		assert.equal(problems, 1);
 		assert.match(
 			printed[0],
-			/^FAIL content|^FAIL .*berakhiran-10\.yaml:10: week: must be a whole number$/
+			/^FAIL content|^FAIL .*berakhiran-10\.yaml:11: week: must be a whole number$/
 		);
 		assert.match(printed.at(-1), /^1 problem\(s\) in 1 of 1 question file\(s\)\.$/);
 	});
@@ -166,7 +166,7 @@ describe('the command', () => {
 		writeFileSync(join(bad, 'berakhiran-10.yaml'), BASE.replace('week: 1', 'week: soon'));
 		const failed = cli(bad);
 		assert.equal(failed.status, 1);
-		assert.match(failed.stdout, /FAIL .*berakhiran-10\.yaml:10: week: must be a whole number/);
+		assert.match(failed.stdout, /FAIL .*berakhiran-10\.yaml:11: week: must be a whole number/);
 	});
 
 	test('runs the TypeScript of the site directly, with no warning or crash', () => {

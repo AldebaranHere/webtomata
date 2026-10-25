@@ -26,3 +26,9 @@ A student must be able to build a machine, close the page and find it again (S10
 - **Delete with a time to undo.** A machine that is deleted leaves the list at once and is removed from the store after six seconds, unless **Urungkan** is pressed. If the page is closed inside the six seconds, the machine stays: it is never removed unless its time ends. Several deletes can wait at once; the toast offers Urungkan for the last one.
 - **Rename of the open machine** goes through the editor, so that it is one undo step and the autosave writes it. Another machine is changed in its record, with the same title rule as the document.
 - **The list reads every record** each time it is opened (title, kind, dates, and whether the document can be read), so it is never out of date after a change in another tab.
+
+## Titles in two languages
+- **Content has two titles.** A machine that comes from our own content (the sample now, the examples of X1, the starting machine of a question) carries `titles: { id, en }` in its record. The title of a question file is required in both languages (`title.id` and `title.en`, schema version 1, since no question file existed yet).
+- **What is shown:** while the title of the document is one of the two, the page shows the one of the language that is active (the title bar, the rows of the list, the toast of a delete). The document keeps the title of the language that was active when the machine was made. A title that the user chooses is the user’s, never translated, and the record then drops `titles`; an undo that brings the first title back brings `titles` back.
+- **Not retroactive:** a sample that was saved before this change has no `titles` and stays as it was. A student can rename it.
+- **Export (S10b)** writes the title of the language that is active.

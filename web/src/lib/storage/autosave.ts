@@ -31,6 +31,9 @@ export function createAutosave(options: {
 }): Autosave {
 	const { store, delayMs = 800, now = Date.now } = options;
 	let base = options.base;
+	// The titles that came with the machine are kept apart from the record, so that an undo of a
+	// rename gives them back.
+	const titles = options.base.titles;
 	let lastText = base.doc;
 	let status: SaveStatus = 'saved';
 	/** The newest document that is not saved yet. It stays after a failure, so that flush can try again. */
@@ -64,6 +67,9 @@ export function createAutosave(options: {
 					updatedAt: now(),
 					doc: text
 				};
+				// The titles stay only while the title of the document is one of them.
+				if (titles && (doc.title === titles.id || doc.title === titles.en)) record.titles = titles;
+				else delete record.titles;
 				await store.put(record);
 				base = record;
 				lastText = text;

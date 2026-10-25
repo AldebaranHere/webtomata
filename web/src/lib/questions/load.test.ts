@@ -82,13 +82,13 @@ describe('a question file with a problem in its fields', () => {
 	it('names a field that does not exist (a typo), at the line of the field', () => {
 		const problem = only(edit('week: 1\n', 'week: 1\ndificulty: 2\n'));
 		expect(problem).toMatchObject({ path: 'dificulty', message: 'is not a known field' });
-		expect(problem.line).toBe(11);
+		expect(problem.line).toBe(12);
 	});
 
 	it('says what type a value must have, at its line', () => {
 		const problem = only(edit('week: 1', 'week: soon'));
 		expect(problem).toMatchObject({ path: 'week', message: 'must be a whole number' });
-		expect(problem.line).toBe(10);
+		expect(problem.line).toBe(11);
 	});
 
 	it('says which values are allowed', () => {
@@ -132,6 +132,11 @@ describe('a question file with a problem in its fields', () => {
 			path: 'examples.accept',
 			message: 'needs at least 2 items'
 		});
+	});
+
+	it('needs the title in both languages', () => {
+		const problem = only(edit('  en: Strings that end with 10\n', ''));
+		expect(problem).toMatchObject({ path: 'title.en', message: 'is required' });
 	});
 
 	it('refuses a title that is too long', () => {

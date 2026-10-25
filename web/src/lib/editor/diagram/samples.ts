@@ -38,9 +38,9 @@ export function documentFrom(spec: Spec): MachineDocument {
 }
 
 /** "Berakhiran 01" of the wireframes: strings that end with 01. q2 goes back to q0 past q1. */
-export const endsWith01 = () =>
+export const endsWith01 = (title = 'Berakhiran 01') =>
 	documentFrom({
-		title: 'Berakhiran 01',
+		title,
 		alphabet: ['0', '1'],
 		states: [
 			[160, 200, 'q0'],

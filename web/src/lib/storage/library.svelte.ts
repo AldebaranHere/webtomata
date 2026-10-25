@@ -2,16 +2,17 @@
 // does. One object for the page, so that the header (the count and the button), the Sandbox (the
 // editor) and the dialog (the list) all see the same state. The rules are in library.ts, machines.ts
 // and autosave.ts, which have no framework in them.
-import type { MachineDocument } from '../editor/document.ts';
 import { createDocument } from '../editor/document.ts';
 import type { Announcement } from '../editor/interaction/editor.ts';
 import { createAutosave } from './autosave.ts';
 import type { Autosave } from './autosave.ts';
 import { createMachine, openLatest } from './machines.ts';
-import type { Opened, Skipped } from './machines.ts';
+import type { Opened, Sample, Skipped } from './machines.ts';
 import { createPendingDeletes, duplicateMachine, listEntries, renameStored } from './library.ts';
 import type { Entry, PendingDeletes, Problem } from './library.ts';
+import { getLocale } from '#lib/i18n/index.svelte.ts';
 import { createMemoryStore } from './memory.ts';
+import { localizedTitle } from './titles.ts';
 import { openStore } from './index.ts';
 import { readStoredDocument } from './migrate.ts';
 import type { MachineStore } from './store.ts';
@@ -44,7 +45,7 @@ class Library {
 	renameCurrent: (title: string) => Problem | null = () => null;
 
 	/** Opens the machine of the last visit. Starts again if the page was left and came back. */
-	async start(makeSample: () => MachineDocument): Promise<void> {
+	async start(makeSample: () => Sample): Promise<void> {
 		this.dispose();
 		this.ready = false;
 		const found = await openStore();
@@ -180,6 +181,7 @@ class Library {
 		const store = this.store;
 		if (!store || !this.pending) return;
 		const entry = this.entries.find((e) => e.id === id);
+		const shown = entry ? localizedTitle(entry.titles, entry.title, getLocale()) : '';
 		if (this.current?.opened.record.id === id) {
 			const next = this.entries.find((e) => e.id !== id && e.readable);
 			// The record of the machine that is left is written once more, so that Urungkan finds it as it was.
@@ -194,7 +196,7 @@ class Library {
 		this.pending.begin(id);
 		this.deleted = {
 			key: 'library.deleted' as Announcement['key'],
-			params: { title: entry?.title || '', id },
+			params: { title: shown, id },
 			seq: ++this.sequence
 		};
 		await this.refresh();

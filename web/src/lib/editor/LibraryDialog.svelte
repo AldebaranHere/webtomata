@@ -2,7 +2,9 @@
 	import { onMount } from 'svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
+	import { getLocale } from '#lib/i18n/index.svelte.ts';
 	import { relativeTime } from '#lib/storage/library.ts';
+	import { localizedTitle } from '#lib/storage/titles.ts';
 	import type { Entry, Problem } from '#lib/storage/library.ts';
 	import { library } from '#lib/storage/library.svelte.ts';
 	import SaveStatusLine from './SaveStatusLine.svelte';
@@ -20,6 +22,9 @@
 	let busy = $state(false);
 
 	const currentId = $derived(library.current?.opened.record.id);
+	/** The title of a row, in the language of the page when it comes from our content. */
+	const shown = (entry: Entry) =>
+		localizedTitle(entry.titles, entry.title, getLocale()) || t('editor.untitled');
 	const text = (problem: Problem) => t(problem.key as MessageKey, problem.params);
 
 	// The dialog follows `library.open`; its own events (Esc, the close button) set it back.
@@ -129,7 +134,7 @@
 									aria-current={isCurrent ? 'true' : undefined}
 									onclick={() => run(() => library.openMachine(entry.id))}
 								>
-									<span class="name">{entry.title || t('editor.untitled')}</span>
+									<span class="name">{shown(entry)}</span>
 									<span class="meta">
 										{#if isCurrent}{t('library.current')} ·
 										{/if}{when(entry)}
@@ -137,7 +142,7 @@
 								</button>
 							{:else}
 								<div class="open static">
-									<span class="name">{entry.title || t('editor.untitled')}</span>
+									<span class="name">{shown(entry)}</span>
 									<span class="meta">{t('library.unreadable_chip')}</span>
 								</div>
 							{/if}
@@ -146,7 +151,7 @@
 								type="button"
 								class="more"
 								aria-expanded={expanded === entry.id}
-								aria-label={t('library.actions', { title: entry.title || t('editor.untitled') })}
+								aria-label={t('library.actions', { title: shown(entry) })}
 								onclick={() => (expanded = expanded === entry.id ? null : entry.id)}
 							>
 								<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
@@ -167,7 +172,7 @@
 									autocomplete="off"
 									aria-label={t('library.rename_field')}
 									aria-invalid={renameProblem !== null}
-									value={entry.title}
+									value={localizedTitle(entry.titles, entry.title, getLocale())}
 									onkeydown={(event) => onRenameKey(event, entry)}
 								/>
 								{#if renameProblem}<p class="problem" role="alert">{renameProblem}</p>{/if}

@@ -16,7 +16,7 @@ id: nama-soal # lowercase letters, digits and single hyphens; the same as the na
 
 title:
   id: Berakhiran 1
-  en: Ends with 1 # optional
+  en: Ends with 1
 
 # Plain text. `backticks` mark code. A blank line starts a new paragraph. No Markdown, no HTML.
 statement:
