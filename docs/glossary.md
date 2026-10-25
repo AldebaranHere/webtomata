@@ -64,3 +64,5 @@ Added in S6-3, with no source yet (`TODO(review)`): Uji banyak string (test many
 Added in X1, with no source yet (`TODO(review)`): Coba contoh (try an example), Mulai dari kanvas kosong (start from an empty canvas), Tur 1 menit (one-minute tour), Berikutnya / Kembali / Lewati / Selesai (next / back / skip / done), Buka Panduan (open the guides), Tanpa judul (untitled).
 
 Added in S5-1, with no source yet (`TODO(review)`): Panel, Tab panel, Jenis mesin (machine type), Definisi formal (formal definition), himpunan state (the set of states), himpunan accepting state, fungsi transisi (the transition function), relasi transisi (the transition relation), Salin / Tersalin (copy / copied).
+
+Added in S5-2, with no source yet (`TODO(review)`): Tabel transisi (transition table), Terima (the column of accepting states in the table; "accept" in English), belum ada (none yet), lebih dari satu tujuan (more than one target), + State, Tambah simbol (add a symbol), Simbol baru (new symbol), Tambah… (add…).

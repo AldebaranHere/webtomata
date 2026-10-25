@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
+	import type { Component } from 'svelte';
 	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
 	import { engine } from '#lib/engine/client.ts';
 	import Announcer from './Announcer.svelte';
@@ -13,6 +14,7 @@
 	import type { Text } from './run-text.ts';
 	import { readTab, saveTab } from './panel-tab.ts';
 	import type { PanelTab } from './panel-tab.ts';
+	import type { TableViewProps as TableProps } from './table-props.ts';
 	import type { Kind } from './document.ts';
 	import { addTest, readTests, removeTest } from './test-list.ts';
 	import { createTester } from './tester.ts';
@@ -205,6 +207,14 @@
 		);
 	}
 
+	// The table is code that is needed only when its tab opens: it is loaded then.
+	let Table = $state<Component<TableProps> | null>(null);
+	$effect(() => {
+		if (tab === 'table' && !Table) {
+			void import('./TableView.svelte').then((module) => (Table = module.default));
+		}
+	});
+
 	const active = $derived(new Set(run.view?.active ?? []));
 	const taken = $derived(new Set(run.view?.taken.map((e) => `${e.from}>${e.to}`) ?? []));
 	async function startRun(input: string, play: boolean) {
@@ -376,7 +386,14 @@
 			{/snippet}
 			{#snippet table()}
 				<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} />
-				<p class="soon">{t('page.soon')}</p>
+				{#if Table}
+					<Table
+						doc={snapshot.doc}
+						selection={snapshot.selection}
+						onapply={(command, note) => editor.apply(command, note)}
+						onselect={(id) => editor.selectOnly(id)}
+					/>
+				{/if}
 			{/snippet}
 			{#snippet definition()}
 				<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} />
@@ -426,11 +443,6 @@
 	}
 	.phone-history {
 		display: none;
-	}
-	.soon {
-		margin: 0;
-		color: var(--color-muted);
-		font-size: var(--text-sm);
 	}
 	.problem {
 		margin: 0;
