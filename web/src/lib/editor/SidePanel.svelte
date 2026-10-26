@@ -286,19 +286,24 @@
 	.pane[hidden] {
 		display: none;
 	}
+	/* Four tabs, and the English names are the longer ones: the tabs are small enough to share one line
+	   in the narrowest panel (22 rem), and a narrower one (a phone of 320 px) wraps them rather than
+	   running out of the panel. */
 	.tabs {
 		display: flex;
 		flex: none;
+		flex-wrap: wrap;
 		gap: var(--space-1);
 	}
 	.tabs button {
 		min-height: var(--target-min);
-		padding: 0 var(--space-3);
+		padding: 0 var(--space-2);
 		border: 0;
 		border-radius: var(--radius-lg);
 		background: transparent;
 		color: var(--color-muted);
 		font: inherit;
+		font-size: var(--text-sm);
 		cursor: pointer;
 	}
 	.tabs button:hover {
