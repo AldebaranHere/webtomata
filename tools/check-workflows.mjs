@@ -18,6 +18,8 @@
 //    `rust` (`needs: [a, b]`), and must run also when one of them failed (`if: always()`). A skipped
 //    required check counts as passed, so without `if: always()` a failed job would let a pull
 //    request merge.
+// 7. Write rights are narrow: only cleanup-caches.yml may have `actions: write` (it deletes the
+//    caches of a closed pull request), and no workflow may have `contents: write`.
 //
 // The workflow files are read line by line, with no YAML library, so the files must keep the
 // usual shape: `jobs:` at the left edge, and each job name indented by two spaces.
@@ -28,6 +30,7 @@ const DEPLOY_FILE = 'deploy.yml';
 const DEPLOY_JOB = 'deploy';
 const FULL_COMMIT = /@[0-9a-f]{40}$/;
 const MAX_TIMEOUT_MINUTES = 30;
+const CLEANUP_FILE = 'cleanup-caches.yml';
 const CI_FILE = 'ci.yml';
 const GATE_JOB = 'web';
 /** Required by the ruleset on its own, so the gate does not wait for it. */
@@ -79,6 +82,12 @@ export function checkWorkflows(files) {
 			const uses = line.match(/^\s*(?:-\s*)?uses:\s*(\S+)/);
 			if (uses && !uses[1].startsWith('./') && !FULL_COMMIT.test(uses[1])) {
 				problems.push(`${where}: the action is not pinned to a full commit: ${uses[1]}`);
+			}
+			if (/^\s*actions:\s*write\b/.test(line) && name !== CLEANUP_FILE) {
+				problems.push(`${where}: actions: write is only allowed in ${CLEANUP_FILE}`);
+			}
+			if (/^\s*contents:\s*write\b/.test(line)) {
+				problems.push(`${where}: contents: write is not allowed`);
 			}
 			if (/pull_request_target/.test(line)) {
 				problems.push(`${where}: pull_request_target is not allowed`);

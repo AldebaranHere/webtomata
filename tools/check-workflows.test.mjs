@@ -247,3 +247,43 @@ test('a ci.yml without the gate job web is a problem', () => {
 test('the gate is only asked of ci.yml', () => {
 	assert.deepEqual(check(good), []);
 });
+
+// Write rights: only the workflow that cleans the caches may write to the Actions of the repository,
+// and no workflow may write to the contents (nothing in CI needs to push or tag).
+const small = `
+name: X
+on:
+  pull_request:
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo ok
+`;
+const withPermission = (line) => small.replace('jobs:', `permissions:\n  ${line}\njobs:`);
+
+test('actions: write is a problem in any workflow but cleanup-caches.yml', () => {
+	const problems = check(withPermission('actions: write'), 'release.yml');
+	assert.equal(problems.length, 1);
+	assert.match(problems[0], /actions: write/);
+	assert.match(problems[0], /cleanup-caches\.yml/);
+});
+
+test('actions: write is allowed in cleanup-caches.yml', () => {
+	assert.deepEqual(check(withPermission('actions: write'), 'cleanup-caches.yml'), []);
+});
+
+test('contents: write is a problem everywhere', () => {
+	for (const name of ['deploy.yml', 'cleanup-caches.yml', 'release.yml']) {
+		const problems = check(withPermission('contents: write'), name);
+		assert.ok(
+			problems.some((p) => /contents: write/.test(p)),
+			name
+		);
+	}
+});
+
+test('read rights are not a problem', () => {
+	assert.deepEqual(check(withPermission('contents: read')), []);
+});
