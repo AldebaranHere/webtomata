@@ -24,6 +24,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     # A fork pull request gets no key and no deploy, so there is nothing to build for it.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
@@ -50,6 +51,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     # Production deploys must never overlap or be cancelled half way.
     concurrency:
       group: ${{ github.event_name == 'push' && 'deploy-production' || format('deploy-preview-{0}', github.ref) }}
@@ -134,6 +136,7 @@ jobs:
     needs: deploy
     if: needs.deploy.outputs.url != ''
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
