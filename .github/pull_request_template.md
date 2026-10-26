@@ -1,6 +1,9 @@
 ## Apa dan mengapa / What and why
 
 <!-- Satu perubahan kecil, dijelaskan dalam beberapa kalimat. / One small change, in a few sentences. -->
+<!-- Judul: kalimat perintah yang singkat (`feat(editor): add ...`). Isi: masalahnya, mengapa pendekatan ini, apa yang belum dikerjakan, dan konteks yang cukup tanpa membuka tautan. / Title: a short imperative sentence. Body: the problem, why this approach, what is left out, and enough context without opening a link. -->
+<!-- Panduan: https://google.github.io/eng-practices/review/developer/cl-descriptions.html -->
+
 
 ## Daftar periksa / Checklist
 

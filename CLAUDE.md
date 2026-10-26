@@ -16,7 +16,9 @@ The site has three sections that share one editor and one engine:
 - **Soal** (questions) — build to a spec; get structure checks, a verdict, and wrong-string lists.
 - **Panduan** (guides) — Indonesian guides on design patterns; examples open in the editor.
 
-**Out of scope until the human says otherwise:** PDAs, Turing machines, grammars, AI features, accounts, a backend server, classrooms, payments, analytics that track individuals.
+**Out of scope until the human says otherwise:** AI features, accounts, a backend server, classrooms, payments, analytics that track individuals.
+
+**Course scope (decided by the owner on 2026-10-27):** in the end WebTomata provides everything that the Theory of Computation course at Fasilkom UI needs: regular grammars, context-free grammars, pushdown automata, Turing machines, the pumping tools and decidability, after the finite-state v1. v1 still comes first, and each new topic is a task in `MD_FILES/ROADMAP.md` that the human names (its "Later" list gives the order, which follows the slides). Until the human names such a task, do not start it, but keep the engine, the document formats and the editor open for it: versioned plain data, edits as commands, no browser code in the engine.
 
 **Keep the door open for a lecturer mode (possible v2):** do not build it now, but avoid choices that would force a big refactor later. Keep machine and question formats versioned and plain data, edits as command objects, and the engine free of browser code.
 
@@ -160,7 +162,7 @@ Rules that keep the budgets:
    - `wasm-pack test --node crates/engine-wasm` (or the repo's equivalent script)
    - in `web/`: `pnpm lint && pnpm check && pnpm test && pnpm build`
    - Lighthouse CI and Playwright when UI changes
-5. One task = one branch = one pull request, with Conventional Commit messages (`feat(engine): …`, `fix(editor): …`).
+5. One task = one branch = one pull request, with Conventional Commit messages (`feat(engine): …`, `fix(editor): …`). Write the title, the description and the commit messages by Google's guide for change descriptions (https://google.github.io/eng-practices/review/developer/cl-descriptions.html): the first line is a short imperative sentence that stands alone (`feat(editor): add a conversion tab`), and the body says the problem, why this approach, what is left out, and the context that a reader needs without following a link.
 6. In the same PR, tick the task in `MD_FILES/ROADMAP.md` and update docs if behavior changed.
 7. Record any significant decision as a short ADR in `docs/decisions/`.
 
