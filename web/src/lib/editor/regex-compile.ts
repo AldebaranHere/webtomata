@@ -10,6 +10,7 @@ import type {
 	EngineResult,
 	Machine,
 	MachineTransition,
+	Param,
 	RegexBudget
 } from '../engine/types.ts';
 import { stopKey } from './conversion.ts';
@@ -70,6 +71,25 @@ const PARSE_KEYS = new Set([
 	'regex.operator_symbol'
 ]);
 
+/**
+ * What the field says for an error of the engine: a mistake in the expression gets its own sentence, with
+ * the position counted from 1 (the engine counts from 0); any other error is the calm "cannot run".
+ */
+export function engineRefusal(error: { key: string; params: { [key in string]: Param } }): {
+	key: MessageKey;
+	params: Params;
+} {
+	const { key, params } = error;
+	if (!PARSE_KEYS.has(key)) return { key: 'convert.failed', params: {} };
+	const shown: Params = {};
+	for (const [name, value] of Object.entries(params)) {
+		// An error at the end of the text has the length for its position: it is already "after the last character".
+		const from0 = name === 'position' && key !== 'regex.unexpected_end';
+		shown[name] = from0 && typeof value === 'number' ? value + 1 : value;
+	}
+	return { key: key as MessageKey, params: shown };
+}
+
 /** Why the text cannot be sent, or null. The engine says the same for the same text; this saves a call. */
 export function textRefusal(text: string): { key: MessageKey; params: Params } | null {
 	if (text.trim() === '') return { key: 'regex.empty' as MessageKey, params: {} };
@@ -94,15 +114,7 @@ export async function runRegexToFsm(
 	const alphabet = alphabetOf(text);
 	const answer = await engine.regexToFsm(text, alphabet);
 	if (!answer.ok) {
-		const { key, params } = answer.error;
-		if (!PARSE_KEYS.has(key)) return { kind: 'refused', key: 'convert.failed', params: {} };
-		const shown: Params = {};
-		for (const [name, value] of Object.entries(params)) {
-			// An error at the end of the text has the length for its position: it is already "after the last character".
-			const from0 = name === 'position' && key !== 'regex.unexpected_end';
-			shown[name] = from0 && typeof value === 'number' ? value + 1 : value;
-		}
-		return { kind: 'refused', key: key as MessageKey, params: shown };
+		return { kind: 'refused', ...engineRefusal(answer.error) };
 	}
 	const value = answer.value;
 	if (value.result === 'stopped') return { kind: 'stopped', key: stopKey(value.reason) };

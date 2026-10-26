@@ -25,6 +25,9 @@
 	import { layoutGraph, refusalOf as layoutRefusal } from './layout.ts';
 	import PlayerControls from './PlayerControls.svelte';
 	import CompilePlayer from './CompilePlayer.svelte';
+	import SimplifyPlayer from './SimplifyPlayer.svelte';
+	import { runSimplify } from './regex-simplify.ts';
+	import type { SimplifyRun } from './regex-simplify.ts';
 	import RegexPlayer from './RegexPlayer.svelte';
 	import {
 		alphabetOf,
@@ -47,7 +50,7 @@
 
 	type Say = { key: MessageKey; params: Params };
 
-	let working = $state<ListedOp | RegexOp | 'regex_to_fsm' | null>(null);
+	let working = $state<ListedOp | RegexOp | 'regex_to_fsm' | 'simplify' | null>(null);
 	let note = $state<Say | null>(null);
 	// A conversion that makes a regular expression (it has its own player), and the view it shows.
 	let regexRun = $state.raw<RegexRun | null>(null);
@@ -56,9 +59,15 @@
 	let regexInput = $state('');
 	let regexError = $state<Say | null>(null);
 	let compileRun = $state.raw<CompileRun | null>(null);
+	let simplifyRun = $state.raw<SimplifyRun | null>(null);
+	// Sederhanakan found nothing to do.
+	let unchanged = $state(false);
 	let field = $state<HTMLInputElement>();
 	const symbols = $derived(alphabetOf(regexInput));
 	const regexReason = $derived(textRefusal(regexInput));
+	// The expression of FSM → regex can go into the field only if each symbol of the machine is one character.
+	const oneCharacter = (run: RegexRun) =>
+		run.source.alphabet.every((s) => Array.from(s).length === 1);
 	// The last run stopped because a label got too big: a bigger limit may finish it.
 	let canRaise = $state(false);
 	let plan = $state.raw<Plan | null>(null);
@@ -284,6 +293,41 @@
 		field.setSelectionRange(at.caret, at.caret);
 	}
 
+	async function startSimplify() {
+		if (working) return;
+		working = 'simplify';
+		note = null;
+		regexError = null;
+		unchanged = false;
+		try {
+			const outcome = await runSimplify(engine, regexInput);
+			if (outcome.kind === 'finished') {
+				simplifyRun = outcome.run;
+			} else if (outcome.kind === 'unchanged') {
+				unchanged = true;
+			} else if (outcome.kind === 'stopped') {
+				note = { key: outcome.key, params: {} };
+			} else {
+				regexError = { key: outcome.key, params: outcome.params };
+			}
+		} catch {
+			note = { key: 'convert.engine_failed', params: {} };
+		} finally {
+			working = null;
+		}
+	}
+
+	// The result of FSM → regex goes into the field, and the student chooses Sederhanakan.
+	async function useInSimplify() {
+		if (!regexRun) return;
+		regexInput = regexRun.regex;
+		regexError = null;
+		unchanged = false;
+		close();
+		await tick();
+		field?.focus();
+	}
+
 	function openCompiled() {
 		if (!compileRun) return;
 		const base = compileRun.text;
@@ -296,6 +340,7 @@
 	function close() {
 		playing = false;
 		compileRun = null;
+		simplifyRun = null;
 		regexRun = null;
 		plan = null;
 		origin = null;
@@ -323,7 +368,9 @@
 </script>
 
 <div class="convert">
-	{#if compileRun}
+	{#if simplifyRun}
+		<SimplifyPlayer run={simplifyRun} onclose={close} />
+	{:else if compileRun}
 		<CompilePlayer
 			run={compileRun}
 			onshow={(shown) => (regexView = shown)}
@@ -331,7 +378,12 @@
 			onclose={close}
 		/>
 	{:else if regexRun}
-		<RegexPlayer run={regexRun} onshow={(shown) => (regexView = shown)} onclose={close} />
+		<RegexPlayer
+			run={regexRun}
+			onshow={(shown) => (regexView = shown)}
+			onclose={close}
+			onuse={oneCharacter(regexRun) ? () => void useInSimplify() : undefined}
+		/>
 	{:else if plan && stage && frame && sentence}
 		<section aria-labelledby="convert-heading">
 			<h3 id="convert-heading" tabindex="-1" bind:this={heading}>{t(`convert.op.${plan.op}`)}</h3>
@@ -553,14 +605,9 @@
 						if (!regexReason) void startCompile();
 					}}
 				>
-					<div class="text">
-						<span class="name">{t('convert.op.regex_to_fsm')}</span>
-						<span class="muted" id="convert-hint-regex_to_fsm">
-							{regexReason
-								? t(regexReason.key, regexReason.params)
-								: t('convert.op.regex_to_fsm_hint')}
-						</span>
-					</div>
+					<span class="muted" id="convert-hint-regex">
+						{regexReason ? t(regexReason.key, regexReason.params) : t('convert.regex_form_hint')}
+					</span>
 					<label class="field">
 						<span class="muted">{t('convert.regex_field')}</span>
 						<input
@@ -568,13 +615,18 @@
 							class="mono"
 							bind:this={field}
 							bind:value={regexInput}
-							oninput={() => (regexError = null)}
+							oninput={() => {
+								regexError = null;
+								unchanged = false;
+							}}
 							autocomplete="off"
 							autocapitalize="off"
 							spellcheck="false"
 							maxlength="1000"
 							aria-invalid={regexError ? 'true' : undefined}
-							aria-describedby="convert-regex-alphabet{regexError ? ' convert-regex-error' : ''}"
+							aria-describedby="convert-hint-regex convert-regex-alphabet{regexError
+								? ' convert-regex-error'
+								: ''}"
 						/>
 					</label>
 					<div class="insert" role="group" aria-label={t('convert.regex_insert')}>
@@ -602,15 +654,36 @@
 							{t(regexError.key, regexError.params)}
 						</p>
 					{/if}
-					<button
-						type="submit"
-						class="submit"
-						disabled={regexReason !== null || working !== null}
-						aria-describedby="convert-hint-regex_to_fsm"
-						aria-busy={working === 'regex_to_fsm'}
-					>
-						{working === 'regex_to_fsm' ? t('convert.working') : t('convert.start')}
-					</button>
+					{#if unchanged}
+						<p class="muted" role="status">{t('convert.simplify_unchanged')}</p>
+					{/if}
+					<div class="actions">
+						<div class="action">
+							<button
+								type="submit"
+								disabled={regexReason !== null || working !== null}
+								aria-describedby="convert-hint-regex_to_fsm"
+								aria-busy={working === 'regex_to_fsm'}
+							>
+								{working === 'regex_to_fsm' ? t('convert.working') : t('convert.op.regex_to_fsm')}
+							</button>
+							<span class="muted" id="convert-hint-regex_to_fsm"
+								>{t('convert.op.regex_to_fsm_hint')}</span
+							>
+						</div>
+						<div class="action">
+							<button
+								type="button"
+								disabled={regexReason !== null || working !== null}
+								aria-describedby="convert-hint-simplify"
+								aria-busy={working === 'simplify'}
+								onclick={() => void startSimplify()}
+							>
+								{working === 'simplify' ? t('convert.working') : t('convert.op.simplify')}
+							</button>
+							<span class="muted" id="convert-hint-simplify">{t('convert.op.simplify_hint')}</span>
+						</div>
+					</div>
 				</form>
 			</li>
 		</ul>
@@ -862,8 +935,16 @@
 		min-width: var(--target-min);
 		padding: 0;
 	}
-	.submit {
-		align-self: flex-start;
+	.actions {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+	.action {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--space-1);
 	}
 	.mono {
 		font-family: var(--font-mono);

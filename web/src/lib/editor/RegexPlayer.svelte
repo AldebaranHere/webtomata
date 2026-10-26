@@ -4,6 +4,7 @@
 	import { regexText } from './conversion-text.ts';
 	import type { ConversionShown } from './conversion-props.ts';
 	import PlayerControls from './PlayerControls.svelte';
+	import RegexResult from './RegexResult.svelte';
 	import { createPlayer } from './player.svelte.ts';
 	import { regexFrameAt, regexNamesOf } from './regex-conversion.ts';
 	import type { RegexRun } from './regex-conversion.ts';
@@ -14,15 +15,17 @@
 	let {
 		run,
 		onshow,
-		onclose
+		onclose,
+		onuse
 	}: {
 		run: RegexRun;
 		onshow: (shown: ConversionShown | null) => void;
 		onclose: () => void;
+		/** Puts the expression in the field of Sederhanakan; not given when the symbols are not one character. */
+		onuse?: () => void;
 	} = $props();
 
 	let heading = $state<HTMLElement>();
-	let copy = $state<'copied' | 'failed' | null>(null);
 
 	const total = $derived(run.trace.length);
 	const player = createPlayer(() => total);
@@ -39,15 +42,6 @@
 		onshow({ doc: run.source, active: new Set(frame.lit) });
 	});
 	onDestroy(() => onshow(null));
-
-	async function copyRegex() {
-		try {
-			await navigator.clipboard.writeText(run.regex);
-			copy = 'copied';
-		} catch {
-			copy = 'failed';
-		}
-	}
 </script>
 
 <section aria-labelledby="regex-heading">
@@ -94,31 +88,7 @@
 	/>
 
 	{#if atEnd}
-		<div class="result">
-			<h4>{t('convert.regex_result')}</h4>
-			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-			<div class="scroll text" role="region" aria-label={t('convert.regex_result')} tabindex="0">
-				<code>{run.regex}</code>
-			</div>
-			<p class="muted">{t('convert.regex_notation')}</p>
-			<ul class="notation">
-				<li>{t('convert.regex_notation_union')}</li>
-				<li>{t('convert.regex_notation_epsilon')}</li>
-				<li>{t('convert.regex_notation_empty')}</li>
-			</ul>
-			<div class="end">
-				<button type="button" class="primary" onclick={() => void copyRegex()}>
-					{t('convert.copy')}
-				</button>
-				<p class="muted" role="status">
-					{copy === 'copied'
-						? t('convert.copied')
-						: copy === 'failed'
-							? t('convert.copy_failed')
-							: ''}
-				</p>
-			</div>
-		</div>
+		<RegexResult regex={run.regex} {onuse} />
 	{/if}
 
 	<div class="end">
@@ -127,19 +97,16 @@
 </section>
 
 <style>
-	section,
-	.result {
+	section {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-3);
 	}
 	h3,
-	h4,
 	p {
 		margin: 0;
 	}
-	h3,
-	h4 {
+	h3 {
 		font-size: var(--text-base);
 	}
 	h3:focus-visible {
@@ -178,15 +145,6 @@
 		outline: var(--focus-ring-width) solid var(--focus-ring-color);
 		outline-offset: var(--focus-ring-offset);
 	}
-	.text {
-		max-height: 10rem;
-		overflow-y: auto;
-		padding: var(--space-2) var(--space-3);
-	}
-	code {
-		font-family: var(--font-mono);
-		overflow-wrap: anywhere;
-	}
 	table {
 		width: 100%;
 		border-collapse: collapse;
@@ -207,12 +165,6 @@
 	}
 	thead th {
 		font-weight: var(--weight-strong);
-	}
-	.notation {
-		margin: 0;
-		padding-left: var(--space-5);
-		color: var(--color-muted);
-		font-size: var(--text-sm);
 	}
 	.mono {
 		font-family: var(--font-mono);
@@ -237,12 +189,6 @@
 		color: var(--color-ink);
 		font: inherit;
 		cursor: pointer;
-	}
-	.primary {
-		border: 0;
-		background: var(--color-accent);
-		color: var(--color-on-accent);
-		font-weight: var(--weight-strong);
 	}
 	.plain {
 		border-color: transparent;
