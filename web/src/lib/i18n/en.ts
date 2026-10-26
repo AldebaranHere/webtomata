@@ -175,8 +175,16 @@ export const en: Record<MessageKey, string> = {
 	'table.add_state': '+ State',
 	'table.symbol_field': 'New symbol',
 	'table.symbol_add': 'Add symbol',
-	'table.hint':
-		'Arrows: move between cells. Enter: edit. Delete: empty the cell or remove the symbol.',
+	'editor.menu.layout': 'Auto layout',
+	'layout.done': 'Auto layout done.',
+	'layout.too_big': 'This machine is too big to lay out automatically (at most {limit} states).',
+	'layout.failed': 'The auto layout cannot run yet. Try again.',
+	'layout.timeout': 'The auto layout took too long. The machine was not changed.',
+	'layout.stale':
+		'The machine changed while it was laid out, so the layout was not used. Try again.',
+	'table.hint_move': 'Arrows: move between cells.',
+	'table.hint_edit': 'Enter: edit the cell.',
+	'table.hint_delete': 'Delete: empty the cell or remove the symbol.',
 	'table.empty': 'No states yet.',
 	'table.cell_set': 'Transition from {from} on {symbol} goes to {targets}.',
 	'table.cell_cleared': 'Transition from {from} on {symbol} is empty.',

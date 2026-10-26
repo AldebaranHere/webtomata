@@ -43,7 +43,8 @@
 		state: view,
 		flags = new Map(),
 		active = new Set<number>(),
-		taken = new Set<string>()
+		taken = new Set<string>(),
+		onlayout
 	}: {
 		editor: Editor;
 		state: EditorState;
@@ -52,6 +53,8 @@
 		/** The states that are active at this step of a run, and the edges ("from>to") that led to them. */
 		active?: ReadonlySet<number>;
 		taken?: ReadonlySet<string>;
+		/** The menu item "Tata letak otomatis". */
+		onlayout?: () => void;
 	} = $props();
 
 	const uid = $props.id();
@@ -362,6 +365,9 @@
 				break;
 			case 'add':
 				if (open) editor.addStateAt(open.at);
+				break;
+			case 'layout':
+				onlayout?.();
 				break;
 		}
 	}

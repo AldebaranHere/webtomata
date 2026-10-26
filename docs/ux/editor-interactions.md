@@ -264,7 +264,7 @@ Errors from the document keep their own keys (`document.duplicate_name` and so o
 - **Focus follows a press:** pressing a state with the mouse or a finger also gives it the keyboard focus, so `A`, `M`, `Enter` and `Delete` act on it at once.
 - **Name field:** a text box in canvas units (it scrolls with the canvas), 44 px high, text 16 px, the name selected when it opens. Leaving the box without `Enter` (a tap elsewhere) cancels. The field closes by itself if its state is gone. While it is open, the other editing is blocked and the keys of the canvas do not reach it.
 - **Refused names:** `document.duplicate_name` and `document.invalid_name` have their own texts, shown under the box and said by the live region.
-- **Menu:** opens with a right-click, the menu key, or a long-press of 500 ms (cancelled when the finger moves 8 px). Pressing a state that is not selected selects it first. For one state: Ubah nama, Jadikan start state, Accepting state, Hapus. For several: Accepting state, Hapus. For empty canvas: Tambah state di sini, at the press. A finger lifted within 350 ms of a long-press does not choose an item.
+- **Menu:** opens with a right-click, the menu key, or a long-press of 500 ms (cancelled when the finger moves 8 px). Pressing a state that is not selected selects it first. For one state: Ubah nama, Jadikan start state, Accepting state, Hapus. For several: Accepting state, Hapus. For empty canvas: Tambah state di sini, at the press, and Tata letak otomatis (S9) when the machine has states. A finger lifted within 350 ms of a long-press does not choose an item.
 - **Toast:** it is not a live region itself, because the live region of the editor already says the same words. It stays while the pointer or the focus is on it. After **Urungkan**, the focus goes back to the canvas. Any change to the document removes it.
 - **Double-click** reads the state under the pointer, not the event target, because the browser reports the captured svg as the target.
 - **Not yet:** the menu item "Tambah transisi dari sini" and the items for an edge come with S4c, and the Transisi button of the dock too.
@@ -410,3 +410,16 @@ Copy and paste, dragging an edge to change its ends, editing an edge's curve by 
 - **Limits.** At least 22 rem (the width before), at most 60% of the window and 56 rem, and the canvas keeps at least 20 rem. A window that gets smaller brings a wide panel back inside the limits. The width is remembered on the device (`webtomata.panel.width`, in rem); a missing, blocked, bad or out of range value is the default or the nearest limit.
 - **The canvas** only gets narrower or wider: its left edge stays, so the machine does not slide under the pointer.
 - **A phone has no handle.** The panel is under the canvas with its share of the height, and the table scrolls sideways inside it with its first column fixed. A taller phone panel can come later.
+
+## Auto layout (S9)
+
+- **Where.** "Tata letak otomatis" is in the menu of the empty canvas (a right-click or a long-press; the item is there only when the machine has states), and, on a laptop, as a button in the bar. The phone bar is full, so there it is only in the menu.
+- **What it does.** The states are placed left to right, the start state first, with room for the edges and their labels; loops are ignored and a pair with several symbols counts once. The result is one step of the history (a batch of moves) centered where the machine was, then the view fits the machine. A message "Tata letak otomatis selesai." has Urungkan.
+- **How.** The graph goes to a worker that holds the library (dagre, see ADR 0026), which starts on the first press. The page is never busy, and the library is never in the first load.
+- **When it cannot.** A machine of more than 400 states, a layout that takes more than 5 s, a worker that fails, and a machine that changed while it was laid out each say so in a calm sentence under the bar and change nothing.
+- **The hint under the table** (S5-2) is three short lines, one for each key, so that it is easy to read (suggested in the phone test of PR 59).
+
+## Tooltips and the auto layout button (suggested in the phone and laptop test of PR 60)
+
+- **The rail on a laptop shows icons only, so a pointer that rests on an icon shows its name and its key** (for example "Tambah state S", "Urungkan Ctrl+Z"), to the right of the icon, after 300 ms. The keyboard focus shows it at once. It follows WCAG 1.4.13: the pointer can go onto the tooltip and it stays, and Escape dismisses it (it comes back when the pointer enters the rail again). It is hidden from screen readers (the buttons have their names), and it is not drawn on a phone, where the names are under the icons and there is no hover.
+- **The button "Tata letak otomatis" in the bar is drawn 36 px high**, so that it does not touch the lines of the bar; its hit area is still 44 px (an invisible extension of 4 px above and below).

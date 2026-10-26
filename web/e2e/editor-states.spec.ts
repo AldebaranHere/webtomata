@@ -153,7 +153,11 @@ test.describe('the menu', () => {
 		const area = (await page.getByRole('application', { name: 'Kanvas mesin' }).boundingBox())!;
 		const at = { x: area.x + 60, y: area.y + 60 };
 		await page.mouse.click(at.x, at.y, { button: 'right' });
-		await expect(menu(page).getByRole('menuitem')).toHaveCount(1);
+		// Adding a state here, and auto layout (there are states to place).
+		await expect(menu(page).getByRole('menuitem')).toHaveText([
+			'Tambah state di sini',
+			'Tata letak otomatis'
+		]);
 		await menu(page).getByRole('menuitem', { name: 'Tambah state di sini' }).click();
 		await expect(nodes(page)).toHaveCount(4);
 		const box = (await nodes(page).last().locator('circle.state').boundingBox())!;

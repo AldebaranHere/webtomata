@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import ToolIcon from './ToolIcon.svelte';
+	import ToolTip from './ToolTip.svelte';
 
 	// Undo and redo. They are disabled when there is nothing to do.
 	let {
@@ -13,27 +14,30 @@
 
 <button
 	type="button"
-	class="button"
+	class="button has-tip"
 	aria-label={t('editor.undo')}
 	aria-keyshortcuts="Control+Z"
 	disabled={!canUndo}
 	onclick={onundo}
 >
 	<ToolIcon name="undo" />
+	<ToolTip label={t('editor.undo')} keys="Ctrl+Z" />
 </button>
 <button
 	type="button"
-	class="button"
+	class="button has-tip"
 	aria-label={t('editor.redo')}
 	aria-keyshortcuts="Control+Y"
 	disabled={!canRedo}
 	onclick={onredo}
 >
 	<ToolIcon name="redo" />
+	<ToolTip label={t('editor.redo')} keys="Ctrl+Y" />
 </button>
 
 <style>
 	.button {
+		position: relative;
 		display: flex;
 		align-items: center;
 		justify-content: center;
