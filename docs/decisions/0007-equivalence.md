@@ -3,9 +3,11 @@
 Status: accepted
 
 ## Context
+
 The Soal feedback panel (Q4) and the Sandbox "compare with" tool (S8) need to say whether two machines accept the same language and, if not, show strings that prove it. FSM Builder (see `COMPETITORS.md`) lists wrongly accepted and wrongly rejected strings and the path of one wrong string.
 
 ## Decision
+
 - `equivalent(candidate, reference, EquivalenceBudget) -> Result<Equivalence, Message>`. The first machine is the student's, the second is the reference.
 - The two machines are explored together, one pair of active-state sets at a time, in breadth-first order. This works for any mix of DFSMs and NDFSMs without building a DFSM first. The first pair on which acceptance differs gives the shortest witness; among strings of equal length it is the first in alphabet order. A pair where both sets are empty is skipped, because both machines reject every extension.
 - Result: `Equivalent { pairs }`, `Different { witness, accepted_but_should_reject, rejected_but_should_accept, lists_truncated, trace }` or `Stopped { reason }`. "Accepted but should reject" means the candidate accepts and the reference rejects; the other list is the reverse.
@@ -15,6 +17,7 @@ The Soal feedback panel (Q4) and the Sandbox "compare with" tool (S8) need to sa
 - Alphabets: both machines must have the same symbol names, in any order; otherwise `equivalent.alphabet_mismatch { symbol, side }`. Symbols in the result refer to the candidate's alphabet. A missing start state gives `equivalent.no_start_state { side }`.
 
 ## Consequences
+
 - The UI should check the student's alphabet against the question's alphabet first and show its own message.
 - The feedback panel can call `simulate` on the witness for each machine, or use the witness trace directly.
 - The search can take up to `max_pairs` pairs for NDFSMs with many subsets; E13 will measure it.

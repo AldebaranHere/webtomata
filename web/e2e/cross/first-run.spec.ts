@@ -238,6 +238,8 @@ test('every step of the tour draws the control that it is about, with the name o
 	page,
 	isMobile
 }) => {
+	// Each step has a scan of axe, which takes a few seconds on a busy runner: the default 30 s is too short.
+	test.setTimeout(90_000);
 	await openSandbox(page, { example: false });
 	// The names of the real tools, before the dialog makes the page inert.
 	const rail = page.getByRole('toolbar', { name: 'Alat editor' });

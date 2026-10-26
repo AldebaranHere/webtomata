@@ -4,6 +4,7 @@
 	import { regexText } from './conversion-text.ts';
 	import type { ConversionShown } from './conversion-props.ts';
 	import PlayerControls from './PlayerControls.svelte';
+	import { createPlayer } from './player.svelte.ts';
 	import { regexFrameAt, regexNamesOf } from './regex-conversion.ts';
 	import type { RegexRun } from './regex-conversion.ts';
 
@@ -20,13 +21,13 @@
 		onclose: () => void;
 	} = $props();
 
-	let index = $state(0);
-	let playing = $state(false);
 	let heading = $state<HTMLElement>();
 	let copy = $state<'copied' | 'failed' | null>(null);
 
 	const total = $derived(run.trace.length);
-	const atEnd = $derived(index >= total - 1);
+	const player = createPlayer(() => total);
+	const index = $derived(player.index);
+	const atEnd = $derived(player.atEnd);
 	const names = $derived(
 		regexNamesOf(run, t('convert.new_start_name'), t('convert.new_accepting_name'))
 	);
@@ -38,41 +39,6 @@
 		onshow({ doc: run.source, active: new Set(frame.lit) });
 	});
 	onDestroy(() => onshow(null));
-
-	// Play: one step each 0.8 s, and it stops at the end.
-	$effect(() => {
-		if (!playing) return;
-		const timer = setInterval(() => {
-			if (index >= total - 1) playing = false;
-			else index += 1;
-		}, 800);
-		return () => clearInterval(timer);
-	});
-
-	// "Konversi selesai!" for two seconds each time the player reaches its last step.
-	let justDone = $state(false);
-	let wasAtEnd = false;
-	$effect(() => {
-		if (!atEnd) {
-			wasAtEnd = false;
-			justDone = false;
-			return;
-		}
-		if (wasAtEnd) return;
-		wasAtEnd = true;
-		justDone = true;
-		const timer = setTimeout(() => (justDone = false), 2000);
-		return () => clearTimeout(timer);
-	});
-
-	const go = (to: number) => {
-		playing = false;
-		index = Math.min(Math.max(to, 0), total - 1);
-	};
-	function toggle() {
-		if (atEnd) index = 0;
-		playing = !playing;
-	}
 
 	async function copyRegex() {
 		try {
@@ -87,7 +53,7 @@
 <section aria-labelledby="regex-heading">
 	<h3 id="regex-heading" tabindex="-1" bind:this={heading}>{t(`convert.op.${run.op}`)}</h3>
 	<p class="muted">{t('convert.step_of', { n: index + 1, total })}</p>
-	<p class="done" role="status">{justDone ? t('convert.done') : ''}</p>
+	<p class="done" role="status">{player.justDone ? t('convert.done') : ''}</p>
 
 	<p class="sentence" role="status">{t(sentence.key, sentence.params)}</p>
 
@@ -121,10 +87,10 @@
 	<PlayerControls
 		{index}
 		{total}
-		{playing}
+		playing={player.playing}
 		playLabel={t(`convert.play_${run.op}`)}
-		ongo={go}
-		ontoggle={toggle}
+		ongo={player.go}
+		ontoggle={player.toggle}
 	/>
 
 	{#if atEnd}
@@ -135,6 +101,11 @@
 				<code>{run.regex}</code>
 			</div>
 			<p class="muted">{t('convert.regex_notation')}</p>
+			<ul class="notation">
+				<li>{t('convert.regex_notation_union')}</li>
+				<li>{t('convert.regex_notation_epsilon')}</li>
+				<li>{t('convert.regex_notation_empty')}</li>
+			</ul>
 			<div class="end">
 				<button type="button" class="primary" onclick={() => void copyRegex()}>
 					{t('convert.copy')}
@@ -236,6 +207,12 @@
 	}
 	thead th {
 		font-weight: var(--weight-strong);
+	}
+	.notation {
+		margin: 0;
+		padding-left: var(--space-5);
+		color: var(--color-muted);
+		font-size: var(--text-sm);
 	}
 	.mono {
 		font-family: var(--font-mono);

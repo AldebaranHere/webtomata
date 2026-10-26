@@ -3,9 +3,11 @@
 Status: accepted
 
 ## Context
+
 The diagram, the table and the formal definition must show one machine, and every edit must be undoable (`CLAUDE.md`, section 6). The engine knows states by number only; names and places of states belong to the user interface. The document will be saved (IndexedDB), shared (a link) and read from untrusted files, and a possible lecturer mode (v2) needs edits as plain data. Code is in `web/src/lib/editor/`.
 
 ## Decision
+
 - **The document is plain, frozen, versioned data** (`schemaVersion` 1): title, kind, alphabet, states (`id`, `name`, `x`, `y`), start, accepting, transitions (`from`, `on`, `to`, with `on: null` for ε) and `nextStateId`. Transitions are stored as the engine stores them; the diagram groups them into edges for display. Lists are kept sorted in the order of the engine (transitions by state, symbol number and target), so `toMachine(doc)` is exactly what `loadMachine` gives back.
 - **Ids are never used twice** (`nextStateId` only grows), so a trace that names a state always means the same state, also after undo and redo. A new state gets the name `q<k>` with the smallest free `k`.
 - **Rules are the rules of the engine.** A symbol is not empty, not `ε`, at most 32 characters (code points), and has no Unicode `White_Space` or control character (`\s` is not the same set); the limits are 2,000 states, 100,000 transitions and 256 symbols. `document.wasm.test.ts` checks every character of the Basic Multilingual Plane against the real engine.
@@ -18,6 +20,7 @@ The diagram, the table and the formal definition must show one machine, and ever
 - **Tests:** commands one by one, batches, history, 200 random sequences of 30 commands from a fixed seed (rules hold after every step; undo all gives the first document; a random walk of undo and redo always shows the recorded document; ids are never reused), and the engine round trip with 100 random documents. The four finite automata in `REFERENCES/JFF-FILES` (not in the repository) are imported, turned into documents and exported again when the folder exists.
 
 ## Consequences
+
 - A view cannot change a document by mistake (it is frozen), and a bad file cannot crash the app.
 - Memory: each step holds the lists that its edit copied. Course machines are tiny. A document with 100,000 transitions would copy that list on every transition edit, up to 200 times; the editor cannot show such a machine anyway. If S4 needs it, the history can get a limit by size.
 - The command set will grow with S4 to S6 (for example moving several states). Each new command is a few lines and a test. Commands that no view uses by the end of S6 should be removed.

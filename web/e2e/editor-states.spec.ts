@@ -186,7 +186,8 @@ test.describe('the delete toast', () => {
 		const box = (await undo.boundingBox())!;
 		expect(box.height).toBeGreaterThanOrEqual(44);
 		expect(box.width).toBeGreaterThanOrEqual(44);
-		await expectNoAxeViolations(page);
+		// The toast goes away by itself after a few seconds, and a scan of axe takes a few seconds on a busy
+		// runner: the button is pressed first, and the scan is of the second toast.
 		await undo.click();
 		await expect(nodes(page)).toHaveCount(3);
 		await expect(toast).toBeHidden();
@@ -194,6 +195,7 @@ test.describe('the delete toast', () => {
 		await state(page, 'q2').click();
 		await page.keyboard.press('Delete');
 		await expect(toast).toBeVisible();
+		await expectNoAxeViolations(page);
 		await expect(toast).toBeHidden({ timeout: 9000 });
 		await expect(nodes(page)).toHaveCount(2);
 	});

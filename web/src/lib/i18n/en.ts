@@ -462,8 +462,10 @@ export const en: Record<MessageKey, string> = {
 	'convert.stopped_nodes': 'The expression got too big, so the calculation was stopped.',
 	'convert.raise_limit': 'Raise the limit',
 	'convert.regex_result': 'Regular expression',
-	'convert.regex_notation':
-		'Rich notation: ∪ for union, ε for the empty string, ∅ for the empty set.',
+	'convert.regex_notation': 'Rich notation:',
+	'convert.regex_notation_union': '∪ for union',
+	'convert.regex_notation_epsilon': 'ε for the empty string',
+	'convert.regex_notation_empty': '∅ for the empty set',
 	'convert.copy': 'Copy',
 	'convert.copied': 'Copied.',
 	'convert.copy_failed': 'Could not copy. Select the text and copy it yourself.',
@@ -487,6 +489,46 @@ export const en: Record<MessageKey, string> = {
 	'fsm_to_regex.result':
 		'The label from the start state to the accepting state is the result: {expression}',
 	'fsm_to_regex.no_start_state': 'The machine must have a start state.',
+	'convert.op.regex_to_fsm': 'Regex → NDFSM',
+	'convert.op.regex_to_fsm_hint': 'Build an NDFSM from a regular expression, part by part.',
+	'convert.play_regex_to_fsm': 'Regex → NDFSM',
+	'convert.result_title.regex_to_fsm': 'NDFSM of {title}',
+	'convert.regex_field': 'Regular expression',
+	'convert.regex_alphabet': 'Alphabet: {symbols}',
+	'convert.regex_alphabet_none': 'Alphabet: empty',
+	'convert.regex_symbols_note': 'Every character that is not an operator or a space is one symbol.',
+	'convert.regex_insert': 'Insert an operator',
+	'convert.insert_union': 'Insert ∪, union',
+	'convert.insert_star': 'Insert *, star',
+	'convert.insert_plus': 'Insert +, one or more',
+	'convert.insert_epsilon': 'Insert ε, the empty string',
+	'convert.insert_empty': 'Insert ∅, the empty set',
+	'convert.insert_open': 'Insert an opening parenthesis',
+	'convert.insert_close': 'Insert a closing parenthesis',
+	'convert.regex_expression': 'Expression: {expression}',
+	'regex.empty_set':
+		'∅: make state {states} the start state. It is not an accepting state, so no string is accepted.',
+	'regex.epsilon':
+		'ε: make state {states} the start state and an accepting state, so only the empty string is accepted.',
+	'regex.symbol':
+		'Symbol {symbol}: make states {states}, with a transition on {symbol} from the first to the second. The second state is an accepting state.',
+	'regex.union':
+		'Union {expression}: a new start state {start} with ε-transitions to both old start states. The accepting states are those of both machines.',
+	'regex.concat':
+		'Concatenation {expression}: an ε-transition from each accepting state of the first machine to the start state of the second. The accepting states are those of the second machine.',
+	'regex.star':
+		'Star {expression}: a new start state {start}, which also accepts, with an ε-transition to the old start state; each old accepting state gets an ε-transition back to the old start state.',
+	'regex.plus':
+		'Plus {expression}: each accepting state gets an ε-transition back to the start state. The machine is not copied.',
+	'regex.unexpected': 'There is "{found}" at character {position} where it is not expected.',
+	'regex.unbalanced_parenthesis': 'The parenthesis at character {position} has no partner.',
+	'regex.unexpected_end':
+		'The expression is not complete: a part is missing after character {position}.',
+	'regex.too_long': 'The expression is longer than {limit} characters.',
+	'regex.too_deep': 'The parentheses are nested more than {limit} levels deep.',
+	'regex.empty': 'Write a regular expression first.',
+	'regex.unknown_symbol': 'The symbol {symbol} at character {position} is not known.',
+	'regex.operator_symbol': 'The symbol {symbol} has an operator character in it.',
 
 	'page.soon': 'Coming soon.',
 	'page.home': 'Back to home'

@@ -3,9 +3,11 @@
 Status: accepted
 
 ## Context
+
 The editor (S4) needs tests that act like a user (click, type, touch) and an accessibility scan, in CI, on the production build. `CLAUDE.md` names Playwright and axe-core. We already run the production build in headless Chrome for the smoke test and Lighthouse, so the runner has Chrome.
 
 ## Decision
+
 - **Playwright with the installed Chrome** (`channel: 'chrome'`, or `CHROME_PATH`). Chrome tests download no browser. Firefox and WebKit run a small set of tests (decided in ADR 0022, ahead of M2): they are downloaded by Playwright, in the CI job `cross-browser`.
 - **Packages** (devDependencies of `web/`, exact versions, each at least two weeks old when added): `@playwright/test` 1.64.0 and `@axe-core/playwright` 4.13.0. With their dependencies (`playwright`, `playwright-core`, `axe-core`) this adds five packages, none with an install script.
 - **Two projects**: `desktop` (1440 × 900) and `phone` (Pixel 7 emulation, with touch). Every test runs in both.
@@ -16,6 +18,7 @@ The editor (S4) needs tests that act like a user (click, type, touch) and an acc
 - **One retry on CI**, for Chrome that fails to start on a busy runner. More would hide flakes.
 
 ## Consequences
+
 - The suite is small on purpose. A new test must run 20 times in a row without a failure before it is merged.
 - axe finds only part of the accessibility problems. G5 (a keyboard-only run, a screen-reader check) stays.
 - Our test server is not Cloudflare (it gzips everything and sends no `_headers`). The smoke test on the deployed URL stays.

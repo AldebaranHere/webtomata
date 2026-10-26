@@ -3,9 +3,11 @@
 Status: accepted
 
 ## Context
+
 E7 parses regular expressions and builds an NDFSM. The notation must match the course (Rich, textbook section 6.1; the slides `Regular1`), and the construction must follow `regextofsm` so students recognize each step.
 
 ## Decision
+
 - Syntax: Rich's rules 1 to 8: `∅`, `ε`, a symbol, concatenation by writing expressions side by side, `∪` for union, `*`, `+` (one or more, the same as `αα*`) and parentheses. Precedence, highest first: star and plus, concatenation, union. Union and concatenation group to the left. Only `∪` is accepted for union (JFLAP's `+` and the programming `|` are not), so the notation stays one notation; the UI adds buttons and a note.
 - Symbols: one character each if every symbol of the alphabet has one character; otherwise symbols are separated by spaces or operators (`(num plus)* num`). Spaces are ignored. If an alphabet symbol contains an operator character, parsing is refused with `regex.operator_symbol`.
 - Limits: 1,000 characters (`regex.too_long`) and 100 levels of parentheses (`regex.too_deep`), so the recursive passes cannot overflow the stack.
@@ -16,6 +18,7 @@ E7 parses regular expressions and builds an NDFSM. The notation must match the c
 - Budget: `max_states` (default and limit 2,000); on overflow, `Stopped { reason: max_states, partial_trace }`.
 
 ## Consequences
+
 - E8 (FSM → regex) builds a `Regex` and can print it with `to_text`.
 - The machines are highly nondeterministic with many ε-transitions, as the book says; `determinize` and `minimize` clean them up.
 - The glyphs of `∪` and `ε` on the slides are still to be checked against the slide images (see `docs/notation.md`).

@@ -3,9 +3,11 @@
 Status: accepted
 
 ## Context
+
 The web app calls the engine through WASM and reads results as data. The Rust types and the TypeScript types must not drift apart, because a wrong field name gives `undefined` in the browser and no error. `engine-core` must stay free of browser code.
 
 ## Decision
+
 - **One JSON convention.** Field names are camelCase, as in the machine file (`schemaVersion`). The tag of an enum (`result`, `kind`) and the names of its variants are snake_case (`"result": "finished"`, `"kind": "not_accepting"`). Results that can stop have the shape `{ "result": "finished", … }` or `{ "result": "stopped", "reason": …, "partialTrace": … }`.
 - **A machine always serializes as the machine file.** `Fsm` implements `Serialize` through the same wire type as `to_json`, so a machine has one format everywhere (files, share links, results). In TypeScript it is the type `Machine`.
 - **Budgets come in as JSON** with camelCase names. A missing field keeps its default, and an unknown field is an error, so a misspelled budget is never ignored silently. In TypeScript the web client uses `Partial<…Budget>`.
@@ -14,11 +16,13 @@ The web app calls the engine through WASM and reads results as data. The Rust ty
 - `tsify` (the example in `CLAUDE.md`) was not used: it needs `wasm-bindgen` in the crate that owns the types, so it would put browser code in `engine-core` or need a copy of each type in `engine-wasm`.
 
 ## Consequences
+
 - A change to a Rust result type changes the TypeScript type, and the web build breaks and not the user.
 - Numbers that are `i64` in Rust (message parameters) are `number` in TypeScript; they are small by construction.
 - Budget fields are required in the generated type (`ts-rs` does not make `serde(default)` fields optional), so callers use `Partial`.
 
 ## Part 2: the functions and the client
+
 - **The API lives in `engine-core::api`**, not in `engine-wasm`. Each function takes JSON or plain text and returns one JSON text. `engine-wasm` only adds `wasm-bindgen` (one line for each function). So every function is tested natively with `cargo test`, the types stay in one crate, and `engine-core` still has no browser code.
 - **One envelope** for every answer: `{"ok":true,"value":…}` or `{"ok":false,"error":<message>}`. Errors in the input, in a budget, in an alphabet and in a layout are messages (`api.invalid_budget`, `api.invalid_alphabet`, `api.invalid_layout`), never exceptions. A property test feeds random text to every function and checks that it answers with an envelope.
 - **Results carry names.** `simulate` returns the tokenized input as names. `equivalent` returns the witness and the wrong-string lists as names in the alphabet of the candidate. A test runs the witness on both machines, with the reference alphabet in another order, to prove that no number is looked up in the wrong alphabet.
@@ -30,5 +34,6 @@ The web app calls the engine through WASM and reads results as data. The Rust ty
 - **Measured:** the `.wasm` file is 163 KB gzip (budget 250 KB); initial JS is 31 KB gzip. A smoke test in a real browser called all 17 functions, forced a crash and recovered, and canceled a call in flight.
 
 ## Consequences of part 2
+
 - A function that the UI needs and the API lacks is added in `engine-core::api`, with a test, and appears in `types.ts` by itself.
 - Memory in the WASM module never shrinks. A later task may recycle the worker after a very big call.

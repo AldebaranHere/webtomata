@@ -15,28 +15,28 @@ The tokens are in [`web/src/lib/styles/tokens.css`](../../web/src/lib/styles/tok
 
 ## Colors
 
-| Token | Value | Use | Do not |
-| --- | --- | --- | --- |
-| `--color-ground` | `#f6f7f9` | The page and the canvas | |
-| `--color-surface` | `#ffffff` | Cards, panels, inputs, the header | |
-| `--color-ink` | `#16181d` | Body text and headings | |
-| `--color-muted` | `#5b6270` | Secondary text, labels, hints, the "unknown" row of a trace | Use for the main message |
-| `--color-on-ink` | `#ffffff` | Text on `--color-ink` (the selected tab) | |
-| `--color-border` | `#dde1e7` | Separators and card edges | Use as the only edge of an input or a control |
-| `--color-border-strong` | `#737b88` | The edge of an input and of controls that have no other edge | Use for text |
-| `--color-accent` | `#2f5bd3` | The current state and step, links, the main button, the focus ring | |
-| `--color-on-accent` | `#ffffff` | Text on `--color-accent` | |
-| `--color-accent-ink` | `#1e3f9e` | Text on `--color-accent-tint` | |
-| `--color-accent-tint` | `#eaf0fd` | The fill of the current state, the selected tool, the current step | |
-| `--color-success` | `#1f7a4d` | Valid, saved, accepted (icons, "Tersimpan di perangkat ini") | |
-| `--color-success-ink` | `#165c3a` | Text on `--color-success-tint` | |
-| `--color-success-tint` | `#e4f4ea` | The fill of a success message or badge | |
-| `--color-warning` | `#b86e00` | **Lines and fills only**: the wrong part of an answer, a dashed edge | Use for text (3.99:1 on white) |
-| `--color-warning-ink` | `#6b3d00` | **Warning text** | |
-| `--color-warning-tint` | `#fff4e0` | The fill of a warning message | |
-| `--color-neutral-ink` | `#3b414c` | Chips, badges and the strokes of the diagram | |
-| `--color-neutral-tint` | `#eef0f3` | The fill of a chip or badge ("DFSM", "Ditolak") | |
-| `--color-canvas-dot` | `#d3d8e0` | The dots of the canvas (decorative) | |
+| Token                   | Value     | Use                                                                  | Do not                                        |
+| ----------------------- | --------- | -------------------------------------------------------------------- | --------------------------------------------- |
+| `--color-ground`        | `#f6f7f9` | The page and the canvas                                              |                                               |
+| `--color-surface`       | `#ffffff` | Cards, panels, inputs, the header                                    |                                               |
+| `--color-ink`           | `#16181d` | Body text and headings                                               |                                               |
+| `--color-muted`         | `#5b6270` | Secondary text, labels, hints, the "unknown" row of a trace          | Use for the main message                      |
+| `--color-on-ink`        | `#ffffff` | Text on `--color-ink` (the selected tab)                             |                                               |
+| `--color-border`        | `#dde1e7` | Separators and card edges                                            | Use as the only edge of an input or a control |
+| `--color-border-strong` | `#737b88` | The edge of an input and of controls that have no other edge         | Use for text                                  |
+| `--color-accent`        | `#2f5bd3` | The current state and step, links, the main button, the focus ring   |                                               |
+| `--color-on-accent`     | `#ffffff` | Text on `--color-accent`                                             |                                               |
+| `--color-accent-ink`    | `#1e3f9e` | Text on `--color-accent-tint`                                        |                                               |
+| `--color-accent-tint`   | `#eaf0fd` | The fill of the current state, the selected tool, the current step   |                                               |
+| `--color-success`       | `#1f7a4d` | Valid, saved, accepted (icons, "Tersimpan di perangkat ini")         |                                               |
+| `--color-success-ink`   | `#165c3a` | Text on `--color-success-tint`                                       |                                               |
+| `--color-success-tint`  | `#e4f4ea` | The fill of a success message or badge                               |                                               |
+| `--color-warning`       | `#b86e00` | **Lines and fills only**: the wrong part of an answer, a dashed edge | Use for text (3.99:1 on white)                |
+| `--color-warning-ink`   | `#6b3d00` | **Warning text**                                                     |                                               |
+| `--color-warning-tint`  | `#fff4e0` | The fill of a warning message                                        |                                               |
+| `--color-neutral-ink`   | `#3b414c` | Chips, badges and the strokes of the diagram                         |                                               |
+| `--color-neutral-tint`  | `#eef0f3` | The fill of a chip or badge ("DFSM", "Ditolak")                      |                                               |
+| `--color-canvas-dot`    | `#d3d8e0` | The dots of the canvas (decorative)                                  |                                               |
 
 There is no red. The tone of the feedback is calm ("Belum tepat, tapi sudah dekat."), so a wrong answer uses the warning color and never an alarm color.
 
@@ -51,13 +51,13 @@ The wireframes pass AA except four things. They are fixed in the tokens:
 
 ## Type
 
-| Token | Value |
-| --- | --- |
-| `--font-ui` | Plus Jakarta Sans, then the system font |
-| `--font-mono` | JetBrains Mono, then the system mono font. Used for strings, symbols and traces. |
-| `--weight-regular`, `--weight-strong` | 400, 600. Only these two (`CLAUDE.md` allows two weights). The bold 700 of the wireframes' project name is 600. |
-| `--text-2xs` … `--text-2xl` | 11, 12, 13, 14 (base), 16, 20, 24 px, and a fluid 28–40 px for the page title. All in `rem`, so the reader's font size is respected. |
-| `--leading-tight`, `--leading-normal`, `--leading-relaxed` | 1.25, 1.5, 1.6 |
+| Token                                                      | Value                                                                                                                                |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `--font-ui`                                                | Plus Jakarta Sans, then the system font                                                                                              |
+| `--font-mono`                                              | JetBrains Mono, then the system mono font. Used for strings, symbols and traces.                                                     |
+| `--weight-regular`, `--weight-strong`                      | 400, 600. Only these two (`CLAUDE.md` allows two weights). The bold 700 of the wireframes' project name is 600.                      |
+| `--text-2xs` … `--text-2xl`                                | 11, 12, 13, 14 (base), 16, 20, 24 px, and a fluid 28–40 px for the page title. All in `rem`, so the reader's font size is respected. |
+| `--leading-tight`, `--leading-normal`, `--leading-relaxed` | 1.25, 1.5, 1.6                                                                                                                       |
 
 **Fonts** are self-hosted from the packages `@fontsource/plus-jakarta-sans` and `@fontsource/jetbrains-mono` (SIL Open Font License 1.1), Latin only, in woff2 only, with `font-display: swap`. The home page loads three files (UI regular and strong, mono regular: about 46 KB). The Greek letters of the mono font (ε, Σ), 4 KB each, are a separate file that the browser downloads only when a page shows such a letter. Symbols such as `∪` and `→` are not in the Latin subset, and fall back to the system font.
 
@@ -76,37 +76,37 @@ One breakpoint: 40rem (640px). Below it the header shows a Menu button and the l
 
 Made by `node tools/check-contrast.mjs --markdown` (run it again when a token changes). WCAG 2.2: 4.5:1 for text (1.4.3), 3:1 for graphics, the edges of controls and the focus ring (1.4.11).
 
-| Pair | Colors | Ratio | Needed | Result |
-| --- | --- | --- | --- | --- |
-| Ink on ground | `#16181d` on `#f6f7f9` | 16.57 | 4.5 | pass |
-| Ink on surface | `#16181d` on `#ffffff` | 17.76 | 4.5 | pass |
-| Ink on neutral tint | `#16181d` on `#eef0f3` | 15.55 | 4.5 | pass |
-| Muted on surface | `#5b6270` on `#ffffff` | 6.13 | 4.5 | pass |
-| Muted on ground | `#5b6270` on `#f6f7f9` | 5.72 | 4.5 | pass |
-| Muted on neutral tint | `#5b6270` on `#eef0f3` | 5.37 | 4.5 | pass |
-| Neutral ink on neutral tint (chips) | `#3b414c` on `#eef0f3` | 8.99 | 4.5 | pass |
-| Neutral ink on surface | `#3b414c` on `#ffffff` | 10.26 | 4.5 | pass |
-| Neutral ink on ground | `#3b414c` on `#f6f7f9` | 9.57 | 4.5 | pass |
-| On accent on accent (primary button) | `#ffffff` on `#2f5bd3` | 5.90 | 4.5 | pass |
-| On ink on ink (selected tab) | `#ffffff` on `#16181d` | 17.76 | 4.5 | pass |
-| Accent on surface (link) | `#2f5bd3` on `#ffffff` | 5.90 | 4.5 | pass |
-| Accent on ground (link) | `#2f5bd3` on `#f6f7f9` | 5.51 | 4.5 | pass |
-| Accent ink on accent tint (active state) | `#1e3f9e` on `#eaf0fd` | 8.13 | 4.5 | pass |
-| Accent ink on surface | `#1e3f9e` on `#ffffff` | 9.29 | 4.5 | pass |
-| Success on surface | `#1f7a4d` on `#ffffff` | 5.32 | 4.5 | pass |
-| Success on success tint (badge) | `#1f7a4d` on `#e4f4ea` | 4.67 | 4.5 | pass |
-| Success ink on success tint | `#165c3a` on `#e4f4ea` | 7.02 | 4.5 | pass |
-| Warning ink on warning tint | `#6b3d00` on `#fff4e0` | 8.40 | 4.5 | pass |
-| Warning ink on surface | `#6b3d00` on `#ffffff` | 9.16 | 4.5 | pass |
-| Warning ink on ground | `#6b3d00` on `#f6f7f9` | 8.55 | 4.5 | pass |
-| Diagram stroke on ground | `#3b414c` on `#f6f7f9` | 9.57 | 3 | pass |
-| Diagram stroke on accent tint | `#3b414c` on `#eaf0fd` | 8.98 | 3 | pass |
-| Accent on ground (active state, focus ring) | `#2f5bd3` on `#f6f7f9` | 5.51 | 3 | pass |
-| Accent on surface (focus ring) | `#2f5bd3` on `#ffffff` | 5.90 | 3 | pass |
-| Accent on accent tint (active state edge) | `#2f5bd3` on `#eaf0fd` | 5.17 | 3 | pass |
-| Warning on ground (wrong part of an answer) | `#b86e00` on `#f6f7f9` | 3.72 | 3 | pass |
-| Warning on surface | `#b86e00` on `#ffffff` | 3.99 | 3 | pass |
-| Warning on warning tint (label edge) | `#b86e00` on `#fff4e0` | 3.66 | 3 | pass |
-| Success on ground (valid, saved) | `#1f7a4d` on `#f6f7f9` | 4.96 | 3 | pass |
-| Border strong on surface (input edge) | `#737b88` on `#ffffff` | 4.27 | 3 | pass |
-| Border strong on ground (input edge) | `#737b88` on `#f6f7f9` | 3.98 | 3 | pass |
+| Pair                                        | Colors                 | Ratio | Needed | Result |
+| ------------------------------------------- | ---------------------- | ----- | ------ | ------ |
+| Ink on ground                               | `#16181d` on `#f6f7f9` | 16.57 | 4.5    | pass   |
+| Ink on surface                              | `#16181d` on `#ffffff` | 17.76 | 4.5    | pass   |
+| Ink on neutral tint                         | `#16181d` on `#eef0f3` | 15.55 | 4.5    | pass   |
+| Muted on surface                            | `#5b6270` on `#ffffff` | 6.13  | 4.5    | pass   |
+| Muted on ground                             | `#5b6270` on `#f6f7f9` | 5.72  | 4.5    | pass   |
+| Muted on neutral tint                       | `#5b6270` on `#eef0f3` | 5.37  | 4.5    | pass   |
+| Neutral ink on neutral tint (chips)         | `#3b414c` on `#eef0f3` | 8.99  | 4.5    | pass   |
+| Neutral ink on surface                      | `#3b414c` on `#ffffff` | 10.26 | 4.5    | pass   |
+| Neutral ink on ground                       | `#3b414c` on `#f6f7f9` | 9.57  | 4.5    | pass   |
+| On accent on accent (primary button)        | `#ffffff` on `#2f5bd3` | 5.90  | 4.5    | pass   |
+| On ink on ink (selected tab)                | `#ffffff` on `#16181d` | 17.76 | 4.5    | pass   |
+| Accent on surface (link)                    | `#2f5bd3` on `#ffffff` | 5.90  | 4.5    | pass   |
+| Accent on ground (link)                     | `#2f5bd3` on `#f6f7f9` | 5.51  | 4.5    | pass   |
+| Accent ink on accent tint (active state)    | `#1e3f9e` on `#eaf0fd` | 8.13  | 4.5    | pass   |
+| Accent ink on surface                       | `#1e3f9e` on `#ffffff` | 9.29  | 4.5    | pass   |
+| Success on surface                          | `#1f7a4d` on `#ffffff` | 5.32  | 4.5    | pass   |
+| Success on success tint (badge)             | `#1f7a4d` on `#e4f4ea` | 4.67  | 4.5    | pass   |
+| Success ink on success tint                 | `#165c3a` on `#e4f4ea` | 7.02  | 4.5    | pass   |
+| Warning ink on warning tint                 | `#6b3d00` on `#fff4e0` | 8.40  | 4.5    | pass   |
+| Warning ink on surface                      | `#6b3d00` on `#ffffff` | 9.16  | 4.5    | pass   |
+| Warning ink on ground                       | `#6b3d00` on `#f6f7f9` | 8.55  | 4.5    | pass   |
+| Diagram stroke on ground                    | `#3b414c` on `#f6f7f9` | 9.57  | 3      | pass   |
+| Diagram stroke on accent tint               | `#3b414c` on `#eaf0fd` | 8.98  | 3      | pass   |
+| Accent on ground (active state, focus ring) | `#2f5bd3` on `#f6f7f9` | 5.51  | 3      | pass   |
+| Accent on surface (focus ring)              | `#2f5bd3` on `#ffffff` | 5.90  | 3      | pass   |
+| Accent on accent tint (active state edge)   | `#2f5bd3` on `#eaf0fd` | 5.17  | 3      | pass   |
+| Warning on ground (wrong part of an answer) | `#b86e00` on `#f6f7f9` | 3.72  | 3      | pass   |
+| Warning on surface                          | `#b86e00` on `#ffffff` | 3.99  | 3      | pass   |
+| Warning on warning tint (label edge)        | `#b86e00` on `#fff4e0` | 3.66  | 3      | pass   |
+| Success on ground (valid, saved)            | `#1f7a4d` on `#f6f7f9` | 4.96  | 3      | pass   |
+| Border strong on surface (input edge)       | `#737b88` on `#ffffff` | 4.27  | 3      | pass   |
+| Border strong on ground (input edge)        | `#737b88` on `#f6f7f9` | 3.98  | 3      | pass   |

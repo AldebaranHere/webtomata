@@ -3,9 +3,11 @@
 Status: accepted
 
 ## Context
+
 The approved wireframes use a fixed set of colors, two fonts and a type scale. `CLAUDE.md` says that components use only design tokens and that the interface is accessible. The roadmap (U2) asks for a token file and a CI script that checks WCAG AA contrast. Checking the wireframe colors showed that most pass and that four things do not (see `docs/ux/design-system.md`).
 
 ## Decision
+
 - **One token file**, `web/src/lib/styles/tokens.css`, named by role (`--color-ink`, `--color-accent-tint`), with the values of the wireframes. `base.css` holds the fonts, the page defaults, the focus ring and reduced motion, and is loaded by `+layout.svelte`.
 - **Light theme only for v1.** The names allow a dark theme later by redefining the same tokens.
 - **Three changes to the wireframe colors** so that everything passes AA: warning text uses the dark `--color-warning-ink` (the plain orange is for lines and fills); the "unknown" trace text uses `--color-muted`; inputs get an edge of 3:1 (`--color-border-strong`). The light border stays for separators that are not the only edge of a control.
@@ -15,6 +17,7 @@ The approved wireframes use a fixed set of colors, two fonts and a type scale. `
   - `check-tokens-usage.mjs` fails on a raw color (hex or a color function) in a component or a css file other than `tokens.css`, and on `--color-warning`, the borders or the canvas dots used as the text color.
 
 ## Consequences
+
 - A new color needs a contrast pair, and a component cannot bring its own color. Both fail CI before a merge.
 - The home page loads three font files (about 46 KB). Lighthouse after the change: performance 100, accessibility 100 (it was 97), layout shift 0.000, and the size budgets are unchanged.
 - Symbols that are not in the Latin and Greek subsets (`∪`, `→`) use the system font. If that looks wrong in the editor, a later task can add a subset for them.

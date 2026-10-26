@@ -497,3 +497,125 @@ test('Mesin → regex has buttons of at least 44 px, and Tutup goes back to the 
 	await expect(operation(page, 'Mesin → regex')).toBeVisible();
 	await expect(shown(page)).toHaveCount(0);
 });
+
+// ---- Regex → NDFSM (S7-3b) ----
+
+const regexRow = (page: Page) => panel(page).locator('li.form');
+const field = (page: Page) => regexRow(page).getByRole('textbox', { name: 'Ekspresi reguler' });
+
+test('Regex → NDFSM shows the alphabet of the text, builds the machine part by part, and opens it', async ({
+	page
+}) => {
+	await openDfsm(page);
+	await expect(regexRow(page)).toContainText('Tulis ekspresi reguler dulu.');
+	await expect(regexRow(page).getByRole('button', { name: 'Mulai' })).toBeDisabled();
+	await field(page).fill('(a∪b)*abb');
+	await expect(regexRow(page)).toContainText('Alfabet: a, b');
+	await expect(regexRow(page).getByRole('button', { name: 'Mulai' })).toBeEnabled();
+	await regexRow(page).getByRole('button', { name: 'Mulai' }).click();
+	await expect(panel(page).getByRole('heading', { name: 'Regex → NDFSM' })).toBeFocused();
+	await expect(panel(page).getByText('Ekspresi: (a∪b)*abb')).toBeVisible();
+	await expect(panel(page).getByText(/^Langkah 1 dari \d+$/)).toBeVisible();
+	await expect(sentence(page)).toContainText('Simbol a');
+	// The canvas shows the machine that is built, not the one of the student.
+	await expect(shown(page)).toBeVisible();
+	await expect(button(page, 'Buka sebagai mesin baru')).toHaveCount(0);
+	await expectNoAxeViolations(page);
+	await button(page, 'Ke hasil').click();
+	await expect(sentence(page)).toContainText('Konkatenasi (a∪b)*abb');
+	await expect(panel(page).getByText('Konversi selesai!')).toBeVisible();
+	await expectNoAxeViolations(page);
+	await button(page, 'Buka sebagai mesin baru').click();
+	await expect(page.locator('.bar .title')).toHaveText('NDFSM dari (a∪b)*abb');
+});
+
+test('the buttons put an operator at the caret of the field and keep the focus there', async ({
+	page
+}) => {
+	await openDfsm(page);
+	await field(page).fill('ab');
+	await field(page).evaluate((el: HTMLInputElement) => el.setSelectionRange(1, 1));
+	await regexRow(page).getByRole('button', { name: 'Sisipkan ∪, gabungan' }).click();
+	await expect(field(page)).toHaveValue('a∪b');
+	await expect(field(page)).toBeFocused();
+	await regexRow(page).getByRole('button', { name: 'Sisipkan ε, string kosong' }).click();
+	await expect(field(page)).toHaveValue('a∪εb');
+	await field(page).press('End');
+	await regexRow(page).getByRole('button', { name: 'Sisipkan *, bintang' }).click();
+	await expect(field(page)).toHaveValue('a∪εb*');
+	await regexRow(page).getByRole('button', { name: 'Sisipkan ∅, himpunan kosong' }).click();
+	await expect(field(page)).toHaveValue('a∪εb*∅');
+	await expect(regexRow(page)).toContainText('Alfabet: a, b');
+});
+
+test('Regex → NDFSM says where the mistake is, and a new letter clears the message', async ({
+	page
+}) => {
+	await openDfsm(page);
+	await field(page).fill('a∪');
+	await field(page).press('Enter');
+	await expect(regexRow(page)).toContainText(
+		'Ekspresinya belum lengkap: ada bagian yang kurang setelah karakter ke-2.'
+	);
+	await expect(field(page)).toHaveAttribute('aria-invalid', 'true');
+	await expectNoAxeViolations(page);
+	await field(page).fill('(a∪b');
+	await expect(regexRow(page).getByText('belum lengkap')).toHaveCount(0);
+	await field(page).press('Enter');
+	await expect(regexRow(page)).toContainText('Tanda kurung di karakter ke-1 tidak punya pasangan.');
+	// The player did not open, and the machine of the student is as it was.
+	await expect(regexRow(page)).toBeVisible();
+	await expect(shown(page)).toHaveCount(0);
+});
+
+test('Enter in the field starts the conversion, and Tutup keeps the text', async ({ page }) => {
+	await openDfsm(page);
+	await field(page).fill('ab*');
+	await field(page).press('Enter');
+	await expect(panel(page).getByText(/^Langkah 1 dari \d+$/)).toBeVisible();
+	await button(page, 'Tutup').click();
+	await expect(field(page)).toHaveValue('ab*');
+});
+
+test('the field and the buttons of the operators are at least 44 px', async ({ page }) => {
+	await openDfsm(page);
+	const boxes = [await field(page).boundingBox()];
+	for (const b of await regexRow(page).getByRole('group').getByRole('button').all()) {
+		boxes.push(await b.boundingBox());
+	}
+	expect(boxes).toHaveLength(8);
+	const panelBox = (await panel(page).boundingBox())!;
+	for (const b of boxes) {
+		expect(b!.height).toBeGreaterThanOrEqual(44);
+		expect(b!.width).toBeGreaterThanOrEqual(44);
+		expect(b!.x + b!.width).toBeLessThanOrEqual(panelBox.x + panelBox.width);
+	}
+});
+
+test('a finger puts an operator in the field and starts the conversion', async ({
+	page,
+	isMobile
+}) => {
+	test.skip(!isMobile, 'a phone only');
+	await openDfsm(page);
+	await field(page).fill('ab');
+	await field(page).evaluate((el: HTMLInputElement) => el.setSelectionRange(1, 1));
+	await touchTap(page, regexRow(page).getByRole('button', { name: 'Sisipkan ∪, gabungan' }));
+	await expect(field(page)).toHaveValue('a∪b');
+	await touchTap(page, regexRow(page).getByRole('button', { name: 'Mulai' }));
+	await expect(panel(page).getByText(/^Langkah 1 dari \d+$/)).toBeVisible();
+	await touchTap(page, button(page, 'Ke hasil'));
+	await expect(button(page, 'Buka sebagai mesin baru')).toBeVisible();
+});
+
+test('the note about the notation has one line for each sign', async ({ page }) => {
+	await openDfsm(page);
+	await operation(page, 'Mesin → regex').getByRole('button', { name: 'Mulai' }).click();
+	await button(page, 'Ke hasil').click();
+	const notation = panel(page).locator('.notation li');
+	await expect(notation).toHaveText([
+		'∪ untuk gabungan',
+		'ε untuk string kosong',
+		'∅ untuk himpunan kosong'
+	]);
+});

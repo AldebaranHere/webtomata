@@ -7,6 +7,7 @@ import type { MessageKey } from '#lib/i18n/id.ts';
 import type { Params } from '#lib/i18n/translate.ts';
 import type { ConversionStep } from '../engine/types.ts';
 import { setText } from './conversion.ts';
+import { listText } from './regex-compile.ts';
 import type { Names } from './conversion.ts';
 import type { Text } from './run-text.ts';
 
@@ -78,6 +79,21 @@ export function regexText(names: ReadonlyMap<number, string>, step: ConversionSt
 		if (typeof value === 'string' || typeof value === 'number') params[name] = value;
 	}
 	if ('state' in change) params.state = names.get(change.state) ?? `q${change.state}`;
+	const known = Object.hasOwn(id, message.key);
+	return known ? { key: message.key as MessageKey, params } : { key: 'convert.failed', params: {} };
+}
+
+/** The text of one step of regex → NDFSM: the states of the part are named `q<number>`. */
+export function compileText(step: ConversionStep): Text {
+	const { message, change } = step;
+	const params: Params = {};
+	for (const [name, value] of Object.entries(message.params)) {
+		if (typeof value === 'string' || typeof value === 'number') params[name] = value;
+	}
+	if (change.kind === 'fragment') {
+		params.states = listText(change.states);
+		params.start = `q${change.start}`;
+	}
 	const known = Object.hasOwn(id, message.key);
 	return known ? { key: message.key as MessageKey, params } : { key: 'convert.failed', params: {} };
 }

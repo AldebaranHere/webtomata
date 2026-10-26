@@ -10,14 +10,14 @@ How to read them:
 
 ## Screens
 
-| Screen | Laptop (1440 px) | Phone (390 px) | Built by |
-| --- | --- | --- | --- |
-| Sandbox | [sandbox-laptop](wireframes/sandbox-laptop.png) | [sandbox-phone](wireframes/sandbox-phone.png) | S1, S4, S6 |
-| First run (empty Sandbox) | [first-run-laptop](wireframes/first-run-laptop.png) | [first-run-phone](wireframes/first-run-phone.png) | X1 |
+| Screen                      | Laptop (1440 px)                                                 | Phone (390 px)                                                | Built by   |
+| --------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------- | ---------- |
+| Sandbox                     | [sandbox-laptop](wireframes/sandbox-laptop.png)                  | [sandbox-phone](wireframes/sandbox-phone.png)                 | S1, S4, S6 |
+| First run (empty Sandbox)   | [first-run-laptop](wireframes/first-run-laptop.png)              | [first-run-phone](wireframes/first-run-phone.png)             | X1         |
 | Mesin saya (saved machines) | [my-machines-laptop](wireframes/my-machines-laptop.png) (dialog) | [my-machines-phone](wireframes/my-machines-phone.png) (sheet) | S10a, S10b |
-| Soal | [soal-laptop](wireframes/soal-laptop.png) | [soal-phone](wireframes/soal-phone.png) | Q3, Q4 |
-| Panduan, list | [guides-laptop](wireframes/guides-laptop.png) | [guides-phone](wireframes/guides-phone.png) | G1 |
-| Panduan, one guide | [guide-laptop](wireframes/guide-laptop.png) | [guide-phone](wireframes/guide-phone.png) | G1, G2 |
+| Soal                        | [soal-laptop](wireframes/soal-laptop.png)                        | [soal-phone](wireframes/soal-phone.png)                       | Q3, Q4     |
+| Panduan, list               | [guides-laptop](wireframes/guides-laptop.png)                    | [guides-phone](wireframes/guides-phone.png)                   | G1         |
+| Panduan, one guide          | [guide-laptop](wireframes/guide-laptop.png)                      | [guide-phone](wireframes/guide-phone.png)                     | G1, G2     |
 
 ![Sandbox, laptop](wireframes/sandbox-laptop.png)
 

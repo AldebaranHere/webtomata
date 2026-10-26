@@ -24,7 +24,16 @@
 	import { LayoutCancelled, layoutClient } from './layout-client.ts';
 	import { layoutGraph, refusalOf as layoutRefusal } from './layout.ts';
 	import PlayerControls from './PlayerControls.svelte';
+	import CompilePlayer from './CompilePlayer.svelte';
 	import RegexPlayer from './RegexPlayer.svelte';
+	import {
+		alphabetOf,
+		compileResult,
+		insertAt,
+		runRegexToFsm,
+		textRefusal
+	} from './regex-compile.ts';
+	import type { CompileRun } from './regex-compile.ts';
 	import { REGEX_OPS, regexRefusalOf, runFsmToRegex } from './regex-conversion.ts';
 	import type { RegexOp, RegexRun } from './regex-conversion.ts';
 	import type { ConversionShown } from './conversion-props.ts';
@@ -38,11 +47,18 @@
 
 	type Say = { key: MessageKey; params: Params };
 
-	let working = $state<ListedOp | RegexOp | null>(null);
+	let working = $state<ListedOp | RegexOp | 'regex_to_fsm' | null>(null);
 	let note = $state<Say | null>(null);
 	// A conversion that makes a regular expression (it has its own player), and the view it shows.
 	let regexRun = $state.raw<RegexRun | null>(null);
 	let regexView = $state.raw<ConversionShown | null>(null);
+	// Regex → NDFSM: the text of the field, its parse error, and the run that is open.
+	let regexInput = $state('');
+	let regexError = $state<Say | null>(null);
+	let compileRun = $state.raw<CompileRun | null>(null);
+	let field = $state<HTMLInputElement>();
+	const symbols = $derived(alphabetOf(regexInput));
+	const regexReason = $derived(textRefusal(regexInput));
 	// The last run stopped because a label got too big: a bigger limit may finish it.
 	let canRaise = $state(false);
 	let plan = $state.raw<Plan | null>(null);
@@ -230,8 +246,56 @@
 		}
 	}
 
+	async function startCompile() {
+		if (working) return;
+		working = 'regex_to_fsm';
+		note = null;
+		regexError = null;
+		try {
+			const outcome = await runRegexToFsm(engine, regexInput, place);
+			if (outcome.kind === 'finished') {
+				compileRun = outcome.run;
+			} else if (outcome.kind === 'stopped') {
+				note = { key: outcome.key, params: {} };
+			} else {
+				regexError = { key: outcome.key, params: outcome.params };
+			}
+		} catch (error) {
+			if (error instanceof LayoutCancelled) return;
+			note = { key: 'convert.engine_failed', params: {} };
+		} finally {
+			working = null;
+		}
+	}
+
+	// An operator goes in at the caret of the field, which keeps the focus and the caret.
+	async function insert(piece: string) {
+		if (!field) return;
+		const at = insertAt(
+			regexInput,
+			field.selectionStart ?? regexInput.length,
+			field.selectionEnd ?? regexInput.length,
+			piece
+		);
+		regexInput = at.text;
+		regexError = null;
+		await tick();
+		field.focus();
+		field.setSelectionRange(at.caret, at.caret);
+	}
+
+	function openCompiled() {
+		if (!compileRun) return;
+		const base = compileRun.text;
+		const title = Array.from(t('convert.result_title.regex_to_fsm', { title: base }))
+			.slice(0, LIMITS.titleChars)
+			.join('');
+		onopen(compileResult(compileRun, title));
+	}
+
 	function close() {
 		playing = false;
+		compileRun = null;
 		regexRun = null;
 		plan = null;
 		origin = null;
@@ -259,7 +323,14 @@
 </script>
 
 <div class="convert">
-	{#if regexRun}
+	{#if compileRun}
+		<CompilePlayer
+			run={compileRun}
+			onshow={(shown) => (regexView = shown)}
+			onopen={openCompiled}
+			onclose={close}
+		/>
+	{:else if regexRun}
 		<RegexPlayer run={regexRun} onshow={(shown) => (regexView = shown)} onclose={close} />
 	{:else if plan && stage && frame && sentence}
 		<section aria-labelledby="convert-heading">
@@ -475,6 +546,73 @@
 					</button>
 				</li>
 			{/each}
+			<li class="form">
+				<form
+					onsubmit={(event) => {
+						event.preventDefault();
+						if (!regexReason) void startCompile();
+					}}
+				>
+					<div class="text">
+						<span class="name">{t('convert.op.regex_to_fsm')}</span>
+						<span class="muted" id="convert-hint-regex_to_fsm">
+							{regexReason
+								? t(regexReason.key, regexReason.params)
+								: t('convert.op.regex_to_fsm_hint')}
+						</span>
+					</div>
+					<label class="field">
+						<span class="muted">{t('convert.regex_field')}</span>
+						<input
+							type="text"
+							class="mono"
+							bind:this={field}
+							bind:value={regexInput}
+							oninput={() => (regexError = null)}
+							autocomplete="off"
+							autocapitalize="off"
+							spellcheck="false"
+							maxlength="1000"
+							aria-invalid={regexError ? 'true' : undefined}
+							aria-describedby="convert-regex-alphabet{regexError ? ' convert-regex-error' : ''}"
+						/>
+					</label>
+					<div class="insert" role="group" aria-label={t('convert.regex_insert')}>
+						{#each [['∪', 'convert.insert_union'], ['*', 'convert.insert_star'], ['+', 'convert.insert_plus'], ['ε', 'convert.insert_epsilon'], ['∅', 'convert.insert_empty'], ['(', 'convert.insert_open'], [')', 'convert.insert_close']] as const as [piece, label] (piece)}
+							<!-- A press on the button must not take the focus (and the keyboard) from the field. -->
+							<button
+								type="button"
+								class="piece mono"
+								aria-label={t(label)}
+								onmousedown={(event) => event.preventDefault()}
+								onclick={() => void insert(piece)}
+							>
+								{piece}
+							</button>
+						{/each}
+					</div>
+					<p class="muted" id="convert-regex-alphabet">
+						{symbols.length === 0
+							? t('convert.regex_alphabet_none')
+							: t('convert.regex_alphabet', { symbols: symbols.join(', ') })}
+						· {t('convert.regex_symbols_note')}
+					</p>
+					{#if regexError}
+						<p class="note" id="convert-regex-error" role="status">
+							{t(regexError.key, regexError.params)}
+						</p>
+					{/if}
+					<button
+						type="submit"
+						class="submit"
+						disabled={regexReason !== null || working !== null}
+						aria-describedby="convert-hint-regex_to_fsm"
+						aria-busy={working === 'regex_to_fsm'}
+					>
+						{working === 'regex_to_fsm' ? t('convert.working') : t('convert.start')}
+					</button>
+				</form>
+			</li>
 		</ul>
 	{/if}
 </div>
@@ -677,9 +815,6 @@
 	thead th {
 		font-weight: var(--weight-strong);
 	}
-	.mono {
-		font-family: var(--font-mono);
-	}
 	tr.hot th,
 	tr.hot td {
 		background: var(--color-accent-tint);
@@ -690,6 +825,48 @@
 		background: var(--color-accent);
 		color: var(--color-on-accent);
 		font-weight: var(--weight-strong);
+	}
+	li.form {
+		display: block;
+	}
+	form {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		width: 100%;
+	}
+	.field {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+	}
+	input {
+		min-height: var(--target-min);
+		padding: 0 var(--space-2);
+		border: 1px solid var(--color-border-strong);
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+		color: var(--color-ink);
+		font-size: var(--text-base);
+	}
+	input:focus-visible {
+		outline: var(--focus-ring-width) solid var(--focus-ring-color);
+		outline-offset: var(--focus-ring-offset);
+	}
+	.insert {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-1);
+	}
+	.piece {
+		min-width: var(--target-min);
+		padding: 0;
+	}
+	.submit {
+		align-self: flex-start;
+	}
+	.mono {
+		font-family: var(--font-mono);
 	}
 	.raise {
 		align-self: flex-start;
