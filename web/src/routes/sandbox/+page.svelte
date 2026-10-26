@@ -103,6 +103,7 @@
 				ontour: openTour
 			}}
 			onhelp={openTour}
+			onopendoc={(doc) => void library.openDocument(doc, true)}
 		/>
 	{/key}
 {:else}

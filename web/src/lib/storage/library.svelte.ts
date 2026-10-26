@@ -3,6 +3,7 @@
 // editor) and the dialog (the list) all see the same state. The rules are in library.ts, machines.ts
 // and autosave.ts, which have no framework in them.
 import { createDocument } from '../editor/document.ts';
+import type { MachineDocument } from '../editor/document.ts';
 import type { Announcement } from '../editor/interaction/editor.ts';
 import { createAutosave } from './autosave.ts';
 import type { Autosave } from './autosave.ts';
@@ -174,16 +175,21 @@ class Library {
 		return null;
 	}
 
-	/** A new empty machine, saved and opened. */
-	async newMachine(keepOpen = false): Promise<Problem | null> {
+	/** A document (the result of a conversion, or an empty one) saved as a machine of its own, and opened. */
+	async openDocument(doc: MachineDocument, keepOpen = false): Promise<Problem | null> {
 		const store = this.store;
 		if (!store) return null;
 		try {
-			const record = await createMachine(store, createDocument());
+			const record = await createMachine(store, doc);
 			return await this.openMachine(record.id, keepOpen);
 		} catch {
 			return this.fail({ key: 'storage.failed', params: {} });
 		}
+	}
+
+	/** A new empty machine, saved and opened. */
+	newMachine(keepOpen = false): Promise<Problem | null> {
+		return this.openDocument(createDocument(), keepOpen);
 	}
 
 	async duplicate(id: string): Promise<Problem | null> {

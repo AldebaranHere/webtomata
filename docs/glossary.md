@@ -68,3 +68,5 @@ Added in S5-1, with no source yet (`TODO(review)`): Panel, Tab panel, Jenis mesi
 Added in S5-2, with no source yet (`TODO(review)`): Ubah lebar panel (resize the panel), Tabel transisi (transition table), Terima (the column of accepting states in the table; "accept" in English), belum ada (none yet), lebih dari satu tujuan (more than one target), + State, Tambah simbol (add a symbol), Simbol baru (new symbol), Tambah… (add…).
 
 Added in S9, with no source yet (`TODO(review)`): Tata letak otomatis (auto layout; the name is from the wireframes).
+
+Added in S7-1, with no source yet (`TODO(review)`): Konversi (conversion), Mulai (start), Tambah dead state (add a dead state; "dead state" follows the rule above, not "jebakan"), Langkah n dari N (step n of N), Ke awal / Mundur / Putar / Maju / Ke hasil (to the start / back / play / forward / to the result), Hasil / Sumber (result / source), Buka sebagai mesin baru (open as a new machine), Tutup (close), Kelas saat ini (the classes now).

@@ -10,9 +10,14 @@ const nodes = (page: Page) => page.locator('svg.world g.node');
 const kind = (page: Page, name: 'DFSM' | 'NDFSM') =>
 	panel(page).getByRole('radio', { name, exact: true });
 
-test('the panel has three tabs, and it starts on Simulasi', async ({ page }) => {
+test('the panel has four tabs, and it starts on Simulasi', async ({ page }) => {
 	await openSandbox(page);
-	await expect(panel(page).getByRole('tab')).toHaveText(['Simulasi', 'Tabel', 'Definisi']);
+	await expect(panel(page).getByRole('tab')).toHaveText([
+		'Simulasi',
+		'Tabel',
+		'Definisi',
+		'Konversi'
+	]);
 	await expect(tab(page, 'Simulasi')).toHaveAttribute('aria-selected', 'true');
 	await expect(panel(page).getByRole('tabpanel')).toHaveCount(1);
 	await expect(panel(page).getByLabel('String masukan')).toBeVisible();
@@ -76,11 +81,11 @@ test('the arrow keys move between the tabs, and only the open tab is a Tab stop'
 	await expect(tab(page, 'Tabel')).toBeFocused();
 	await expect(tab(page, 'Tabel')).toHaveAttribute('aria-selected', 'true');
 	await page.keyboard.press('End');
-	await expect(tab(page, 'Definisi')).toBeFocused();
+	await expect(tab(page, 'Konversi')).toBeFocused();
 	await page.keyboard.press('ArrowRight');
 	await expect(tab(page, 'Simulasi')).toBeFocused();
 	await page.keyboard.press('ArrowLeft');
-	await expect(tab(page, 'Definisi')).toBeFocused();
+	await expect(tab(page, 'Konversi')).toBeFocused();
 	await page.keyboard.press('Home');
 	await expect(tab(page, 'Simulasi')).toBeFocused();
 	await expect(tab(page, 'Tabel')).toHaveAttribute('tabindex', '-1');

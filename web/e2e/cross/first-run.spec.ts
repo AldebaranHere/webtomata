@@ -303,7 +303,7 @@ test('while Coba contoh is up there is no panel, and an example brings it', asyn
 	await expect(page.getByRole('tab')).toHaveCount(0);
 	await example(page, /^Berakhiran 01/).click();
 	await expect(sidePanel(page)).toBeVisible();
-	await expect(sidePanel(page).getByRole('tab')).toHaveCount(3);
+	await expect(sidePanel(page).getByRole('tab')).toHaveCount(4);
 });
 
 test('"Mulai dari kanvas kosong" brings the panel', async ({ page }) => {
