@@ -78,11 +78,45 @@ export async function engineSettled(page: Page): Promise<void> {
 	await expect(page.getByText('Memeriksa…')).toHaveCount(0);
 }
 
-/** Fails, and names every rule that was broken, if axe finds a violation on the page. */
+/**
+ * Waits for the transitions that are under way (and for those that wait for their delay) to end. A
+ * tooltip that fades in has half-transparent colors for 100 ms, and axe reads them as a low color
+ * contrast: that made a scan fail once in a while in CI (found with e2e/axe-fading.spec.ts). An
+ * animation that never ends is not waited for, and the wait has a limit of two seconds.
+ */
+async function settleTransitions(page: Page): Promise<void> {
+	await page.evaluate(async () => {
+		const ending = document
+			.getAnimations()
+			.filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+			.map((animation) => animation.finished.catch(() => undefined));
+		await Promise.race([Promise.all(ending), new Promise((resolve) => setTimeout(resolve, 2000))]);
+	});
+}
+
+/**
+ * Fails, and names every rule that was broken and the elements, if axe finds a violation on the
+ * page. For a color contrast it also says the colors and the ratio, so that a check that fails
+ * once in a while in CI can be understood from its message alone.
+ */
 export async function expectNoAxeViolations(page: Page): Promise<void> {
+	await settleTransitions(page);
 	const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
 	expect(
-		violations.map((v) => `${v.id}: ${v.help} (${v.nodes.length} element(s))`),
+		violations.map((v) => {
+			const where = v.nodes
+				.slice(0, 3)
+				.map((node) => {
+					const data = node.any[0]?.data as
+						{ fgColor?: string; bgColor?: string; contrastRatio?: number } | undefined;
+					const colors = data?.fgColor
+						? ` [${data.fgColor} on ${data.bgColor}, ratio ${data.contrastRatio}]`
+						: '';
+					return `${node.target.join(' ')}${colors}`;
+				})
+				.join('; ');
+			return `${v.id}: ${v.help} (${v.nodes.length} element(s)): ${where}`;
+		}),
 		'accessibility violations'
 	).toEqual([]);
 }
