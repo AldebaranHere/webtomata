@@ -12,12 +12,13 @@
 # stopped, and from the second try on the main archive (archive.ubuntu.com) replaces the mirror.
 #
 # Usage: tools/install-browser-deps.sh <browser>      (firefox, webkit, chromium)
-# Settings, for the tests: TRIES (3), TRY_SECONDS (150), KILL_SECONDS (10), APT_SOURCES.
+# Settings, for the tests: TRIES (3), TRY_SECONDS (75), KILL_SECONDS (10), APT_SOURCES.
+# A normal install takes 25 to 40 seconds, so 75 is a slow try; the archive then takes about 35.
 set -u
 
 browser="${1:?usage: install-browser-deps.sh <browser>}"
 tries="${TRIES:-3}"
-seconds="${TRY_SECONDS:-150}"
+seconds="${TRY_SECONDS:-75}"
 kill_after="${KILL_SECONDS:-10}"
 sources="${APT_SOURCES:-/etc/apt/sources.list /etc/apt/sources.list.d/*.sources}"
 

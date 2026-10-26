@@ -18,6 +18,9 @@
 //    `rust` (`needs: [a, b]`), and must run also when one of them failed (`if: always()`). A skipped
 //    required check counts as passed, so without `if: always()` a failed job would let a pull
 //    request merge.
+// 8. `runs-on` is a pinned image (`ubuntu-24.04`), not a `-latest` label. GitHub moves `ubuntu-latest`
+//    to a new Ubuntu on a date it chooses (to Ubuntu 26 from October 2026), and the system libraries
+//    that Playwright installs for Firefox and WebKit may not exist there.
 // 7. Write rights are narrow: only cleanup-caches.yml may have `actions: write` (it deletes the
 //    caches of a closed pull request), and no workflow may have `contents: write`.
 //
@@ -82,6 +85,11 @@ export function checkWorkflows(files) {
 			const uses = line.match(/^\s*(?:-\s*)?uses:\s*(\S+)/);
 			if (uses && !uses[1].startsWith('./') && !FULL_COMMIT.test(uses[1])) {
 				problems.push(`${where}: the action is not pinned to a full commit: ${uses[1]}`);
+			}
+			if (/^\s*runs-on:\s*\S*-latest\b/.test(line)) {
+				problems.push(
+					`${where}: runs-on must be a pinned image such as ubuntu-24.04, not ${line.trim().replace(/^runs-on:\s*/, '')}`
+				);
 			}
 			if (/^\s*actions:\s*write\b/.test(line) && name !== CLEANUP_FILE) {
 				problems.push(`${where}: actions: write is only allowed in ${CLEANUP_FILE}`);

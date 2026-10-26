@@ -16,7 +16,7 @@ jobs:
   cleanup:
     # A pull request from a fork has a token that cannot delete anything.
     if: github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Delete the caches of this pull request
