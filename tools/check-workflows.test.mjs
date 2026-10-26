@@ -67,9 +67,9 @@ test('a secret in the verify job is a problem', () => {
 });
 
 test('a secret in another workflow file is a problem, even in a job named deploy', () => {
-	const problems = check(good, 'ci.yml');
+	const problems = check(good, 'release.yml');
 	assert.equal(problems.length, 1);
-	assert.match(problems[0], /ci\.yml/);
+	assert.match(problems[0], /release\.yml/);
 });
 
 test('the word secrets in a comment is not a problem', () => {
@@ -179,4 +179,71 @@ test('a timeout that is not a number is a problem', () => {
 test('a timeout of more than 30 minutes is a problem: CI must not hang for long', () => {
 	const bad = good.replace('timeout-minutes: 15', 'timeout-minutes: 60');
 	assert.ok(check(bad).some((p) => /30/.test(p)));
+});
+
+// The ruleset requires the checks `rust` and `web`. `web` is a gate: it waits for every other job of
+// ci.yml and is green only if all of them are. A skipped required check counts as passed, so the
+// gate must run when a job before it failed (`if: always()`).
+const ci = `
+name: CI
+on:
+  pull_request:
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: ${PIN}
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: ${PIN}
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: ${PIN}
+  web:
+    if: always()
+    needs: [checks, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo gate
+`;
+
+const checkCi = (text) => checkWorkflows([{ name: 'ci.yml', text }]);
+
+test('a gate job web that waits for every other job, and runs always, has no problems', () => {
+	assert.deepEqual(checkCi(ci), []);
+});
+
+test('a job that the gate does not wait for is a problem, so that a new job cannot be left out', () => {
+	const bad = ci.replace('needs: [checks, e2e]', 'needs: [checks]');
+	const problems = checkCi(bad);
+	assert.equal(problems.length, 1);
+	assert.match(problems[0], /web/);
+	assert.match(problems[0], /e2e/);
+});
+
+test('the job rust does not have to be in the needs of the gate: it is required by itself', () => {
+	assert.ok(!checkCi(ci.replace('needs: [checks, e2e]', 'needs: [checks, e2e, rust]')).length);
+});
+
+test('a gate without if: always() is a problem: a skipped required check counts as passed', () => {
+	const problems = checkCi(ci.replace('    if: always()\n', ''));
+	assert.equal(problems.length, 1);
+	assert.match(problems[0], /always\(\)/);
+});
+
+test('a ci.yml without the gate job web is a problem', () => {
+	const bad = ci.replace(/ {2}web:[\s\S]*$/, '');
+	const problems = checkCi(bad);
+	assert.equal(problems.length, 1);
+	assert.match(problems[0], /web/);
+});
+
+test('the gate is only asked of ci.yml', () => {
+	assert.deepEqual(check(good), []);
 });
