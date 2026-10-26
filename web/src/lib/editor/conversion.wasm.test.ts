@@ -9,15 +9,19 @@ import type { Spec } from './diagram/samples.ts';
 import type { MachineDocument } from './document.ts';
 import { toMachine } from './document.ts';
 import {
+	buildPlan,
+	chipsOf,
 	frameAt,
 	namesOf,
+	planFrame,
+	planResult,
 	refusalOf,
 	resultDocument,
 	runConversion,
 	secondRefusalOf,
 	setText
 } from './conversion.ts';
-import type { ConvertEngine, ConvertOp, ConvertRun } from './conversion.ts';
+import type { ConvertEngine, ConvertOp, ConvertRun, Layout } from './conversion.ts';
 import { random } from './testing.ts';
 
 beforeAll(async () => {
@@ -34,7 +38,9 @@ const engine: ConvertEngine = {
 	addTrapState: call('addTrapState'),
 	complement: call('complement'),
 	union: async (first, second) =>
-		JSON.parse(wasm.union(JSON.stringify(first), JSON.stringify(second)))
+		JSON.parse(wasm.union(JSON.stringify(first), JSON.stringify(second))),
+	intersection: async (first, second) =>
+		JSON.parse(wasm.intersection(JSON.stringify(first), JSON.stringify(second)))
 };
 
 async function finished(
@@ -501,5 +507,233 @@ describe('union', () => {
 			documentFrom({ ...other, alphabet: ['a', 'c'], transitions: [[1, 'a', 0]] })
 		);
 		expect(bad).toMatchObject({ kind: 'refused', key: 'convert.reason_alphabet' });
+	});
+});
+
+// ---- the plan: one stage for most operations, seven for an intersection ----
+
+/** What a layout of a draft machine gives in a test: every state in a row. */
+const rows: Layout = async (draft) => draft.states.map((s, i) => ({ id: s.id, x: 100 * i, y: 50 }));
+
+describe('the plan of a simple operation', () => {
+	it('is one stage that holds all the steps, and its frames are the frames of the run', async () => {
+		const run = await finished(of(ndfsm, 'ndfsm'), 'determinize');
+		const plan = await buildPlan(run, 'dead', rows);
+		expect(plan.stages).toHaveLength(1);
+		expect(plan.total).toBe(run.trace.length);
+		expect(plan.stages[0]!.key).toBeNull();
+		const names = namesOf(run, 'dead');
+		for (let i = 0; i < run.trace.length; i += 3) {
+			expect(planFrame(plan, i).frame).toEqual(frameAt(run, names, i));
+		}
+		expect(planFrame(plan, 999).local).toBe(run.trace.length - 1);
+	});
+
+	it('lays out the results that need a layout, and keeps the places for the others', async () => {
+		const det = await buildPlan(await finished(of(ndfsm, 'ndfsm'), 'determinize'), 'dead', rows);
+		expect(det.stages[0]!.places).not.toBeNull();
+		const trap = await buildPlan(await finished(documentFrom(partial), 'trap'), 'dead', rows);
+		expect(trap.stages[0]!.places).toBeNull();
+		const complement = await buildPlan(
+			await finished(documentFrom(redundant), 'complement'),
+			'dead',
+			rows
+		);
+		expect(complement.stages[0]!.places).toBeNull();
+	});
+});
+
+describe('intersection', () => {
+	const evenA: Spec = {
+		alphabet: ['a', 'b'],
+		states: [
+			[100, 100, 'e'],
+			[300, 100, 'o']
+		],
+		start: 0,
+		accepting: [0],
+		transitions: [
+			[0, 'a', 1],
+			[0, 'b', 0],
+			[1, 'a', 0],
+			[1, 'b', 1]
+		]
+	};
+
+	it('has seven stages for two machines that are not complete DFSMs', async () => {
+		const first = of(ndfsm, 'ndfsm');
+		const second = documentFrom(partial);
+		const run = await finished(first, 'intersection', { ...second, alphabet: first.alphabet });
+		expect(run.trace.filter((s) => s.change.kind === 'stage')).toHaveLength(7);
+		const plan = await buildPlan(run, 'dead', rows);
+		expect(plan.stages.map((s) => s.number)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+		expect(plan.stages.map((s) => s.key)).toEqual([
+			'intersection.stage.complete_first',
+			'intersection.stage.complement_first',
+			'intersection.stage.complete_second',
+			'intersection.stage.complement_second',
+			'intersection.stage.union',
+			'intersection.stage.complete_union',
+			'intersection.stage.complement_union'
+		]);
+		// The markers are not steps of the player.
+		expect(plan.total).toBe(run.trace.length - 7);
+		expect(plan.stages.reduce((sum, s) => sum + s.length, 0)).toBe(plan.total);
+	});
+
+	it('shows, at each stage, the machine of the engine, and ends at the engine result', async () => {
+		const first = of(ndfsm, 'ndfsm');
+		const second = { ...of(partial), alphabet: first.alphabet };
+		const run = await finished(first, 'intersection', second);
+		const plan = await buildPlan(run, 'dead', rows);
+		// The first stage starts from the machine of the student, the second from a machine that
+		// the first one made, and so on: each source is the engine's input for that stage.
+		const stages = run.trace.flatMap((s) => (s.change.kind === 'stage' ? [s.change] : []));
+		plan.stages.forEach((stage, i) => {
+			stages[i]!.inputs.forEach((input, k) => {
+				const source = k === 0 ? stage.run.source : stage.run.second!;
+				expect(normal(toMachine(source))).toEqual(normal(input));
+			});
+		});
+		// The last frame of each stage is the machine that the stage after it starts from: stage 1
+		// feeds stage 2, 2 feeds 5 (first machine), 3 feeds 4, 4 feeds 5 (second machine), 5 feeds 6
+		// and 6 feeds 7.
+		const feeds: [stage: number, input: number][] = [
+			[1, 0],
+			[4, 0],
+			[3, 0],
+			[4, 1],
+			[5, 0],
+			[6, 0]
+		];
+		feeds.forEach(([to, k], i) => {
+			const stage = plan.stages[i]!;
+			const last = planFrame(plan, stage.offset + stage.length - 1).frame.machine!;
+			expect(normal(last)).toEqual(normal(stages[to]!.inputs[k]!));
+		});
+		const end = planFrame(plan, plan.total - 1).frame.machine!;
+		expect(normal(end)).toEqual(normal(run.final));
+		expect(end.kind).toBe('dfsm');
+	});
+
+	it('skips a stage that has nothing to do, and the stages that are left start where they should', async () => {
+		const run = await finished(documentFrom(evenA), 'intersection', documentFrom(evenA));
+		const plan = await buildPlan(run, 'dead', rows);
+		expect(plan.stages.map((s) => s.number)).toEqual([2, 4, 5, 6, 7]);
+		expect(chipsOf(plan).map((c) => [c.number, c.present])).toEqual([
+			[1, false],
+			[2, true],
+			[3, false],
+			[4, true],
+			[5, true],
+			[6, true],
+			[7, true]
+		]);
+		expect(chipsOf(plan)[1]!.offset).toBe(0);
+		expect(chipsOf(plan)[4]!.offset).toBe(plan.stages[0]!.length + plan.stages[1]!.length);
+	});
+
+	it('names the states so that a state keeps its name from stage to stage', async () => {
+		const run = await finished(documentFrom(evenA), 'intersection', documentFrom(evenA));
+		const plan = await buildPlan(run, 'dead', rows);
+		// Stage 2 complements the first machine: the names are the names of the student.
+		expect([...plan.stages[0]!.names.result.values()]).toEqual(['e', 'o']);
+		// Stage 5 is the union: the states are named by their machine.
+		const union = plan.stages.find((s) => s.number === 5)!;
+		expect([...union.names.result.values()]).toEqual(['1.e', '1.o', '2.e', '2.o', 's']);
+	});
+
+	it('gives each stage the names and the places that the stage before it made', async () => {
+		const first = of(ndfsm, 'ndfsm');
+		const run = await finished(first, 'intersection', { ...of(partial), alphabet: first.alphabet });
+		const plan = await buildPlan(run, 'dead', rows);
+		const stage = (n: number) => plan.stages.find((s) => s.number === n)!;
+		const named = (doc: MachineDocument) => doc.states.map((s) => [s.id, s.name]);
+		const placed = (doc: MachineDocument) => doc.states.map((s) => [s.id, s.x, s.y]);
+		// Stage 1 feeds 2, stage 5 feeds 6, and stage 6 feeds 7.
+		expect(named(stage(2).run.source)).toEqual([...stage(1).names.result]);
+		expect(named(stage(6).run.source)).toEqual([...stage(5).names.result]);
+		expect(named(stage(7).run.source)).toEqual([...stage(6).names.result]);
+		expect(placed(stage(2).run.source)).toEqual(stage(1).places!.map((p) => [p.id, p.x, p.y]));
+		expect(placed(stage(7).run.source)).toEqual(stage(6).places!.map((p) => [p.id, p.x, p.y]));
+		// Stage 5 takes the complements of both sides, each with its own names.
+		expect(named(stage(5).run.source)).toEqual([...stage(2).names.result]);
+		expect(named(stage(5).run.second!)).toEqual([...stage(4).names.result]);
+	});
+
+	it('keeps the places from stage to stage for a complement, and gives the result a document', async () => {
+		const run = await finished(documentFrom(evenA), 'intersection', documentFrom(evenA));
+		const plan = await buildPlan(run, 'dead', rows);
+		const stage2 = plan.stages[0]!;
+		const source = stage2.run.source;
+		expect(source.states.map((s) => [s.x, s.y])).toEqual(
+			documentFrom(evenA).states.map((s) => [s.x, s.y])
+		);
+		const doc = planResult(plan, 'Irisan A dan B');
+		expect(normal(toMachine(doc))).toEqual(normal(run.final));
+		expect(doc.title).toBe('Irisan A dan B');
+	});
+
+	it('keeps the frames in step with the engine for random pairs', async () => {
+		const rng = random(23);
+		const make = (): MachineDocument => {
+			const count = 1 + rng.int(3);
+			const seen = new Set<string>();
+			const transitions: Spec['transitions'] = [];
+			for (let i = 0; i < count * 2; i++) {
+				const entry: [number, string | null, number] = [
+					rng.int(count),
+					rng.chance(0.15) ? null : rng.pick(['a', 'b']),
+					rng.int(count)
+				];
+				if (!seen.has(entry.join())) transitions.push(entry);
+				seen.add(entry.join());
+			}
+			return of(
+				{
+					alphabet: ['a', 'b'],
+					states: Array.from({ length: count }, (_, i): [number, number] => [100 * i, 100]),
+					start: 0,
+					accepting: [rng.int(count)],
+					transitions
+				},
+				rng.chance(0.5) ? 'ndfsm' : 'dfsm'
+			);
+		};
+		for (let round = 0; round < 25; round++) {
+			const run = await finished(make(), 'intersection', make());
+			const plan = await buildPlan(run, 'dead', rows);
+			const end = planFrame(plan, plan.total - 1).frame.machine!;
+			expect(normal(end)).toEqual(normal(run.final));
+		}
+	});
+
+	it('needs a second machine of the same alphabet, and says why when it does not fit', async () => {
+		const first = documentFrom(evenA);
+		expect(refusalOf(first, 'intersection')).toBeNull();
+		expect(refusalOf(documentFrom({ states: [[0, 0]] }), 'intersection')?.key).toBe(
+			'convert.reason_no_start'
+		);
+		const none = await runConversion(engine, first, 'intersection');
+		expect(none).toEqual({ kind: 'refused', key: 'convert.second_gone', params: {} });
+		const other = documentFrom({ ...evenA, alphabet: ['a', 'c'], transitions: [[1, 'a', 0]] });
+		const bad = await runConversion(engine, first, 'intersection', other);
+		expect(bad).toMatchObject({ kind: 'refused', key: 'convert.reason_alphabet' });
+	});
+
+	it('a stop of the engine is told as a stop', async () => {
+		const outcome = await runConversion(
+			{
+				...engine,
+				intersection: async () => ({
+					ok: true,
+					value: { result: 'stopped', reason: 'max_states', partialTrace: [] }
+				})
+			},
+			documentFrom(evenA),
+			'intersection',
+			documentFrom(evenA)
+		);
+		expect(outcome).toEqual({ kind: 'stopped', key: 'convert.stopped_states' });
 	});
 });

@@ -1,7 +1,7 @@
 //! The step trace shared by the algorithms. Each step has a message key with parameters
 //! and a `Change` that holds the data, so the UI can animate it and translate the message.
 
-use crate::fsm::{StateId, SymbolId, Transition};
+use crate::fsm::{Fsm, StateId, SymbolId, Transition};
 use crate::message::Message;
 use serde::Serialize;
 
@@ -108,9 +108,13 @@ pub enum Change {
     },
     /// add_trap_state: no transition is missing, so the machine is not changed
     AlreadyComplete,
-    /// intersection: a new stage of the De Morgan construction begins
+    /// intersection: a new stage of the De Morgan construction begins. `inputs` are the machines
+    /// that the stage starts from (one, or two for the union), so that the steps that follow can be
+    /// shown on them.
     Stage {
         stage: u8,
+        #[cfg_attr(feature = "ts", ts(as = "Vec<crate::json::Wire>"))]
+        inputs: Vec<Fsm>,
     },
     NewState {
         state: StateId,

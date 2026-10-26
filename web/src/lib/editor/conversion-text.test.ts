@@ -76,11 +76,13 @@ describe('conversionText', () => {
 		const keys = new Set<string>(
 			['determinize.rs', 'minimize.rs', 'operations.rs'].flatMap((file) =>
 				[
-					...read(file).matchAll(/"((?:determinize|minimize|trap|complement|union)\.[a-z_]+)"/g)
+					...read(file).matchAll(
+						/"((?:determinize|minimize|trap|complement|union|intersection)\.[a-z_.]+)"/g
+					)
 				].map((m) => m[1]!)
 			)
 		);
-		expect(keys.size).toBeGreaterThanOrEqual(25);
+		expect(keys.size).toBeGreaterThanOrEqual(36);
 		for (const key of keys) {
 			expect(Object.hasOwn(id, key), `id ${key}`).toBe(true);
 			expect(Object.hasOwn(en, key), `en ${key}`).toBe(true);

@@ -6,14 +6,17 @@
 	import type { Params } from '#lib/i18n/translate.ts';
 	import {
 		CONVERT_OPS,
-		frameAt,
-		namesOf,
+		TWO_MACHINE_OPS,
+		buildPlan,
+		chipsOf,
+		planFrame,
+		planResult,
 		refusalOf,
 		resultDocument,
 		runConversion,
 		secondRefusalOf
 	} from './conversion.ts';
-	import type { ConvertOp, ConvertRun, Names, Place } from './conversion.ts';
+	import type { ConvertOp, Layout, Plan } from './conversion.ts';
 	import { conversionText } from './conversion-text.ts';
 	import { documentsEqual, LIMITS } from './document.ts';
 	import type { MachineDocument } from './document.ts';
@@ -32,16 +35,17 @@
 
 	let working = $state<ConvertOp | null>(null);
 	let note = $state<Say | null>(null);
-	let run = $state.raw<ConvertRun | null>(null);
-	let names = $state.raw<Names | null>(null);
-	let places = $state.raw<Place[] | null>(null);
+	let plan = $state.raw<Plan | null>(null);
+	// The machine, and the second machine, that the conversion started from.
+	let origin = $state.raw<{ first: MachineDocument; second?: MachineDocument } | null>(null);
 	let index = $state(0);
 	let playing = $state(false);
 	let showing = $state<'result' | 'source'>('result');
 	let heading = $state<HTMLElement>();
-	// The second machine of a union: the saved machines are read once (again when one is saved again),
-	// so that the list can say which of them do not fit; the chosen one is read again when it starts.
-	let secondId = $state('');
+	// The second machine of a union or an intersection: the saved machines are read once (again when
+	// one is saved again), so that the list can say which of them do not fit; the chosen one is read
+	// again when the conversion starts.
+	let secondIds = $state<Record<string, string>>({ union: '', intersection: '' });
 	let loaded = $state.raw<Record<string, MachineDocument | null>>({});
 	const asked: Record<string, true> = {};
 	const stampOf = (o: { id: string; stamp: number }) => `${o.id}:${o.stamp}`;
@@ -67,10 +71,14 @@
 			return { other, reason };
 		})
 	);
-	const chosen = $derived(choices.find((c) => c.other.id === secondId));
+	const chosenFor = (op: ConvertOp) => choices.find((c) => c.other.id === secondIds[op]);
+	const takesSecond = (op: ConvertOp) => TWO_MACHINE_OPS.includes(op);
 
-	const total = $derived(run?.trace.length ?? 0);
-	const frame = $derived(run && names ? frameAt(run, names, index) : null);
+	const total = $derived(plan?.total ?? 0);
+	const current = $derived(plan ? planFrame(plan, index) : null);
+	const frame = $derived(current?.frame ?? null);
+	const stage = $derived(current?.stage ?? null);
+	const chips = $derived(plan ? chipsOf(plan) : []);
 	const atEnd = $derived(index >= total - 1);
 
 	// "Konversi selesai!" for two seconds each time the player reaches its last step (by the play button, by a
@@ -78,7 +86,7 @@
 	let justDone = $state(false);
 	let wasAtEnd = false;
 	$effect(() => {
-		const end = run !== null && atEnd;
+		const end = plan !== null && atEnd;
 		if (!end) {
 			wasAtEnd = false;
 			justDone = false;
@@ -90,20 +98,21 @@
 		const timer = setTimeout(() => (justDone = false), 2000);
 		return () => clearTimeout(timer);
 	});
-	const sentence = $derived(frame && names ? conversionText(names, frame.step) : null);
+	const sentence = $derived(frame && stage ? conversionText(stage.names, frame.step) : null);
 
 	// What the canvas shows: the result as built so far, or the machine we started from (also while the
-	// result has no state yet, and then the states the step is about are lit).
+	// result has no state yet, and then the states the step is about are lit). In an intersection these
+	// are the machines of the stage that is open.
 	const view = $derived.by(() => {
-		if (!run || !names || !frame) return null;
+		if (!stage || !frame) return null;
 		if (showing === 'result' && frame.machine) {
 			return {
-				doc: resultDocument(run, names, places, frame.machine, ''),
+				doc: resultDocument(stage.run, stage.names, stage.places, frame.machine, ''),
 				active: new Set(frame.result)
 			};
 		}
 		// The second machine of a union is the source of the steps that copy it.
-		const from = frame.from === 2 && run.second ? run.second : run.source;
+		const from = frame.from === 2 && stage.run.second ? stage.run.second : stage.run.source;
 		return { doc: from, active: new Set(frame.source) };
 	});
 	$effect(() => {
@@ -113,9 +122,9 @@
 
 	// The steps are old when the machine changes.
 	$effect(() => {
-		const current = doc;
+		const changed = doc;
 		untrack(() => {
-			if (run && !documentsEqual(run.source, current)) close();
+			if (origin && !documentsEqual(origin.first, changed)) close();
 		});
 	});
 
@@ -136,43 +145,42 @@
 		>
 	);
 
+	// The layout of a result: a worker places the states; a machine that is too big or a layout that
+	// fails leaves the states on the grid of the document, and that is all.
+	const place: Layout = async (draft) => {
+		if (layoutRefusal(draft)) return null;
+		try {
+			return await layoutClient.run(layoutGraph(draft));
+		} catch (error) {
+			if (error instanceof LayoutCancelled) throw error;
+			return null;
+		}
+	};
+
 	async function start(op: ConvertOp) {
 		if (working) return;
 		const source = doc;
 		working = op;
 		note = null;
 		try {
-			const second = op === 'union' ? ((await load?.(secondId)) ?? undefined) : undefined;
+			const second = takesSecond(op) ? ((await load?.(secondIds[op]!)) ?? undefined) : undefined;
 			const outcome = await runConversion(engine, source, op, second);
 			if (!documentsEqual(source, doc)) return;
 			if (outcome.kind !== 'finished') {
 				note = { key: outcome.key, params: 'params' in outcome ? outcome.params : {} };
 				return;
 			}
-			const finished = outcome.run;
-			const named = namesOf(finished, t('convert.dead_name'));
-			let found: Place[] | null = null;
-			if (op !== 'trap' && op !== 'complement') {
-				const draft = resultDocument(finished, named, null, finished.final, '');
-				if (!layoutRefusal(draft)) {
-					try {
-						found = await layoutClient.run(layoutGraph(draft));
-					} catch (error) {
-						if (error instanceof LayoutCancelled) return;
-						// No layout: the states go on the grid of the document. That is all.
-					}
-				}
-			}
+			const built = await buildPlan(outcome.run, t('convert.dead_name'), place);
 			if (!documentsEqual(source, doc)) return;
-			run = finished;
-			names = named;
-			places = found;
+			origin = { first: source, ...(second ? { second } : {}) };
+			plan = built;
 			index = 0;
 			showing = 'result';
 			playing = false;
 			await tick();
 			heading?.focus();
-		} catch {
+		} catch (error) {
+			if (error instanceof LayoutCancelled) return;
 			note = { key: 'convert.engine_failed', params: {} };
 		} finally {
 			working = null;
@@ -181,20 +189,19 @@
 
 	function close() {
 		playing = false;
-		run = null;
-		names = null;
-		places = null;
+		plan = null;
+		origin = null;
 		index = 0;
 	}
 
 	function open() {
-		if (!run || !names) return;
-		const base = run.source.title || t('editor.untitled');
-		const second = run.second?.title || t('editor.untitled');
-		const title = Array.from(t(`convert.result_title.${run.op}`, { title: base, second }))
+		if (!plan || !origin) return;
+		const base = origin.first.title || t('editor.untitled');
+		const second = origin.second?.title || t('editor.untitled');
+		const title = Array.from(t(`convert.result_title.${plan.op}`, { title: base, second }))
 			.slice(0, LIMITS.titleChars)
 			.join('');
-		onopen(resultDocument(run, names, places, run.final, title));
+		onopen(planResult(plan, title));
 	}
 
 	const go = (to: number) => {
@@ -208,10 +215,40 @@
 </script>
 
 <div class="convert">
-	{#if run && names && frame && sentence}
+	{#if plan && stage && frame && sentence}
 		<section aria-labelledby="convert-heading">
-			<h3 id="convert-heading" tabindex="-1" bind:this={heading}>{t(`convert.op.${run.op}`)}</h3>
-			<p class="muted">{t('convert.step_of', { n: index + 1, total })}</p>
+			<h3 id="convert-heading" tabindex="-1" bind:this={heading}>{t(`convert.op.${plan.op}`)}</h3>
+			{#if stage.key}
+				<!-- An intersection is seven stages: the open one is named, and the chips jump between them. -->
+				<p class="stage">
+					{t('convert.stage_of', { n: stage.number })} · {t(stage.key as MessageKey)}
+				</p>
+				<ol class="chips" aria-label={t('convert.stages')}>
+					{#each chips as chip (chip.number)}
+						{@const name = t(chip.key as MessageKey)}
+						<li>
+							<button
+								type="button"
+								class="chip"
+								class:current={chip.number === stage.number}
+								disabled={!chip.present}
+								aria-current={chip.number === stage.number ? 'step' : undefined}
+								aria-label={chip.present
+									? t('convert.stage_chip', { n: chip.number, name })
+									: t('convert.stage_skipped', { n: chip.number, name })}
+								onclick={() => go(chip.offset)}
+							>
+								{chip.number}
+							</button>
+						</li>
+					{/each}
+				</ol>
+				<p class="muted">
+					{t('convert.step_in_stage', { n: current!.local + 1, total: stage.length })}
+				</p>
+			{:else}
+				<p class="muted">{t('convert.step_of', { n: index + 1, total })}</p>
+			{/if}
 			<!-- The live region is always in the page, so that a screen reader hears the text when it comes. -->
 			<p class="done" role="status">{justDone ? t('convert.done') : ''}</p>
 
@@ -309,7 +346,7 @@
 					onclick={() => go(index - 1)}>◀</button
 				>
 				<button type="button" class="play" onclick={toggle}>
-					{playing ? t('convert.pause') : t(`convert.play_${run.op}`)}
+					{playing ? t('convert.pause') : t(`convert.play_${plan.op}`)}
 				</button>
 				<button
 					type="button"
@@ -345,7 +382,7 @@
 			{#each CONVERT_OPS as op (op)}
 				{@const reason =
 					refusals[op] ??
-					(op === 'union' && others.length === 0
+					(takesSecond(op) && others.length === 0
 						? { key: 'convert.reason_no_second' as MessageKey, params: {} }
 						: null)}
 				<li>
@@ -354,10 +391,14 @@
 						<span class="muted" id="convert-hint-{op}">
 							{reason ? t(reason.key, reason.params) : t(`convert.op.${op}_hint`)}
 						</span>
-						{#if op === 'union' && !reason}
+						{#if takesSecond(op) && !reason}
 							<label class="second">
-								<span class="muted">{t('convert.second_label')}</span>
-								<select bind:value={secondId}>
+								<span class="muted"
+									>{t(
+										op === 'union' ? 'convert.second_label' : 'convert.second_label_intersection'
+									)}</span
+								>
+								<select bind:value={secondIds[op]}>
 									<option value="">{t('convert.second_placeholder')}</option>
 									{#each choices as { other, reason: unfit } (other.id)}
 										<option value={other.id} disabled={unfit !== null}>
@@ -374,7 +415,7 @@
 						type="button"
 						disabled={reason !== null ||
 							working !== null ||
-							(op === 'union' && (!chosen || chosen.reason !== null))}
+							(takesSecond(op) && (!chosenFor(op) || chosenFor(op)!.reason !== null))}
 						aria-describedby="convert-hint-{op}"
 						aria-busy={working === op}
 						onclick={() => void start(op)}
@@ -463,6 +504,28 @@
 		flex-direction: column;
 		gap: var(--space-1);
 		min-width: 0;
+	}
+	.stage {
+		font-weight: var(--weight-strong);
+	}
+	.chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-1);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.chip {
+		min-width: var(--target-min);
+		padding: 0;
+		font-family: var(--font-mono);
+	}
+	.chip.current {
+		border: 2px solid var(--color-accent);
+		background: var(--color-accent-tint);
+		color: var(--color-accent-ink);
+		font-weight: var(--weight-strong);
 	}
 	.second {
 		display: flex;

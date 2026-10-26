@@ -310,8 +310,14 @@ impl From<Message> for Failure {
     }
 }
 
-fn stage(trace: &mut Vec<ConversionStep>, number: u8, key: &'static str) {
-    trace.push(step(key, Change::Stage { stage: number }));
+fn stage(trace: &mut Vec<ConversionStep>, number: u8, key: &'static str, inputs: Vec<Fsm>) {
+    trace.push(step(
+        key,
+        Change::Stage {
+            stage: number,
+            inputs,
+        },
+    ));
 }
 
 /// A complete DFSM for the same language. A machine that already is one is returned as it is,
@@ -326,7 +332,7 @@ fn make_complete(
     if is_complete_dfsm(fsm) {
         return Ok(fsm.clone());
     }
-    stage(trace, number, key);
+    stage(trace, number, key, vec![fsm.clone()]);
     match determinize(fsm, budget)? {
         Conversion::Finished {
             dfsm, trace: steps, ..
@@ -350,7 +356,7 @@ fn complement_stage(
     key: &'static str,
     trace: &mut Vec<ConversionStep>,
 ) -> Result<Fsm, Failure> {
-    stage(trace, number, key);
+    stage(trace, number, key, vec![fsm.clone()]);
     let op = complement(fsm)?;
     trace.extend(op.trace);
     Ok(op.fsm)
@@ -366,7 +372,12 @@ fn run(
     let c1 = complement_stage(&d1, 2, "intersection.stage.complement_first", trace)?;
     let d2 = make_complete(b, budget, 3, "intersection.stage.complete_second", trace)?;
     let c2 = complement_stage(&d2, 4, "intersection.stage.complement_second", trace)?;
-    stage(trace, 5, "intersection.stage.union");
+    stage(
+        trace,
+        5,
+        "intersection.stage.union",
+        vec![c1.clone(), c2.clone()],
+    );
     let both = union(&c1, &c2)?;
     trace.extend(both.trace);
     let d3 = make_complete(
