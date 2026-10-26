@@ -91,6 +91,7 @@ test('minimize and the dead state each step to their end', async ({ page }) => {
 	await openDfsm(page);
 	await operation(page, 'Minimalkan DFSM').getByRole('button', { name: 'Mulai' }).click();
 	await expect(panel(page).getByRole('heading', { name: 'Minimalkan DFSM' })).toBeFocused();
+	await expect(button(page, 'Minimalkan')).toBeVisible();
 	await button(page, 'Ke hasil').click();
 	await expect(sentence(page)).toContainText('accepting state');
 	await panel(page).getByRole('button', { name: 'Tutup' }).click();
@@ -99,19 +100,22 @@ test('minimize and the dead state each step to their end', async ({ page }) => {
 	// The example is complete, so the trace is one step that says so, and the end is the start.
 	await operation(page, 'Tambah dead state').getByRole('button', { name: 'Mulai' }).click();
 	await expect(panel(page).getByText('Langkah 1 dari 1')).toBeVisible();
+	await expect(button(page, 'Lengkapi')).toBeVisible();
 	await expect(sentence(page)).toContainText('sudah lengkap');
 	await expect(button(page, 'Ke hasil')).toBeDisabled();
 	await expect(panel(page).getByRole('button', { name: 'Buka sebagai mesin baru' })).toBeVisible();
 });
 
-test('Putar plays the steps one after the other, and Jeda stops', async ({ page }) => {
+test('the play button, named for the operation, plays the steps one after the other, and Jeda stops', async ({
+	page
+}) => {
 	await openNdfsm(page);
 	await operation(page, 'NDFSM → DFSM').getByRole('button', { name: 'Mulai' }).click();
-	await button(page, 'Putar').click();
+	await button(page, 'Konversi').click();
 	await expect(button(page, 'Jeda')).toBeVisible();
 	await expect(panel(page).getByText(/^Langkah [2-9]\d* dari/)).toBeVisible();
 	await button(page, 'Jeda').click();
-	await expect(button(page, 'Putar')).toBeVisible();
+	await expect(button(page, 'Konversi')).toBeVisible();
 });
 
 test('a change of the machine closes the steps, and another tab keeps them', async ({ page }) => {
@@ -148,7 +152,7 @@ test('every target is at least 44 px, and the tabs fit the panel', async ({ page
 	for (const name of [
 		'Ke awal',
 		'Mundur',
-		'Putar',
+		'Konversi',
 		'Maju',
 		'Ke hasil',
 		'Tutup',
@@ -192,6 +196,7 @@ test('complement flips the accepting states step by step, and opens as a new mac
 	await operation(page, 'Komplemen').getByRole('button', { name: 'Mulai' }).click();
 	await expect(panel(page).getByText('Langkah 1 dari 3')).toBeVisible();
 	await expect(sentence(page)).toContainText('accepting state');
+	await expect(button(page, 'Komplemen')).toBeVisible();
 	await button(page, 'Ke hasil').click();
 	const table = panel(page).getByRole('table', { name: 'Tabel transisi hasil' });
 	await expect(table.getByRole('columnheader', { name: 'Terima' })).toBeVisible();
@@ -232,6 +237,7 @@ test('union needs a second machine, takes it from the list, and opens the result
 	await row.getByRole('button', { name: 'Mulai' }).click();
 
 	await expect(panel(page).getByText('Langkah 1 dari 5')).toBeVisible();
+	await expect(button(page, 'Gabungkan')).toBeVisible();
 	await expect(sentence(page)).toContainText('Salin mesin pertama');
 	await button(page, 'Maju').click();
 	await expect(sentence(page)).toContainText('Salin mesin kedua');

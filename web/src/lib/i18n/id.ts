@@ -349,7 +349,12 @@ export const id = {
 	'convert.back': 'Mundur',
 	'convert.next': 'Maju',
 	'convert.last': 'Ke hasil',
-	'convert.play': 'Putar',
+	// The play button carries the name of what it plays.
+	'convert.play_determinize': 'Konversi',
+	'convert.play_minimize': 'Minimalkan',
+	'convert.play_trap': 'Lengkapi',
+	'convert.play_complement': 'Komplemen',
+	'convert.play_union': 'Gabungkan',
 	'convert.pause': 'Jeda',
 	'convert.view': 'Tampilan kanvas',
 	'convert.view_result': 'Hasil',

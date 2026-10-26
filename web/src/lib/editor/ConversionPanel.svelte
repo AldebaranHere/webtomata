@@ -73,7 +73,7 @@
 	const frame = $derived(run && names ? frameAt(run, names, index) : null);
 	const atEnd = $derived(index >= total - 1);
 
-	// "Konversi selesai!" for two seconds each time the player reaches its last step (by Putar, by a
+	// "Konversi selesai!" for two seconds each time the player reaches its last step (by the play button, by a
 	// step, or by Ke hasil). A step back and forward again shows it again.
 	let justDone = $state(false);
 	let wasAtEnd = false;
@@ -309,7 +309,7 @@
 					onclick={() => go(index - 1)}>◀</button
 				>
 				<button type="button" class="play" onclick={toggle}>
-					{playing ? t('convert.pause') : t('convert.play')}
+					{playing ? t('convert.pause') : t(`convert.play_${run.op}`)}
 				</button>
 				<button
 					type="button"
