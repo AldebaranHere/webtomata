@@ -160,22 +160,17 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('pnpm-lock.yaml') }}
-      # The packages of the system libraries come from the mirror of the runner, which sometimes
-      # hangs for ten minutes or more (it took 8 to 36 minutes in some runs, against 30 seconds
-      # normally). A short timeout makes apt give up on it and use the next mirror at once.
-      - run: |
-          sudo tee /etc/apt/apt.conf.d/99-fail-fast > /dev/null <<'CONF'
-          Acquire::http::Timeout "15";
-          Acquire::https::Timeout "15";
-          Acquire::Retries "3";
-          CONF
-      - run: pnpm --filter web exec playwright install --with-deps ${{ matrix.browser }}
+      - run: pnpm --filter web exec playwright install ${{ matrix.browser }}
         if: steps.browsers.outputs.cache-hit != 'true'
-        timeout-minutes: 6
-      # A cached browser still needs the system libraries.
-      - run: pnpm --filter web exec playwright install-deps ${{ matrix.browser }}
-        if: steps.browsers.outputs.cache-hit == 'true'
-        timeout-minutes: 6
+        timeout-minutes: 5
+      # The system libraries come from the Ubuntu mirror of the runner (azure.archive.ubuntu.com).
+      # Sometimes that mirror is so slow, without hanging, that `playwright install-deps` takes 6
+      # minutes or more (8 to 36 minutes in some runs, against 30 seconds normally), and it has no
+      # time limit. tools/install-browser-deps.sh runs apt itself under a hard limit, up to three
+      # tries of 150 seconds each, and uses the main archive from the second try on.
+      - name: Install the system libraries of the browser
+        timeout-minutes: 10
+        run: bash tools/install-browser-deps.sh ${{ matrix.browser }}
       - run: pnpm --filter web exec playwright test --project=${{ matrix.project }}
 
   # The gate. The ruleset requires this check by its name, `web`. It runs also when a job before it
