@@ -23,6 +23,11 @@
 	import type { ConversionProps } from './conversion-props.ts';
 	import { LayoutCancelled, layoutClient } from './layout-client.ts';
 	import { layoutGraph, refusalOf as layoutRefusal } from './layout.ts';
+	import PlayerControls from './PlayerControls.svelte';
+	import RegexPlayer from './RegexPlayer.svelte';
+	import { REGEX_OPS, regexRefusalOf, runFsmToRegex } from './regex-conversion.ts';
+	import type { RegexOp, RegexRun } from './regex-conversion.ts';
+	import type { ConversionShown } from './conversion-props.ts';
 
 	// The "Konversi" tab: a list of operations (each with the reason when it does not fit the
 	// machine), and a player that steps through the trace of the one that was chosen. The engine does
@@ -33,8 +38,13 @@
 
 	type Say = { key: MessageKey; params: Params };
 
-	let working = $state<ListedOp | null>(null);
+	let working = $state<ListedOp | RegexOp | null>(null);
 	let note = $state<Say | null>(null);
+	// A conversion that makes a regular expression (it has its own player), and the view it shows.
+	let regexRun = $state.raw<RegexRun | null>(null);
+	let regexView = $state.raw<ConversionShown | null>(null);
+	// The last run stopped because a label got too big: a bigger limit may finish it.
+	let canRaise = $state(false);
 	let plan = $state.raw<Plan | null>(null);
 	// The machine, and the second machine, that the conversion started from.
 	let origin = $state.raw<{ first: MachineDocument; second?: MachineDocument } | null>(null);
@@ -126,7 +136,7 @@
 		return { doc: from, active: new Set(frame.source) };
 	});
 	$effect(() => {
-		onshow(view);
+		onshow(regexView ?? view);
 	});
 	onDestroy(() => onshow(null));
 
@@ -197,8 +207,32 @@
 		}
 	}
 
+	async function startRegex(op: RegexOp, raised = false) {
+		if (working) return;
+		const source = doc;
+		working = op;
+		note = null;
+		canRaise = false;
+		try {
+			const outcome = await runFsmToRegex(engine, source, raised);
+			if (!documentsEqual(source, doc)) return;
+			if (outcome.kind !== 'finished') {
+				note = { key: outcome.key, params: 'params' in outcome ? outcome.params : {} };
+				canRaise = outcome.kind === 'stopped' && outcome.raise;
+				return;
+			}
+			origin = { first: source };
+			regexRun = outcome.run;
+		} catch {
+			note = { key: 'convert.engine_failed', params: {} };
+		} finally {
+			working = null;
+		}
+	}
+
 	function close() {
 		playing = false;
+		regexRun = null;
 		plan = null;
 		origin = null;
 		index = 0;
@@ -225,7 +259,9 @@
 </script>
 
 <div class="convert">
-	{#if plan && stage && frame && sentence}
+	{#if regexRun}
+		<RegexPlayer run={regexRun} onshow={(shown) => (regexView = shown)} onclose={close} />
+	{:else if plan && stage && frame && sentence}
 		<section aria-labelledby="convert-heading">
 			<h3 id="convert-heading" tabindex="-1" bind:this={heading}>{t(`convert.op.${plan.op}`)}</h3>
 			{#if stage.key}
@@ -346,39 +382,14 @@
 				</div>
 			{/if}
 
-			<div class="controls" role="group" aria-label={t('convert.controls')}>
-				<button
-					type="button"
-					class="icon"
-					aria-label={t('convert.first')}
-					disabled={index === 0}
-					onclick={() => go(0)}>⏮</button
-				>
-				<button
-					type="button"
-					class="icon"
-					aria-label={t('convert.back')}
-					disabled={index === 0}
-					onclick={() => go(index - 1)}>◀</button
-				>
-				<button type="button" class="play" onclick={toggle}>
-					{playing ? t('convert.pause') : t(`convert.play_${plan.op}`)}
-				</button>
-				<button
-					type="button"
-					class="icon"
-					aria-label={t('convert.next')}
-					disabled={atEnd}
-					onclick={() => go(index + 1)}>▶</button
-				>
-				<button
-					type="button"
-					class="icon"
-					aria-label={t('convert.last')}
-					disabled={atEnd}
-					onclick={() => go(total - 1)}>⏭</button
-				>
-			</div>
+			<PlayerControls
+				{index}
+				{total}
+				{playing}
+				playLabel={t(`convert.play_${plan.op}`)}
+				ongo={go}
+				ontoggle={toggle}
+			/>
 
 			<div class="end">
 				{#if atEnd}
@@ -393,6 +404,11 @@
 		<p class="progress" role="status">{working ? t('convert.in_progress') : ''}</p>
 		{#if note}
 			<p class="note" role="status">{t(note.key, note.params)}</p>
+		{/if}
+		{#if canRaise}
+			<button type="button" class="raise" onclick={() => void startRegex('fsm_to_regex', true)}>
+				{t('convert.raise_limit')}
+			</button>
 		{/if}
 		<ul class="ops">
 			{#each CONVERT_OPS as op (op)}
@@ -437,6 +453,29 @@
 				</li>
 			{/each}
 		</ul>
+		<h4>{t('convert.group_regex')}</h4>
+		<ul class="ops">
+			{#each REGEX_OPS as op (op)}
+				{@const reason = regexRefusalOf(doc)}
+				<li>
+					<div class="text">
+						<span class="name">{t(`convert.op.${op}`)}</span>
+						<span class="muted" id="convert-hint-{op}">
+							{reason ? t(reason.key, reason.params) : t(`convert.op.${op}_hint`)}
+						</span>
+					</div>
+					<button
+						type="button"
+						disabled={reason !== null || working !== null}
+						aria-describedby="convert-hint-{op}"
+						aria-busy={working === op}
+						onclick={() => void startRegex(op)}
+					>
+						{working === op ? t('convert.working') : t('convert.start')}
+					</button>
+				</li>
+			{/each}
+		</ul>
 	{/if}
 </div>
 
@@ -452,10 +491,12 @@
 		gap: var(--space-3);
 	}
 	h3,
+	h4,
 	p {
 		margin: 0;
 	}
-	h3 {
+	h3,
+	h4 {
 		font-size: var(--text-base);
 	}
 	h3:focus-visible {
@@ -644,21 +685,14 @@
 		background: var(--color-accent-tint);
 		color: var(--color-accent-ink);
 	}
-	.controls {
-		display: grid;
-		grid-template-columns: auto auto 1fr auto auto;
-		gap: var(--space-2);
-	}
-	.icon {
-		min-width: var(--target-min);
-		padding: 0;
-	}
-	.play,
 	.primary {
 		border: 0;
 		background: var(--color-accent);
 		color: var(--color-on-accent);
 		font-weight: var(--weight-strong);
+	}
+	.raise {
+		align-self: flex-start;
 	}
 	.end {
 		display: flex;

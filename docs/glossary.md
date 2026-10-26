@@ -75,3 +75,5 @@ Added in S7-2a, with no source yet (`TODO(review)`): Komplemen (complement; the 
 Added in S7-2b, with no source yet (`TODO(review)`): Irisan (intersection; the glossary has "irisan"), Tahap n dari 7 (stage n of 7), dilewati (skipped), Irisan dengan (intersect with).
 
 Added in S7-2c, with no source yet (`TODO(review)`): XOR (the symmetric difference; the row says "XOR" and the hint "Selisih simetris"; Rich says "symmetric difference"), mesin produk (the product machine; Rich: cross-product machine), pasangan state (a pair of states), kedua mesin ekuivalen (the two machines are equivalent).
+
+Added in S7-3 (`TODO(review)`): "Mesin → regex" (FSM → regex; Rich: `fsmtoregex`), label (the expression on the path between two states), "Naikkan batas" (raise the limit), "Salin" (copy), "Notasi Rich" (Rich notation).

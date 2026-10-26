@@ -434,3 +434,66 @@ test('a conversion with one step says it is done at once', async ({ page }) => {
 	await operation(page, 'Tambah dead state').getByRole('button', { name: 'Mulai' }).click();
 	await expect(panel(page).getByText('Konversi selesai!')).toBeVisible();
 });
+
+test('Mesin → regex steps through the elimination, lights the state, and ends at the expression', async ({
+	page
+}) => {
+	await openDfsm(page);
+	const row = operation(page, 'Mesin → regex');
+	await expect(row).toContainText('Cari ekspresi reguler');
+	await row.getByRole('button', { name: 'Mulai' }).click();
+	await expect(panel(page).getByRole('heading', { name: 'Mesin → regex' })).toBeFocused();
+	await expect(panel(page).getByText(/^Langkah 1 dari \d+$/)).toBeVisible();
+	await expect(shown(page)).toBeVisible();
+	// No expression and no result machine before the end.
+	await expect(panel(page).getByRole('region', { name: 'Ekspresi reguler' })).toHaveCount(0);
+	await expect(button(page, 'Buka sebagai mesin baru')).toHaveCount(0);
+	// The steps go on until the table of labels, and then a state is removed at each step.
+	await expect(sentence(page)).toContainText('start state baru');
+	await button(page, 'Maju').click();
+	await button(page, 'Maju').click();
+	await expect(sentence(page)).toContainText('Satu label untuk setiap pasangan state');
+	const table = panel(page).getByRole('table', { name: 'Label: ekspresi untuk jalur antar state' });
+	await expect(table.getByRole('columnheader')).toHaveText(['Dari', 'Ke', 'Label']);
+	await button(page, 'Maju').click();
+	await expect(sentence(page)).toContainText('Hapus state');
+	await expect(table.locator('tr.hot').first()).toBeVisible();
+	await expectNoAxeViolations(page);
+	await button(page, 'Ke hasil').click();
+	await expect(panel(page).getByText('Konversi selesai!')).toBeVisible();
+	const result = panel(page).getByRole('region', { name: 'Ekspresi reguler' });
+	await expect(result).toBeVisible();
+	// The engine's expression for "Berakhiran 01" (the strings that end with 01), in Rich's notation.
+	await expect(result).toHaveText('(1∪0(0∪10)*11)*0(0∪10)*1');
+	await expect(table.getByRole('row')).toHaveCount(2);
+	await expectNoAxeViolations(page);
+});
+
+test('Mesin → regex copies the expression', async ({ page, context, browserName }) => {
+	test.skip(browserName !== 'chromium', 'only Chrome lets a test grant the clipboard');
+	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+	await openDfsm(page);
+	await operation(page, 'Mesin → regex').getByRole('button', { name: 'Mulai' }).click();
+	await expect(button(page, 'Salin')).toHaveCount(0);
+	await button(page, 'Ke hasil').click();
+	const text = (await panel(page).getByRole('region', { name: 'Ekspresi reguler' }).textContent())!;
+	await button(page, 'Salin').click();
+	await expect(panel(page).getByText('Tersalin.')).toBeVisible();
+	expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(text.trim());
+});
+
+test('Mesin → regex has buttons of at least 44 px, and Tutup goes back to the list', async ({
+	page
+}) => {
+	await openDfsm(page);
+	await operation(page, 'Mesin → regex').getByRole('button', { name: 'Mulai' }).click();
+	await button(page, 'Ke hasil').click();
+	for (const name of ['Salin', 'Tutup', 'Mundur', 'Maju', 'Ke awal', 'Ke hasil']) {
+		const b = (await button(page, name).boundingBox())!;
+		expect(b.height, name).toBeGreaterThanOrEqual(44);
+		expect(b.width, name).toBeGreaterThanOrEqual(44);
+	}
+	await button(page, 'Tutup').click();
+	await expect(operation(page, 'Mesin → regex')).toBeVisible();
+	await expect(shown(page)).toHaveCount(0);
+});

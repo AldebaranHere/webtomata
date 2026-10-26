@@ -453,6 +453,40 @@ export const en: Record<MessageKey, string> = {
 	'product.transition': 'From {from} on {symbol} go to {to}: both machines move together.',
 	'product.accepting_first': '{state} is an accepting state: only the first machine accepts.',
 	'product.accepting_second': '{state} is an accepting state: only the second machine accepts.',
+	// TODO(review): the wording of the regex conversions is a draft until the feedback guide (U4).
+	'convert.group_regex': 'Regular expression',
+	'convert.op.fsm_to_regex': 'Machine → regex',
+	'convert.op.fsm_to_regex_hint':
+		'Find a regular expression for the language of this machine by removing states one at a time.',
+	'convert.play_fsm_to_regex': 'Machine → regex',
+	'convert.stopped_nodes': 'The expression got too big, so the calculation was stopped.',
+	'convert.raise_limit': 'Raise the limit',
+	'convert.regex_result': 'Regular expression',
+	'convert.regex_notation':
+		'Rich notation: ∪ for union, ε for the empty string, ∅ for the empty set.',
+	'convert.copy': 'Copy',
+	'convert.copied': 'Copied.',
+	'convert.copy_failed': 'Could not copy. Select the text and copy it yourself.',
+	'convert.new_start_name': 's',
+	'convert.new_accepting_name': 'f',
+	'convert.table_labels': 'Labels: the expression for the path between states',
+	'convert.col_from': 'From',
+	'convert.col_to': 'To',
+	'convert.col_label': 'Label',
+	'fsm_to_regex.remove_unreachable':
+		'{state} cannot be reached from the start state, so it is removed.',
+	'fsm_to_regex.no_accepting': 'No accepting state can be reached, so the result is {expression}.',
+	'fsm_to_regex.new_start':
+		'A transition goes into the start state, so add a new start state {state} with an ε-transition to the old one.',
+	'fsm_to_regex.new_accepting':
+		'Add a new accepting state {state} with an ε-transition from each old accepting state.',
+	'fsm_to_regex.only_one_state': 'Only one state is left, so the result is {expression}.',
+	'fsm_to_regex.table': 'One label for each pair of states; several transitions are joined with ∪.',
+	'fsm_to_regex.rip':
+		'Remove state {state}. Each path through {state} becomes part of the label of the pair of states around it.',
+	'fsm_to_regex.result':
+		'The label from the start state to the accepting state is the result: {expression}',
+	'fsm_to_regex.no_start_state': 'The machine must have a start state.',
 
 	'page.soon': 'Coming soon.',
 	'page.home': 'Back to home'
