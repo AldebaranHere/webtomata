@@ -15,30 +15,35 @@ import type {
 	MachineTransition,
 	Minimization,
 	Operation,
-	StopReason
+	StopReason,
+	Xor
 } from '../engine/types.ts';
 import { documentFromMachine, toMachine } from './document.ts';
 import type { MachineDocument } from './document.ts';
 
+/** `product` is only the third stage of an XOR: the product machine. It is not in the list. */
 export type ConvertOp =
-	'determinize' | 'minimize' | 'trap' | 'complement' | 'union' | 'intersection';
-export const CONVERT_OPS: readonly ConvertOp[] = [
+	'determinize' | 'minimize' | 'trap' | 'complement' | 'union' | 'intersection' | 'xor' | 'product';
+/** The operations of the list: all but the product, which is a stage of the XOR. */
+export type ListedOp = Exclude<ConvertOp, 'product'>;
+export const CONVERT_OPS: readonly ListedOp[] = [
 	'determinize',
 	'minimize',
 	'trap',
 	'complement',
 	'union',
-	'intersection'
+	'intersection',
+	'xor'
 ];
 
 /** The operations that take a second machine from the list of saved machines. */
-export const TWO_MACHINE_OPS: readonly ConvertOp[] = ['union', 'intersection'];
+export const TWO_MACHINE_OPS: readonly ListedOp[] = ['union', 'intersection', 'xor'];
 
 /** A finished conversion: the machine it started from, the engine's answer and its trace. */
 export interface ConvertRun {
 	op: ConvertOp;
 	source: MachineDocument;
-	/** The second machine of a union or an intersection. */
+	/** The second machine of a union, an intersection or an XOR. */
 	second?: MachineDocument;
 	final: Machine;
 	trace: readonly ConversionStep[];
@@ -61,7 +66,7 @@ export function refusalOf(doc: MachineDocument, op: ConvertOp): Refusal | null {
 	if (doc.states.length === 0) return no('convert.reason_empty');
 	if (doc.start === null) return no('convert.reason_no_start');
 	if (op === 'determinize' && doc.kind === 'dfsm') return no('convert.reason_already_dfsm');
-	if (op !== 'determinize' && op !== 'union' && op !== 'intersection' && doc.kind === 'ndfsm') {
+	if (!ANY_KIND_OPS.includes(op) && doc.kind === 'ndfsm') {
 		return no('convert.reason_needs_dfsm');
 	}
 	if (op === 'minimize' && doc.states.length > MINIMIZE_MAX_STATES) {
@@ -70,6 +75,9 @@ export function refusalOf(doc: MachineDocument, op: ConvertOp): Refusal | null {
 	if (op === 'complement' && !isComplete(doc)) return no('convert.reason_incomplete');
 	return null;
 }
+
+/** The operations that take an NDFSM too (the others need a DFSM). */
+const ANY_KIND_OPS: readonly ConvertOp[] = ['determinize', 'union', 'intersection', 'xor'];
 
 /** Does every state have exactly one transition on every symbol, and none on ε? */
 function isComplete(doc: MachineDocument): boolean {
@@ -120,6 +128,15 @@ export function namesOf(run: ConvertRun, trapName: string): Names {
 		for (let n = 2; taken.has(name); n++) name = `${trapName}_${n}`;
 		for (const step of run.trace) {
 			if (step.change.kind === 'new_state') result.set(step.change.state, name);
+		}
+		return { source, result, second };
+	}
+	if (run.op === 'product') {
+		// A state of the product is named by its two states: (q1, r0). A name that would be too long is S<id>.
+		for (const { change } of run.trace) {
+			if (change.kind !== 'pair') continue;
+			const text = `(${sourceName(change.first)}, ${second.get(change.second) ?? `q${change.second}`})`;
+			result.set(change.state, Array.from(text).length > NAME_CHARS ? `S${change.state}` : text);
 		}
 		return { source, result, second };
 	}
@@ -196,6 +213,9 @@ function litStates(change: Change): { source: number[]; result: number[] } {
 			return { source: [...change.kept, ...change.new], result: [] };
 		case 'new_state':
 			return { source: change.members, result: [change.state] };
+		case 'pair':
+			// The state of the first machine; the second one is in the sentence and in the name.
+			return { source: [change.first], result: [change.state] };
 		case 'start':
 		case 'accepting':
 		case 'not_accepting':
@@ -230,6 +250,7 @@ export function frameAt(run: ConvertRun, names: Names, index: number): Frame {
 		const { change } = run.trace[i]!;
 		switch (change.kind) {
 			case 'new_state':
+			case 'pair':
 				states.push(change.state);
 				break;
 			case 'start':
@@ -285,6 +306,7 @@ export function frameAt(run: ConvertRun, names: Names, index: number): Frame {
 			change.kind === 'transition' || change.kind === 'epsilon'
 				? change.from
 				: change.kind === 'new_state' ||
+					  change.kind === 'pair' ||
 					  change.kind === 'accepting' ||
 					  change.kind === 'not_accepting' ||
 					  change.kind === 'start'
@@ -338,6 +360,7 @@ export interface ConvertEngine {
 	complement(machine: Machine): Promise<EngineResult<Operation>>;
 	union(first: Machine, second: Machine): Promise<EngineResult<Operation>>;
 	intersection(first: Machine, second: Machine): Promise<EngineResult<Intersection>>;
+	xor(first: Machine, second: Machine): Promise<EngineResult<Xor>>;
 }
 
 export type ConvertOutcome =
@@ -354,7 +377,7 @@ export async function runConversion(
 ): Promise<ConvertOutcome> {
 	const refusal = refusalOf(doc, op);
 	if (refusal) return { kind: 'refused', ...refusal };
-	if (op === 'union' || op === 'intersection') {
+	if ((TWO_MACHINE_OPS as readonly ConvertOp[]).includes(op)) {
 		if (!second) return { kind: 'refused', key: 'convert.second_gone', params: {} };
 		const unfit = secondRefusalOf(doc, second);
 		if (unfit) return { kind: 'refused', ...unfit };
@@ -371,7 +394,9 @@ export async function runConversion(
 						? await engine.union(machine, toMachine(second!))
 						: op === 'intersection'
 							? await engine.intersection(machine, toMachine(second!))
-							: await engine.addTrapState(machine);
+							: op === 'xor'
+								? await engine.xor(machine, toMachine(second!))
+								: await engine.addTrapState(machine);
 	if (!answer.ok) {
 		const key = answer.error.key.endsWith('.invalid_machine')
 			? 'convert.invalid_machine'
@@ -459,36 +484,50 @@ export interface Stage {
 }
 
 export interface Plan {
-	op: ConvertOp;
+	op: ListedOp;
 	stages: Stage[];
 	/** The number of steps of the player. */
 	total: number;
 }
 
 /** The result of these operations is a new drawing, so it gets a layout; the others keep the places. */
-const NEEDS_LAYOUT: ReadonlySet<ConvertOp> = new Set(['determinize', 'minimize', 'union']);
+const NEEDS_LAYOUT: ReadonlySet<ConvertOp> = new Set([
+	'determinize',
+	'minimize',
+	'union',
+	'product'
+]);
 
-/** What each stage of an intersection does. */
-const STAGE_OPS: Record<number, ConvertOp> = {
-	1: 'determinize',
-	2: 'complement',
-	3: 'determinize',
-	4: 'complement',
-	5: 'union',
-	6: 'determinize',
-	7: 'complement'
+/** The operations that are a plan of stages, and what each stage of them does. */
+type Staged = 'intersection' | 'xor';
+const isStaged = (op: ConvertOp): op is Staged => op === 'intersection' || op === 'xor';
+
+const STAGE_OPS: Record<Staged, Record<number, ConvertOp>> = {
+	intersection: {
+		1: 'determinize',
+		2: 'complement',
+		3: 'determinize',
+		4: 'complement',
+		5: 'union',
+		6: 'determinize',
+		7: 'complement'
+	},
+	xor: { 1: 'determinize', 2: 'determinize', 3: 'product' }
 };
 
-/** The names of the seven stages, in order (the engine's message keys). */
-export const INTERSECTION_STAGE_KEYS = [
-	'intersection.stage.complete_first',
-	'intersection.stage.complement_first',
-	'intersection.stage.complete_second',
-	'intersection.stage.complement_second',
-	'intersection.stage.union',
-	'intersection.stage.complete_union',
-	'intersection.stage.complement_union'
-] as const;
+/** The names of the stages, in order (the engine's message keys). */
+const STAGE_KEYS: Record<Staged, readonly string[]> = {
+	intersection: [
+		'intersection.stage.complete_first',
+		'intersection.stage.complement_first',
+		'intersection.stage.complete_second',
+		'intersection.stage.complement_second',
+		'intersection.stage.union',
+		'intersection.stage.complete_union',
+		'intersection.stage.complement_union'
+	],
+	xor: ['xor.stage.complete_first', 'xor.stage.complete_second', 'xor.stage.product']
+};
 
 interface Slot {
 	names: ReadonlyMap<number, string>;
@@ -527,7 +566,7 @@ async function layoutOf(
  * states go on the grid of the document.
  */
 export async function buildPlan(run: ConvertRun, deadName: string, layout?: Layout): Promise<Plan> {
-	if (run.op !== 'intersection') {
+	if (!isStaged(run.op)) {
 		const names = namesOf(run, deadName);
 		const places = await layoutOf(run, names, layout);
 		const stage: Stage = {
@@ -539,7 +578,8 @@ export async function buildPlan(run: ConvertRun, deadName: string, layout?: Layo
 			offset: 0,
 			length: run.trace.length
 		};
-		return { op: run.op, stages: [stage], total: run.trace.length };
+		// A simple run is never the product: that is a stage of an XOR.
+		return { op: run.op as ListedOp, stages: [stage], total: run.trace.length };
 	}
 
 	const markers = run.trace.flatMap((step, at) =>
@@ -548,32 +588,37 @@ export async function buildPlan(run: ConvertRun, deadName: string, layout?: Layo
 			: []
 	);
 	const marker = (n: number) => markers.find((m) => m.number === n);
+	const kind = run.op as Staged;
 	// The machine that a stage makes is the input of the stage that uses it.
+	const uses: Record<Staged, Record<number, [number, number]>> = {
+		intersection: { 1: [2, 0], 2: [5, 0], 3: [4, 0], 4: [5, 1], 5: [6, 0], 6: [7, 0] },
+		xor: { 1: [3, 0], 2: [3, 1] }
+	};
 	const made = (n: number): Machine => {
-		const next: Record<number, [number, number]> = {
-			1: [2, 0],
-			2: [5, 0],
-			3: [4, 0],
-			4: [5, 1],
-			5: [6, 0],
-			6: [7, 0]
-		};
-		const use = next[n];
+		const use = uses[kind][n];
 		return use ? marker(use[0])!.inputs[use[1]]! : run.final;
 	};
 	const first = slotOf(run.source);
 	const second = slotOf(run.second!);
 	const out = new Map<number, Slot>();
-	// A stage that was skipped passes its machine on as it is.
-	const from: Record<number, () => Slot[]> = {
-		1: () => [first],
-		2: () => [out.get(1) ?? first],
-		3: () => [second],
-		4: () => [out.get(3) ?? second],
-		5: () => [out.get(2)!, out.get(4)!],
-		6: () => [out.get(5)!],
-		7: () => [out.get(6) ?? out.get(5)!]
+	// What each stage starts from. A stage that was skipped passes its machine on as it is.
+	const starts: Record<Staged, Record<number, () => Slot[]>> = {
+		intersection: {
+			1: () => [first],
+			2: () => [out.get(1) ?? first],
+			3: () => [second],
+			4: () => [out.get(3) ?? second],
+			5: () => [out.get(2)!, out.get(4)!],
+			6: () => [out.get(5)!],
+			7: () => [out.get(6) ?? out.get(5)!]
+		},
+		xor: {
+			1: () => [first],
+			2: () => [second],
+			3: () => [out.get(1) ?? first, out.get(2) ?? second]
+		}
 	};
+	const from = starts[kind];
 
 	const stages: Stage[] = [];
 	let offset = 0;
@@ -583,7 +628,7 @@ export async function buildPlan(run: ConvertRun, deadName: string, layout?: Layo
 		const other = m.inputs[1] ? documentWith(m.inputs[1], s1!) : undefined;
 		const end = markers[i + 1]?.at ?? run.trace.length;
 		const sub: ConvertRun = {
-			op: STAGE_OPS[m.number]!,
+			op: STAGE_OPS[kind][m.number]!,
 			source,
 			...(other ? { second: other } : {}),
 			final: made(m.number),
@@ -628,12 +673,12 @@ export function planResult(plan: Plan, title: string): MachineDocument {
 	return resultDocument(last.run, last.names, last.places, last.run.final, title);
 }
 
-/** The seven stages of an intersection as chips, with where each one starts; a skipped one is not present. */
+/** The stages of an intersection or an XOR as chips, with where each one starts; a skipped one is not present. */
 export function chipsOf(
 	plan: Plan
 ): { number: number; key: string; present: boolean; offset: number }[] {
-	if (plan.op !== 'intersection') return [];
-	return INTERSECTION_STAGE_KEYS.map((key, i) => {
+	if (!isStaged(plan.op)) return [];
+	return STAGE_KEYS[plan.op].map((key, i) => {
 		const stage = plan.stages.find((s) => s.number === i + 1);
 		return { number: i + 1, key, present: stage !== undefined, offset: stage?.offset ?? -1 };
 	});

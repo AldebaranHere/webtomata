@@ -16,7 +16,7 @@
 		runConversion,
 		secondRefusalOf
 	} from './conversion.ts';
-	import type { ConvertOp, Layout, Plan } from './conversion.ts';
+	import type { ListedOp, Layout, Plan } from './conversion.ts';
 	import { conversionText } from './conversion-text.ts';
 	import { documentsEqual, LIMITS } from './document.ts';
 	import type { MachineDocument } from './document.ts';
@@ -33,7 +33,7 @@
 
 	type Say = { key: MessageKey; params: Params };
 
-	let working = $state<ConvertOp | null>(null);
+	let working = $state<ListedOp | null>(null);
 	let note = $state<Say | null>(null);
 	let plan = $state.raw<Plan | null>(null);
 	// The machine, and the second machine, that the conversion started from.
@@ -71,8 +71,14 @@
 			return { other, reason };
 		})
 	);
-	const chosenFor = (op: ConvertOp) => choices.find((c) => c.other.id === secondIds[op]);
-	const takesSecond = (op: ConvertOp) => TWO_MACHINE_OPS.includes(op);
+	// The words over the list of the second machine, for each operation that takes one.
+	const secondLabel: Partial<Record<ListedOp, MessageKey>> = {
+		union: 'convert.second_label',
+		intersection: 'convert.second_label_intersection',
+		xor: 'convert.second_label_xor'
+	};
+	const chosenFor = (op: ListedOp) => choices.find((c) => c.other.id === secondIds[op]);
+	const takesSecond = (op: ListedOp) => TWO_MACHINE_OPS.includes(op);
 
 	const total = $derived(plan?.total ?? 0);
 	const current = $derived(plan ? planFrame(plan, index) : null);
@@ -80,6 +86,10 @@
 	const stage = $derived(current?.stage ?? null);
 	const chips = $derived(plan ? chipsOf(plan) : []);
 	const atEnd = $derived(index >= total - 1);
+	// An XOR that accepts nothing: the two machines are equivalent.
+	const emptyXor = $derived(
+		plan?.op === 'xor' && plan.stages[plan.stages.length - 1]!.run.final.accepting.length === 0
+	);
 
 	// "Konversi selesai!" for two seconds each time the player reaches its last step (by the play button, by a
 	// step, or by Ke hasil). A step back and forward again shows it again.
@@ -140,7 +150,7 @@
 
 	const refusals = $derived(
 		Object.fromEntries(CONVERT_OPS.map((op) => [op, refusalOf(doc, op)])) as Record<
-			ConvertOp,
+			ListedOp,
 			ReturnType<typeof refusalOf>
 		>
 	);
@@ -157,7 +167,7 @@
 		}
 	};
 
-	async function start(op: ConvertOp) {
+	async function start(op: ListedOp) {
 		if (working) return;
 		const source = doc;
 		working = op;
@@ -221,7 +231,9 @@
 			{#if stage.key}
 				<!-- An intersection is seven stages: the open one is named, and the chips jump between them. -->
 				<p class="stage">
-					{t('convert.stage_of', { n: stage.number })} · {t(stage.key as MessageKey)}
+					{t('convert.stage_of', { n: stage.number, total: chips.length })} · {t(
+						stage.key as MessageKey
+					)}
 				</p>
 				<ol class="chips" aria-label={t('convert.stages')}>
 					{#each chips as chip (chip.number)}
@@ -251,6 +263,10 @@
 			{/if}
 			<!-- The live region is always in the page, so that a screen reader hears the text when it comes. -->
 			<p class="done" role="status">{justDone ? t('convert.done') : ''}</p>
+			{#if atEnd && emptyXor}
+				<!-- Rich, chapter 9: two machines are equivalent exactly when their XOR accepts nothing. -->
+				<p class="note-line">{t('convert.xor_empty')}</p>
+			{/if}
 
 			<div class="seg" role="group" aria-label={t('convert.view')}>
 				<button
@@ -393,11 +409,7 @@
 						</span>
 						{#if takesSecond(op) && !reason}
 							<label class="second">
-								<span class="muted"
-									>{t(
-										op === 'union' ? 'convert.second_label' : 'convert.second_label_intersection'
-									)}</span
-								>
+								<span class="muted">{t(secondLabel[op] ?? 'convert.second_label')}</span>
 								<select bind:value={secondIds[op]}>
 									<option value="">{t('convert.second_placeholder')}</option>
 									{#each choices as { other, reason: unfit } (other.id)}
@@ -466,6 +478,13 @@
 		background: var(--color-success-tint);
 		color: var(--color-success-ink);
 		font-weight: var(--weight-strong);
+	}
+	.note-line {
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-md);
+		background: var(--color-success-tint);
+		color: var(--color-success-ink);
+		font-size: var(--text-sm);
 	}
 	.progress {
 		padding: var(--space-2) var(--space-3);

@@ -85,11 +85,7 @@ export interface EngineApi {
 		second: Machine,
 		budget?: Partial<ConversionBudget>
 	): EngineResult<Intersection>;
-	xor(
-		first: Machine,
-		second: Machine,
-		budget?: Partial<ConversionBudget>
-	): EngineResult<Xor>;
+	xor(first: Machine, second: Machine, budget?: Partial<ConversionBudget>): EngineResult<Xor>;
 	importJff(xml: string): EngineResult<Jff>;
 	exportJff(machine: Machine, layout: JffState[]): EngineResult<string>;
 }

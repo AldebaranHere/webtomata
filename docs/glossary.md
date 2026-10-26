@@ -73,3 +73,5 @@ Added in S7-1, with no source yet (`TODO(review)`): Konversi (conversion), Mulai
 
 Added in S7-2a, with no source yet (`TODO(review)`): Komplemen (complement; the glossary has "komplemen"), Gabungan (union), Gabungkan dengan (join with), Pilih mesin lain (choose another machine), alfabetnya beda (different alphabet).
 Added in S7-2b, with no source yet (`TODO(review)`): Irisan (intersection; the glossary has "irisan"), Tahap n dari 7 (stage n of 7), dilewati (skipped), Irisan dengan (intersect with).
+
+Added in S7-2c, with no source yet (`TODO(review)`): XOR (the symmetric difference; the row says "XOR" and the hint "Selisih simetris"; Rich says "symmetric difference"), mesin produk (the product machine; Rich: cross-product machine), pasangan state (a pair of states), kedua mesin ekuivalen (the two machines are equivalent).
