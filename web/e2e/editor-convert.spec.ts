@@ -508,11 +508,11 @@ test('Regex → NDFSM shows the alphabet of the text, builds the machine part by
 }) => {
 	await openDfsm(page);
 	await expect(regexRow(page)).toContainText('Tulis ekspresi reguler dulu.');
-	await expect(regexRow(page).getByRole('button', { name: 'Mulai' })).toBeDisabled();
+	await expect(regexRow(page).getByRole('button', { name: 'Regex → NDFSM' })).toBeDisabled();
 	await field(page).fill('(a∪b)*abb');
 	await expect(regexRow(page)).toContainText('Alfabet: a, b');
-	await expect(regexRow(page).getByRole('button', { name: 'Mulai' })).toBeEnabled();
-	await regexRow(page).getByRole('button', { name: 'Mulai' }).click();
+	await expect(regexRow(page).getByRole('button', { name: 'Regex → NDFSM' })).toBeEnabled();
+	await regexRow(page).getByRole('button', { name: 'Regex → NDFSM' }).click();
 	await expect(panel(page).getByRole('heading', { name: 'Regex → NDFSM' })).toBeFocused();
 	await expect(panel(page).getByText('Ekspresi: (a∪b)*abb')).toBeVisible();
 	await expect(panel(page).getByText(/^Langkah 1 dari \d+$/)).toBeVisible();
@@ -602,7 +602,7 @@ test('a finger puts an operator in the field and starts the conversion', async (
 	await field(page).evaluate((el: HTMLInputElement) => el.setSelectionRange(1, 1));
 	await touchTap(page, regexRow(page).getByRole('button', { name: 'Sisipkan ∪, gabungan' }));
 	await expect(field(page)).toHaveValue('a∪b');
-	await touchTap(page, regexRow(page).getByRole('button', { name: 'Mulai' }));
+	await touchTap(page, regexRow(page).getByRole('button', { name: 'Regex → NDFSM' }));
 	await expect(panel(page).getByText(/^Langkah 1 dari \d+$/)).toBeVisible();
 	await touchTap(page, button(page, 'Ke hasil'));
 	await expect(button(page, 'Buka sebagai mesin baru')).toBeVisible();
@@ -618,4 +618,92 @@ test('the note about the notation has one line for each sign', async ({ page }) 
 		'ε untuk string kosong',
 		'∅ untuk himpunan kosong'
 	]);
+});
+
+// ---- Sederhanakan (S7-3c) ----
+
+test('Sederhanakan names the rule and the parts, marks the new part, and ends at the shorter expression', async ({
+	page
+}) => {
+	await openDfsm(page);
+	await field(page).fill('a*∪aa');
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan' }).click();
+	await expect(panel(page).getByRole('heading', { name: 'Sederhanakan' })).toBeFocused();
+	await expect(panel(page).getByText('Ekspresi awal: a*∪aa')).toBeVisible();
+	await expect(panel(page).getByText('Langkah 1 dari 1')).toBeVisible();
+	await expect(sentence(page)).toContainText('α ∪ β = α jika L(β) ⊆ L(α)');
+	await expect(sentence(page)).toContainText('a*∪aa menjadi a*');
+	await expect(panel(page).locator('.now mark')).toHaveText('a*');
+	// A conversion with one step is done at once, and the player has no machine to draw.
+	await expect(panel(page).getByText('Konversi selesai!')).toBeVisible();
+	await expect(shown(page)).toHaveCount(0);
+	await expect(button(page, 'Buka sebagai mesin baru')).toHaveCount(0);
+	await expect(panel(page).getByRole('region', { name: 'Ekspresi reguler' })).toHaveText('a*');
+	await expectNoAxeViolations(page);
+});
+
+test('Sederhanakan goes through several identities, one at each step', async ({ page }) => {
+	await openDfsm(page);
+	await field(page).fill('(a∪∅)(εb)');
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan' }).click();
+	await expect(panel(page).getByText('Langkah 1 dari 2')).toBeVisible();
+	await expect(sentence(page)).toContainText('∅ ∪ α = α');
+	await expect(panel(page).locator('.now code')).toHaveText('aεb');
+	await button(page, 'Maju').click();
+	await expect(sentence(page)).toContainText('εα = α');
+	await expect(panel(page).locator('.now code')).toHaveText('ab');
+	await expect(panel(page).getByRole('region', { name: 'Ekspresi reguler' })).toHaveText('ab');
+});
+
+test('Sederhanakan says when nothing can be shortened, and a mistake with its position', async ({
+	page
+}) => {
+	await openDfsm(page);
+	await field(page).fill('ab*');
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan' }).click();
+	await expect(regexRow(page)).toContainText(
+		'Ekspresinya sudah tidak bisa diperpendek dengan identitas yang ada.'
+	);
+	await field(page).fill('a∪');
+	await expect(regexRow(page).getByText('sudah tidak bisa diperpendek')).toHaveCount(0);
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan' }).click();
+	await expect(regexRow(page)).toContainText('Ekspresinya belum lengkap');
+});
+
+test('the result of Mesin → regex can go into the field of Sederhanakan', async ({ page }) => {
+	await openDfsm(page);
+	await operation(page, 'Mesin → regex').getByRole('button', { name: 'Mulai' }).click();
+	await button(page, 'Ke hasil').click();
+	await button(page, 'Pakai di Sederhanakan').click();
+	await expect(field(page)).toHaveValue('(1∪0(0∪10)*11)*0(0∪10)*1');
+	await expect(field(page)).toBeFocused();
+	await expect(regexRow(page)).toContainText('Alfabet: 0, 1');
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan' }).click();
+	// The expression of the engine has no identity left to use.
+	await expect(regexRow(page)).toContainText('sudah tidak bisa diperpendek');
+});
+
+test('a finger starts Sederhanakan', async ({ page, isMobile }) => {
+	test.skip(!isMobile, 'a phone only');
+	await openDfsm(page);
+	await field(page).fill('a*∪aa');
+	await touchTap(page, regexRow(page).getByRole('button', { name: 'Sederhanakan' }));
+	await expect(sentence(page)).toContainText('α ∪ β = α');
+	await touchTap(page, button(page, 'Tutup'));
+	await expect(field(page)).toHaveValue('a*∪aa');
+});
+
+test('the buttons of the two operations are at least 44 px, and disabled while the field is empty', async ({
+	page
+}) => {
+	await openDfsm(page);
+	for (const name of ['Regex → NDFSM', 'Sederhanakan']) {
+		const b = regexRow(page).getByRole('button', { name });
+		await expect(b).toBeDisabled();
+		const box = (await b.boundingBox())!;
+		expect(box.height, name).toBeGreaterThanOrEqual(44);
+	}
+	await field(page).fill('a');
+	await expect(regexRow(page).getByRole('button', { name: 'Sederhanakan' })).toBeEnabled();
+	await expectNoAxeViolations(page);
 });

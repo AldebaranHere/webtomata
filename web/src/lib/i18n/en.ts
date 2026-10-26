@@ -529,6 +529,43 @@ export const en: Record<MessageKey, string> = {
 	'regex.empty': 'Write a regular expression first.',
 	'regex.unknown_symbol': 'The symbol {symbol} at character {position} is not known.',
 	'regex.operator_symbol': 'The symbol {symbol} has an operator character in it.',
+	'convert.op.simplify': 'Simplify',
+	'convert.op.simplify_hint':
+		'Shorten the expression with the identities of the book, one at a time.',
+	'convert.play_simplify': 'Simplify',
+	'convert.regex_form_hint': 'Write a regular expression, then choose the operation.',
+	'convert.simplify_start': 'Starting expression: {expression}',
+	'convert.simplify_now': 'Now',
+	'convert.simplify_unchanged':
+		'The expression cannot be made shorter with the identities that we have.',
+	'convert.use_in_simplify': 'Use in Simplify',
+	'simplify.union_empty': '∅ ∪ α = α: the ∅ is dropped from the union. {before} becomes {after}.',
+	'simplify.union_idempotent':
+		'α ∪ α = α: {kept} and {removed} are the same, so one is dropped. {before} becomes {after}.',
+	'simplify.union_subset':
+		'α ∪ β = α if L(β) ⊆ L(α): the language of {removed} is already in the language of {kept}, so {removed} is dropped. {before} becomes {after}.',
+	'simplify.union_factor_left':
+		'αγ ∪ αδ = α(γ ∪ δ): the left part {factor} is the same, so it is taken out. {before} becomes {after}.',
+	'simplify.union_factor_right':
+		'γα ∪ δα = (γ ∪ δ)α: the right part {factor} is the same, so it is taken out. {before} becomes {after}.',
+	'simplify.concat_empty':
+		'∅α = ∅: a ∅ in a concatenation makes all of it ∅. {before} becomes {after}.',
+	'simplify.concat_epsilon':
+		'εα = α: the ε is dropped from the concatenation. {before} becomes {after}.',
+	'simplify.star_repeat':
+		'α*α* = α*: {kept} and {removed} are the same, so one is dropped. {before} becomes {after}.',
+	'simplify.concat_star_subset':
+		'α*β* = β* if L(α*) ⊆ L(β*): the language of {removed} is already in the language of {kept}, so {removed} is dropped. {before} becomes {after}.',
+	'simplify.star_empty': '∅* = ε. {before} becomes {after}.',
+	'simplify.star_epsilon': 'ε* = ε. {before} becomes {after}.',
+	'simplify.star_star': '(α*)* = α*. {before} becomes {after}.',
+	'simplify.star_plus': '(α+)* = α*. {before} becomes {after}.',
+	'simplify.star_union_subset':
+		'(α ∪ β)* = α* if L(β) ⊆ L(α*): the language of {removed} is already in the language of {kept}*, so {removed} is dropped from the union. {before} becomes {after}.',
+	'simplify.plus_star': '(α*)+ = α*. {before} becomes {after}.',
+	'simplify.plus_empty': '∅+ = ∅. {before} becomes {after}.',
+	'simplify.plus_epsilon': 'ε+ = ε. {before} becomes {after}.',
+	'simplify.unknown_symbol': 'The symbol {symbol} is not known.',
 
 	'page.soon': 'Coming soon.',
 	'page.home': 'Back to home'

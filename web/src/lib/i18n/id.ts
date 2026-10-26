@@ -537,6 +537,41 @@ export const id = {
 	'regex.empty': 'Tulis ekspresi reguler dulu.',
 	'regex.unknown_symbol': 'Simbol {symbol} di karakter ke-{position} tidak dikenal.',
 	'regex.operator_symbol': 'Simbol {symbol} memuat karakter operator.',
+	'convert.op.simplify': 'Sederhanakan',
+	'convert.op.simplify_hint': 'Perpendek ekspresi dengan identitas dari buku, satu per satu.',
+	'convert.play_simplify': 'Sederhanakan',
+	'convert.regex_form_hint': 'Tulis ekspresi reguler, lalu pilih operasinya.',
+	'convert.simplify_start': 'Ekspresi awal: {expression}',
+	'convert.simplify_now': 'Sekarang',
+	'convert.simplify_unchanged':
+		'Ekspresinya sudah tidak bisa diperpendek dengan identitas yang ada.',
+	'convert.use_in_simplify': 'Pakai di Sederhanakan',
+	'simplify.union_empty': '∅ ∪ α = α: bagian ∅ dibuang dari union. {before} menjadi {after}.',
+	'simplify.union_idempotent':
+		'α ∪ α = α: {kept} dan {removed} sama, jadi satu dibuang. {before} menjadi {after}.',
+	'simplify.union_subset':
+		'α ∪ β = α jika L(β) ⊆ L(α): bahasa {removed} sudah ada di bahasa {kept}, jadi {removed} dibuang. {before} menjadi {after}.',
+	'simplify.union_factor_left':
+		'αγ ∪ αδ = α(γ ∪ δ): bagian kiri {factor} sama, jadi ditarik keluar. {before} menjadi {after}.',
+	'simplify.union_factor_right':
+		'γα ∪ δα = (γ ∪ δ)α: bagian kanan {factor} sama, jadi ditarik keluar. {before} menjadi {after}.',
+	'simplify.concat_empty':
+		'∅α = ∅: ada ∅ dalam konkatenasi, jadi seluruhnya ∅. {before} menjadi {after}.',
+	'simplify.concat_epsilon': 'εα = α: ε dibuang dari konkatenasi. {before} menjadi {after}.',
+	'simplify.star_repeat':
+		'α*α* = α*: {kept} dan {removed} sama, jadi satu dibuang. {before} menjadi {after}.',
+	'simplify.concat_star_subset':
+		'α*β* = β* jika L(α*) ⊆ L(β*): bahasa {removed} sudah ada di bahasa {kept}, jadi {removed} dibuang. {before} menjadi {after}.',
+	'simplify.star_empty': '∅* = ε. {before} menjadi {after}.',
+	'simplify.star_epsilon': 'ε* = ε. {before} menjadi {after}.',
+	'simplify.star_star': '(α*)* = α*. {before} menjadi {after}.',
+	'simplify.star_plus': '(α+)* = α*. {before} menjadi {after}.',
+	'simplify.star_union_subset':
+		'(α ∪ β)* = α* jika L(β) ⊆ L(α*): bahasa {removed} sudah ada di bahasa {kept}*, jadi {removed} dibuang dari union. {before} menjadi {after}.',
+	'simplify.plus_star': '(α*)+ = α*. {before} menjadi {after}.',
+	'simplify.plus_empty': '∅+ = ∅. {before} menjadi {after}.',
+	'simplify.plus_epsilon': 'ε+ = ε. {before} menjadi {after}.',
+	'simplify.unknown_symbol': 'Simbol {symbol} tidak dikenal.',
 
 	'page.soon': 'Segera hadir.',
 	'page.home': 'Kembali ke beranda'
