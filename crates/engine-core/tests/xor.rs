@@ -145,24 +145,35 @@ fn a_pair_step_names_the_two_states_that_it_pairs() {
     let keys: Vec<_> = trace.iter().map(|s| s.message.key).collect();
     assert!(keys.contains(&"product.start"));
     assert!(keys.contains(&"product.transition"));
-    assert!(keys.contains(&"product.accepting"));
+    assert!(keys.iter().any(|k| k.starts_with("product.accepting")));
 }
 
 #[test]
-fn an_accepting_step_says_which_side_accepts() {
+fn an_accepting_step_says_which_side_accepts_in_its_key() {
     let (_, trace) = run(EVEN, A_STAR);
-    let sides: Vec<_> = trace
+    let keys: Vec<_> = trace
         .iter()
-        .filter(|s| s.message.key == "product.accepting")
-        .map(|s| s.message.params.get("only").cloned())
+        .filter(|s| matches!(s.change, Change::Accepting { .. }))
+        .map(|s| s.message.key)
         .collect();
-    assert!(!sides.is_empty());
-    for side in sides {
+    assert!(!keys.is_empty());
+    for key in keys {
         assert!(
-            side == Some(Param::Text("first".into())) || side == Some(Param::Text("second".into())),
-            "{side:?}"
+            key == "product.accepting_first" || key == "product.accepting_second",
+            "{key}"
         );
     }
+    // 'a' ends in the pair (even: no, only a: yes), so the second machine is the one that accepts.
+    assert!(
+        trace
+            .iter()
+            .any(|s| s.message.key == "product.accepting_second")
+    );
+    assert!(
+        trace
+            .iter()
+            .any(|s| s.message.key == "product.accepting_first")
+    );
 }
 
 #[test]

@@ -164,9 +164,13 @@ fn product(
             continue;
         }
         let state = StateId(u32::try_from(i).map_err(|_| Failure::Stopped(StopReason::MaxStates))?);
-        let message = Message::new("product.accepting")
-            .with("state", state.0)
-            .with("only", if first { "first" } else { "second" });
+        // The key says which side accepts: the text of the step names it.
+        let key = if first {
+            "product.accepting_first"
+        } else {
+            "product.accepting_second"
+        };
+        let message = Message::new(key).with("state", state.0);
         pairs
             .push(trace, message, Change::Accepting { state })
             .map_err(Failure::Stopped)?;
