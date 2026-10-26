@@ -21,6 +21,7 @@ mod trace;
 #[cfg(feature = "ts")]
 mod ts;
 mod validate;
+mod xor;
 
 pub use determinize::{Conversion, ConversionBudget, determinize};
 pub use equivalence::{Counterexample, Equivalence, EquivalenceBudget, equivalent};
@@ -44,6 +45,7 @@ pub use trace::{Change, ConversionStep, Label, Witness};
 #[cfg(feature = "ts")]
 pub use ts::declarations as typescript_declarations;
 pub use validate::{Issue, MAX_ISSUES, Severity, validate};
+pub use xor::{Xor, xor};
 
 /// Engine version, taken from the crate version.
 pub fn version() -> &'static str {

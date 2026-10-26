@@ -44,6 +44,7 @@ fn the_types_match_the_json() {
         "Compiled",
         "Operation",
         "Intersection",
+        "Xor",
         "JffState",
         "Jff",
         "Nondeterminism",
