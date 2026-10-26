@@ -43,7 +43,15 @@ export function conversionText(names: Names, step: ConversionStep): Text {
 			break;
 		case 'start':
 		case 'accepting':
+		case 'not_accepting':
 			params.state = result(change.state);
+			break;
+		case 'copy':
+			params.count = change.from.length;
+			break;
+		case 'epsilon':
+			params.from = result(change.from);
+			params.to = result(change.to);
 			break;
 		case 'transition':
 			params.from = result(change.from);

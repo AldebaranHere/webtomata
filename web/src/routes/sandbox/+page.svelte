@@ -9,6 +9,7 @@
 	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
 	import { library } from '#lib/storage/library.svelte.ts';
+	import { localizedTitle } from '#lib/storage/titles.ts';
 
 	// The Sandbox opens the machine of the last visit, saved on this device (docs/decisions/0023).
 	// With nothing saved it opens an empty machine, and the editor shows "Coba contoh" over it (X1).
@@ -64,6 +65,19 @@
 		}
 	});
 
+	// The other saved machines, for the second machine of a union.
+	const others = $derived(
+		library.entries
+			.filter((entry) => entry.id !== library.current?.opened.record.id)
+			.map((entry) => ({
+				id: entry.id,
+				title: localizedTitle(entry.titles, entry.title, getLocale()) || t('editor.untitled'),
+				kind: entry.kind,
+				stamp: entry.updatedAt,
+				readable: entry.readable
+			}))
+	);
+
 	const notice = $derived.by(() => {
 		const list = library.skipped;
 		if (skipped || list.length === 0) return null;
@@ -104,6 +118,7 @@
 			}}
 			onhelp={openTour}
 			onopendoc={(doc) => void library.openDocument(doc, true)}
+			machines={{ others, load: (id) => library.readDocument(id) }}
 		/>
 	{/key}
 {:else}

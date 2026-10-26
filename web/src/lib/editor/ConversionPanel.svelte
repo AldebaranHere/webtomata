@@ -10,11 +10,13 @@
 		namesOf,
 		refusalOf,
 		resultDocument,
-		runConversion
+		runConversion,
+		secondRefusalOf
 	} from './conversion.ts';
 	import type { ConvertOp, ConvertRun, Names, Place } from './conversion.ts';
 	import { conversionText } from './conversion-text.ts';
 	import { documentsEqual, LIMITS } from './document.ts';
+	import type { MachineDocument } from './document.ts';
 	import type { ConversionProps } from './conversion-props.ts';
 	import { LayoutCancelled, layoutClient } from './layout-client.ts';
 	import { layoutGraph, refusalOf as layoutRefusal } from './layout.ts';
@@ -24,7 +26,7 @@
 	// the work in one call; the page only walks through the answer. The result opens as a new machine,
 	// so the machine of the student is never changed. While a conversion is open, the canvas shows
 	// the step (`onshow`); any change of the machine closes it, because the steps would be old.
-	let { doc, onshow, onopen }: ConversionProps = $props();
+	let { doc, onshow, onopen, others = [], load }: ConversionProps = $props();
 
 	type Say = { key: MessageKey; params: Params };
 
@@ -37,6 +39,35 @@
 	let playing = $state(false);
 	let showing = $state<'result' | 'source'>('result');
 	let heading = $state<HTMLElement>();
+	// The second machine of a union: the saved machines are read once (again when one is saved again),
+	// so that the list can say which of them do not fit; the chosen one is read again when it starts.
+	let secondId = $state('');
+	let loaded = $state.raw<Record<string, MachineDocument | null>>({});
+	const asked: Record<string, true> = {};
+	const stampOf = (o: { id: string; stamp: number }) => `${o.id}:${o.stamp}`;
+	$effect(() => {
+		for (const other of others) {
+			const key = stampOf(other);
+			if (!other.readable || asked[key] || !load) continue;
+			asked[key] = true;
+			void load(other.id)
+				.catch(() => null)
+				.then((read) => (loaded = { ...loaded, [key]: read }));
+		}
+	});
+	const choices = $derived(
+		others.map((other) => {
+			const read = loaded[stampOf(other)];
+			const reason =
+				!other.readable || read === null
+					? { key: 'convert.reason_unreadable' as MessageKey, params: {} }
+					: read
+						? secondRefusalOf(doc, read)
+						: null;
+			return { other, reason };
+		})
+	);
+	const chosen = $derived(choices.find((c) => c.other.id === secondId));
 
 	const total = $derived(run?.trace.length ?? 0);
 	const frame = $derived(run && names ? frameAt(run, names, index) : null);
@@ -53,7 +84,9 @@
 				active: new Set(frame.result)
 			};
 		}
-		return { doc: run.source, active: new Set(frame.source) };
+		// The second machine of a union is the source of the steps that copy it.
+		const from = frame.from === 2 && run.second ? run.second : run.source;
+		return { doc: from, active: new Set(frame.source) };
 	});
 	$effect(() => {
 		onshow(view);
@@ -91,7 +124,8 @@
 		working = op;
 		note = null;
 		try {
-			const outcome = await runConversion(engine, source, op);
+			const second = op === 'union' ? ((await load?.(secondId)) ?? undefined) : undefined;
+			const outcome = await runConversion(engine, source, op, second);
 			if (!documentsEqual(source, doc)) return;
 			if (outcome.kind !== 'finished') {
 				note = { key: outcome.key, params: 'params' in outcome ? outcome.params : {} };
@@ -100,7 +134,7 @@
 			const finished = outcome.run;
 			const named = namesOf(finished, t('convert.dead_name'));
 			let found: Place[] | null = null;
-			if (op !== 'trap') {
+			if (op !== 'trap' && op !== 'complement') {
 				const draft = resultDocument(finished, named, null, finished.final, '');
 				if (!layoutRefusal(draft)) {
 					try {
@@ -138,7 +172,8 @@
 	function open() {
 		if (!run || !names) return;
 		const base = run.source.title || t('editor.untitled');
-		const title = Array.from(t(`convert.result_title.${run.op}`, { title: base }))
+		const second = run.second?.title || t('editor.untitled');
+		const title = Array.from(t(`convert.result_title.${run.op}`, { title: base, second }))
 			.slice(0, LIMITS.titleChars)
 			.join('');
 		onopen(resultDocument(run, names, places, run.final, title));
@@ -204,6 +239,7 @@
 									{#each table.symbols as symbol (symbol)}
 										<th scope="col" class="mono">{symbol}</th>
 									{/each}
+									<th scope="col">{t('table.accepting')}</th>
 								{/if}
 							</tr>
 						</thead>
@@ -228,6 +264,7 @@
 										{#each row.cells as cell, c (c)}
 											<td class="mono">{cell}</td>
 										{/each}
+										<td>{row.accepting ? '✓' : ''}</td>
 									</tr>
 								{/each}
 							{/if}
@@ -285,17 +322,38 @@
 		{/if}
 		<ul class="ops">
 			{#each CONVERT_OPS as op (op)}
-				{@const reason = refusals[op]}
+				{@const reason =
+					refusals[op] ??
+					(op === 'union' && others.length === 0
+						? { key: 'convert.reason_no_second' as MessageKey, params: {} }
+						: null)}
 				<li>
 					<div class="text">
 						<span class="name">{t(`convert.op.${op}`)}</span>
 						<span class="muted" id="convert-hint-{op}">
 							{reason ? t(reason.key, reason.params) : t(`convert.op.${op}_hint`)}
 						</span>
+						{#if op === 'union' && !reason}
+							<label class="second">
+								<span class="muted">{t('convert.second_label')}</span>
+								<select bind:value={secondId}>
+									<option value="">{t('convert.second_placeholder')}</option>
+									{#each choices as { other, reason: unfit } (other.id)}
+										<option value={other.id} disabled={unfit !== null}>
+											{other.title} · {t(`kind.${other.kind}`)}{unfit
+												? ` — ${t(unfit.key, unfit.params)}`
+												: ''}
+										</option>
+									{/each}
+								</select>
+							</label>
+						{/if}
 					</div>
 					<button
 						type="button"
-						disabled={reason !== null || working !== null}
+						disabled={reason !== null ||
+							working !== null ||
+							(op === 'union' && (!chosen || chosen.reason !== null))}
 						aria-describedby="convert-hint-{op}"
 						aria-busy={working === op}
 						onclick={() => void start(op)}
@@ -364,6 +422,25 @@
 		flex-direction: column;
 		gap: var(--space-1);
 		min-width: 0;
+	}
+	.second {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+	}
+	select {
+		min-height: var(--target-min);
+		max-width: 100%;
+		padding: 0 var(--space-2);
+		border: 1px solid var(--color-border-strong);
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+		color: var(--color-ink);
+		font: inherit;
+	}
+	select:focus-visible {
+		outline: var(--focus-ring-width) solid var(--focus-ring-color);
+		outline-offset: var(--focus-ring-offset);
 	}
 	.name {
 		font-weight: var(--weight-strong);

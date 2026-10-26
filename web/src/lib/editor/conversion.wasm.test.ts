@@ -14,6 +14,7 @@ import {
 	refusalOf,
 	resultDocument,
 	runConversion,
+	secondRefusalOf,
 	setText
 } from './conversion.ts';
 import type { ConvertEngine, ConvertOp, ConvertRun } from './conversion.ts';
@@ -24,16 +25,24 @@ beforeAll(async () => {
 	await init({ module_or_path: bytes });
 });
 
-const call = (name: 'determinize' | 'minimize' | 'addTrapState') => async (machine: Machine) =>
-	JSON.parse(wasm[name](JSON.stringify(machine)));
+const call =
+	(name: 'determinize' | 'minimize' | 'addTrapState' | 'complement') => async (machine: Machine) =>
+		JSON.parse(wasm[name](JSON.stringify(machine)));
 const engine: ConvertEngine = {
 	determinize: call('determinize'),
 	minimize: call('minimize'),
-	addTrapState: call('addTrapState')
+	addTrapState: call('addTrapState'),
+	complement: call('complement'),
+	union: async (first, second) =>
+		JSON.parse(wasm.union(JSON.stringify(first), JSON.stringify(second)))
 };
 
-async function finished(doc: MachineDocument, op: ConvertOp): Promise<ConvertRun> {
-	const outcome = await runConversion(engine, doc, op);
+async function finished(
+	doc: MachineDocument,
+	op: ConvertOp,
+	second?: MachineDocument
+): Promise<ConvertRun> {
+	const outcome = await runConversion(engine, doc, op, second);
 	if (outcome.kind !== 'finished') throw new Error(`${op}: ${outcome.kind}`);
 	return outcome.run;
 }
@@ -327,5 +336,170 @@ describe('the document of a result', () => {
 		for (const state of part.states) {
 			expect(state).toMatchObject({ x: places.find((p) => p.id === state.id)!.x, y: 50 });
 		}
+	});
+});
+
+describe('complement', () => {
+	it('starts from the whole machine, flips one state at a time and ends at the engine machine', async () => {
+		const run = await finished(documentFrom(redundant), 'complement');
+		const names = namesOf(run, 'dead');
+		expect(run.trace).toHaveLength(3);
+		// q0 is not accepting, so it becomes accepting at the first step.
+		const first = frameAt(run, names, 0);
+		expect(first.step.change.kind).toBe('accepting');
+		expect(first.machine!.states).toEqual([0, 1, 2]);
+		expect(first.machine!.accepting).toEqual([1, 2, 0]);
+		expect(first.source).toEqual(first.result);
+		// q1 was accepting, so it stops at the second step.
+		const second = frameAt(run, names, 1);
+		expect(second.step.change.kind).toBe('not_accepting');
+		expect(second.machine!.accepting).not.toContain(1);
+		expect(normal(lastFrame(run).machine!)).toEqual(normal(run.final));
+		expect(run.final.accepting).toEqual([0]);
+	});
+
+	it('marks the accepting states in the table', async () => {
+		const run = await finished(documentFrom(redundant), 'complement');
+		const table = lastFrame(run).table!;
+		if (table.kind !== 'delta') throw new Error('delta');
+		expect(table.rows.map((r) => r.accepting)).toEqual([true, false, false]);
+	});
+
+	it('keeps the places of the machine', async () => {
+		const source = documentFrom(redundant);
+		const run = await finished(source, 'complement');
+		const doc = resultDocument(run, namesOf(run, 'dead'), null, run.final, '');
+		for (const old of source.states) {
+			expect(doc.states.find((s) => s.id === old.id)).toMatchObject({ x: old.x, y: old.y });
+		}
+	});
+
+	it('points to the dead state when the machine is not complete, and refuses an NDFSM', () => {
+		expect(refusalOf(documentFrom(partial), 'complement')?.key).toBe('convert.reason_incomplete');
+		const asNdfsm = { ...documentFrom(redundant), kind: 'ndfsm' as const };
+		expect(refusalOf(asNdfsm, 'complement')?.key).toBe('convert.reason_needs_dfsm');
+		expect(refusalOf(documentFrom(redundant), 'complement')).toBeNull();
+	});
+});
+
+describe('union', () => {
+	const other: Spec = {
+		alphabet: ['a', 'b'],
+		states: [
+			[100, 100, 'q0'],
+			[300, 100, 'p']
+		],
+		start: 0,
+		accepting: [1],
+		transitions: [
+			[0, 'b', 1],
+			[1, 'a', 0]
+		]
+	};
+
+	it('copies the machines, adds a start state and two ε-transitions, and ends at the engine machine', async () => {
+		const first = documentFrom(redundant);
+		const run = await finished(first, 'union', documentFrom(other));
+		const names = namesOf(run, 'dead');
+		expect(run.trace.map((s) => s.change.kind)).toEqual([
+			'copy',
+			'copy',
+			'start',
+			'epsilon',
+			'epsilon'
+		]);
+		const one = frameAt(run, names, 0);
+		expect(one.machine!.states).toEqual([0, 1, 2]);
+		expect(one.machine!.start).toBeNull();
+		expect(one.source).toEqual([0, 1, 2]);
+		expect(one.from).toBe(1);
+		const two = frameAt(run, names, 1);
+		expect(two.machine!.states).toEqual([0, 1, 2, 3, 4]);
+		expect(two.from).toBe(2);
+		expect(two.machine!.transitions).toHaveLength(first.transitions.length + 2);
+		const last = lastFrame(run);
+		expect(last.machine!.kind).toBe('ndfsm');
+		expect(normal(last.machine!)).toEqual(normal(run.final));
+	});
+
+	it('names the states by their machine, and the new start state s', async () => {
+		const run = await finished(documentFrom(redundant), 'union', documentFrom(other));
+		const names = namesOf(run, 'dead');
+		expect([...names.result.values()]).toEqual(['1.q0', '1.q1', '1.q2', '2.q0', '2.p', 's']);
+		expect(names.second.get(1)).toBe('p');
+	});
+
+	it('opens as a document with those names', async () => {
+		const run = await finished(documentFrom(redundant), 'union', documentFrom(other));
+		const names = namesOf(run, 'dead');
+		const places = run.final.states.map((id, i) => ({ id, x: 90 * i, y: 40 }));
+		const doc = resultDocument(run, names, places, run.final, 'U');
+		expect(normal(toMachine(doc))).toEqual(normal(run.final));
+		expect(doc.states.map((s) => s.name)).toContain('2.p');
+	});
+
+	it('keeps the frames in step with the engine for random pairs', async () => {
+		const rng = random(11);
+		const make = (): MachineDocument => {
+			const count = 1 + rng.int(4);
+			const seen = new Set<string>();
+			const transitions: Spec['transitions'] = [];
+			for (let i = 0; i < count * 2; i++) {
+				const entry: [number, string | null, number] = [
+					rng.int(count),
+					rng.chance(0.2) ? null : rng.pick(['a', 'b']),
+					rng.int(count)
+				];
+				if (!seen.has(entry.join())) transitions.push(entry);
+				seen.add(entry.join());
+			}
+			return of(
+				{
+					alphabet: ['a', 'b'],
+					states: Array.from({ length: count }, (_, i): [number, number] => [100 * i, 100]),
+					start: 0,
+					accepting: [rng.int(count)],
+					transitions
+				},
+				'ndfsm'
+			);
+		};
+		for (let round = 0; round < 40; round++) {
+			const run = await finished(make(), 'union', make());
+			expect(normal(lastFrame(run).machine!)).toEqual(normal(run.final));
+		}
+	});
+
+	it('says why a second machine does not fit', () => {
+		const first = documentFrom(redundant);
+		expect(secondRefusalOf(first, documentFrom(other))).toBeNull();
+		expect(
+			secondRefusalOf(
+				first,
+				documentFrom({ ...other, alphabet: ['a', 'c'], transitions: [[1, 'a', 0]] })
+			)?.key
+		).toBe('convert.reason_alphabet');
+		expect(secondRefusalOf(first, documentFrom({ ...other, start: undefined }))?.key).toBe(
+			'convert.reason_second_no_start'
+		);
+	});
+
+	it('the row needs only the first machine to have a start state', () => {
+		expect(refusalOf(documentFrom(redundant), 'union')).toBeNull();
+		expect(refusalOf(documentFrom({ states: [[0, 0]] }), 'union')?.key).toBe(
+			'convert.reason_no_start'
+		);
+	});
+
+	it('refuses without a second machine, and calmly when the pair does not fit', async () => {
+		const none = await runConversion(engine, documentFrom(redundant), 'union');
+		expect(none).toEqual({ kind: 'refused', key: 'convert.second_gone', params: {} });
+		const bad = await runConversion(
+			engine,
+			documentFrom(redundant),
+			'union',
+			documentFrom({ ...other, alphabet: ['a', 'c'], transitions: [[1, 'a', 0]] })
+		);
+		expect(bad).toMatchObject({ kind: 'refused', key: 'convert.reason_alphabet' });
 	});
 });

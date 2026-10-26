@@ -184,3 +184,67 @@ test('axe finds nothing in the list or in the player, at the start and at the en
 	await button(page, 'Sumber').click();
 	await expectNoAxeViolations(page);
 });
+
+test('complement flips the accepting states step by step, and opens as a new machine', async ({
+	page
+}) => {
+	await openDfsm(page);
+	await operation(page, 'Komplemen').getByRole('button', { name: 'Mulai' }).click();
+	await expect(panel(page).getByText('Langkah 1 dari 3')).toBeVisible();
+	await expect(sentence(page)).toContainText('accepting state');
+	await button(page, 'Ke hasil').click();
+	const table = panel(page).getByRole('table', { name: 'Tabel transisi hasil' });
+	await expect(table.getByRole('columnheader', { name: 'Terima' })).toBeVisible();
+	// "Berakhiran 01" accepts at q2 only, so the complement accepts at q0 and q1.
+	await expect(table.getByRole('row', { name: /^q0 .*✓/ })).toBeVisible();
+	await expect(table.getByRole('row', { name: /^q2 .*✓/ })).toHaveCount(0);
+	await panel(page).getByRole('button', { name: 'Buka sebagai mesin baru' }).click();
+	await expect(page.locator('.bar .title')).toHaveText('Komplemen dari Berakhiran 01');
+});
+
+test('complement says why it does not fit an NDFSM', async ({ page }) => {
+	await openNdfsm(page);
+	await expect(operation(page, 'Komplemen')).toContainText('Hanya untuk DFSM.');
+	await expect(operation(page, 'Komplemen').getByRole('button')).toBeDisabled();
+});
+
+test('union needs a second machine, takes it from the list, and opens the result', async ({
+	page
+}) => {
+	await openDfsm(page);
+	const row = operation(page, 'Gabungan');
+	await expect(row).toContainText('Simpan atau buat mesin lain dulu');
+	await expect(row.getByRole('button')).toBeDisabled();
+
+	// A copy of the machine is a second machine with the same alphabet.
+	await page.getByRole('button', { name: /^Mesin saya \(\d+\)$/ }).click();
+	const list = page.getByRole('dialog', { name: 'Mesin saya' });
+	await list.getByRole('button', { name: 'Tindakan untuk Berakhiran 01' }).click();
+	await list.getByRole('button', { name: 'Duplikat' }).click();
+	await expect(list.getByText('Berakhiran 01 (salinan)', { exact: true })).toBeVisible();
+	await list.getByRole('button', { name: 'Tutup' }).click();
+
+	await expect(row.getByRole('button')).toBeDisabled();
+	await expectNoAxeViolations(page);
+	const pick = row.getByRole('combobox', { name: 'Gabungkan dengan' });
+	await pick.selectOption({ label: 'Berakhiran 01 (salinan) · DFSM' });
+	await expect(row.getByRole('button')).toBeEnabled();
+	await row.getByRole('button', { name: 'Mulai' }).click();
+
+	await expect(panel(page).getByText('Langkah 1 dari 5')).toBeVisible();
+	await expect(sentence(page)).toContainText('Salin mesin pertama');
+	await button(page, 'Maju').click();
+	await expect(sentence(page)).toContainText('Salin mesin kedua');
+	// Looking at the source shows the machine that the step copies.
+	await button(page, 'Sumber').click();
+	await expect(
+		shown(page).getByRole('img', { name: /^Konversi: DFSM dengan 3 state$/ })
+	).toBeVisible();
+	await button(page, 'Hasil').click();
+	await button(page, 'Ke hasil').click();
+	await panel(page).getByRole('button', { name: 'Buka sebagai mesin baru' }).click();
+	await expect(page.locator('.bar .title')).toHaveText(
+		'Gabungan Berakhiran 01 dan Berakhiran 01 (salinan)'
+	);
+	await expect(page.locator('.bar .count')).toHaveText('7 state');
+});

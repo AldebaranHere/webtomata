@@ -15,7 +15,8 @@ const names: Names = {
 	result: new Map([
 		[0, '{q0, q1}'],
 		[1, '∅']
-	])
+	]),
+	second: new Map()
 };
 
 describe('conversionText', () => {
@@ -74,10 +75,12 @@ describe('conversionText', () => {
 			readFileSync(new URL(`../../../../crates/engine-core/src/${file}`, import.meta.url), 'utf8');
 		const keys = new Set<string>(
 			['determinize.rs', 'minimize.rs', 'operations.rs'].flatMap((file) =>
-				[...read(file).matchAll(/"((?:determinize|minimize|trap)\.[a-z_]+)"/g)].map((m) => m[1]!)
+				[
+					...read(file).matchAll(/"((?:determinize|minimize|trap|complement|union)\.[a-z_]+)"/g)
+				].map((m) => m[1]!)
 			)
 		);
-		expect(keys.size).toBeGreaterThanOrEqual(15);
+		expect(keys.size).toBeGreaterThanOrEqual(25);
 		for (const key of keys) {
 			expect(Object.hasOwn(id, key), `id ${key}`).toBe(true);
 			expect(Object.hasOwn(en, key), `en ${key}`).toBe(true);
