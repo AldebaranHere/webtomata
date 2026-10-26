@@ -27,17 +27,17 @@ Words: the UI says **state** (not "status", which the first wireframes used), as
 
 ## Drawing conventions (follow the textbook)
 
-| Part | Rule |
-| --- | --- |
-| State | Circle, radius 32, fill `--color-surface`, stroke 1.5 `--color-neutral-ink`. The name is centered, in the UI font, semi-bold (as in the wireframes). A name of up to 4 characters is 16 px; a longer one shrinks to at least 11 px, and if it still does not fit it is cut with "…" and the full name is the tooltip (`<title>`). |
-| Accepting state | A second circle, radius 26, inside. The outer circle does not change. |
-| Start | One arrow of length 40 that ends at the rim of the start state, with the label "mulai" at its tail (beyond the end of the arrow, as in the wireframes). Only one state can be the start. |
-| Edge | Arrow from rim to rim, stroke 1.5, arrowhead 10 long. The label is at the middle of the edge, on the left of the direction of travel (above a rightward edge), with its nearest side 4 from the line, and a halo 4 wide in the color of the canvas (`--color-ground`) so a line never cuts the text. |
-| Label text | `--font-mono`. Symbols in alphabet order, then `ε` last, separated by `, `. |
-| Opposite edges | If A→B and B→A both exist, both are drawn as curves: the middle of each curve is 24 to the right of the straight line, looking in its direction of travel. They are on different sides, and each label goes outside its curve. An edge with no opposite edge is straight, **unless it would pass within 8 of the circle of another state** (100 from the center of a state that has a self-loop, to leave room for the loop and its label): then it curves too, on the side where the smaller bulge clears every state (the right if both are equal). |
-| Self-loop | A loop that leaves the rim at 30° left of its angle and comes back 30° right of it, reaching 40 above the rim. The label is beyond the top of the loop, 4 away. The angle is chosen by the rule below. |
-| Selected | A ring of stroke 2, `--color-accent`, at radius 37 (4 outside the circle) for a state; the edge line in `--color-accent` and stroke 2.6 for an edge. |
-| Focus | The focus ring of the tokens, around the selection ring if both are there. |
+| Part            | Rule                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| State           | Circle, radius 32, fill `--color-surface`, stroke 1.5 `--color-neutral-ink`. The name is centered, in the UI font, semi-bold (as in the wireframes). A name of up to 4 characters is 16 px; a longer one shrinks to at least 11 px, and if it still does not fit it is cut with "…" and the full name is the tooltip (`<title>`).                                                                                                                                                                                                                     |
+| Accepting state | A second circle, radius 26, inside. The outer circle does not change.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Start           | One arrow of length 40 that ends at the rim of the start state, with the label "mulai" at its tail (beyond the end of the arrow, as in the wireframes). Only one state can be the start.                                                                                                                                                                                                                                                                                                                                                              |
+| Edge            | Arrow from rim to rim, stroke 1.5, arrowhead 10 long. The label is at the middle of the edge, on the left of the direction of travel (above a rightward edge), with its nearest side 4 from the line, and a halo 4 wide in the color of the canvas (`--color-ground`) so a line never cuts the text.                                                                                                                                                                                                                                                  |
+| Label text      | `--font-mono`. Symbols in alphabet order, then `ε` last, separated by `, `.                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Opposite edges  | If A→B and B→A both exist, both are drawn as curves: the middle of each curve is 24 to the right of the straight line, looking in its direction of travel. They are on different sides, and each label goes outside its curve. An edge with no opposite edge is straight, **unless it would pass within 8 of the circle of another state** (100 from the center of a state that has a self-loop, to leave room for the loop and its label): then it curves too, on the side where the smaller bulge clears every state (the right if both are equal). |
+| Self-loop       | A loop that leaves the rim at 30° left of its angle and comes back 30° right of it, reaching 40 above the rim. The label is beyond the top of the loop, 4 away. The angle is chosen by the rule below.                                                                                                                                                                                                                                                                                                                                                |
+| Selected        | A ring of stroke 2, `--color-accent`, at radius 37 (4 outside the circle) for a state; the edge line in `--color-accent` and stroke 2.6 for an edge.                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Focus           | The focus ring of the tokens, around the selection ring if both are there.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 These numbers are starting values from the wireframes. S4 may change a number if the rules still hold: no label covers another label or a state in the cases of the test below, and every part is still 44 px to hit.
 
@@ -56,69 +56,69 @@ Notation: **Cmd** is the command of S3. "Step" is one undo step.
 
 ### Add a state
 
-| Way | Rule |
-| --- | --- |
-| Mouse | With **Tambah state**, a click on empty canvas adds a state centered there. In any tool, a double-click on empty canvas does the same. |
-| Touch | With **Tambah state**, a tap on empty canvas adds a state. (In **Pilih**, a tap on empty canvas only clears the selection.) |
+| Way      | Rule                                                                                                                                                                                                                |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mouse    | With **Tambah state**, a click on empty canvas adds a state centered there. In any tool, a double-click on empty canvas does the same.                                                                              |
+| Touch    | With **Tambah state**, a tap on empty canvas adds a state. (In **Pilih**, a tap on empty canvas only clears the selection.)                                                                                         |
 | Keyboard | `N`, with the canvas focused, adds a state at the center of the visible area, in any tool. If a state is within 72 of that spot, the new state goes to the nearest free spot on a grid of 80, searched in a spiral. |
-| Cmd | `addState {x, y}` (the name is `q<k>`) |
-| Step | One |
-| After | The new state is selected and focused. The tool does not change. |
-| Announce | `editor.state_added {name}` |
+| Cmd      | `addState {x, y}` (the name is `q<k>`)                                                                                                                                                                              |
+| Step     | One                                                                                                                                                                                                                 |
+| After    | The new state is selected and focused. The tool does not change.                                                                                                                                                    |
+| Announce | `editor.state_added {name}`                                                                                                                                                                                         |
 
 Where the pointer is on a state (inside radius 32 plus the 8 px ring for touch), the click is a click on that state, never a new one.
 
 ### Rename a state
 
-| Way | Rule |
-| --- | --- |
-| Mouse | Select the state, press `Enter` or `F2`; or use the menu (right-click) → "Ubah nama". |
-| Touch | Long-press the state → menu → "Ubah nama". |
-| Keyboard | `Enter` or `F2` on the selected state. |
-| Field | A text box over the state with the name selected. `Enter` sends, `Esc` cancels. Size 16 px or more (no zoom on phones). |
-| Cmd | `renameState {id, name}` |
-| Step | One, when `Enter` is pressed |
-| Error | If the document refuses (`document.duplicate_name`, `document.invalid_name`), the field stays open, the message shows under it and is announced. Nothing changes until a valid name is sent. |
+| Way      | Rule                                                                                                                                                                                         |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mouse    | Select the state, press `Enter` or `F2`; or use the menu (right-click) → "Ubah nama".                                                                                                        |
+| Touch    | Long-press the state → menu → "Ubah nama".                                                                                                                                                   |
+| Keyboard | `Enter` or `F2` on the selected state.                                                                                                                                                       |
+| Field    | A text box over the state with the name selected. `Enter` sends, `Esc` cancels. Size 16 px or more (no zoom on phones).                                                                      |
+| Cmd      | `renameState {id, name}`                                                                                                                                                                     |
+| Step     | One, when `Enter` is pressed                                                                                                                                                                 |
+| Error    | If the document refuses (`document.duplicate_name`, `document.invalid_name`), the field stays open, the message shows under it and is announced. Nothing changes until a valid name is sent. |
 
 A double-click is **not** rename. It toggles accepting (next row).
 
 ### Start state and accepting states
 
-| Way | Rule |
-| --- | --- |
-| Mouse | Double-click a state in **Pilih**: toggle accepting. Menu: "Jadikan start state", "Accepting state". |
-| Touch | Long-press → menu (same items). |
-| Keyboard | On the selected state: `A` toggles accepting, `M` makes it the start (on the start state, `M` clears the start). |
-| Cmd | `setAccepting {id, accepting}`; `setStart {id}` or `setStart {id: null}` |
-| Step | One each |
+| Way              | Rule                                                                                                                                                                                                                                                                             |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mouse            | Double-click a state in **Pilih**: toggle accepting. Menu: "Jadikan start state", "Accepting state".                                                                                                                                                                             |
+| Touch            | Long-press → menu (same items).                                                                                                                                                                                                                                                  |
+| Keyboard         | On the selected state: `A` toggles accepting, `M` makes it the start (on the start state, `M` clears the start).                                                                                                                                                                 |
+| Cmd              | `setAccepting {id, accepting}`; `setStart {id}` or `setStart {id: null}`                                                                                                                                                                                                         |
+| Step             | One each                                                                                                                                                                                                                                                                         |
 | Several selected | The menu items and keys act on the selected states for accepting (a batch of `setAccepting`: all become accepting unless all already are, then all become not accepting). `M` needs exactly one selected state; otherwise it does nothing and announces `editor.need_one_state`. |
-| Announce | `editor.accepting_on {name}`, `editor.accepting_off {name}`, `editor.start_set {name}`, `editor.start_cleared` |
+| Announce         | `editor.accepting_on {name}`, `editor.accepting_off {name}`, `editor.start_set {name}`, `editor.start_cleared`                                                                                                                                                                   |
 
 ### Move states
 
-| Way | Rule |
-| --- | --- |
-| Mouse | In **Pilih**, press on a state and drag. The drag starts after 4 px. If the state is selected, all selected states move; if it is not, it becomes the only selected one first. While dragging, the view shows the new places (the document is not changed). On release, one command is sent. `Esc` during the drag cancels it. `Shift` held at release snaps each place to a grid of 20. |
-| Touch | Same, with 8 px before the drag starts. One finger on a state drags it; one finger on empty canvas pans. |
-| Keyboard | `Alt+Arrow` moves the selected states by 10; `Alt+Shift+Arrow` by 50. |
-| Cmd | Drag: `batch` of `moveState` (one per moved state; one `moveState` when only one moves). Keyboard: `moveState` per state in a `batch`, with `coalesce: "nudge"`. |
-| Step | Drag: one. Keyboard: a series of arrow presses is one step; the series ends (`seal()`) when the selection changes, when any other key is pressed, when the canvas loses focus, or on `Esc`. |
-| Limit | The place is kept inside ±1,000,000 (`LIMITS.coordinate`); a move beyond that is stopped at the edge. |
-| Announce | `editor.moved {name, x, y}` after a keyboard move (not during a drag) |
+| Way      | Rule                                                                                                                                                                                                                                                                                                                                                                                     |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mouse    | In **Pilih**, press on a state and drag. The drag starts after 4 px. If the state is selected, all selected states move; if it is not, it becomes the only selected one first. While dragging, the view shows the new places (the document is not changed). On release, one command is sent. `Esc` during the drag cancels it. `Shift` held at release snaps each place to a grid of 20. |
+| Touch    | Same, with 8 px before the drag starts. One finger on a state drags it; one finger on empty canvas pans.                                                                                                                                                                                                                                                                                 |
+| Keyboard | `Alt+Arrow` moves the selected states by 10; `Alt+Shift+Arrow` by 50.                                                                                                                                                                                                                                                                                                                    |
+| Cmd      | Drag: `batch` of `moveState` (one per moved state; one `moveState` when only one moves). Keyboard: `moveState` per state in a `batch`, with `coalesce: "nudge"`.                                                                                                                                                                                                                         |
+| Step     | Drag: one. Keyboard: a series of arrow presses is one step; the series ends (`seal()`) when the selection changes, when any other key is pressed, when the canvas loses focus, or on `Esc`.                                                                                                                                                                                              |
+| Limit    | The place is kept inside ±1,000,000 (`LIMITS.coordinate`); a move beyond that is stopped at the edge.                                                                                                                                                                                                                                                                                    |
+| Announce | `editor.moved {name, x, y}` after a keyboard move (not during a drag)                                                                                                                                                                                                                                                                                                                    |
 
 ### Add a transition
 
-| Way | Rule |
-| --- | --- |
-| Mouse | With **Tambah transisi**, press on a source state, drag, and release on a target state. A click on the source then a click on the target works too (two-click mode). Releasing on empty canvas cancels: no state is created. |
-| Touch | With **Tambah transisi**, tap the source, then tap the target. |
-| Keyboard | Select the source state, press `T` (or pick the tool and press `Enter` on the source). Move focus to the target with the arrows or `Tab`, press `Enter`. `Esc` cancels at any point. |
-| While choosing | The source has the selection ring. A preview arrow follows the pointer (mouse and touch drag) and snaps to a state when over it. A hint line says what to do: `editor.hint_pick_target`. |
-| Then | The label field opens on the new edge with focus and an empty text. See "Edit the symbols of an edge". |
-| Same target | The target can be the source: that is a self-loop (see below). |
-| Edge exists | If the edge (source → target) already exists, no new edge is made: its label field opens with its current symbols. |
-| Cmd | None until the label is sent; then see "Edit the symbols of an edge". An edge without symbols does not exist. |
-| Step | One, when the label is sent. If the label is empty or `Esc` is pressed, nothing is done and there is no step. |
+| Way            | Rule                                                                                                                                                                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mouse          | With **Tambah transisi**, press on a source state, drag, and release on a target state. A click on the source then a click on the target works too (two-click mode). Releasing on empty canvas cancels: no state is created. |
+| Touch          | With **Tambah transisi**, tap the source, then tap the target.                                                                                                                                                               |
+| Keyboard       | Select the source state, press `T` (or pick the tool and press `Enter` on the source). Move focus to the target with the arrows or `Tab`, press `Enter`. `Esc` cancels at any point.                                         |
+| While choosing | The source has the selection ring. A preview arrow follows the pointer (mouse and touch drag) and snaps to a state when over it. A hint line says what to do: `editor.hint_pick_target`.                                     |
+| Then           | The label field opens on the new edge with focus and an empty text. See "Edit the symbols of an edge".                                                                                                                       |
+| Same target    | The target can be the source: that is a self-loop (see below).                                                                                                                                                               |
+| Edge exists    | If the edge (source → target) already exists, no new edge is made: its label field opens with its current symbols.                                                                                                           |
+| Cmd            | None until the label is sent; then see "Edit the symbols of an edge". An edge without symbols does not exist.                                                                                                                |
+| Step           | One, when the label is sent. If the label is empty or `Esc` is pressed, nothing is done and there is no step.                                                                                                                |
 
 ### Add a self-loop
 
@@ -126,70 +126,70 @@ It is a transition whose target is the source. Mouse: in **Tambah transisi**, re
 
 ### Edit the symbols of an edge
 
-| Way | Rule |
-| --- | --- |
-| Open | Select an edge and press `Enter` or `F2`; or double-click the label (or the edge); or long-press → "Ubah simbol"; or it opens by itself after "Add a transition". |
-| Field | A text box on the label, filled with the current symbols (`a, b, ε`), all selected. Size 16 px or more. |
-| Typing | Symbols are separated by commas or spaces. Each part is one symbol (`num` is one symbol). Empty parts are ignored. The same symbol twice counts once. |
-| ε | The word `eps`, the character `ε`, `Ctrl+E` (`Cmd+E` on a Mac) and the **Ketik ε** button (on the phone, in the dock, always shown while the field is open) all write `ε`. `ε` is stored as `on: null`. The key `E` alone is **not** a shortcut. A symbol named `eps` cannot be typed (it is ε); that is the only word with a special meaning. |
-| A long symbol | If the alphabet has only one-character symbols, and a part has several characters and is not in the alphabet (for example `ab`), the field asks before it sends: `editor.ask_split {text}` with two buttons: "a, b" (split into one-character symbols) and "satu simbol ab". Otherwise `ab` is one symbol, with no question. |
-| Send | `Enter` sends. `Esc` cancels. Leaving the field (blur) sends if the text is valid and changed, and cancels otherwise. |
-| What is sent | The new set of symbols is compared with the symbols the edge has now. One `batch`: `addSymbol` for each symbol not in the alphabet, `addTransition` for each added symbol, `removeTransition` for each symbol that is gone. For a new edge the "current" set is empty. |
-| Empty text | On an existing edge, `Enter` with empty text deletes the edge (a batch of `removeTransition`) and announces it. On a new edge it cancels. |
+| Way            | Rule                                                                                                                                                                                                                                                                                                                                                     |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Open           | Select an edge and press `Enter` or `F2`; or double-click the label (or the edge); or long-press → "Ubah simbol"; or it opens by itself after "Add a transition".                                                                                                                                                                                        |
+| Field          | A text box on the label, filled with the current symbols (`a, b, ε`), all selected. Size 16 px or more.                                                                                                                                                                                                                                                  |
+| Typing         | Symbols are separated by commas or spaces. Each part is one symbol (`num` is one symbol). Empty parts are ignored. The same symbol twice counts once.                                                                                                                                                                                                    |
+| ε              | The word `eps`, the character `ε`, `Ctrl+E` (`Cmd+E` on a Mac) and the **Ketik ε** button (on the phone, in the dock, always shown while the field is open) all write `ε`. `ε` is stored as `on: null`. The key `E` alone is **not** a shortcut. A symbol named `eps` cannot be typed (it is ε); that is the only word with a special meaning.           |
+| A long symbol  | If the alphabet has only one-character symbols, and a part has several characters and is not in the alphabet (for example `ab`), the field asks before it sends: `editor.ask_split {text}` with two buttons: "a, b" (split into one-character symbols) and "satu simbol ab". Otherwise `ab` is one symbol, with no question.                             |
+| Send           | `Enter` sends. `Esc` cancels. Leaving the field (blur) sends if the text is valid and changed, and cancels otherwise.                                                                                                                                                                                                                                    |
+| What is sent   | The new set of symbols is compared with the symbols the edge has now. One `batch`: `addSymbol` for each symbol not in the alphabet, `addTransition` for each added symbol, `removeTransition` for each symbol that is gone. For a new edge the "current" set is empty.                                                                                   |
+| Empty text     | On an existing edge, `Enter` with empty text deletes the edge (a batch of `removeTransition`) and announces it. On a new edge it cancels.                                                                                                                                                                                                                |
 | Unused symbols | A symbol that no transition uses stays in the alphabet (a DFSM may need it for its table). Removing a symbol from the alphabet is done on its column header in the table (S5-2), with `removeSymbol`; that command also removes the transitions that use the symbol, as one undo step, and a toast with Urungkan says so. The Definisi tab is read only. |
-| Errors | `document.invalid_symbol` (spaces and control characters cannot be here because spaces split the text; too long or `ε` inside a longer text can), `document.limit_exceeded`. The field stays open and shows the message. |
-| Step | One |
-| Announce | `editor.edge_changed {from, to, symbols}`, `editor.edge_removed {from, to}` |
+| Errors         | `document.invalid_symbol` (spaces and control characters cannot be here because spaces split the text; too long or `ε` inside a longer text can), `document.limit_exceeded`. The field stays open and shows the message.                                                                                                                                 |
+| Step           | One                                                                                                                                                                                                                                                                                                                                                      |
+| Announce       | `editor.edge_changed {from, to, symbols}`, `editor.edge_removed {from, to}`                                                                                                                                                                                                                                                                              |
 
 ### Delete
 
-| Way | Rule |
-| --- | --- |
-| Mouse | `Delete` or `Backspace` (only when the canvas has focus, not in a field) deletes the selection. With **Hapus**, a click on a state or an edge deletes it, and the tool stays. Menu → "Hapus". |
-| Touch | Select, then the **Hapus** button of the dock; or **Hapus** tool, then tap. Long-press → "Hapus". |
-| Keyboard | `Delete` or `Backspace` on the selection. |
-| Cmd | One `batch`. For each selected state, `removeState` (it removes its transitions, start and accepting mark). For each selected edge, `removeTransition` for every one of its symbols, **except** edges that touch a selected state, because `removeState` has already removed them (a `removeTransition` after that is refused, and a refused command refuses the whole batch). |
-| Step | One for the whole selection. |
-| Confirm | No dialog. A message appears for 6 seconds: `editor.deleted {what}` with a button **Urungkan** (44 px) that undoes. It is a polite live region, so a screen reader says it. The message stays while the pointer or focus is on it. |
-| After | The selection is empty. Focus goes to the nearest remaining state, or to the canvas. |
-| Not deleted | The alphabet, the title and the kind. |
+| Way         | Rule                                                                                                                                                                                                                                                                                                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Mouse       | `Delete` or `Backspace` (only when the canvas has focus, not in a field) deletes the selection. With **Hapus**, a click on a state or an edge deletes it, and the tool stays. Menu → "Hapus".                                                                                                                                                                                  |
+| Touch       | Select, then the **Hapus** button of the dock; or **Hapus** tool, then tap. Long-press → "Hapus".                                                                                                                                                                                                                                                                              |
+| Keyboard    | `Delete` or `Backspace` on the selection.                                                                                                                                                                                                                                                                                                                                      |
+| Cmd         | One `batch`. For each selected state, `removeState` (it removes its transitions, start and accepting mark). For each selected edge, `removeTransition` for every one of its symbols, **except** edges that touch a selected state, because `removeState` has already removed them (a `removeTransition` after that is refused, and a refused command refuses the whole batch). |
+| Step        | One for the whole selection.                                                                                                                                                                                                                                                                                                                                                   |
+| Confirm     | No dialog. A message appears for 6 seconds: `editor.deleted {what}` with a button **Urungkan** (44 px) that undoes. It is a polite live region, so a screen reader says it. The message stays while the pointer or focus is on it.                                                                                                                                             |
+| After       | The selection is empty. Focus goes to the nearest remaining state, or to the canvas.                                                                                                                                                                                                                                                                                           |
+| Not deleted | The alphabet, the title and the kind.                                                                                                                                                                                                                                                                                                                                          |
 
 ### Select
 
-| Way | Rule |
-| --- | --- |
-| Mouse | In **Pilih**, click a state or an edge to select only it. `Shift+click` or `Ctrl/Cmd+click` adds or removes it. `Shift+drag` on empty canvas draws a rectangle and selects the states fully inside it (edges between two selected states are selected too). Click on empty canvas clears. `Ctrl/Cmd+A` selects all. |
-| Touch | Tap selects one. Long-press opens the menu. Selecting several is not in v1 on touch (it is a decision for after the usability tests, U5). |
-| Keyboard | `Tab` and `Shift+Tab` go through the states (by id), then the edges (by from, then to), then leave the canvas. The arrow keys move focus to the nearest state in that direction. `Space` toggles the selection of the focused item, `Esc` clears the selection. Focus and selection are the same for one item; `Space` is for adding to a selection. |
-| Selection after a change | After undo and redo, ids that no longer exist are dropped from the selection. Nothing else changes. |
-| Announce | `editor.selected {count}` or the name of the single item. |
+| Way                      | Rule                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mouse                    | In **Pilih**, click a state or an edge to select only it. `Shift+click` or `Ctrl/Cmd+click` adds or removes it. `Shift+drag` on empty canvas draws a rectangle and selects the states fully inside it (edges between two selected states are selected too). Click on empty canvas clears. `Ctrl/Cmd+A` selects all.                                  |
+| Touch                    | Tap selects one. Long-press opens the menu. Selecting several is not in v1 on touch (it is a decision for after the usability tests, U5).                                                                                                                                                                                                            |
+| Keyboard                 | `Tab` and `Shift+Tab` go through the states (by id), then the edges (by from, then to), then leave the canvas. The arrow keys move focus to the nearest state in that direction. `Space` toggles the selection of the focused item, `Esc` clears the selection. Focus and selection are the same for one item; `Space` is for adding to a selection. |
+| Selection after a change | After undo and redo, ids that no longer exist are dropped from the selection. Nothing else changes.                                                                                                                                                                                                                                                  |
+| Announce                 | `editor.selected {count}` or the name of the single item.                                                                                                                                                                                                                                                                                            |
 
 ### Pan and zoom
 
-| Way | Rule |
-| --- | --- |
-| Pan, mouse | Drag on empty canvas (in **Pilih**; in other tools, hold `Space` and drag, or use the middle button). The mouse wheel and a trackpad scroll pan. |
-| Pan, touch | One finger on empty canvas. |
-| Pan, keyboard | `Shift+Arrow` moves the view by 100. |
-| Zoom, mouse | `Ctrl/Cmd + wheel`, around the pointer. |
-| Zoom, touch | Two-finger pinch, around the middle of the fingers. |
-| Zoom, keyboard | `+` and `−` change by a step (×1.25 and ÷1.25); `0` sets 100%; `1` fits the whole machine in the view. |
-| Control | The zoom control of the wireframe: − , "100%", + , and a button "Pas" (fit). Targets 44 px. |
-| Range | 25% to 400%. |
-| First view | On opening a document, fit the machine; if it is empty, 100% at the origin. After that, the view changes only when the user changes it. A new state added off-screen scrolls the view just enough to show it. |
-| Cmd | None. The view is not in the document. |
+| Way            | Rule                                                                                                                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pan, mouse     | Drag on empty canvas (in **Pilih**; in other tools, hold `Space` and drag, or use the middle button). The mouse wheel and a trackpad scroll pan.                                                              |
+| Pan, touch     | One finger on empty canvas.                                                                                                                                                                                   |
+| Pan, keyboard  | `Shift+Arrow` moves the view by 100.                                                                                                                                                                          |
+| Zoom, mouse    | `Ctrl/Cmd + wheel`, around the pointer.                                                                                                                                                                       |
+| Zoom, touch    | Two-finger pinch, around the middle of the fingers.                                                                                                                                                           |
+| Zoom, keyboard | `+` and `−` change by a step (×1.25 and ÷1.25); `0` sets 100%; `1` fits the whole machine in the view.                                                                                                        |
+| Control        | The zoom control of the wireframe: − , "100%", + , and a button "Pas" (fit). Targets 44 px.                                                                                                                   |
+| Range          | 25% to 400%.                                                                                                                                                                                                  |
+| First view     | On opening a document, fit the machine; if it is empty, 100% at the origin. After that, the view changes only when the user changes it. A new state added off-screen scrolls the view just enough to show it. |
+| Cmd            | None. The view is not in the document.                                                                                                                                                                        |
 
 ### Undo and redo
 
-| Rule | |
-| --- | --- |
-| Keys | `Ctrl/Cmd+Z` undo, `Ctrl+Y` and `Ctrl/Cmd+Shift+Z` redo. The buttons "Urungkan" and "Ulangi" do the same, and are disabled when there is nothing to do. |
-| Scope | The document only: states, transitions, symbols, names, places, start, accepting, kind, title. Not selection, tool, pan or zoom. |
-| One history | The diagram, the table and the definition views share one history. An edit in any view can be undone in any view. |
-| When a field is open | In a text field, `Ctrl+Z` is the text undo of the field, not the document's. |
-| Life | The history lives in memory. Reloading the page starts a new history from the saved document. The depth is 200 steps. |
-| After | Focus and tool stay. The selection loses ids that are gone. |
-| Announce | `editor.undone` and `editor.redone` (no detail: the history does not store a description of a step) |
+| Rule                 |                                                                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Keys                 | `Ctrl/Cmd+Z` undo, `Ctrl+Y` and `Ctrl/Cmd+Shift+Z` redo. The buttons "Urungkan" and "Ulangi" do the same, and are disabled when there is nothing to do. |
+| Scope                | The document only: states, transitions, symbols, names, places, start, accepting, kind, title. Not selection, tool, pan or zoom.                        |
+| One history          | The diagram, the table and the definition views share one history. An edit in any view can be undone in any view.                                       |
+| When a field is open | In a text field, `Ctrl+Z` is the text undo of the field, not the document's.                                                                            |
+| Life                 | The history lives in memory. Reloading the page starts a new history from the saved document. The depth is 200 steps.                                   |
+| After                | Focus and tool stay. The selection loses ids that are gone.                                                                                             |
+| Announce             | `editor.undone` and `editor.redone` (no detail: the history does not store a description of a step)                                                     |
 
 ### Auto layout
 
@@ -199,31 +199,31 @@ The button "Tata letak otomatis" (S9) sends one `batch` of `moveState`, so it is
 
 The dock has **Pilih**, **State**, **Transisi**, **Ketik ε** (shown only while a label field is open) and **Hapus**, each 44 × 44 or more. The menu (long-press, or right-click) shows items by what was pressed:
 
-| Pressed | Items |
-| --- | --- |
-| A state | Ubah nama · Jadikan start state · Accepting state (check mark when on) · Tambah transisi dari sini · Hapus |
-| An edge | Ubah simbol · Hapus |
-| Empty canvas | Tambah state di sini |
+| Pressed      | Items                                                                                                      |
+| ------------ | ---------------------------------------------------------------------------------------------------------- |
+| A state      | Ubah nama · Jadikan start state · Accepting state (check mark when on) · Tambah transisi dari sini · Hapus |
+| An edge      | Ubah simbol · Hapus                                                                                        |
+| Empty canvas | Tambah state di sini                                                                                       |
 
 Each item is a button with an accessible name, reachable with the arrows, closed with `Esc`.
 
 ## Keys
 
-| Key | Action |
-| --- | --- |
-| `V` `S` `T` | Tools Pilih, Tambah state, Tambah transisi |
-| `Esc` | Cancel the open field, drag or transition; then clear selection; then back to **Pilih** |
-| `N` | New state at the center of the view |
-| `Enter` / `F2` | Rename a state, or edit the symbols of an edge |
-| `A` / `M` | Toggle accepting / make start |
-| `Delete` / `Backspace` | Delete the selection |
-| `Alt+Arrow` | Move the selected states by 10 (`Shift`: 50) |
-| `Arrow` | Move focus to the nearest state |
-| `Shift+Arrow` | Pan |
-| `+` `−` `0` `1` | Zoom in, out, 100%, fit |
-| `Ctrl/Cmd+A` | Select all |
-| `Ctrl/Cmd+Z`, `Ctrl+Y`, `Ctrl/Cmd+Shift+Z` | Undo, redo, redo |
-| `Ctrl/Cmd+E` | Write ε (in a label field) |
+| Key                                        | Action                                                                                  |
+| ------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `V` `S` `T`                                | Tools Pilih, Tambah state, Tambah transisi                                              |
+| `Esc`                                      | Cancel the open field, drag or transition; then clear selection; then back to **Pilih** |
+| `N`                                        | New state at the center of the view                                                     |
+| `Enter` / `F2`                             | Rename a state, or edit the symbols of an edge                                          |
+| `A` / `M`                                  | Toggle accepting / make start                                                           |
+| `Delete` / `Backspace`                     | Delete the selection                                                                    |
+| `Alt+Arrow`                                | Move the selected states by 10 (`Shift`: 50)                                            |
+| `Arrow`                                    | Move focus to the nearest state                                                         |
+| `Shift+Arrow`                              | Pan                                                                                     |
+| `+` `−` `0` `1`                            | Zoom in, out, 100%, fit                                                                 |
+| `Ctrl/Cmd+A`                               | Select all                                                                              |
+| `Ctrl/Cmd+Z`, `Ctrl+Y`, `Ctrl/Cmd+Shift+Z` | Undo, redo, redo                                                                        |
+| `Ctrl/Cmd+E`                               | Write ε (in a label field)                                                              |
 
 Single-letter keys work only when the canvas has focus and no field is open, so typing a symbol never changes the tool.
 
@@ -231,20 +231,20 @@ Single-letter keys work only when the canvas has focus and no field is open, so 
 
 Messages are keys with parameters, spoken through one polite live region (`role="status"`). The Indonesian text is a draft until the feedback guide (U4); every key needs `id` and `en`.
 
-| Key | Parameters | Draft text (id) |
-| --- | --- | --- |
-| `editor.state_added` | name | "State {name} ditambahkan." |
-| `editor.deleted` | what, count | "{what} dihapus." (with **Urungkan**) |
-| `editor.edge_changed` | from, to, symbols | "Transisi {from} ke {to}: {symbols}." |
-| `editor.edge_removed` | from, to | "Transisi {from} ke {to} dihapus." |
-| `editor.accepting_on` / `_off` | name | "{name} menjadi accepting state." / "{name} bukan lagi accepting state." |
-| `editor.start_set` / `_cleared` | name | "{name} menjadi start state." / "Start state dihapus." |
-| `editor.moved` | name, x, y | "{name} dipindah." |
-| `editor.selected` | count or name | "{count} dipilih." |
-| `editor.undone` / `editor.redone` | none | "Dibatalkan." / "Diulang." |
-| `editor.hint_pick_target` | none | "Pilih state tujuan." |
-| `editor.need_one_state` | none | "Pilih satu state." |
-| `editor.ask_split` | text | "Maksud Anda simbol terpisah atau satu simbol?" |
+| Key                               | Parameters        | Draft text (id)                                                          |
+| --------------------------------- | ----------------- | ------------------------------------------------------------------------ |
+| `editor.state_added`              | name              | "State {name} ditambahkan."                                              |
+| `editor.deleted`                  | what, count       | "{what} dihapus." (with **Urungkan**)                                    |
+| `editor.edge_changed`             | from, to, symbols | "Transisi {from} ke {to}: {symbols}."                                    |
+| `editor.edge_removed`             | from, to          | "Transisi {from} ke {to} dihapus."                                       |
+| `editor.accepting_on` / `_off`    | name              | "{name} menjadi accepting state." / "{name} bukan lagi accepting state." |
+| `editor.start_set` / `_cleared`   | name              | "{name} menjadi start state." / "Start state dihapus."                   |
+| `editor.moved`                    | name, x, y        | "{name} dipindah."                                                       |
+| `editor.selected`                 | count or name     | "{count} dipilih."                                                       |
+| `editor.undone` / `editor.redone` | none              | "Dibatalkan." / "Diulang."                                               |
+| `editor.hint_pick_target`         | none              | "Pilih state tujuan."                                                    |
+| `editor.need_one_state`           | none              | "Pilih satu state."                                                      |
+| `editor.ask_split`                | text              | "Maksud Anda simbol terpisah atau satu simbol?"                          |
 
 Errors from the document keep their own keys (`document.duplicate_name` and so on) and are shown by the same region. The tone follows U4.
 
@@ -341,16 +341,16 @@ Errors from the document keep their own keys (`document.duplicate_name` and so o
 
 Every interaction uses an existing command. No new command is needed for S4.
 
-| Interaction | Commands | Checked |
-| --- | --- | --- |
-| Add a state | `addState` | S3 tests |
-| Rename | `renameState` | S3 tests |
-| Move (one or more) | `moveState` (in a `batch`) | one batch is one step, undo restores all (checked for this spec) |
-| Keyboard move | `moveState` with `coalesce: "nudge"` | a series is one step (checked for this spec) |
-| Start, accepting | `setStart`, `setAccepting` | S3 tests |
-| Edit the symbols of an edge | `batch` of `addSymbol`, `addTransition`, `removeTransition` | atomic, undo also removes the new symbol (checked for this spec) |
-| Delete the selection | `batch` of `removeState`, `removeTransition` | an edge of a deleted state must be left out of the batch (checked for this spec) |
-| Auto layout | `batch` of `moveState` | S3 tests |
+| Interaction                 | Commands                                                    | Checked                                                                          |
+| --------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Add a state                 | `addState`                                                  | S3 tests                                                                         |
+| Rename                      | `renameState`                                               | S3 tests                                                                         |
+| Move (one or more)          | `moveState` (in a `batch`)                                  | one batch is one step, undo restores all (checked for this spec)                 |
+| Keyboard move               | `moveState` with `coalesce: "nudge"`                        | a series is one step (checked for this spec)                                     |
+| Start, accepting            | `setStart`, `setAccepting`                                  | S3 tests                                                                         |
+| Edit the symbols of an edge | `batch` of `addSymbol`, `addTransition`, `removeTransition` | atomic, undo also removes the new symbol (checked for this spec)                 |
+| Delete the selection        | `batch` of `removeState`, `removeTransition`                | an edge of a deleted state must be left out of the batch (checked for this spec) |
+| Auto layout                 | `batch` of `moveState`                                      | S3 tests                                                                         |
 
 Two checks decide what S4 must test again in the browser: that a dragged state is previewed and not sent until release, and that the delete batch leaves out edges of deleted states.
 
@@ -477,3 +477,11 @@ S7-3 is three pull requests: Mesin → regex (A), Regex → NDFSM (B) and Sederh
 - **Mesin → regex (S7-3a).** One row, for any machine that has a start state (DFSM or NDFSM). The player has the step count, the sentence of the step, the table of labels, and the same five buttons as the other players (`PlayerControls`). The table "Label: ekspresi untuk jalur antar state" has the columns Dari, Ke and Label. It appears at the step where the engine makes it (after the new start and accepting states, if any), and the rows that a step changes are marked. The canvas shows the machine of the student (it is not changed), with the state that is removed lit. A new start or accepting state is not drawn: the sentence names it `s` or `f` (`s_2`, `f_2` when the machine has a state with that name).
 - **The result is text.** At the last step the player shows the expression in a block under the buttons (it scrolls and can be reached with the keyboard), a note that the notation is Rich's (`∪`, `ε`, `∅`), and a "Salin" button. If the browser refuses to copy, the line says so and asks the student to select the text. There is no "Buka sebagai mesin baru": the result is not a machine.
 - **The limit.** The web budget stops a label at 500 parts. The list then says "Ekspresinya jadi terlalu besar, jadi perhitungan dihentikan." and offers "Naikkan batas", which runs again with 2,000 (the E13 decision). A second stop has no button.
+
+### Regex → NDFSM (S7-3b)
+
+- **The row has a form, not only a button.** A field "Ekspresi reguler", a row of seven buttons (`∪ * + ε ∅ ( )`, each 44 × 44 px and named, for example "Sisipkan ∪, gabungan"), the line "Alfabet: a, b", and "Mulai". A phone keyboard has no `∪`, `ε` or `∅`, so the buttons are the way to type them. A button puts its sign at the caret (or in place of the selection) and leaves the focus and the caret in the field. Enter in the field starts the conversion. Only Rich's notation is accepted (`|` or `U` are symbols, as any other letter).
+- **The alphabet is read from the text:** each character that is not an operator or a space is one symbol, each once, in the order of the code points. The line under the field says which symbols the page found, so a typo shows at once as an extra symbol. A symbol of more than one character is not typed in this field.
+- **A mistake** shows under the field, calm and specific, with the position counted from 1 ("Tanda kurung di karakter ke-1 tidak punya pasangan."). The field keeps its text and gets `aria-invalid`; the message goes away when the text changes. An empty field says "Tulis ekspresi reguler dulu." in the row and disables "Mulai".
+- **The player** shows "Ekspresi: ..." (the text), the step count, and the sentence of the step. The canvas shows the machine as it is built: the states of the part are lit, and the start and accepting states are those of the part (the textbook's picture of one fragment). The places come from one layout of the finished machine, so nothing moves from step to step. At the last step "Buka sebagai mesin baru" opens the NDFSM as "NDFSM dari <expression>".
+- **The text of the field stays** when the player is closed, so that the student can change one letter and run it again.

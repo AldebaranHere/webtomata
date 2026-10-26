@@ -42,18 +42,20 @@ pnpm build
 
 ## Pemeriksaan kode / Code checks
 
-| Command | What it runs |
-| --- | --- |
-| `pnpm lint:rust` | `cargo fmt --check` and `cargo clippy -D warnings` |
-| `pnpm lint` | ESLint (web) |
-| `pnpm format:check` / `pnpm format` | Prettier check / fix (web) |
-| `pnpm check` | `svelte-check` with TypeScript strict |
-| `pnpm test` | `cargo test` |
-| `pnpm size` | gzip budgets: initial JS per page and `.wasm` (after a build) |
-| `pnpm lighthouse` | Lighthouse mobile scores and metrics on the build (needs Chrome) |
-| `pnpm verify` | all of the above plus `pnpm build` |
+| Command                             | What it runs                                                     |
+| ----------------------------------- | ---------------------------------------------------------------- |
+| `pnpm lint:rust`                    | `cargo fmt --check` and `cargo clippy -D warnings`               |
+| `pnpm lint`                         | ESLint (web)                                                     |
+| `pnpm format:check` / `pnpm format` | Prettier check / fix (web)                                       |
+| `pnpm check`                        | `svelte-check` with TypeScript strict                            |
+| `pnpm test`                         | `cargo test`                                                     |
+| `pnpm size`                         | gzip budgets: initial JS per page and `.wasm` (after a build)    |
+| `pnpm lighthouse`                   | Lighthouse mobile scores and metrics on the build (needs Chrome) |
+| `pnpm verify`                       | all of the above plus `pnpm build`                               |
 
 Run `pnpm verify` before opening a pull request.
+
+The browser tests (`pnpm test:e2e`) run on the production build, so run `pnpm build` first and again after every change. CI does the same: it builds, then tests.
 
 `pnpm build` also builds the WASM engine first (needs `wasm-pack`: `cargo install wasm-pack --locked`). `pnpm test:wasm` runs the engine tests under Node.
 

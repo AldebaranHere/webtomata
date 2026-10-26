@@ -3,11 +3,13 @@
 Status: accepted
 
 ## Context
+
 The deploy needs a Cloudflare API token. Before this change, one job installed everything, built the site, and deployed. The token was set only on the deploy step, but all steps shared one computer and one file system. A tampered package that runs during the build (a compiler plugin, a bundler) could change `wrangler` on disk, and then leak the token when the deploy step ran. The pull request previews need the same token, and Cloudflare cannot limit a token to "upload but not deploy", so a GitHub environment alone would not keep the key from pull request jobs.
 
 The token itself is already as narrow as Cloudflare allows: "Account – Workers Scripts – Edit", one account, no zones, no other products. (On 2026-10-24 two older broad tokens were removed: a template token for the disconnected Git build, and a read-only token that Cloudflare's assistant made.)
 
 ## Decision
+
 - `deploy.yml` has three jobs:
   - **`build`**: no secrets. Installs, builds the WASM module and the site, and saves `web/build` as an artifact. Everything that compiles or bundles runs here.
   - **`deploy`**: the only job with the key. A new computer: it installs from the lockfile with `--ignore-scripts`, downloads the artifact, and runs `wrangler`. No build, lint, test or compile command runs here.
@@ -19,13 +21,16 @@ The token itself is already as narrow as Cloudflare allows: "Account – Workers
 - `SECURITY.md` says how to report a vulnerability, and `docs/runbook-leaked-key.md` lists the steps if the key may have leaked.
 
 ## Consequences
+
 - Code that runs during the build can still change **what is deployed** (the site itself). The isolation protects the key, not the artifact. The CSP (`connect-src 'self'`) limits what injected code could send out, and the smoke test checks that the site runs.
 - The deploy job still runs `wrangler` and its dependencies with the key. A compromised `wrangler` release would still leak it. The 2-week rule, the lockfile, and the weekly audit are the protection there.
 - A deploy takes about one minute longer, because the artifact is uploaded and downloaded.
 - A change to the workflows that breaks a rule fails CI before it can be merged.
 
 ## Repository settings (not stored in the repository)
+
 Set on 2026-10-24, with `gh api`. A person who forks or moves the repository must set them again.
+
 - **Actions must be pinned to a full commit** (`sha_pinning_required: true`). All four workflows were re-run after the change and pass.
 - **Dependabot alerts: on. Dependabot security updates: off.** Security updates would open pull requests with brand new versions and break the two-week rule. The weekly audit and the alerts tell us; we update by hand.
 - **Private vulnerability reporting: on**, so that the "Report a vulnerability" button in `SECURITY.md` works.

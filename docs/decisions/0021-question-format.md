@@ -3,9 +3,11 @@
 Status: accepted
 
 ## Context
+
 Questions and guides are plain files that anyone can add by pull request (`CLAUDE.md`). A question holds a statement, a reference solution and constraints. The site (Q3 and Q4) will read these files at build time and check a student's answer against them. A wrong question reaches students as a wrong verdict, which destroys trust, so CI must catch every mistake that a machine can catch. Authors are students and lecturers, not only programmers.
 
 ## Decision
+
 - **One YAML file per question** in `content/questions/<id>.yaml`. The name of the file is the id. A file whose name starts with `_` is a template and is skipped. `schemaVersion: 1`; an unknown version is refused with a clear message, and an old version is never broken (a new one comes with a migration).
 - **`content/questions/schema.json` is the contract** (JSON Schema draft 7). Each file starts with a `# yaml-language-server: $schema=./schema.json` line, so editors give autocompletion and red marks. The types in `web/src/lib/questions/types.ts` are written by hand; `question.test.ts` checks that a file with every field passes the schema and that the fields of the types equal the fields of the schema.
 - **Fields:** `id`, `title` and `statement` (`id`, optional `en`), `type` (`build-dfsm`, `build-ndfsm`, `write-regex`), `alphabet`, optional `constraints`, `difficulty` (1 to 3), `week` (1 to 14), `pattern` (the guide that teaches it), optional `references` (`rich`, `sipser`), optional `hints` (at most 5), `examples` (at least 2 to accept and 2 to reject) and `solution`. Determinize and minimize practice are `build-dfsm` questions with `minimal: true`.
@@ -19,6 +21,7 @@ Questions and guides are plain files that anyone can add by pull request (`CLAUD
 - **No real question yet.** Tests use fixtures. `content/questions/` holds the schema and `_template.yaml` until the owner writes the first questions (Q6). The existence of the guide named by `pattern` is checked from G1 on.
 
 ## Consequences
+
 - A contributor without Rust or WSL (this includes the owner's Windows laptop) can run only `--schema-only` locally; the full check runs in CI, so its messages must be clear. They name the file, the line and the field.
 - Adding a field means changing the schema, the types and the kitchen-sink samples together; the tests fail otherwise.
 - The format fixes "one reference machine per question". Many different machines are correct, and Q4 compares by language (`equivalent`), not by shape, so this is not a limit for answers.

@@ -3,9 +3,11 @@
 Status: accepted
 
 ## Context
+
 A new visitor opened the Sandbox and found a sample machine that they had not asked for (X1 replaces it). The wireframes (U1) show an empty machine with "Coba contoh": a short list of examples, a way to start from an empty canvas, and an optional one-minute tour. Examples must be patterns, never solutions of homework, and anyone should be able to add one with a pull request.
 
 ## Decision
+
 - **Examples are plain data.** One file for each in `content/examples/<id>.json`: the title and a description in both languages, the alphabet, the states with their places, the transitions (states by name, `null` for ε), and the strings that the machine accepts and rejects. The files are put in the bundle when the site is built (`import.meta.glob`). `parseExample` checks a file with words that an author can use. Three examples ship now: Berakhiran 01 (the machine of the old sample), Jumlah a genap, and a union through ε-transitions (an NDFSM). The fourth of the wireframe (regex to NDFSM) joins with the conversions (S7).
 - **They are tested against the engine.** A test builds each example, runs its accepted and rejected strings through `simulateMany`, and requires that the engine finds nothing to point out in the machine: a student must not open an example and find a warning in it.
 - **The first visit makes an empty machine, not a sample.** The Sandbox saves it like any machine. "Coba contoh" is over the canvas while the machine is empty. It goes away for good, in that editor, when a state is added or "Mulai dari kanvas kosong" is pressed: a student who deletes every state is working, and the card does not come back. A reload of an empty machine offers it again.
@@ -16,6 +18,7 @@ A new visitor opened the Sandbox and found a sample machine that they had not as
 - **Left out for now:** "Buka file .jff atau JSON" (there is nothing to open it with before S10b) and the regex example (S7).
 
 ## Consequences
+
 - About a hundred browser tests relied on the sample. `openSandbox` now opens the example "Berakhiran 01" from the card and removes its test strings (`tests: 'keep'` keeps them), so those tests start as they did before. The tests of the first run use `openSandbox(page, { example: false })`.
 - A new example is a pull request with one JSON file; a test fails if a string is wrong or the machine has a check.
 - The texts of the card and the tour (`first.*`, `tour.*`) are a draft with `TODO(review)` until the feedback guide (U4); the owner approves them in the pull request.

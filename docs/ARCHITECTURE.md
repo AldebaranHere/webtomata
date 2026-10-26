@@ -15,28 +15,28 @@ flowchart LR
 
 ## Layers
 
-| Layer | Where | Rule |
-| --- | --- | --- |
-| `engine-core` | `crates/engine-core` | Pure Rust, no browser or OS code, no `unsafe`. Returns data and message keys, never sentences. Its `api` module is the API for the web app: text in, one JSON envelope out. |
-| `engine-wasm` | `crates/engine-wasm` | Thin `wasm-bindgen` layer: one line for each function of `engine_core::api`. |
-| Engine client | `web/src/lib/engine` | Only `worker.ts` imports the WASM package (ESLint enforces it). The UI talks to the worker through `client.ts`, which is typed with `types.ts` (generated from the Rust types). |
-| UI | `web/src` | SvelteKit, prerendered by `adapter-static`. |
-| Content | `content/` | Questions and guides as plain files, compiled at build time. |
+| Layer         | Where                | Rule                                                                                                                                                                                                               |
+| ------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `engine-core` | `crates/engine-core` | Pure Rust, no browser or OS code, no `unsafe`. Returns data and message keys, never sentences. Its `api` module is the API for the web app: text in, one JSON envelope out.                                        |
+| `engine-wasm` | `crates/engine-wasm` | Thin `wasm-bindgen` layer: one line for each function of `engine_core::api`.                                                                                                                                       |
+| Engine client | `web/src/lib/engine` | Only `worker.ts` imports the WASM package (ESLint enforces it). The UI talks to the worker through `client.ts`, which is typed with `types.ts` (generated from the Rust types).                                    |
+| UI            | `web/src`            | SvelteKit, prerendered by `adapter-static`.                                                                                                                                                                        |
+| Content       | `content/`           | Questions and guides as plain files, compiled at build time.                                                                                                                                                       |
 | Design tokens | `web/src/lib/styles` | `tokens.css` is the one place for colors and sizes; components use only its names (`pnpm check:tokens`). Every color pair is checked for WCAG AA contrast (`pnpm check:contrast`). See `docs/ux/design-system.md`. |
 
 ## Engine API
 
 One WASM call for each user action. Every function takes text and returns one text, in the same envelope: `{ "ok": true, "value": … }` or `{ "ok": false, "error": <message> }`. Bad input never throws. Details are in ADR 0014 and in the doc comment of `crates/engine-core/src/api.rs`.
 
-| Group | Functions (JavaScript names) |
-| --- | --- |
-| Machines | `loadMachine`, `validate`, `nondeterministicStates`, `addTrapState` |
-| Run | `simulate(machine, input, budget?)` |
-| Conversions | `determinize`, `minimize`, `equivalent(candidate, reference, budget?)` |
+| Group               | Functions (JavaScript names)                                                             |
+| ------------------- | ---------------------------------------------------------------------------------------- |
+| Machines            | `loadMachine`, `validate`, `nondeterministicStates`, `addTrapState`                      |
+| Run                 | `simulate(machine, input, budget?)`                                                      |
+| Conversions         | `determinize`, `minimize`, `equivalent(candidate, reference, budget?)`                   |
 | Regular expressions | `regexToFsm(text, alphabet, budget?)`, `fsmToRegex`, `simplify(text, alphabet, budget?)` |
-| Closure | `complement`, `union`, `intersection`, `xor` |
-| JFLAP | `importJff(xml)`, `exportJff(machine, layout)` |
-| Other | `version` |
+| Closure             | `complement`, `union`, `intersection`, `xor`                                             |
+| JFLAP               | `importJff(xml)`, `exportJff(machine, layout)`                                           |
+| Other               | `version`                                                                                |
 
 - **Machines** are the machine file (`schemaVersion` 1). **Budgets** are partial JSON objects: a missing field keeps the default, and an unknown field is an error. The web client adds smaller budgets than the engine defaults (`WEB_BUDGETS` in `client.ts`) so that a cheap phone does not work for long.
 - **Strings come with names.** `simulate` returns the input as symbol names, and `equivalent` returns the witness and the wrong-string lists as names in the alphabet of the candidate, so the UI never looks up a number in the wrong alphabet.
@@ -79,32 +79,33 @@ Budgets are in `CLAUDE.md` §7 and enforced in CI. The `.wasm` file with the ful
 - **Why pinned.** On this CPU, Windows moves a thread between P-cores and E-cores. A first set of runs with other programs open was up to 60% apart between two runs, and 25 to 40% slower. The numbers below are therefore close to the best this computer can do. A real browser is not pinned: it took 1.1 to 1.4 times the pinned Node time for the 500-state cases (see the browser check below).
 - **A phone is slower.** WASM through the API took about 1.7 to 3.3 times the native time at 500 states (and more at 10 states, where the JSON text costs more than the engine), and a mid-range Android phone is typically several times slower than a laptop CPU. We did not measure a phone. Do not read these numbers as a promise for phones.
 
-| What is timed (native) | 10 states | 100 states | 500 states |
-| --- | --- | --- | --- |
-| `determinize`: NFA "ends in n−1 a's", n states in, n out | 27 µs – 28 µs | 0.82 ms – 0.89 ms | 18 ms – 19 ms |
-| `minimize`: random complete DFSM, 3 symbols | 38 µs – 40 µs | 1.5 ms | 33 ms – 34 ms |
-| `minimize`: chain of n states, already minimal (about n rounds of splitting) | 28 µs | 1.3 ms | 32 ms – 33 ms |
-| `equivalent`: a counter modulo n and the same machine renumbered (the whole product is explored) | 20 µs | 0.23 ms – 0.24 ms | 0.94 ms – 0.97 ms |
-| `equivalent`: a counter modulo n and modulo n+2 (a witness is found, and up to 5 wrong strings of length ≤ 8 are listed on each side) | 0.25 ms – 0.26 ms | 0.52 ms – 0.53 ms | 1.3 ms |
+| What is timed (native)                                                                                                                | 10 states         | 100 states        | 500 states        |
+| ------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ----------------- | ----------------- |
+| `determinize`: NFA "ends in n−1 a's", n states in, n out                                                                              | 27 µs – 28 µs     | 0.82 ms – 0.89 ms | 18 ms – 19 ms     |
+| `minimize`: random complete DFSM, 3 symbols                                                                                           | 38 µs – 40 µs     | 1.5 ms            | 33 ms – 34 ms     |
+| `minimize`: chain of n states, already minimal (about n rounds of splitting)                                                          | 28 µs             | 1.3 ms            | 32 ms – 33 ms     |
+| `equivalent`: a counter modulo n and the same machine renumbered (the whole product is explored)                                      | 20 µs             | 0.23 ms – 0.24 ms | 0.94 ms – 0.97 ms |
+| `equivalent`: a counter modulo n and modulo n+2 (a witness is found, and up to 5 wrong strings of length ≤ 8 are listed on each side) | 0.25 ms – 0.26 ms | 0.52 ms – 0.53 ms | 1.3 ms            |
 
 | `determinize`: "the k-th symbol from the end is a" (k+1 states in, 2^k out) | k = 6 (64 states) | k = 8 (256 states) | k = 10 (1,024 states) |
-| --- | --- | --- | --- |
-| Native | 0.12 ms – 0.13 ms | 0.53 ms – 0.55 ms | 2.6 ms – 2.7 ms |
-| WASM through the API, in Node | 0.49 ms – 0.54 ms | 2.1 ms | 8.5 ms – 8.7 ms |
+| --------------------------------------------------------------------------- | ----------------- | ------------------ | --------------------- |
+| Native                                                                      | 0.12 ms – 0.13 ms | 0.53 ms – 0.55 ms  | 2.6 ms – 2.7 ms       |
+| WASM through the API, in Node                                               | 0.49 ms – 0.54 ms | 2.1 ms             | 8.5 ms – 8.7 ms       |
 
 WASM through the API, in Node, for the same cases as the first table:
 
-| What is timed | 10 states | 100 states | 500 states |
-| --- | --- | --- | --- |
-| `determinize` ends_with_a | 0.13 ms – 0.14 ms | 2.0 ms – 2.1 ms | 32 ms – 33 ms |
-| `minimize` random | 0.18 ms | 3.6 ms – 3.8 ms | 57 ms |
-| `minimize` chain | 0.11 ms – 0.12 ms | 2.8 ms – 2.9 ms | 54 ms – 56 ms |
-| `equivalent` same language | 70 µs | 0.47 ms – 0.48 ms | 2.3 ms – 2.4 ms |
-| `equivalent` different | 0.26 ms – 0.29 ms | 0.84 ms – 0.88 ms | 3.1 ms |
+| What is timed              | 10 states         | 100 states        | 500 states      |
+| -------------------------- | ----------------- | ----------------- | --------------- |
+| `determinize` ends_with_a  | 0.13 ms – 0.14 ms | 2.0 ms – 2.1 ms   | 32 ms – 33 ms   |
+| `minimize` random          | 0.18 ms           | 3.6 ms – 3.8 ms   | 57 ms           |
+| `minimize` chain           | 0.11 ms – 0.12 ms | 2.8 ms – 2.9 ms   | 54 ms – 56 ms   |
+| `equivalent` same language | 70 µs             | 0.47 ms – 0.48 ms | 2.3 ms – 2.4 ms |
+| `equivalent` different     | 0.26 ms – 0.29 ms | 0.84 ms – 0.88 ms | 3.1 ms          |
 
 **Browser check.** The same calls in the real browser (Chromium inside Claude Desktop, through the worker, not pinned): `determinize` ends_with_a 500 took 35 ms (pinned Node: 32 ms), `minimize` random 500 took 77 ms (pinned Node: 57 ms), and `minimize` on a chain of 2,000 states took 1.4 s (pinned Node: 0.65 s).
 
 **What the numbers show**
+
 - `determinize` and `minimize` grow roughly with the square of the number of states: from 100 to 500 states (5 times more), `determinize` ends_with_a takes about 21 times longer and `minimize` random about 22 times longer. `equivalent` grows 2.5 to 4 times, roughly in step with the number of state pairs, so it is cheap.
 - The worst case of subset construction is limited by `MAX_STATES`: k = 10 (1,024 states) takes under 3 ms natively, so the 2,000-state limit is not a time problem.
 - **A slow case, found while checking the web budgets.** `minimize` on a chain of 2,000 states (the largest machine the engine accepts) takes 0.65 to 0.69 s pinned in Node and 1.4 s in the real browser on this computer. The web budget `maxSteps: 20000` does not stop it, because the number of trace steps does not bound the running time. On a phone this could take several seconds. A student can cancel the call (`engine.cancel()`), and the machines in a course are far smaller (500 states take under 0.1 s), but a very large imported file could hit this. This is not fixed in E13. Options for a later task: a faster implementation that keeps Rich's trace, or a smaller limit on the machine size for `minimize` in the web client.

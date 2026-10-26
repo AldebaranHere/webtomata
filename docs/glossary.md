@@ -4,52 +4,52 @@ Indonesian terms used in the UI and guides. Source: the ToC slides, quizzes and 
 
 **The rule.** The slides mix English and Indonesian, even for one idea. So the UI uses the English word where the slides use English for a technical noun (state, start state, accepting state, dead state, string, configuration). It uses Indonesian for sentences, verbs and words that have a settled Indonesian term (alfabet, simbol, bahasa, transisi, komplemen, irisan, ekuivalen). An entry marked `TODO(review)` is not shown in M1 and still needs a decision.
 
-| English (Rich) | Indonesian (UI) | Notes |
-| --- | --- | --- |
-| finite state machine (FSM) | mesin berhingga (FSM) | Slides say "mesin" and "FSM". |
-| deterministic FSM (DFSM) | DFSM | Keep the abbreviation. |
-| nondeterministic FSM (NDFSM) | NDFSM | Slides write "nondeterminisme". |
-| state | state | Never "status" (the first wireframes used it; the slides use "state" more, and the exams do not use "status"). |
-| active state | state aktif | |
-| start state | start state | The arrow in the diagram is labelled "mulai". |
-| accepting state | accepting state | |
-| dead state | dead state | The same as a trap state. JFLAP says "trap state"; the course says "dead state". Use "dead state" only. |
-| unreachable state | state unreachable | |
-| self-loop | self-loop | |
-| alphabet | alfabet | |
-| symbol | simbol | Can be multi-character in this tool. |
-| string | string | Not "untai". |
-| empty string (ε) | string kosong (ε) | |
-| language | bahasa | |
-| transition | transisi | |
-| ε-transition | transisi ε | |
-| transition function (δ) | fungsi transisi | DFSM. |
-| transition relation (Δ) | relasi transisi | NDFSM. |
-| configuration | konfigurasi | Element of K × Σ*. |
-| initial configuration | konfigurasi awal | |
-| yields-in-one-step | yields-in-one-step | Slides keep the English name. |
-| accept / reject | menerima / menolak | "diterima" for the passive form. |
-| computation | komputasi | The sequence of configurations of a run. The UI says "komputasi" for a simulation run, not "jejak". |
-| engine | engine | The part that does the calculations (the WASM module). Kept in English because "mesin" already means the machine that the student draws. TODO(review) |
-| step (of an algorithm) | langkah | The UI says "langkah" for a step of a conversion. |
-| regular expression | ekspresi reguler (regex) | "regex" is fine in short labels. |
-| regular language | bahasa reguler | |
-| union | union | Slides write "union" (not "gabungan"). |
-| intersection | irisan | |
-| complement | komplemen | |
-| concatenation | konkatenasi | |
-| Kleene star | Kleene star | |
-| ε-closure | ε-closure | |
-| complete DFSM | DFSM lengkap | Every state has a transition on every symbol. |
-| minimal DFSM | DFSM minimal | |
-| minimization | minimalisasi | Buttons use the verb: "Minimalkan DFSM". The slides spell the noun three ways (minimalisasi, minimisasi, "minimalization"). TODO(review): ask the lecturer (C2). |
-| NDFSM → DFSM | Konversi NDFSM ke DFSM | Do not use "determinisasi". |
-| rip state | rip state | State elimination in FSM → regex. |
-| equivalence class | kelas ekuivalen | "ekuivalen", not "ekivalen". |
-| equivalent machines | mesin ekuivalen | |
-| distinguishable strings | distinguishable | TODO(review): not shown before M2. Keep the English word, as in the slides. |
-| witness string | string pembeda | Our own term: the shortest string that one machine accepts and the other rejects. |
-| start arrow label | mulai | |
+| English (Rich)               | Indonesian (UI)          | Notes                                                                                                                                                            |
+| ---------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| finite state machine (FSM)   | mesin berhingga (FSM)    | Slides say "mesin" and "FSM".                                                                                                                                    |
+| deterministic FSM (DFSM)     | DFSM                     | Keep the abbreviation.                                                                                                                                           |
+| nondeterministic FSM (NDFSM) | NDFSM                    | Slides write "nondeterminisme".                                                                                                                                  |
+| state                        | state                    | Never "status" (the first wireframes used it; the slides use "state" more, and the exams do not use "status").                                                   |
+| active state                 | state aktif              |                                                                                                                                                                  |
+| start state                  | start state              | The arrow in the diagram is labelled "mulai".                                                                                                                    |
+| accepting state              | accepting state          |                                                                                                                                                                  |
+| dead state                   | dead state               | The same as a trap state. JFLAP says "trap state"; the course says "dead state". Use "dead state" only.                                                          |
+| unreachable state            | state unreachable        |                                                                                                                                                                  |
+| self-loop                    | self-loop                |                                                                                                                                                                  |
+| alphabet                     | alfabet                  |                                                                                                                                                                  |
+| symbol                       | simbol                   | Can be multi-character in this tool.                                                                                                                             |
+| string                       | string                   | Not "untai".                                                                                                                                                     |
+| empty string (ε)             | string kosong (ε)        |                                                                                                                                                                  |
+| language                     | bahasa                   |                                                                                                                                                                  |
+| transition                   | transisi                 |                                                                                                                                                                  |
+| ε-transition                 | transisi ε               |                                                                                                                                                                  |
+| transition function (δ)      | fungsi transisi          | DFSM.                                                                                                                                                            |
+| transition relation (Δ)      | relasi transisi          | NDFSM.                                                                                                                                                           |
+| configuration                | konfigurasi              | Element of K × Σ*.                                                                                                                                               |
+| initial configuration        | konfigurasi awal         |                                                                                                                                                                  |
+| yields-in-one-step           | yields-in-one-step       | Slides keep the English name.                                                                                                                                    |
+| accept / reject              | menerima / menolak       | "diterima" for the passive form.                                                                                                                                 |
+| computation                  | komputasi                | The sequence of configurations of a run. The UI says "komputasi" for a simulation run, not "jejak".                                                              |
+| engine                       | engine                   | The part that does the calculations (the WASM module). Kept in English because "mesin" already means the machine that the student draws. TODO(review)            |
+| step (of an algorithm)       | langkah                  | The UI says "langkah" for a step of a conversion.                                                                                                                |
+| regular expression           | ekspresi reguler (regex) | "regex" is fine in short labels.                                                                                                                                 |
+| regular language             | bahasa reguler           |                                                                                                                                                                  |
+| union                        | union                    | Slides write "union" (not "gabungan").                                                                                                                           |
+| intersection                 | irisan                   |                                                                                                                                                                  |
+| complement                   | komplemen                |                                                                                                                                                                  |
+| concatenation                | konkatenasi              |                                                                                                                                                                  |
+| Kleene star                  | Kleene star              |                                                                                                                                                                  |
+| ε-closure                    | ε-closure                |                                                                                                                                                                  |
+| complete DFSM                | DFSM lengkap             | Every state has a transition on every symbol.                                                                                                                    |
+| minimal DFSM                 | DFSM minimal             |                                                                                                                                                                  |
+| minimization                 | minimalisasi             | Buttons use the verb: "Minimalkan DFSM". The slides spell the noun three ways (minimalisasi, minimisasi, "minimalization"). TODO(review): ask the lecturer (C2). |
+| NDFSM → DFSM                 | Konversi NDFSM ke DFSM   | Do not use "determinisasi".                                                                                                                                      |
+| rip state                    | rip state                | State elimination in FSM → regex.                                                                                                                                |
+| equivalence class            | kelas ekuivalen          | "ekuivalen", not "ekivalen".                                                                                                                                     |
+| equivalent machines          | mesin ekuivalen          |                                                                                                                                                                  |
+| distinguishable strings      | distinguishable          | TODO(review): not shown before M2. Keep the English word, as in the slides.                                                                                      |
+| witness string               | string pembeda           | Our own term: the shortest string that one machine accepts and the other rejects.                                                                                |
+| start arrow label            | mulai                    |                                                                                                                                                                  |
 
 ## Words of the interface
 
@@ -77,3 +77,5 @@ Added in S7-2b, with no source yet (`TODO(review)`): Irisan (intersection; the g
 Added in S7-2c, with no source yet (`TODO(review)`): XOR (the symmetric difference; the row says "XOR" and the hint "Selisih simetris"; Rich says "symmetric difference"), mesin produk (the product machine; Rich: cross-product machine), pasangan state (a pair of states), kedua mesin ekuivalen (the two machines are equivalent).
 
 Added in S7-3 (`TODO(review)`): "Mesin → regex" (FSM → regex; Rich: `fsmtoregex`), label (the expression on the path between two states), "Naikkan batas" (raise the limit), "Salin" (copy), "Notasi Rich" (Rich notation).
+
+Also in S7-3b (`TODO(review)`): "Regex → NDFSM" (Rich: `regextofsm`), "Alfabet: ..." (the alphabet that the page reads from the expression), "Sisipkan" (insert, for the buttons of the operators), the sentences of the steps (they use the glossary terms union, konkatenasi and Kleene star), and the messages about a mistake in an expression ("tidak punya pasangan", "belum lengkap").

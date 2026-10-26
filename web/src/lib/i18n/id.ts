@@ -470,8 +470,10 @@ export const id = {
 	'convert.stopped_nodes': 'Ekspresinya jadi terlalu besar, jadi perhitungan dihentikan.',
 	'convert.raise_limit': 'Naikkan batas',
 	'convert.regex_result': 'Ekspresi reguler',
-	'convert.regex_notation':
-		'Notasi Rich: ∪ untuk gabungan, ε untuk string kosong, ∅ untuk himpunan kosong.',
+	'convert.regex_notation': 'Notasi Rich:',
+	'convert.regex_notation_union': '∪ untuk gabungan',
+	'convert.regex_notation_epsilon': 'ε untuk string kosong',
+	'convert.regex_notation_empty': '∅ untuk himpunan kosong',
 	'convert.copy': 'Salin',
 	'convert.copied': 'Tersalin.',
 	'convert.copy_failed': 'Tidak bisa menyalin. Pilih teksnya dan salin sendiri.',
@@ -495,6 +497,46 @@ export const id = {
 		'Hapus state {state}. Setiap jalur yang lewat {state} menjadi bagian dari label pasangan state di sekitarnya.',
 	'fsm_to_regex.result': 'Label dari start state ke accepting state adalah hasilnya: {expression}',
 	'fsm_to_regex.no_start_state': 'Mesin harus punya start state.',
+	'convert.op.regex_to_fsm': 'Regex → NDFSM',
+	'convert.op.regex_to_fsm_hint': 'Bangun NDFSM dari ekspresi reguler, bagian demi bagian.',
+	'convert.play_regex_to_fsm': 'Regex → NDFSM',
+	'convert.result_title.regex_to_fsm': 'NDFSM dari {title}',
+	'convert.regex_field': 'Ekspresi reguler',
+	'convert.regex_alphabet': 'Alfabet: {symbols}',
+	'convert.regex_alphabet_none': 'Alfabet: kosong',
+	'convert.regex_symbols_note': 'Setiap karakter selain operator dan spasi adalah satu simbol.',
+	'convert.regex_insert': 'Sisipkan operator',
+	'convert.insert_union': 'Sisipkan ∪, gabungan',
+	'convert.insert_star': 'Sisipkan *, bintang',
+	'convert.insert_plus': 'Sisipkan +, satu atau lebih',
+	'convert.insert_epsilon': 'Sisipkan ε, string kosong',
+	'convert.insert_empty': 'Sisipkan ∅, himpunan kosong',
+	'convert.insert_open': 'Sisipkan tanda kurung buka',
+	'convert.insert_close': 'Sisipkan tanda kurung tutup',
+	'convert.regex_expression': 'Ekspresi: {expression}',
+	'regex.empty_set':
+		'∅: buat state {states} sebagai start state. Ia bukan accepting state, jadi tidak ada string yang diterima.',
+	'regex.epsilon':
+		'ε: buat state {states} sebagai start state dan accepting state, jadi hanya string kosong yang diterima.',
+	'regex.symbol':
+		'Simbol {symbol}: buat state {states}, dengan transisi {symbol} dari yang pertama ke yang kedua. State kedua menjadi accepting state.',
+	'regex.union':
+		'Union {expression}: start state baru {start} dengan transisi ε ke kedua start state lama. Accepting state-nya dari kedua mesin.',
+	'regex.concat':
+		'Konkatenasi {expression}: transisi ε dari setiap accepting state mesin pertama ke start state mesin kedua. Accepting state-nya milik mesin kedua.',
+	'regex.star':
+		'Kleene star {expression}: start state baru {start}, yang juga accepting state, dengan transisi ε ke start state lama; setiap accepting state lama mendapat transisi ε kembali ke start state lama.',
+	'regex.plus':
+		'Plus {expression}: setiap accepting state mendapat transisi ε kembali ke start state. Mesinnya tidak disalin.',
+	'regex.unexpected': 'Ada "{found}" di karakter ke-{position} yang tidak diharapkan di situ.',
+	'regex.unbalanced_parenthesis': 'Tanda kurung di karakter ke-{position} tidak punya pasangan.',
+	'regex.unexpected_end':
+		'Ekspresinya belum lengkap: ada bagian yang kurang setelah karakter ke-{position}.',
+	'regex.too_long': 'Ekspresinya lebih dari {limit} karakter.',
+	'regex.too_deep': 'Tanda kurungnya bersarang lebih dari {limit} tingkat.',
+	'regex.empty': 'Tulis ekspresi reguler dulu.',
+	'regex.unknown_symbol': 'Simbol {symbol} di karakter ke-{position} tidak dikenal.',
+	'regex.operator_symbol': 'Simbol {symbol} memuat karakter operator.',
 
 	'page.soon': 'Segera hadir.',
 	'page.home': 'Kembali ke beranda'
