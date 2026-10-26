@@ -15,7 +15,7 @@ on:
     branches: [main]
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: ${PIN}
@@ -23,7 +23,7 @@ jobs:
       - run: pnpm build
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: ${PIN}
@@ -34,7 +34,7 @@ jobs:
         run: pnpm --filter web exec wrangler deploy
   verify:
     needs: deploy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: ${PIN}
@@ -190,24 +190,24 @@ on:
   pull_request:
 jobs:
   rust:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: ${PIN}
   checks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: ${PIN}
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: ${PIN}
   web:
     if: always()
     needs: [checks, e2e]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - run: echo gate
@@ -256,7 +256,7 @@ on:
   pull_request:
 jobs:
   cleanup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - run: echo ok
@@ -282,6 +282,19 @@ test('contents: write is a problem everywhere', () => {
 			name
 		);
 	}
+});
+
+// The runner image is pinned: `ubuntu-latest` moves to a new Ubuntu on a date that GitHub chooses
+// (to Ubuntu 26 from October 2026), and the system libraries of the browsers may not exist there.
+test('a runner with a -latest label is a problem: the runner image is pinned', () => {
+	const problems = check(small.replace('ubuntu-24.04', 'ubuntu-latest'), 'release.yml');
+	assert.equal(problems.length, 1);
+	assert.match(problems[0], /ubuntu-latest/);
+	assert.match(problems[0], /ubuntu-24\.04/);
+});
+
+test('a pinned runner is not a problem', () => {
+	assert.deepEqual(check(small, 'release.yml'), []);
 });
 
 test('read rights are not a problem', () => {

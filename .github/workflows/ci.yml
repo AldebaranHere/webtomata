@@ -24,7 +24,7 @@ env:
 # is added: tools/check-workflows.mjs makes sure that `web` waits for every job of this file.
 jobs:
   rust:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -43,7 +43,7 @@ jobs:
   # The checks that need no browser: the tests, the linters and the guard rails, and the production
   # build with its size budgets and the smoke test.
   checks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -85,7 +85,7 @@ jobs:
   # finds no accessibility violation (docs/decisions/0018-playwright.md). Uses the Chrome of the
   # runner. The tests are split over three computers; every test runs in exactly one of them.
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -112,7 +112,7 @@ jobs:
 
   # The performance, accessibility, best-practices and SEO scores of the budgets (CLAUDE.md, section 7).
   lighthouse:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -131,14 +131,17 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:wasm
       - run: pnpm --filter web build
+      # A hung Lighthouse run is stopped and tried once more by the check itself (a minute each); this
+      # limit is only a net under it. The step takes about 2 minutes.
       - run: pnpm lighthouse
+        timeout-minutes: 8
 
   # The small set of browser tests in Firefox and in WebKit (an iPhone), next to the Chrome tests
   # of the job e2e (docs/decisions/0022-cross-browser-tests.md). It has no secrets and read-only
   # rights. One computer for each browser, so that each one downloads only its own system libraries.
   # The browser is downloaded by Playwright, at the exact version of the lockfile.
   cross-browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -184,7 +187,7 @@ jobs:
       # Sometimes that mirror is so slow, without hanging, that `playwright install-deps` takes 6
       # minutes or more (8 to 36 minutes in some runs, against 30 seconds normally), and it has no
       # time limit. tools/install-browser-deps.sh runs apt itself under a hard limit, up to three
-      # tries of 150 seconds each, and uses the main archive from the second try on.
+      # tries of 75 seconds each (a normal install takes 25 to 40), and uses the main archive from the second try on.
       - name: Install the system libraries of the browser
         timeout-minutes: 10
         run: bash tools/install-browser-deps.sh ${{ matrix.browser }}
@@ -196,7 +199,7 @@ jobs:
   web:
     if: always()
     needs: [checks, e2e, lighthouse, cross-browser]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Every job before the gate must have succeeded
