@@ -15,6 +15,15 @@
 		saveWidth,
 		stepRem
 	} from './panel-width.ts';
+	import {
+		DEFAULT_PCT,
+		TAP_PX,
+		clampPct,
+		dragPct,
+		readHeight,
+		saveHeight,
+		stepPct
+	} from './panel-height.ts';
 
 	// The panel next to the canvas: a column on a laptop, and a panel under the canvas on a phone
 	// with a bar that hides it (the choice is remembered on this device). It has tabs: Simulasi (the
@@ -67,10 +76,12 @@
 		}
 		width = readWidth(window.innerWidth);
 		widest = maxRem(window.innerWidth);
-		// A smaller window brings the width back inside the limits.
+		heightPct = readHeight(editorHeight());
+		// A smaller window brings the width and the height back inside the limits.
 		const onresize = () => {
 			widest = maxRem(window.innerWidth);
 			width = clampRem(width, window.innerWidth);
+			heightPct = clampPct(heightPct, editorHeight());
 		};
 		window.addEventListener('resize', onresize);
 		return () => window.removeEventListener('resize', onresize);
@@ -78,7 +89,56 @@
 	// Through the CSS object model: the page does not allow an inline style attribute.
 	$effect(() => {
 		aside?.style.setProperty('--panel-width', `${width}rem`);
+		aside?.style.setProperty('--panel-height', `${heightPct}%`);
 	});
+
+	// The height on a phone: the panel is pulled up (to see more of the list or the table) and pushed
+	// down by the bar at its top. A finger that moves less than a few pixels is a tap, which shows or
+	// hides the panel. The keys Up and Down do the same for a keyboard. The height is a share of the editor, so it is the same share when
+	// the phone is turned.
+	let heightPct = $state(DEFAULT_PCT);
+	const phone = () => window.matchMedia('(max-width: 39.99rem)').matches;
+	const editorHeight = () => aside?.parentElement?.clientHeight || window.innerHeight;
+	let press: { startY: number; startPct: number; dragging: boolean } | null = null;
+	// The click that follows a drag must not show or hide the panel.
+	let noClickUntil = 0;
+
+	function pressBar(event: PointerEvent) {
+		if (!phone() || (event.pointerType === 'mouse' && event.button !== 0)) return;
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		press = { startY: event.clientY, startPct: heightPct, dragging: false };
+	}
+	function moveBar(event: PointerEvent) {
+		if (!press) return;
+		if (!press.dragging) {
+			if (Math.abs(event.clientY - press.startY) < TAP_PX) return;
+			press.dragging = true;
+			// A drag up on a hidden panel shows it, at the height that it had.
+			if (hidden) setHidden(false);
+		}
+		heightPct = dragPct(press.startPct, press.startY, event.clientY, editorHeight());
+	}
+	function releaseBar() {
+		if (!press) return;
+		if (press.dragging) {
+			saveHeight(heightPct);
+			noClickUntil = performance.now() + 120;
+		}
+		press = null;
+	}
+	function clickBar() {
+		if (performance.now() < noClickUntil) return;
+		toggle();
+	}
+	function keyBar(event: KeyboardEvent) {
+		if (!phone()) return;
+		const next = stepPct(heightPct, event.key, editorHeight());
+		if (next === null) return;
+		event.preventDefault();
+		if (hidden) setHidden(false);
+		heightPct = next;
+		saveHeight(next);
+	}
 
 	function grab(event: PointerEvent) {
 		if (event.pointerType === 'mouse' && event.button !== 0) return;
@@ -111,7 +171,10 @@
 	}
 
 	function toggle() {
-		hidden = !hidden;
+		setHidden(!hidden);
+	}
+	function setHidden(value: boolean) {
+		hidden = value;
 		try {
 			localStorage.setItem(KEY, hidden ? 'hidden' : 'shown');
 		} catch {
@@ -166,7 +229,12 @@
 		class="handle"
 		aria-expanded={!hidden}
 		aria-label={hidden ? t('panel.show') : t('panel.hide')}
-		onclick={toggle}
+		onclick={clickBar}
+		onpointerdown={pressBar}
+		onpointermove={moveBar}
+		onpointerup={releaseBar}
+		onpointercancel={releaseBar}
+		onkeydown={keyBar}
 	>
 		<span class="bar" aria-hidden="true"></span>
 		<span class="name" aria-hidden="true">{t('panel.title')}</span>
@@ -339,7 +407,7 @@
 		}
 		.panel {
 			width: auto;
-			height: 40%;
+			height: var(--panel-height, 40%);
 			border-left: 0;
 			border-top: 1px solid var(--color-border);
 		}
@@ -359,6 +427,9 @@
 			color: var(--color-ink);
 			font: inherit;
 			cursor: pointer;
+			/* The bar is dragged: no gesture of the browser (a scroll, a zoom) takes the touch. */
+			touch-action: none;
+			user-select: none;
 		}
 		.handle .bar {
 			width: 2.5rem;
