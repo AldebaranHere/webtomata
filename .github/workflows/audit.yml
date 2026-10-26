@@ -26,6 +26,8 @@ jobs:
           persist-credentials: false
       - run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main' }}
       - run: cargo install cargo-audit --locked --version 0.22.2
       # The advisory database comes from the RustSec repository. Accepted advisories, with their
       # reasons and dates, are in .cargo/audit.toml.

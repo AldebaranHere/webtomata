@@ -32,6 +32,8 @@ jobs:
           persist-credentials: false
       - run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main' }}
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
@@ -49,6 +51,8 @@ jobs:
           persist-credentials: false
       - run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main' }}
       - run: cargo install wasm-pack --locked
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -93,6 +97,8 @@ jobs:
           persist-credentials: false
       - run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main' }}
       - run: cargo install wasm-pack --locked
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -114,6 +120,8 @@ jobs:
           persist-credentials: false
       - run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main' }}
       - run: cargo install wasm-pack --locked
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -146,6 +154,8 @@ jobs:
           persist-credentials: false
       - run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main' }}
       - run: cargo install wasm-pack --locked
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -155,7 +165,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:wasm
       - run: pnpm --filter web build
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # The browsers are restored in every run, and saved only after a run on staging or main: a cache
+      # that a pull request saves can only be used by that pull request (docs/decisions/0027).
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: browsers
         with:
           path: ~/.cache/ms-playwright
@@ -163,6 +175,11 @@ jobs:
       - run: pnpm --filter web exec playwright install ${{ matrix.browser }}
         if: steps.browsers.outputs.cache-hit != 'true'
         timeout-minutes: 5
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.browsers.outputs.cache-hit != 'true' && (github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main')
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('pnpm-lock.yaml') }}
       # The system libraries come from the Ubuntu mirror of the runner (azure.archive.ubuntu.com).
       # Sometimes that mirror is so slow, without hanging, that `playwright install-deps` takes 6
       # minutes or more (8 to 36 minutes in some runs, against 30 seconds normally), and it has no
