@@ -16,6 +16,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: ${PIN}
       - run: pnpm install --frozen-lockfile
@@ -23,6 +24,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: ${PIN}
       - run: pnpm install --frozen-lockfile --ignore-scripts
@@ -33,6 +35,7 @@ jobs:
   verify:
     needs: deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: ${PIN}
       - run: node tools/smoke.mjs "$URL"
@@ -56,7 +59,10 @@ test('a secret in the build job is a problem', () => {
 });
 
 test('a secret in the verify job is a problem', () => {
-	const bad = good.replace('node tools/smoke.mjs "$URL"', 'node tools/smoke.mjs "${{ secrets.X }}"');
+	const bad = good.replace(
+		'node tools/smoke.mjs "$URL"',
+		'node tools/smoke.mjs "${{ secrets.X }}"'
+	);
 	assert.equal(check(bad).length, 1);
 });
 
@@ -67,7 +73,10 @@ test('a secret in another workflow file is a problem, even in a job named deploy
 });
 
 test('the word secrets in a comment is not a problem', () => {
-	const text = good.replace('jobs:', '# The key is in secrets.CLOUDFLARE_API_TOKEN, only in deploy.\njobs:');
+	const text = good.replace(
+		'jobs:',
+		'# The key is in secrets.CLOUDFLARE_API_TOKEN, only in deploy.\njobs:'
+	);
 	assert.deepEqual(check(text), []);
 });
 
@@ -106,7 +115,13 @@ test('the deploy job must install without running scripts', () => {
 });
 
 test('the deploy job runs no build code', () => {
-	for (const command of ['pnpm build', 'pnpm --filter web build', 'cargo build', 'wasm-pack build', 'pnpm lint']) {
+	for (const command of [
+		'pnpm build',
+		'pnpm --filter web build',
+		'cargo build',
+		'wasm-pack build',
+		'pnpm lint'
+	]) {
 		const bad = good.replace(
 			'      - name: Deploy',
 			`      - run: ${command}\n      - name: Deploy`
@@ -133,4 +148,35 @@ test('the real workflows of this repository follow the rules', () => {
 		.map((name) => ({ name, text: readFileSync(new URL(name, dir), 'utf8') }));
 	assert.ok(files.length >= 3);
 	assert.deepEqual(checkWorkflows(files), []);
+});
+
+// The jobs of `good` end like this: the header, `runs-on`, then the timeout.
+const noTimeout = (job) => {
+	const lines = good.split('\n');
+	const at = lines.indexOf(`  ${job}:`);
+	const timeout = lines.indexOf('    timeout-minutes: 15', at);
+	return lines.filter((_, i) => i !== timeout).join('\n');
+};
+
+test('a job without timeout-minutes is a problem: a stalled step must not run for six hours', () => {
+	const problems = check(noTimeout('verify'));
+	assert.equal(problems.length, 1);
+	assert.match(problems[0], /job verify/);
+	assert.match(problems[0], /timeout-minutes/);
+});
+
+test('a timeout of one job does not cover the next job', () => {
+	const problems = check(noTimeout('deploy'));
+	assert.equal(problems.length, 1);
+	assert.match(problems[0], /job deploy/);
+});
+
+test('a timeout that is not a number is a problem', () => {
+	const bad = good.replace('timeout-minutes: 15', 'timeout-minutes: soon');
+	assert.ok(check(bad).length >= 1);
+});
+
+test('a timeout of more than 30 minutes is a problem: CI must not hang for long', () => {
+	const bad = good.replace('timeout-minutes: 15', 'timeout-minutes: 60');
+	assert.ok(check(bad).some((p) => /30/.test(p)));
 });

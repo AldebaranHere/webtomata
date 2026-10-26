@@ -19,6 +19,7 @@ env:
 jobs:
   rust:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -33,6 +34,7 @@ jobs:
 
   web:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -76,6 +78,7 @@ jobs:
   # rights. The two browsers are downloaded by Playwright, at the exact version of the lockfile.
   cross-browser:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -96,9 +99,20 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      # The packages of the system libraries come from the mirror of the runner, which sometimes
+      # hangs for ten minutes or more (it took 8 to 36 minutes in some runs, against 30 seconds
+      # normally). A short timeout makes apt give up on it and use the next mirror at once.
+      - run: |
+          sudo tee /etc/apt/apt.conf.d/99-fail-fast > /dev/null <<'CONF'
+          Acquire::http::Timeout "15";
+          Acquire::https::Timeout "15";
+          Acquire::Retries "3";
+          CONF
       - run: pnpm --filter web exec playwright install --with-deps firefox webkit
         if: steps.browsers.outputs.cache-hit != 'true'
+        timeout-minutes: 6
       # A cached browser still needs the system libraries.
       - run: pnpm --filter web exec playwright install-deps firefox webkit
         if: steps.browsers.outputs.cache-hit == 'true'
+        timeout-minutes: 6
       - run: pnpm test:e2e:cross

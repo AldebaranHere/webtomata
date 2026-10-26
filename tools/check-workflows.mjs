@@ -10,6 +10,9 @@
 // 3. Every `uses:` is pinned to a full commit, so a moved tag cannot change what runs.
 // 4. `pull_request_target` is not used. It runs code of a pull request with the key of the
 //    repository.
+// 5. Every job has `timeout-minutes`, a number of at most 30. Without it a stalled step (a slow
+//    package mirror, a hung browser download) runs for up to six hours; with it the job fails
+//    fast and can be run again.
 //
 // The workflow files are read line by line, with no YAML library, so the files must keep the
 // usual shape: `jobs:` at the left edge, and each job name indented by two spaces.
@@ -19,7 +22,9 @@ import { pathToFileURL } from 'node:url';
 const DEPLOY_FILE = 'deploy.yml';
 const DEPLOY_JOB = 'deploy';
 const FULL_COMMIT = /@[0-9a-f]{40}$/;
-const BUILD_CODE = /\b(pnpm\s+(--filter\s+\S+\s+)?(build|lint|test|check)\b|cargo\s|wasm-pack|vite\s)/;
+const MAX_TIMEOUT_MINUTES = 30;
+const BUILD_CODE =
+	/\b(pnpm\s+(--filter\s+\S+\s+)?(build|lint|test|check)\b|cargo\s|wasm-pack|vite\s)/;
 
 /** `files` is a list of `{ name, text }`. Returns the list of problems; empty means all is well. */
 export function checkWorkflows(files) {
@@ -27,6 +32,8 @@ export function checkWorkflows(files) {
 	for (const { name, text } of files) {
 		let inJobs = false;
 		let job = '';
+		/** The jobs of this file, with the line of the header and the timeout that was read. */
+		const jobs = [];
 		text.split(/\r?\n/).forEach((raw, index) => {
 			if (/^\s*#/.test(raw)) return;
 			const line = raw.replace(/\s+#.*$/, '');
@@ -36,14 +43,20 @@ export function checkWorkflows(files) {
 			}
 			if (inJobs) {
 				const header = line.match(/^ {2}([A-Za-z0-9_-]+):\s*$/);
-				if (header) job = header[1];
-				else if (/^\S/.test(line)) inJobs = false;
+				if (header) {
+					job = header[1];
+					jobs.push({ name: job, line: index + 1, timeout: null });
+				} else if (inJobs && /^ {4}timeout-minutes:/.test(line)) {
+					jobs[jobs.length - 1].timeout = line.replace(/^ {4}timeout-minutes:\s*/, '').trim();
+				} else if (/^\S/.test(line)) inJobs = false;
 			}
 			const where = `${name}${inJobs && job ? ` (job ${job})` : ''}, line ${index + 1}`;
 			const inDeploy = name === DEPLOY_FILE && inJobs && job === DEPLOY_JOB;
 
 			if (/secrets\./.test(line) && !inDeploy) {
-				problems.push(`${where}: secrets may only be used in the job "${DEPLOY_JOB}" of ${DEPLOY_FILE}`);
+				problems.push(
+					`${where}: secrets may only be used in the job "${DEPLOY_JOB}" of ${DEPLOY_FILE}`
+				);
 			}
 			const uses = line.match(/^\s*(?:-\s*)?uses:\s*(\S+)/);
 			if (uses && !uses[1].startsWith('./') && !FULL_COMMIT.test(uses[1])) {
@@ -61,6 +74,20 @@ export function checkWorkflows(files) {
 				}
 			}
 		});
+		for (const { name: job, line, timeout } of jobs) {
+			const where = `${name} (job ${job}), line ${line}`;
+			if (timeout === null) {
+				problems.push(
+					`${where}: the job has no timeout-minutes (a stalled step would run for up to six hours)`
+				);
+			} else if (!/^\d+$/.test(timeout)) {
+				problems.push(`${where}: timeout-minutes must be a number, not "${timeout}"`);
+			} else if (Number(timeout) > MAX_TIMEOUT_MINUTES) {
+				problems.push(
+					`${where}: timeout-minutes is ${timeout}; it must be at most ${MAX_TIMEOUT_MINUTES}`
+				);
+			}
+		}
 	}
 	return problems;
 }
