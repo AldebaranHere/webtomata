@@ -3,6 +3,7 @@
 	import HistoryButtons from './HistoryButtons.svelte';
 	import type { Tool } from './interaction/editor.ts';
 	import ToolIcon from './ToolIcon.svelte';
+	import ToolTip from './ToolTip.svelte';
 	import { TOOLS } from './tools.ts';
 
 	// The tools, as a column on a laptop (with undo and redo) and as a bar at the bottom of a phone.
@@ -21,19 +22,43 @@
 		onundo: () => void;
 		onredo: () => void;
 	} = $props();
+
+	// A tooltip (ToolTip.svelte) is dismissed with Escape, and comes back when the pointer enters the
+	// rail again.
+	let rail = $state<HTMLElement>();
+	let tipsOff = $state(false);
+	$effect(() => {
+		const onkey = (event: KeyboardEvent) => {
+			if (event.key === 'Escape') tipsOff = true;
+		};
+		const onenter = () => (tipsOff = false);
+		window.addEventListener('keydown', onkey);
+		rail?.addEventListener('pointerenter', onenter);
+		return () => {
+			window.removeEventListener('keydown', onkey);
+			rail?.removeEventListener('pointerenter', onenter);
+		};
+	});
 </script>
 
-<div class="rail" role="toolbar" aria-label={t('editor.rail')}>
+<div
+	class="rail"
+	role="toolbar"
+	aria-label={t('editor.rail')}
+	data-tips-off={tipsOff || undefined}
+	bind:this={rail}
+>
 	{#each TOOLS as item (item.tool)}
 		<button
 			type="button"
-			class="tool"
+			class="tool has-tip"
 			aria-pressed={tool === item.tool}
 			aria-keyshortcuts={item.keys}
 			onclick={() => ontool(item.tool)}
 		>
 			<ToolIcon name={item.icon} />
 			<span class="label">{t(item.label)}</span>
+			<ToolTip label={t(item.label)} keys={item.keys} />
 		</button>
 	{/each}
 	<span class="gap" aria-hidden="true"></span>
@@ -53,6 +78,7 @@
 		border-right: 1px solid var(--color-border);
 	}
 	.tool {
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		align-items: center;

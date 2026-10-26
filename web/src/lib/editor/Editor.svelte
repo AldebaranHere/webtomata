@@ -532,8 +532,10 @@
 		font-weight: var(--weight-strong);
 		cursor: pointer;
 	}
+	/* Drawn 36 px high, so that it does not touch the lines of the bar; the hit area is 44 px. */
 	.layout {
-		min-height: var(--target-min);
+		position: relative;
+		min-height: 2.25rem;
 		padding: 0 var(--space-3);
 		border: 1px solid var(--color-border-strong);
 		border-radius: var(--radius-lg);
@@ -541,6 +543,11 @@
 		color: var(--color-ink);
 		font: inherit;
 		cursor: pointer;
+	}
+	.layout::after {
+		content: '';
+		position: absolute;
+		inset: -4px 0;
 	}
 	.layout:hover {
 		background: var(--color-neutral-tint);

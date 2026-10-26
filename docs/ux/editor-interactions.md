@@ -418,3 +418,8 @@ Copy and paste, dragging an edge to change its ends, editing an edge's curve by 
 - **How.** The graph goes to a worker that holds the library (dagre, see ADR 0026), which starts on the first press. The page is never busy, and the library is never in the first load.
 - **When it cannot.** A machine of more than 400 states, a layout that takes more than 5 s, a worker that fails, and a machine that changed while it was laid out each say so in a calm sentence under the bar and change nothing.
 - **The hint under the table** (S5-2) is three short lines, one for each key, so that it is easy to read (suggested in the phone test of PR 59).
+
+## Tooltips and the auto layout button (suggested in the phone and laptop test of PR 60)
+
+- **The rail on a laptop shows icons only, so a pointer that rests on an icon shows its name and its key** (for example "Tambah state S", "Urungkan Ctrl+Z"), to the right of the icon, after 300 ms. The keyboard focus shows it at once. It follows WCAG 1.4.13: the pointer can go onto the tooltip and it stays, and Escape dismisses it (it comes back when the pointer enters the rail again). It is hidden from screen readers (the buttons have their names), and it is not drawn on a phone, where the names are under the icons and there is no hover.
+- **The button "Tata letak otomatis" in the bar is drawn 36 px high**, so that it does not touch the lines of the bar; its hit area is still 44 px (an invisible extension of 4 px above and below).

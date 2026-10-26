@@ -26,14 +26,26 @@ test('a finger: a long-press on empty canvas, then the item, lays the machine ou
 	);
 });
 
-test('the button of the bar is at least 44 px high, and the bar still holds its other controls', async ({
+test('the button of the bar has air above and below it, and a hit area of 44 px', async ({
 	page,
 	isMobile
 }) => {
 	test.skip(isMobile, 'a laptop only');
 	await openSandbox(page);
 	const button = page.getByRole('button', { name: 'Tata letak otomatis' });
-	expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+	const box = (await button.boundingBox())!;
+	const bar = (await page.locator('.editor .work > .bar').boundingBox())!;
+	// It does not touch the lines of the bar: at least 3 px above and below.
+	expect(box.y - bar.y).toBeGreaterThanOrEqual(3);
+	expect(bar.y + bar.height - (box.y + box.height)).toBeGreaterThanOrEqual(3);
+	// The finger or the pointer still has 44 px: just above and below the drawn button is the button.
+	for (const dy of [-2, box.height + 2]) {
+		const hit = await page.evaluate(
+			({ x, y }) => document.elementFromPoint(x, y)?.closest('button')?.textContent?.trim(),
+			{ x: box.x + box.width / 2, y: box.y + dy }
+		);
+		expect(hit).toBe('Tata letak otomatis');
+	}
 	await expect(page.getByRole('button', { name: /^Mesin saya/ })).toBeVisible();
 	await expect(page.getByRole('button', { name: /^Bantuan/ })).toBeVisible();
 	// The title is still shown, not cut to nothing.
