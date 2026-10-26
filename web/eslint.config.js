@@ -33,6 +33,7 @@ export default ts.config(
 		ignores: [
 			'src/lib/engine/worker.ts',
 			'src/lib/engine/handlers.test.ts',
+			'src/lib/editor/conversion.wasm.test.ts',
 			'src/lib/editor/document.wasm.test.ts',
 			'src/lib/editor/run.wasm.test.ts',
 			'src/lib/examples/examples.wasm.test.ts',

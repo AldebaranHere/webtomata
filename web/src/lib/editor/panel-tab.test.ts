@@ -20,8 +20,8 @@ const blocked: StorageLike = {
 };
 
 describe('the tabs of the panel', () => {
-	it('are Simulasi, Tabel and Definisi, in that order', () => {
-		expect(PANEL_TABS).toEqual(['simulation', 'table', 'definition']);
+	it('are Simulasi, Tabel, Definisi and Konversi, in that order', () => {
+		expect(PANEL_TABS).toEqual(['simulation', 'table', 'definition', 'conversion']);
 	});
 
 	it('start on Simulasi, and remember the last choice on this device', () => {
@@ -47,11 +47,12 @@ describe('the tabs of the panel', () => {
 
 	it('the arrow keys go round, and Home and End go to the ends', () => {
 		expect(nextTab('simulation', 'ArrowRight')).toBe('table');
-		expect(nextTab('definition', 'ArrowRight')).toBe('simulation');
-		expect(nextTab('simulation', 'ArrowLeft')).toBe('definition');
+		expect(nextTab('definition', 'ArrowRight')).toBe('conversion');
+		expect(nextTab('conversion', 'ArrowRight')).toBe('simulation');
+		expect(nextTab('simulation', 'ArrowLeft')).toBe('conversion');
 		expect(nextTab('table', 'ArrowLeft')).toBe('simulation');
 		expect(nextTab('table', 'Home')).toBe('simulation');
-		expect(nextTab('table', 'End')).toBe('definition');
+		expect(nextTab('table', 'End')).toBe('conversion');
 		expect(nextTab('table', 'Enter')).toBeNull();
 	});
 });

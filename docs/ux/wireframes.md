@@ -68,6 +68,6 @@ These do not block M1. Each has an owner task.
 3. **The example machines** in "Coba contoh": X1 ships three (Berakhiran 01, Jumlah a genap, a union through ε); the regex example of the wireframe joins with S7, and "Buka file .jff atau JSON" with S10b. They must be patterns, never course homework.
 4. **Section numbers** "Rich 5.2 · Sipser 1.1" come from the first wireframes and are not verified. Check them in G3 and Q6 before they ship.
 5. **Question titles** in the guide ("Soal terkait") are placeholders until Q6.
-6. **Screens not drawn yet:** the Soal list page (Q3), (the Tabel and Definisi tabs were drawn and approved on 2026-10-26; see editor-interactions.md), the Konversi tab and a conversion step view (S7), the "compare with regex" view (S8), and error and stopped states of the engine (S2). Each needs a wireframe before its task starts, and the owner approves it.
+6. **Screens not drawn yet:** the Soal list page (Q3), (the Tabel and Definisi tabs were drawn and approved on 2026-10-26; see editor-interactions.md), (the Konversi tab and the conversion step view were drawn and approved on 2026-10-26; see editor-interactions.md), the "compare with regex" view (S8), and error and stopped states of the engine (S2). Each needs a wireframe before its task starts, and the owner approves it.
 7. **The word "Sandbox"** has no course source. It stays unless the owner or the lecturer asks for an Indonesian word.
 8. **Sorting and size of the guide list.** Six cards fit; a longer list may need a search box. Decide in G3.

@@ -7,6 +7,7 @@
 	import { engine } from '#lib/engine/client.ts';
 	import Announcer from './Announcer.svelte';
 	import ChecksList from './ChecksList.svelte';
+	import ConversionCanvas from './ConversionCanvas.svelte';
 	import DefinitionView from './DefinitionView.svelte';
 	import KindSwitch from './KindSwitch.svelte';
 	import RunPanel from './RunPanel.svelte';
@@ -17,6 +18,7 @@
 	import { readTab, saveTab } from './panel-tab.ts';
 	import type { PanelTab } from './panel-tab.ts';
 	import type { TableViewProps as TableProps } from './table-props.ts';
+	import type { ConversionProps, ConversionShown } from './conversion-props.ts';
 	import type { Kind } from './document.ts';
 	import { addTest, readTests, removeTest } from './test-list.ts';
 	import { createTester } from './tester.ts';
@@ -51,7 +53,8 @@
 		library,
 		tests: savedTests,
 		firstRun,
-		onhelp
+		onhelp,
+		onopendoc
 	}: {
 		doc: MachineDocument;
 		autosave?: Autosave;
@@ -72,6 +75,8 @@
 		};
 		/** The "?" button of the bar: the tour. */
 		onhelp?: () => void;
+		/** The result of a conversion: a document that the page opens as a machine of its own. */
+		onopendoc?: (doc: MachineDocument) => void;
 	} = $props();
 
 	/** The title of the machine, as one undo step (the list "Mesin saya" calls this). */
@@ -211,11 +216,18 @@
 		);
 	}
 
-	// The table is code that is needed only when its tab opens: it is loaded then.
+	// The table is code that is needed only when its tab opens: it is loaded then. So is the tab of the
+	// conversions. While a conversion is open, its machine covers the canvas (the editor stays under it).
 	let Table = $state<Component<TableProps> | null>(null);
+	let Conversion = $state<Component<ConversionProps> | null>(null);
+	let conversionView = $state.raw<ConversionShown | null>(null);
+	const covered = $derived(conversionView !== null && tab === 'conversion');
 	$effect(() => {
 		if (tab === 'table' && !Table) {
 			void import('./TableView.svelte').then((module) => (Table = module.default));
+		}
+		if (tab === 'conversion' && !Conversion) {
+			void import('./ConversionPanel.svelte').then((module) => (Conversion = module.default));
 		}
 	});
 
@@ -387,15 +399,20 @@
 				{t(snapshot.link ? 'editor.hint_pick_target' : 'editor.hint_pick_source')}
 			</p>
 		{/if}
-		<EditorCanvas
-			bind:this={canvas}
-			{editor}
-			state={snapshot}
-			{flags}
-			{active}
-			{taken}
-			onlayout={() => void autoLayout()}
-		/>
+		<div class="stage" hidden={covered}>
+			<EditorCanvas
+				bind:this={canvas}
+				{editor}
+				state={snapshot}
+				{flags}
+				{active}
+				{taken}
+				onlayout={() => void autoLayout()}
+			/>
+		</div>
+		{#if conversionView && covered}
+			<ConversionCanvas doc={conversionView.doc} active={conversionView.active} />
+		{/if}
 		{#if layoutNote}
 			<p class="layout-note" aria-live="polite">{t(layoutNote.key, layoutNote.params)}</p>
 		{/if}
@@ -466,6 +483,15 @@
 				<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} />
 				<DefinitionView doc={snapshot.doc} />
 			{/snippet}
+			{#snippet conversion()}
+				{#if Conversion}
+					<Conversion
+						doc={snapshot.doc}
+						onshow={(shown) => (conversionView = shown)}
+						onopen={(result) => onopendoc?.(result)}
+					/>
+				{/if}
+			{/snippet}
 		</SidePanel>
 	{/if}
 	<Announcer announcement={snapshot.announcement} />
@@ -476,6 +502,15 @@
 		display: flex;
 		flex: 1;
 		min-height: 0;
+	}
+	.stage {
+		display: flex;
+		flex: 1;
+		min-width: 0;
+		min-height: 0;
+	}
+	.stage[hidden] {
+		display: none;
 	}
 	.work {
 		position: relative;

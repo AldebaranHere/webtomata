@@ -18,7 +18,7 @@
 
 	// The panel next to the canvas: a column on a laptop, and a panel under the canvas on a phone
 	// with a bar that hides it (the choice is remembered on this device). It has tabs: Simulasi (the
-	// run, the test strings and the checks), Tabel and Definisi. The tabs follow the pattern of the
+	// run, the test strings and the checks), Tabel, Definisi and Konversi. The tabs follow the pattern of the
 	// ARIA guide: one Tab stop, the arrow keys move between them. Simulasi stays in the page while
 	// another tab is open (what was typed in it is not lost); the others are made when they open.
 	let {
@@ -26,21 +26,28 @@
 		ontab,
 		simulation,
 		table,
-		definition
+		definition,
+		conversion
 	}: {
 		tab: PanelTab;
 		ontab: (tab: PanelTab) => void;
 		simulation: Snippet;
 		table: Snippet;
 		definition: Snippet;
+		conversion: Snippet;
 	} = $props();
 
 	const KEY = 'webtomata.panel';
+	let openedConversion = $state(false);
+	$effect(() => {
+		if (tab === 'conversion') openedConversion = true;
+	});
 	let hidden = $state(false);
 	const labels: Record<PanelTab, MessageKey> = {
 		simulation: 'panel.tab_simulation',
 		table: 'panel.tab_table',
-		definition: 'panel.tab_definition'
+		definition: 'panel.tab_definition',
+		conversion: 'panel.tab_conversion'
 	};
 
 	// The width on a laptop: the panel is pulled wider by its left edge (for the table), and the
@@ -203,6 +210,19 @@
 					class="pane"
 				>
 					{@render definition()}
+				</div>
+			{/if}
+			<!-- Konversi stays in the page once it was opened (like Simulasi): a conversion that is under
+			     way is not lost when the student looks at another tab. -->
+			{#if openedConversion}
+				<div
+					role="tabpanel"
+					id="panel-pane-conversion"
+					aria-labelledby="panel-tab-conversion"
+					class="pane"
+					hidden={tab !== 'conversion'}
+				>
+					{@render conversion()}
 				</div>
 			{/if}
 		</div>

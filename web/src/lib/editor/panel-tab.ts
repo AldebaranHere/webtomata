@@ -4,7 +4,7 @@ import type { StorageLike } from '#lib/i18n/translate.ts';
 import { deviceStorage } from './tour.ts';
 
 export const PANEL_TAB_KEY = 'webtomata.panel.tab';
-export const PANEL_TABS = ['simulation', 'table', 'definition'] as const;
+export const PANEL_TABS = ['simulation', 'table', 'definition', 'conversion'] as const;
 export type PanelTab = (typeof PANEL_TABS)[number];
 
 const isTab = (value: unknown): value is PanelTab =>
