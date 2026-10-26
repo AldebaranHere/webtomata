@@ -12,7 +12,7 @@ The plan has three steps, each one pull request, and quality does not change: ev
 - **C. Caches** (after B). Only `staging` and `main` save caches, and a small workflow deletes the caches of a pull request when it closes.
 
 ## Consequences
-- A real slow step (a first run with cold caches) must stay under the limits: 15 minutes for `rust`, 25 for `web`, 20 for `cross-browser`. The normal times are 1, 10 and 6 minutes.
+- A real slow step (a first run with cold caches) must stay under the limits: 15 minutes for `rust` and `lighthouse`, 20 for `checks`, `e2e` and `cross-browser`, 5 for the gate. The normal times before step B were 1 minute for `rust`, 10 for the old `web` and 6 for `cross-browser`; the expected times after step B are in the pull request of step B and are measured there.
 - A job that hits its limit fails with a clear message. It costs a re-run, instead of a silent wait of hours.
 - Deleting the 46 caches of closed pull requests (6.1 GB) was done by hand on 2026-10-27, with the owner's approval; step C keeps it from growing back.
 - Each of the e2e shards, the Lighthouse job and the two browser jobs builds the WASM module and the site itself (about 20 seconds with warm caches), which is cheaper than moving a build between jobs and keeps each job independent. The cost is more runner minutes, which are free for a public repository.
