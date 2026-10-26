@@ -81,6 +81,11 @@ pub fn intersection(first: &str, second: &str, budget: Option<String>) -> String
     api::intersection(first, second, budget.as_deref())
 }
 
+#[wasm_bindgen]
+pub fn xor(first: &str, second: &str, budget: Option<String>) -> String {
+    api::xor(first, second, budget.as_deref())
+}
+
 #[wasm_bindgen(js_name = importJff)]
 pub fn import_jff(xml: &str) -> String {
     api::import_jff(xml)

@@ -299,6 +299,17 @@ pub fn intersection(first_json: &str, second_json: &str, budget_json: Option<&st
     finish(run())
 }
 
+pub fn xor(first_json: &str, second_json: &str, budget_json: Option<&str>) -> String {
+    let run = || {
+        crate::xor(
+            &machine(first_json)?,
+            &machine(second_json)?,
+            budget::<ConversionBudget>(budget_json)?,
+        )
+    };
+    finish(run())
+}
+
 /// Reads a JFLAP file: the machine, the names and places of its states, and notes.
 pub fn import_jff(xml: &str) -> String {
     finish(crate::parse_jff(xml))

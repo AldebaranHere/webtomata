@@ -8,6 +8,7 @@ import type {
 	EquivalenceReport,
 	FsmToRegexBudget,
 	Intersection,
+	Xor,
 	Issue,
 	Jff,
 	JffState,
@@ -84,6 +85,7 @@ export interface EngineApi {
 		second: Machine,
 		budget?: Partial<ConversionBudget>
 	): EngineResult<Intersection>;
+	xor(first: Machine, second: Machine, budget?: Partial<ConversionBudget>): EngineResult<Xor>;
 	importJff(xml: string): EngineResult<Jff>;
 	exportJff(machine: Machine, layout: JffState[]): EngineResult<string>;
 }
@@ -108,6 +110,7 @@ export const METHODS = [
 	'complement',
 	'union',
 	'intersection',
+	'xor',
 	'importJff',
 	'exportJff'
 ] as const satisfies readonly EngineMethod[];

@@ -40,7 +40,8 @@ const engine: ConvertEngine = {
 	union: async (first, second) =>
 		JSON.parse(wasm.union(JSON.stringify(first), JSON.stringify(second))),
 	intersection: async (first, second) =>
-		JSON.parse(wasm.intersection(JSON.stringify(first), JSON.stringify(second)))
+		JSON.parse(wasm.intersection(JSON.stringify(first), JSON.stringify(second))),
+	xor: async (first, second) => JSON.parse(wasm.xor(JSON.stringify(first), JSON.stringify(second)))
 };
 
 async function finished(
@@ -733,6 +734,214 @@ describe('intersection', () => {
 			documentFrom(evenA),
 			'intersection',
 			documentFrom(evenA)
+		);
+		expect(outcome).toEqual({ kind: 'stopped', key: 'convert.stopped_states' });
+	});
+});
+
+describe('xor', () => {
+	// "Even length" over a and b, and "only a": a complete DFSM each.
+	const even: Spec = {
+		alphabet: ['a', 'b'],
+		states: [
+			[100, 100, 'e'],
+			[300, 100, 'o']
+		],
+		start: 0,
+		accepting: [0],
+		transitions: [
+			[0, 'a', 1],
+			[0, 'b', 1],
+			[1, 'a', 0],
+			[1, 'b', 0]
+		]
+	};
+	const onlyA: Spec = {
+		alphabet: ['a', 'b'],
+		states: [
+			[100, 100, 'x'],
+			[300, 100, 'y']
+		],
+		start: 0,
+		accepting: [0],
+		transitions: [
+			[0, 'a', 0],
+			[0, 'b', 1],
+			[1, 'a', 1],
+			[1, 'b', 1]
+		]
+	};
+
+	it('needs a second machine and a start state, and takes an NDFSM too', async () => {
+		expect(refusalOf(documentFrom(even), 'xor')).toBeNull();
+		expect(refusalOf(of(ndfsm, 'ndfsm'), 'xor')).toBeNull();
+		expect(refusalOf(documentFrom({ states: [[0, 0]] }), 'xor')?.key).toBe(
+			'convert.reason_no_start'
+		);
+		const none = await runConversion(engine, documentFrom(even), 'xor');
+		expect(none).toEqual({ kind: 'refused', key: 'convert.second_gone', params: {} });
+		const other = documentFrom({ ...onlyA, alphabet: ['a', 'c'], transitions: [[1, 'a', 0]] });
+		const bad = await runConversion(engine, documentFrom(even), 'xor', other);
+		expect(bad).toMatchObject({ kind: 'refused', key: 'convert.reason_alphabet' });
+	});
+
+	it('is one stage, the product, for two complete DFSMs, with three chips of which two are skipped', async () => {
+		const run = await finished(documentFrom(even), 'xor', documentFrom(onlyA));
+		const plan = await buildPlan(run, 'dead', rows);
+		expect(plan.stages.map((s) => s.number)).toEqual([3]);
+		expect(plan.stages[0]!.key).toBe('xor.stage.product');
+		expect(chipsOf(plan).map((c) => [c.number, c.present])).toEqual([
+			[1, false],
+			[2, false],
+			[3, true]
+		]);
+		expect(plan.total).toBe(run.trace.length - 1);
+	});
+
+	it('is three stages for an NDFSM and an incomplete DFSM, each starting from what the engine says', async () => {
+		const first = of(ndfsm, 'ndfsm');
+		const second = { ...of(partial), alphabet: first.alphabet };
+		const run = await finished(first, 'xor', second);
+		const plan = await buildPlan(run, 'dead', rows);
+		expect(plan.stages.map((s) => s.number)).toEqual([1, 2, 3]);
+		expect(plan.stages.map((s) => s.run.op)).toEqual(['determinize', 'determinize', 'product']);
+		const stages = run.trace.flatMap((s) => (s.change.kind === 'stage' ? [s.change] : []));
+		plan.stages.forEach((stage, i) => {
+			stages[i]!.inputs.forEach((input, k) => {
+				const source = k === 0 ? stage.run.source : stage.run.second!;
+				expect(normal(toMachine(source))).toEqual(normal(input));
+			});
+		});
+		// The first two stages make the two machines that the product starts from.
+		const last = (n: number) => {
+			const stage = plan.stages[n]!;
+			return planFrame(plan, stage.offset + stage.length - 1).frame.machine!;
+		};
+		expect(normal(last(0))).toEqual(normal(stages[2]!.inputs[0]!));
+		expect(normal(last(1))).toEqual(normal(stages[2]!.inputs[1]!));
+		expect(normal(last(2))).toEqual(normal(run.final));
+	});
+
+	it('names a state of the product by the names of its two states', async () => {
+		const run = await finished(documentFrom(even), 'xor', documentFrom(onlyA));
+		const plan = await buildPlan(run, 'dead', rows);
+		const names = [...plan.stages[0]!.names.result.values()];
+		expect(names[0]).toBe('(e, x)');
+		expect(new Set(names).size).toBe(names.length);
+		expect(names.every((n) => /^\(.+, .+\)$/.test(n) || /^S\d+$/.test(n))).toBe(true);
+	});
+
+	it('builds the product one pair at a time, with the pair lit, and ends at the engine machine', async () => {
+		const run = await finished(documentFrom(even), 'xor', documentFrom(onlyA));
+		const plan = await buildPlan(run, 'dead', rows);
+		const first = planFrame(plan, 0);
+		expect(first.frame.step.change.kind).toBe('pair');
+		expect(first.frame.machine!.states).toEqual([0]);
+		expect(first.frame.result).toEqual([0]);
+		// The pair lights the state of the first machine in the source view.
+		expect(first.frame.source).toEqual([0]);
+		const end = planFrame(plan, plan.total - 1).frame;
+		expect(normal(end.machine!)).toEqual(normal(run.final));
+		const table = end.table!;
+		if (table.kind !== 'delta') throw new Error('delta');
+		// "even" xor "only a": the pair (e, x) accepts on both sides, so it does not accept here.
+		expect(table.rows[0]!.accepting).toBe(false);
+	});
+
+	it('keeps the frames in step with the engine for random pairs, and opens the result', async () => {
+		const rng = random(31);
+		const make = (): MachineDocument => {
+			const count = 1 + rng.int(3);
+			const seen = new Set<string>();
+			const transitions: Spec['transitions'] = [];
+			for (let i = 0; i < count * 2; i++) {
+				const entry: [number, string | null, number] = [
+					rng.int(count),
+					rng.chance(0.15) ? null : rng.pick(['a', 'b']),
+					rng.int(count)
+				];
+				if (!seen.has(entry.join())) transitions.push(entry);
+				seen.add(entry.join());
+			}
+			return of(
+				{
+					alphabet: ['a', 'b'],
+					states: Array.from({ length: count }, (_, i): [number, number] => [100 * i, 100]),
+					start: 0,
+					accepting: [rng.int(count)],
+					transitions
+				},
+				rng.chance(0.5) ? 'ndfsm' : 'dfsm'
+			);
+		};
+		for (let round = 0; round < 25; round++) {
+			const run = await finished(make(), 'xor', make());
+			const plan = await buildPlan(run, 'dead', rows);
+			const end = planFrame(plan, plan.total - 1).frame.machine!;
+			expect(normal(end)).toEqual(normal(run.final));
+			expect(normal(toMachine(planResult(plan, 'T')))).toEqual(normal(run.final));
+		}
+	});
+
+	it('gives each stage the names that the stage before it made', async () => {
+		const first = of(ndfsm, 'ndfsm');
+		const run = await finished(first, 'xor', { ...of(partial), alphabet: first.alphabet });
+		const plan = await buildPlan(run, 'dead', rows);
+		const named = (doc: MachineDocument) => doc.states.map((s) => [s.id, s.name]);
+		// The product takes the machines that stages 1 and 2 made, with their names.
+		expect(named(plan.stages[2]!.run.source)).toEqual([...plan.stages[0]!.names.result]);
+		expect(named(plan.stages[2]!.run.second!)).toEqual([...plan.stages[1]!.names.result]);
+	});
+
+	it('starts the stage of each machine from that machine, with its own names and places', async () => {
+		// The second machine is an incomplete DFSM with names and places of its own.
+		const second = documentFrom({
+			alphabet: ['a', 'b'],
+			states: [
+				[500, 60, 'u'],
+				[700, 90, 'v']
+			],
+			start: 0,
+			accepting: [1],
+			transitions: [[0, 'a', 1]]
+		});
+		const run = await finished(of(ndfsm, 'ndfsm'), 'xor', second);
+		const plan = await buildPlan(run, 'dead', rows);
+		const stage = (n: number) => plan.stages.find((s) => s.number === n)!;
+		const first = documentFrom(ndfsm);
+		expect(stage(1).run.source.states.map((s) => [s.name, s.x, s.y])).toEqual(
+			first.states.map((s) => [s.name, s.x, s.y])
+		);
+		expect(stage(2).run.source.states.map((s) => [s.name, s.x, s.y])).toEqual([
+			['u', 500, 60],
+			['v', 700, 90]
+		]);
+		// The product takes the names of what the two stages made: sets of the names of each machine.
+		expect(stage(3).run.second!.states.map((s) => s.name)).toEqual([
+			...stage(2).names.result.values()
+		]);
+		expect([...stage(2).names.result.values()].join(' ')).toMatch(/u|v|∅/);
+	});
+
+	it('says when the result accepts nothing: the machines are equivalent', async () => {
+		const run = await finished(documentFrom(even), 'xor', documentFrom(even));
+		expect(run.final.accepting).toEqual([]);
+		const other = await finished(documentFrom(even), 'xor', documentFrom(onlyA));
+		expect(other.final.accepting.length).toBeGreaterThan(0);
+	});
+
+	it('a stop of the engine is told as a stop', async () => {
+		const outcome = await runConversion(
+			{
+				...engine,
+				xor: async () => ({
+					ok: true,
+					value: { result: 'stopped', reason: 'max_states', partialTrace: [] }
+				})
+			},
+			documentFrom(even),
+			'xor',
+			documentFrom(onlyA)
 		);
 		expect(outcome).toEqual({ kind: 'stopped', key: 'convert.stopped_states' });
 	});

@@ -23,6 +23,7 @@ export interface Wasm {
 	complement(machine: string): string;
 	union(first: string, second: string): string;
 	intersection(first: string, second: string, budget?: string): string;
+	xor(first: string, second: string, budget?: string): string;
 	importJff(xml: string): string;
 	exportJff(machine: string, layout: string): string;
 }
@@ -84,6 +85,7 @@ export function createHandlers(wasm: Wasm): Handlers {
 		union: (first, second) => wasm.union(text(first), text(second)),
 		intersection: (first, second, budget) =>
 			wasm.intersection(text(first), text(second), optional(budget)),
+		xor: (first, second, budget) => wasm.xor(text(first), text(second), optional(budget)),
 		importJff: (xml) => wasm.importJff(xml),
 		exportJff: (machine, layout) => wasm.exportJff(text(machine), text(layout))
 	};

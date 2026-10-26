@@ -116,6 +116,13 @@ pub enum Change {
         #[cfg_attr(feature = "ts", ts(as = "Vec<crate::json::Wire>"))]
         inputs: Vec<Fsm>,
     },
+    /// xor: a new state of the product machine, the pair of a state of the first machine and a state
+    /// of the second one (`state` is the state of the product)
+    Pair {
+        state: StateId,
+        first: StateId,
+        second: StateId,
+    },
     NewState {
         state: StateId,
         members: Vec<StateId>,

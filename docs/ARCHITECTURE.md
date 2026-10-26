@@ -34,7 +34,7 @@ One WASM call for each user action. Every function takes text and returns one te
 | Run | `simulate(machine, input, budget?)` |
 | Conversions | `determinize`, `minimize`, `equivalent(candidate, reference, budget?)` |
 | Regular expressions | `regexToFsm(text, alphabet, budget?)`, `fsmToRegex`, `simplify(text, alphabet, budget?)` |
-| Closure | `complement`, `union`, `intersection` |
+| Closure | `complement`, `union`, `intersection`, `xor` |
 | JFLAP | `importJff(xml)`, `exportJff(machine, layout)` |
 | Other | `version` |
 

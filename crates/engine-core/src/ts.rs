@@ -11,6 +11,7 @@ use crate::{
     Equivalence, EquivalenceBudget, FsmKind, FsmToRegexBudget, Intersection, Issue, Jff, JffState,
     Label, Message, Minimization, MinimizeBudget, Nondeterminism, Operation, Param, RegexBudget,
     Severity, SimplifyBudget, Simulation, StateId, Step, StopReason, SymbolId, Transition, Witness,
+    Xor,
 };
 use ts_rs::{Config, TS};
 
@@ -107,6 +108,7 @@ fn samples() -> Vec<(&'static str, &'static str, String)> {
             "Intersection",
             api::intersection(EVEN, A_STAR, None),
         ),
+        ("sampleXor", "Xor", api::xor(EVEN, A_STAR, None)),
         ("sampleImportJff", "Jff", imported),
         ("sampleExportJff", "string", api::export_jff(EVEN, &layout)),
     ]
@@ -158,6 +160,7 @@ pub fn declarations() -> String {
         Compiled,
         Operation,
         Intersection,
+        Xor,
         JffState,
         Jff,
         Nondeterminism,

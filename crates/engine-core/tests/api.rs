@@ -326,6 +326,35 @@ fn closure_operations() {
     );
 }
 
+#[test]
+fn xor_through_the_api() {
+    let value = ok(api::xor(EVEN, A_STAR, None));
+    assert_eq!(value["result"], "finished");
+    let machine = value["fsm"].to_string();
+    // "even length" xor "only a": 'a' (odd, only a) and 'bb' (even, with b) are in, 'aa' is not.
+    let accepted = |w: &str| ok(api::simulate(&machine, w, None))["simulation"]["accepted"].clone();
+    assert_eq!(accepted("a"), true);
+    assert_eq!(accepted("bb"), true);
+    assert_eq!(accepted("aa"), false);
+    // The trace has the stage of the product and the pairs.
+    let kinds: Vec<_> = value["trace"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["change"]["kind"].clone())
+        .collect();
+    assert!(kinds.contains(&json!("stage")));
+    assert!(kinds.contains(&json!("pair")));
+    assert_eq!(
+        err(api::xor(EVEN, "{", None))["key"],
+        "machine.json_invalid"
+    );
+    // A budget that is too small stops it, and says so.
+    let stopped = ok(api::xor(EVEN, A_STAR, Some(r#"{"maxStates":1}"#)));
+    assert_eq!(stopped["result"], "stopped");
+    assert_eq!(stopped["reason"], "max_states");
+}
+
 // ---- JFLAP ----
 
 #[test]

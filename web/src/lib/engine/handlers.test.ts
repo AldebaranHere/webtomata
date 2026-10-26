@@ -140,6 +140,11 @@ describe('every method reaches the engine', () => {
 			ok: true,
 			value: { result: 'finished' }
 		});
+		expect(call('xor', even, aStar)).toMatchObject({ ok: true, value: { result: 'finished' } });
+		expect(call('xor', even, aStar, { maxStates: 1 })).toMatchObject({
+			ok: true,
+			value: { result: 'stopped', reason: 'max_states' }
+		});
 	});
 
 	it('imports and exports a JFLAP file', () => {

@@ -350,6 +350,66 @@ test('a stage that has nothing to do is shown greyed, with the reason, and the p
 	await expectNoAxeViolations(page);
 });
 
+test('XOR of a machine with a copy of itself accepts nothing, and says that the machines are equivalent', async ({
+	page
+}) => {
+	await openDfsm(page);
+	await addCopy(page, 'Berakhiran 01');
+	const row = operation(page, 'XOR');
+	await expect(row).toContainText('Selisih simetris');
+	await row
+		.getByRole('combobox', { name: 'XOR dengan' })
+		.selectOption({ label: 'Berakhiran 01 (salinan) · DFSM' });
+	await row.getByRole('button', { name: 'Mulai' }).click();
+	// "Berakhiran 01" is a complete DFSM: stages 1 and 2 are skipped, and the product is stage 3 of 3.
+	await expect(stageLine(page)).toHaveText(
+		'Tahap 3 dari 3 · Mesin produk: pasangan state kedua mesin'
+	);
+	await expect(chip(page, 1)).toBeDisabled();
+	await expect(chip(page, 2)).toBeDisabled();
+	await expect(chip(page, 3)).toBeEnabled();
+	await expect(button(page, 'XOR')).toBeVisible();
+	await expect(sentence(page)).toContainText('pasangan state');
+	await expect(panel(page).getByText('Hasilnya tidak menerima string apa pun')).toHaveCount(0);
+	await expectNoAxeViolations(page);
+	await button(page, 'Ke hasil').click();
+	await expect(
+		panel(page).getByText('Hasilnya tidak menerima string apa pun: kedua mesin ekuivalen.')
+	).toBeVisible();
+	await expect(panel(page).getByText('Konversi selesai!')).toBeVisible();
+	const table = panel(page).getByRole('table', { name: 'Tabel transisi hasil' });
+	// The states of the product are pairs, and none of them accepts.
+	await expect(table.getByRole('rowheader').first()).toHaveText('(q0, q0)');
+	await expect(table.getByText('✓')).toHaveCount(0);
+	await expectNoAxeViolations(page);
+	await panel(page).getByRole('button', { name: 'Buka sebagai mesin baru' }).click();
+	await expect(page.locator('.bar .title')).toHaveText(
+		'XOR Berakhiran 01 dan Berakhiran 01 (salinan)'
+	);
+});
+
+test('XOR of an NDFSM with a copy of itself has three stages, and the product ends the plan', async ({
+	page
+}) => {
+	await openNdfsm(page);
+	await addCopy(page, 'Pilihan dengan transisi ε');
+	const row = operation(page, 'XOR');
+	await row
+		.getByRole('combobox', { name: 'XOR dengan' })
+		.selectOption({ label: 'Pilihan dengan transisi ε (salinan) · NDFSM' });
+	await row.getByRole('button', { name: 'Mulai' }).click();
+	await expect(stageLine(page)).toHaveText('Tahap 1 dari 3 · Lengkapi mesin pertama menjadi DFSM');
+	for (let n = 1; n <= 3; n++) await expect(chip(page, n)).toBeEnabled();
+	await chip(page, 3).click();
+	await expect(stageLine(page)).toHaveText(
+		'Tahap 3 dari 3 · Mesin produk: pasangan state kedua mesin'
+	);
+	await expect(sentence(page)).toContainText('mesin pertama');
+	await button(page, 'Ke hasil').click();
+	await expect(stageLine(page)).toContainText('Tahap 3 dari 3');
+	await expect(panel(page).getByText('kedua mesin ekuivalen')).toBeVisible();
+});
+
 test('every chip of the stages is at least 44 px, and the chips do not run out of the panel', async ({
 	page
 }) => {

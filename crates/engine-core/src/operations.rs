@@ -299,7 +299,7 @@ pub enum Intersection {
     },
 }
 
-enum Failure {
+pub(crate) enum Failure {
     Stopped(StopReason),
     Message(Message),
 }
@@ -310,7 +310,12 @@ impl From<Message> for Failure {
     }
 }
 
-fn stage(trace: &mut Vec<ConversionStep>, number: u8, key: &'static str, inputs: Vec<Fsm>) {
+pub(crate) fn stage(
+    trace: &mut Vec<ConversionStep>,
+    number: u8,
+    key: &'static str,
+    inputs: Vec<Fsm>,
+) {
     trace.push(step(
         key,
         Change::Stage {
@@ -322,7 +327,7 @@ fn stage(trace: &mut Vec<ConversionStep>, number: u8, key: &'static str, inputs:
 
 /// A complete DFSM for the same language. A machine that already is one is returned as it is,
 /// without steps; otherwise a stage starts and `determinize` runs.
-fn make_complete(
+pub(crate) fn make_complete(
     fsm: &Fsm,
     budget: ConversionBudget,
     number: u8,

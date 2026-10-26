@@ -41,6 +41,11 @@ export function conversionText(names: Names, step: ConversionStep): Text {
 			params.state = result(change.state);
 			params.members = setText(change.members, source);
 			break;
+		case 'pair':
+			params.state = result(change.state);
+			params.first = source(change.first);
+			params.second = names.second.get(change.second) ?? `q${change.second}`;
+			break;
 		case 'start':
 		case 'accepting':
 		case 'not_accepting':
