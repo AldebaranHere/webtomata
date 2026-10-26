@@ -91,6 +91,7 @@ test('minimize and the dead state each step to their end', async ({ page }) => {
 	await openDfsm(page);
 	await operation(page, 'Minimalkan DFSM').getByRole('button', { name: 'Mulai' }).click();
 	await expect(panel(page).getByRole('heading', { name: 'Minimalkan DFSM' })).toBeFocused();
+	await expect(button(page, 'Minimalkan')).toBeVisible();
 	await button(page, 'Ke hasil').click();
 	await expect(sentence(page)).toContainText('accepting state');
 	await panel(page).getByRole('button', { name: 'Tutup' }).click();
@@ -99,19 +100,22 @@ test('minimize and the dead state each step to their end', async ({ page }) => {
 	// The example is complete, so the trace is one step that says so, and the end is the start.
 	await operation(page, 'Tambah dead state').getByRole('button', { name: 'Mulai' }).click();
 	await expect(panel(page).getByText('Langkah 1 dari 1')).toBeVisible();
+	await expect(button(page, 'Lengkapi')).toBeVisible();
 	await expect(sentence(page)).toContainText('sudah lengkap');
 	await expect(button(page, 'Ke hasil')).toBeDisabled();
 	await expect(panel(page).getByRole('button', { name: 'Buka sebagai mesin baru' })).toBeVisible();
 });
 
-test('Putar plays the steps one after the other, and Jeda stops', async ({ page }) => {
+test('the play button, named for the operation, plays the steps one after the other, and Jeda stops', async ({
+	page
+}) => {
 	await openNdfsm(page);
 	await operation(page, 'NDFSM → DFSM').getByRole('button', { name: 'Mulai' }).click();
-	await button(page, 'Putar').click();
+	await button(page, 'Konversi').click();
 	await expect(button(page, 'Jeda')).toBeVisible();
 	await expect(panel(page).getByText(/^Langkah [2-9]\d* dari/)).toBeVisible();
 	await button(page, 'Jeda').click();
-	await expect(button(page, 'Putar')).toBeVisible();
+	await expect(button(page, 'Konversi')).toBeVisible();
 });
 
 test('a change of the machine closes the steps, and another tab keeps them', async ({ page }) => {
@@ -148,7 +152,7 @@ test('every target is at least 44 px, and the tabs fit the panel', async ({ page
 	for (const name of [
 		'Ke awal',
 		'Mundur',
-		'Putar',
+		'Konversi',
 		'Maju',
 		'Ke hasil',
 		'Tutup',
@@ -183,4 +187,95 @@ test('axe finds nothing in the list or in the player, at the start and at the en
 	await expectNoAxeViolations(page);
 	await button(page, 'Sumber').click();
 	await expectNoAxeViolations(page);
+});
+
+test('complement flips the accepting states step by step, and opens as a new machine', async ({
+	page
+}) => {
+	await openDfsm(page);
+	await operation(page, 'Komplemen').getByRole('button', { name: 'Mulai' }).click();
+	await expect(panel(page).getByText('Langkah 1 dari 3')).toBeVisible();
+	await expect(sentence(page)).toContainText('accepting state');
+	await expect(button(page, 'Komplemen')).toBeVisible();
+	await button(page, 'Ke hasil').click();
+	const table = panel(page).getByRole('table', { name: 'Tabel transisi hasil' });
+	await expect(table.getByRole('columnheader', { name: 'Terima' })).toBeVisible();
+	// "Berakhiran 01" accepts at q2 only, so the complement accepts at q0 and q1.
+	await expect(table.getByRole('row', { name: /^q0 .*✓/ })).toBeVisible();
+	await expect(table.getByRole('row', { name: /^q2 .*✓/ })).toHaveCount(0);
+	await panel(page).getByRole('button', { name: 'Buka sebagai mesin baru' }).click();
+	await expect(page.locator('.bar .title')).toHaveText('Komplemen dari Berakhiran 01');
+});
+
+test('complement says why it does not fit an NDFSM', async ({ page }) => {
+	await openNdfsm(page);
+	await expect(operation(page, 'Komplemen')).toContainText('Hanya untuk DFSM.');
+	await expect(operation(page, 'Komplemen').getByRole('button')).toBeDisabled();
+});
+
+test('union needs a second machine, takes it from the list, and opens the result', async ({
+	page
+}) => {
+	await openDfsm(page);
+	const row = operation(page, 'Gabungan');
+	await expect(row).toContainText('Simpan atau buat mesin lain dulu');
+	await expect(row.getByRole('button')).toBeDisabled();
+
+	// A copy of the machine is a second machine with the same alphabet.
+	await page.getByRole('button', { name: /^Mesin saya \(\d+\)$/ }).click();
+	const list = page.getByRole('dialog', { name: 'Mesin saya' });
+	await list.getByRole('button', { name: 'Tindakan untuk Berakhiran 01' }).click();
+	await list.getByRole('button', { name: 'Duplikat' }).click();
+	await expect(list.getByText('Berakhiran 01 (salinan)', { exact: true })).toBeVisible();
+	await list.getByRole('button', { name: 'Tutup' }).click();
+
+	await expect(row.getByRole('button')).toBeDisabled();
+	await expectNoAxeViolations(page);
+	const pick = row.getByRole('combobox', { name: 'Gabungkan dengan' });
+	await pick.selectOption({ label: 'Berakhiran 01 (salinan) · DFSM' });
+	await expect(row.getByRole('button')).toBeEnabled();
+	await row.getByRole('button', { name: 'Mulai' }).click();
+
+	await expect(panel(page).getByText('Langkah 1 dari 5')).toBeVisible();
+	await expect(button(page, 'Gabungkan')).toBeVisible();
+	await expect(sentence(page)).toContainText('Salin mesin pertama');
+	await button(page, 'Maju').click();
+	await expect(sentence(page)).toContainText('Salin mesin kedua');
+	// Looking at the source shows the machine that the step copies.
+	await button(page, 'Sumber').click();
+	await expect(
+		shown(page).getByRole('img', { name: /^Konversi: DFSM dengan 3 state$/ })
+	).toBeVisible();
+	await button(page, 'Hasil').click();
+	await button(page, 'Ke hasil').click();
+	await panel(page).getByRole('button', { name: 'Buka sebagai mesin baru' }).click();
+	await expect(page.locator('.bar .title')).toHaveText(
+		'Gabungan Berakhiran 01 dan Berakhiran 01 (salinan)'
+	);
+	await expect(page.locator('.bar .count')).toHaveText('7 state');
+});
+
+test('"Konversi selesai!" shows for two seconds when the last step is reached, and again after a step back', async ({
+	page
+}) => {
+	await openNdfsm(page);
+	await operation(page, 'NDFSM → DFSM').getByRole('button', { name: 'Mulai' }).click();
+	const done = panel(page).getByText('Konversi selesai!');
+	await expect(panel(page).getByText(/^Langkah 1 dari/)).toBeVisible();
+	await expect(done).toHaveCount(0);
+	await button(page, 'Ke hasil').click();
+	await expect(done).toBeVisible();
+	// It goes by itself, after about two seconds.
+	await expect(done).toHaveCount(0, { timeout: 4000 });
+	// A step back and forward reaches the end again.
+	await button(page, 'Mundur').click();
+	await expect(done).toHaveCount(0);
+	await button(page, 'Maju').click();
+	await expect(done).toBeVisible();
+});
+
+test('a conversion with one step says it is done at once', async ({ page }) => {
+	await openDfsm(page);
+	await operation(page, 'Tambah dead state').getByRole('button', { name: 'Mulai' }).click();
+	await expect(panel(page).getByText('Konversi selesai!')).toBeVisible();
 });

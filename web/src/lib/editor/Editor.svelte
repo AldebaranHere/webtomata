@@ -54,7 +54,8 @@
 		tests: savedTests,
 		firstRun,
 		onhelp,
-		onopendoc
+		onopendoc,
+		machines
 	}: {
 		doc: MachineDocument;
 		autosave?: Autosave;
@@ -77,6 +78,8 @@
 		onhelp?: () => void;
 		/** The result of a conversion: a document that the page opens as a machine of its own. */
 		onopendoc?: (doc: MachineDocument) => void;
+		/** The other saved machines, for the second machine of a union, and how to read one. */
+		machines?: Pick<ConversionProps, 'others' | 'load'>;
 	} = $props();
 
 	/** The title of the machine, as one undo step (the list "Mesin saya" calls this). */
@@ -489,6 +492,8 @@
 						doc={snapshot.doc}
 						onshow={(shown) => (conversionView = shown)}
 						onopen={(result) => onopendoc?.(result)}
+						others={machines?.others}
+						load={machines?.load}
 					/>
 				{/if}
 			{/snippet}

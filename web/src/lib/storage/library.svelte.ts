@@ -175,6 +175,14 @@ class Library {
 		return null;
 	}
 
+	/** A saved machine, read; null when it is gone or cannot be read (a union reads its second machine). */
+	async readDocument(id: string): Promise<MachineDocument | null> {
+		const record = await this.store?.get(id);
+		if (!record) return null;
+		const read = readStoredDocument(record.doc);
+		return read.ok ? read.doc : null;
+	}
+
 	/** A document (the result of a conversion, or an empty one) saved as a machine of its own, and opened. */
 	async openDocument(doc: MachineDocument, keepOpen = false): Promise<Problem | null> {
 		const store = this.store;
