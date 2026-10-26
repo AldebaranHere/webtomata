@@ -164,26 +164,13 @@ jobs:
         if: steps.browsers.outputs.cache-hit != 'true'
         timeout-minutes: 5
       # The system libraries come from the Ubuntu mirror of the runner (azure.archive.ubuntu.com).
-      # Sometimes that mirror is so slow, without hanging, that the install takes 6 minutes or more
-      # (8 to 36 minutes in some runs, against 30 seconds normally), so a network timeout of apt
-      # never fires: it was tried, and two runs on 2026-10-27 still hit the limit of the step. So the
-      # install is tried up to three times for 150 seconds each. apt keeps the packages that it has
-      # downloaded, so each try goes on where the one before stopped, and from the second try on the
-      # main archive (archive.ubuntu.com) is used in place of the mirror of the runner.
+      # Sometimes that mirror is so slow, without hanging, that `playwright install-deps` takes 6
+      # minutes or more (8 to 36 minutes in some runs, against 30 seconds normally), and it has no
+      # time limit. tools/install-browser-deps.sh runs apt itself under a hard limit, up to three
+      # tries of 150 seconds each, and uses the main archive from the second try on.
       - name: Install the system libraries of the browser
         timeout-minutes: 10
-        run: |
-          for attempt in 1 2 3; do
-            if [ "$attempt" -gt 1 ]; then
-              echo "Try $attempt: using archive.ubuntu.com."
-              sudo sed -i -E 's#mirror\+file:/etc/apt/apt-mirrors\.txt|https?://azure\.archive\.ubuntu\.com/ubuntu/?#http://archive.ubuntu.com/ubuntu/#' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true
-            fi
-            if timeout 150 pnpm --filter web exec playwright install-deps ${{ matrix.browser }}; then
-              exit 0
-            fi
-            echo "Try $attempt did not finish."
-          done
-          exit 1
+        run: bash tools/install-browser-deps.sh ${{ matrix.browser }}
       - run: pnpm --filter web exec playwright test --project=${{ matrix.project }}
 
   # The gate. The ruleset requires this check by its name, `web`. It runs also when a job before it
