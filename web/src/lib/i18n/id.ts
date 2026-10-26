@@ -461,6 +461,40 @@ export const id = {
 	'product.transition': 'Dari {from} dengan {symbol} menuju {to}: kedua mesin bergerak bersama.',
 	'product.accepting_first': '{state} menjadi accepting state: hanya mesin pertama yang menerima.',
 	'product.accepting_second': '{state} menjadi accepting state: hanya mesin kedua yang menerima.',
+	// TODO(review): the wording of the regex conversions is a draft until the feedback guide (U4).
+	'convert.group_regex': 'Ekspresi reguler',
+	'convert.op.fsm_to_regex': 'Mesin → regex',
+	'convert.op.fsm_to_regex_hint':
+		'Cari ekspresi reguler untuk bahasa mesin ini dengan menghapus state satu per satu.',
+	'convert.play_fsm_to_regex': 'Mesin → regex',
+	'convert.stopped_nodes': 'Ekspresinya jadi terlalu besar, jadi perhitungan dihentikan.',
+	'convert.raise_limit': 'Naikkan batas',
+	'convert.regex_result': 'Ekspresi reguler',
+	'convert.regex_notation':
+		'Notasi Rich: ∪ untuk gabungan, ε untuk string kosong, ∅ untuk himpunan kosong.',
+	'convert.copy': 'Salin',
+	'convert.copied': 'Tersalin.',
+	'convert.copy_failed': 'Tidak bisa menyalin. Pilih teksnya dan salin sendiri.',
+	'convert.new_start_name': 's',
+	'convert.new_accepting_name': 'f',
+	'convert.table_labels': 'Label: ekspresi untuk jalur antar state',
+	'convert.col_from': 'Dari',
+	'convert.col_to': 'Ke',
+	'convert.col_label': 'Label',
+	'fsm_to_regex.remove_unreachable': '{state} tidak bisa dicapai dari start state, jadi dibuang.',
+	'fsm_to_regex.no_accepting':
+		'Tidak ada accepting state yang bisa dicapai, jadi hasilnya {expression}.',
+	'fsm_to_regex.new_start':
+		'Ada transisi masuk ke start state, jadi tambah start state baru {state} dengan transisi ε ke start state lama.',
+	'fsm_to_regex.new_accepting':
+		'Tambah accepting state baru {state} dengan transisi ε dari setiap accepting state lama.',
+	'fsm_to_regex.only_one_state': 'Tinggal satu state, jadi hasilnya {expression}.',
+	'fsm_to_regex.table':
+		'Satu label untuk setiap pasangan state; beberapa transisi digabung dengan ∪.',
+	'fsm_to_regex.rip':
+		'Hapus state {state}. Setiap jalur yang lewat {state} menjadi bagian dari label pasangan state di sekitarnya.',
+	'fsm_to_regex.result': 'Label dari start state ke accepting state adalah hasilnya: {expression}',
+	'fsm_to_regex.no_start_state': 'Mesin harus punya start state.',
 
 	'page.soon': 'Segera hadir.',
 	'page.home': 'Kembali ke beranda'

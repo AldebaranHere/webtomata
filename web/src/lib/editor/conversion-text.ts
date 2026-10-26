@@ -69,3 +69,15 @@ export function conversionText(names: Names, step: ConversionStep): Text {
 	const known = Object.hasOwn(id, message.key);
 	return known ? { key: message.key as MessageKey, params } : { key: 'convert.failed', params: {} };
 }
+
+/** The text of one step of FSM → regex: the engine sends state numbers, and this turns them into names. */
+export function regexText(names: ReadonlyMap<number, string>, step: ConversionStep): Text {
+	const { message, change } = step;
+	const params: Params = {};
+	for (const [name, value] of Object.entries(message.params)) {
+		if (typeof value === 'string' || typeof value === 'number') params[name] = value;
+	}
+	if ('state' in change) params.state = names.get(change.state) ?? `q${change.state}`;
+	const known = Object.hasOwn(id, message.key);
+	return known ? { key: message.key as MessageKey, params } : { key: 'convert.failed', params: {} };
+}

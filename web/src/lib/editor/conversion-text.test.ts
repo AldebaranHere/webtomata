@@ -74,15 +74,15 @@ describe('conversionText', () => {
 		const read = (file: string) =>
 			readFileSync(new URL(`../../../../crates/engine-core/src/${file}`, import.meta.url), 'utf8');
 		const keys = new Set<string>(
-			['determinize.rs', 'minimize.rs', 'operations.rs', 'xor.rs'].flatMap((file) =>
+			['determinize.rs', 'minimize.rs', 'operations.rs', 'xor.rs', 'fsm_regex.rs'].flatMap((file) =>
 				[
 					...read(file).matchAll(
-						/"((?:determinize|minimize|trap|complement|union|intersection|xor|product)\.[a-z_.]+)"/g
+						/"((?:determinize|minimize|trap|complement|union|intersection|xor|product|fsm_to_regex)\.[a-z_.]+)"/g
 					)
 				].map((m) => m[1]!)
 			)
 		);
-		expect(keys.size).toBeGreaterThanOrEqual(44);
+		expect(keys.size).toBeGreaterThanOrEqual(52);
 		for (const key of keys) {
 			expect(Object.hasOwn(id, key), `id ${key}`).toBe(true);
 			expect(Object.hasOwn(en, key), `en ${key}`).toBe(true);
