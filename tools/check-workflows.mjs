@@ -13,6 +13,11 @@
 // 5. Every job has `timeout-minutes`, a number of at most 30. Without it a stalled step (a slow
 //    package mirror, a hung browser download) runs for up to six hours; with it the job fails
 //    fast and can be run again.
+// 6. In ci.yml the job `web` is a gate. The ruleset requires the checks `rust` and `web`, and the
+//    work of `web` is split over other jobs, so `web` must wait for every job of the file except
+//    `rust` (`needs: [a, b]`), and must run also when one of them failed (`if: always()`). A skipped
+//    required check counts as passed, so without `if: always()` a failed job would let a pull
+//    request merge.
 //
 // The workflow files are read line by line, with no YAML library, so the files must keep the
 // usual shape: `jobs:` at the left edge, and each job name indented by two spaces.
@@ -23,6 +28,10 @@ const DEPLOY_FILE = 'deploy.yml';
 const DEPLOY_JOB = 'deploy';
 const FULL_COMMIT = /@[0-9a-f]{40}$/;
 const MAX_TIMEOUT_MINUTES = 30;
+const CI_FILE = 'ci.yml';
+const GATE_JOB = 'web';
+/** Required by the ruleset on its own, so the gate does not wait for it. */
+const OWN_REQUIRED_JOB = 'rust';
 const BUILD_CODE =
 	/\b(pnpm\s+(--filter\s+\S+\s+)?(build|lint|test|check)\b|cargo\s|wasm-pack|vite\s)/;
 
@@ -45,9 +54,18 @@ export function checkWorkflows(files) {
 				const header = line.match(/^ {2}([A-Za-z0-9_-]+):\s*$/);
 				if (header) {
 					job = header[1];
-					jobs.push({ name: job, line: index + 1, timeout: null });
-				} else if (inJobs && /^ {4}timeout-minutes:/.test(line)) {
+					jobs.push({ name: job, line: index + 1, timeout: null, needs: null, always: false });
+				} else if (/^ {4}timeout-minutes:/.test(line)) {
 					jobs[jobs.length - 1].timeout = line.replace(/^ {4}timeout-minutes:\s*/, '').trim();
+				} else if (/^ {4}needs:\s*\[.*\]\s*$/.test(line)) {
+					jobs[jobs.length - 1].needs = line
+						.replace(/^ {4}needs:\s*\[/, '')
+						.replace(/\]\s*$/, '')
+						.split(',')
+						.map((n) => n.trim())
+						.filter(Boolean);
+				} else if (/^ {4}if:\s*always\(\)\s*$/.test(line)) {
+					jobs[jobs.length - 1].always = true;
 				} else if (/^\S/.test(line)) inJobs = false;
 			}
 			const where = `${name}${inJobs && job ? ` (job ${job})` : ''}, line ${index + 1}`;
@@ -74,6 +92,29 @@ export function checkWorkflows(files) {
 				}
 			}
 		});
+		if (name === CI_FILE) {
+			const gate = jobs.find((j) => j.name === GATE_JOB);
+			if (!gate) {
+				problems.push(
+					`${CI_FILE}: the gate job "${GATE_JOB}" is missing (the ruleset requires it)`
+				);
+			} else {
+				const where = `${CI_FILE} (job ${GATE_JOB}), line ${gate.line}`;
+				const left = jobs
+					.map((j) => j.name)
+					.filter((n) => n !== GATE_JOB && n !== OWN_REQUIRED_JOB && !gate.needs?.includes(n));
+				if (left.length > 0) {
+					problems.push(
+						`${where}: the gate must wait for every job (needs: [...]); it does not wait for ${left.join(', ')}`
+					);
+				}
+				if (!gate.always) {
+					problems.push(
+						`${where}: the gate needs "if: always()": a skipped required check counts as passed`
+					);
+				}
+			}
+		}
 		for (const { name: job, line, timeout } of jobs) {
 			const where = `${name} (job ${job}), line ${line}`;
 			if (timeout === null) {
