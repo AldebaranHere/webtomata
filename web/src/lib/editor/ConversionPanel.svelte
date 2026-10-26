@@ -72,6 +72,24 @@
 	const total = $derived(run?.trace.length ?? 0);
 	const frame = $derived(run && names ? frameAt(run, names, index) : null);
 	const atEnd = $derived(index >= total - 1);
+
+	// "Konversi selesai!" for two seconds each time the player reaches its last step (by Putar, by a
+	// step, or by Ke hasil). A step back and forward again shows it again.
+	let justDone = $state(false);
+	let wasAtEnd = false;
+	$effect(() => {
+		const end = run !== null && atEnd;
+		if (!end) {
+			wasAtEnd = false;
+			justDone = false;
+			return;
+		}
+		if (wasAtEnd) return;
+		wasAtEnd = true;
+		justDone = true;
+		const timer = setTimeout(() => (justDone = false), 2000);
+		return () => clearTimeout(timer);
+	});
 	const sentence = $derived(frame && names ? conversionText(names, frame.step) : null);
 
 	// What the canvas shows: the result as built so far, or the machine we started from (also while the
@@ -194,6 +212,8 @@
 		<section aria-labelledby="convert-heading">
 			<h3 id="convert-heading" tabindex="-1" bind:this={heading}>{t(`convert.op.${run.op}`)}</h3>
 			<p class="muted">{t('convert.step_of', { n: index + 1, total })}</p>
+			<!-- The live region is always in the page, so that a screen reader hears the text when it comes. -->
+			<p class="done" role="status">{justDone ? t('convert.done') : ''}</p>
 
 			<div class="seg" role="group" aria-label={t('convert.view')}>
 				<button
@@ -317,6 +337,7 @@
 	{:else}
 		<h3>{t('convert.title')}</h3>
 		<p class="muted">{t('convert.intro')}</p>
+		<p class="progress" role="status">{working ? t('convert.in_progress') : ''}</p>
 		{#if note}
 			<p class="note" role="status">{t(note.key, note.params)}</p>
 		{/if}
@@ -390,6 +411,26 @@
 	}
 	.muted {
 		color: var(--color-muted);
+		font-size: var(--text-sm);
+	}
+	/* The two short messages: they take no room while they are empty. */
+	.done:empty,
+	.progress:empty {
+		display: none;
+	}
+	.done {
+		align-self: flex-start;
+		padding: var(--space-1) var(--space-3);
+		border-radius: var(--radius-pill);
+		background: var(--color-success-tint);
+		color: var(--color-success-ink);
+		font-weight: var(--weight-strong);
+	}
+	.progress {
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-md);
+		background: var(--color-accent-tint);
+		color: var(--color-accent-ink);
 		font-size: var(--text-sm);
 	}
 	.note {

@@ -328,6 +328,8 @@ export const en: Record<MessageKey, string> = {
 		'For a DFSM only. Change the machine type in the Table tab, or do NDFSM → DFSM first.',
 	'convert.reason_too_big': 'This machine has more than {limit} states, too big to minimize here.',
 	'convert.working': 'Working…',
+	'convert.in_progress': 'Converting the machine…',
+	'convert.done': 'Conversion completed!',
 	'convert.stopped_states': 'The result has more than 500 states, so the work was stopped.',
 	'convert.stopped_steps': 'There are too many steps, so the work was stopped.',
 	'convert.failed': 'This conversion cannot run on this machine.',

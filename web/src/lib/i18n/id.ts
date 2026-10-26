@@ -336,6 +336,8 @@ export const id = {
 	'convert.reason_too_big':
 		'Mesin ini lebih dari {limit} state, terlalu besar untuk diminimalkan di sini.',
 	'convert.working': 'Menghitung…',
+	'convert.in_progress': 'Konversi sedang berlangsung…',
+	'convert.done': 'Konversi selesai!',
 	'convert.stopped_states': 'Hasilnya lebih dari 500 state, jadi perhitungan dihentikan.',
 	'convert.stopped_steps': 'Langkahnya terlalu banyak, jadi perhitungan dihentikan.',
 	'convert.failed': 'Konversi ini tidak bisa dijalankan pada mesin ini.',

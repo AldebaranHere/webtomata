@@ -248,3 +248,28 @@ test('union needs a second machine, takes it from the list, and opens the result
 	);
 	await expect(page.locator('.bar .count')).toHaveText('7 state');
 });
+
+test('"Konversi selesai!" shows for two seconds when the last step is reached, and again after a step back', async ({
+	page
+}) => {
+	await openNdfsm(page);
+	await operation(page, 'NDFSM → DFSM').getByRole('button', { name: 'Mulai' }).click();
+	const done = panel(page).getByText('Konversi selesai!');
+	await expect(panel(page).getByText(/^Langkah 1 dari/)).toBeVisible();
+	await expect(done).toHaveCount(0);
+	await button(page, 'Ke hasil').click();
+	await expect(done).toBeVisible();
+	// It goes by itself, after about two seconds.
+	await expect(done).toHaveCount(0, { timeout: 4000 });
+	// A step back and forward reaches the end again.
+	await button(page, 'Mundur').click();
+	await expect(done).toHaveCount(0);
+	await button(page, 'Maju').click();
+	await expect(done).toBeVisible();
+});
+
+test('a conversion with one step says it is done at once', async ({ page }) => {
+	await openDfsm(page);
+	await operation(page, 'Tambah dead state').getByRole('button', { name: 'Mulai' }).click();
+	await expect(panel(page).getByText('Konversi selesai!')).toBeVisible();
+});
