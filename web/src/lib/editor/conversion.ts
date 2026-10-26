@@ -10,6 +10,7 @@ import type {
 	Conversion,
 	ConversionStep,
 	EngineResult,
+	Intersection,
 	Machine,
 	MachineTransition,
 	Minimization,
@@ -19,20 +20,25 @@ import type {
 import { documentFromMachine, toMachine } from './document.ts';
 import type { MachineDocument } from './document.ts';
 
-export type ConvertOp = 'determinize' | 'minimize' | 'trap' | 'complement' | 'union';
+export type ConvertOp =
+	'determinize' | 'minimize' | 'trap' | 'complement' | 'union' | 'intersection';
 export const CONVERT_OPS: readonly ConvertOp[] = [
 	'determinize',
 	'minimize',
 	'trap',
 	'complement',
-	'union'
+	'union',
+	'intersection'
 ];
+
+/** The operations that take a second machine from the list of saved machines. */
+export const TWO_MACHINE_OPS: readonly ConvertOp[] = ['union', 'intersection'];
 
 /** A finished conversion: the machine it started from, the engine's answer and its trace. */
 export interface ConvertRun {
 	op: ConvertOp;
 	source: MachineDocument;
-	/** The second machine of a union. */
+	/** The second machine of a union or an intersection. */
 	second?: MachineDocument;
 	final: Machine;
 	trace: readonly ConversionStep[];
@@ -55,7 +61,7 @@ export function refusalOf(doc: MachineDocument, op: ConvertOp): Refusal | null {
 	if (doc.states.length === 0) return no('convert.reason_empty');
 	if (doc.start === null) return no('convert.reason_no_start');
 	if (op === 'determinize' && doc.kind === 'dfsm') return no('convert.reason_already_dfsm');
-	if (op !== 'determinize' && op !== 'union' && doc.kind === 'ndfsm') {
+	if (op !== 'determinize' && op !== 'union' && op !== 'intersection' && doc.kind === 'ndfsm') {
 		return no('convert.reason_needs_dfsm');
 	}
 	if (op === 'minimize' && doc.states.length > MINIMIZE_MAX_STATES) {
@@ -75,7 +81,7 @@ function isComplete(doc: MachineDocument): boolean {
 	);
 }
 
-/** Why `second` cannot be the second machine of a union with `doc`, or null. */
+/** Why `second` cannot be the second machine of a union or an intersection with `doc`, or null. */
 export function secondRefusalOf(doc: MachineDocument, second: MachineDocument): Refusal | null {
 	if (second.start === null) return { key: 'convert.reason_second_no_start', params: {} };
 	const same =
@@ -331,6 +337,7 @@ export interface ConvertEngine {
 	addTrapState(machine: Machine): Promise<EngineResult<Operation>>;
 	complement(machine: Machine): Promise<EngineResult<Operation>>;
 	union(first: Machine, second: Machine): Promise<EngineResult<Operation>>;
+	intersection(first: Machine, second: Machine): Promise<EngineResult<Intersection>>;
 }
 
 export type ConvertOutcome =
@@ -347,7 +354,7 @@ export async function runConversion(
 ): Promise<ConvertOutcome> {
 	const refusal = refusalOf(doc, op);
 	if (refusal) return { kind: 'refused', ...refusal };
-	if (op === 'union') {
+	if (op === 'union' || op === 'intersection') {
 		if (!second) return { kind: 'refused', key: 'convert.second_gone', params: {} };
 		const unfit = secondRefusalOf(doc, second);
 		if (unfit) return { kind: 'refused', ...unfit };
@@ -362,7 +369,9 @@ export async function runConversion(
 					? await engine.complement(machine)
 					: op === 'union'
 						? await engine.union(machine, toMachine(second!))
-						: await engine.addTrapState(machine);
+						: op === 'intersection'
+							? await engine.intersection(machine, toMachine(second!))
+							: await engine.addTrapState(machine);
 	if (!answer.ok) {
 		const key = answer.error.key.endsWith('.invalid_machine')
 			? 'convert.invalid_machine'
@@ -372,8 +381,9 @@ export async function runConversion(
 	const value = answer.value;
 	if ('result' in value) {
 		if (value.result === 'stopped') return { kind: 'stopped', key: stopKey(value.reason) };
-		const final = value.dfsm;
-		return { kind: 'finished', run: { op, source: doc, final, trace: value.trace } };
+		const final = 'fsm' in value ? value.fsm : value.dfsm;
+		const run: ConvertRun = { op, source: doc, final, trace: value.trace };
+		return { kind: 'finished', run: second ? { ...run, second } : run };
 	}
 	const run: ConvertRun = { op, source: doc, final: value.fsm, trace: value.trace };
 	return { kind: 'finished', run: second ? { ...run, second } : run };
@@ -422,4 +432,209 @@ export function resultDocument(
 		y: places.get(id)?.y ?? NaN
 	}));
 	return { ...documentFromMachine(machine, states), title };
+}
+
+// ---- the plan: what the player steps through ----
+
+/** Gives the places of the states of a draft machine, or null when it cannot (too big, a failure). */
+export type Layout = (draft: MachineDocument) => Promise<Place[] | null>;
+
+/**
+ * One part of what the player steps through. A simple operation is one stage (number 0, no key).
+ * An intersection is up to seven: each is a determinize, a complement or a union that starts from
+ * the machine that the engine says (the marker of the stage carries it), with its own names and
+ * places. `offset` and `length` place the steps of the stage in the steps of the whole plan; the
+ * markers themselves are not steps of the player.
+ */
+export interface Stage {
+	number: number;
+	/** The message key of the stage's name (`intersection.stage.complete_first`); null for a simple operation. */
+	key: string | null;
+	run: ConvertRun;
+	names: Names;
+	/** Where the layout put the states of the result; null when the result keeps the places of its source. */
+	places: Place[] | null;
+	offset: number;
+	length: number;
+}
+
+export interface Plan {
+	op: ConvertOp;
+	stages: Stage[];
+	/** The number of steps of the player. */
+	total: number;
+}
+
+/** The result of these operations is a new drawing, so it gets a layout; the others keep the places. */
+const NEEDS_LAYOUT: ReadonlySet<ConvertOp> = new Set(['determinize', 'minimize', 'union']);
+
+/** What each stage of an intersection does. */
+const STAGE_OPS: Record<number, ConvertOp> = {
+	1: 'determinize',
+	2: 'complement',
+	3: 'determinize',
+	4: 'complement',
+	5: 'union',
+	6: 'determinize',
+	7: 'complement'
+};
+
+/** The names of the seven stages, in order (the engine's message keys). */
+export const INTERSECTION_STAGE_KEYS = [
+	'intersection.stage.complete_first',
+	'intersection.stage.complement_first',
+	'intersection.stage.complete_second',
+	'intersection.stage.complement_second',
+	'intersection.stage.union',
+	'intersection.stage.complete_union',
+	'intersection.stage.complement_union'
+] as const;
+
+interface Slot {
+	names: ReadonlyMap<number, string>;
+	places: readonly Place[] | null;
+}
+
+const slotOf = (doc: MachineDocument): Slot => ({
+	names: new Map(doc.states.map((s) => [s.id, s.name])),
+	places: doc.states.map((s) => ({ id: s.id, x: s.x, y: s.y }))
+});
+
+/** The document of a machine with the names and places of a slot (a state without a place goes on the grid). */
+function documentWith(machine: Machine, slot: Slot): MachineDocument {
+	const at = new Map((slot.places ?? []).map((p) => [p.id, p]));
+	const states = machine.states.map((id) => ({
+		id,
+		name: slot.names.get(id) ?? `q${id}`,
+		x: at.get(id)?.x ?? NaN,
+		y: at.get(id)?.y ?? NaN
+	}));
+	return documentFromMachine(machine, states);
+}
+
+async function layoutOf(
+	run: ConvertRun,
+	names: Names,
+	layout: Layout | undefined
+): Promise<Place[] | null> {
+	if (!layout || !NEEDS_LAYOUT.has(run.op)) return null;
+	return layout(resultDocument(run, names, null, run.final, ''));
+}
+
+/**
+ * The plan of a finished conversion. `layout` places the states of each result that needs it (it is
+ * called once for a simple operation, and up to four times for an intersection). Without it, the
+ * states go on the grid of the document.
+ */
+export async function buildPlan(run: ConvertRun, deadName: string, layout?: Layout): Promise<Plan> {
+	if (run.op !== 'intersection') {
+		const names = namesOf(run, deadName);
+		const places = await layoutOf(run, names, layout);
+		const stage: Stage = {
+			number: 0,
+			key: null,
+			run,
+			names,
+			places,
+			offset: 0,
+			length: run.trace.length
+		};
+		return { op: run.op, stages: [stage], total: run.trace.length };
+	}
+
+	const markers = run.trace.flatMap((step, at) =>
+		step.change.kind === 'stage'
+			? [{ at, number: step.change.stage, key: step.message.key, inputs: step.change.inputs }]
+			: []
+	);
+	const marker = (n: number) => markers.find((m) => m.number === n);
+	// The machine that a stage makes is the input of the stage that uses it.
+	const made = (n: number): Machine => {
+		const next: Record<number, [number, number]> = {
+			1: [2, 0],
+			2: [5, 0],
+			3: [4, 0],
+			4: [5, 1],
+			5: [6, 0],
+			6: [7, 0]
+		};
+		const use = next[n];
+		return use ? marker(use[0])!.inputs[use[1]]! : run.final;
+	};
+	const first = slotOf(run.source);
+	const second = slotOf(run.second!);
+	const out = new Map<number, Slot>();
+	// A stage that was skipped passes its machine on as it is.
+	const from: Record<number, () => Slot[]> = {
+		1: () => [first],
+		2: () => [out.get(1) ?? first],
+		3: () => [second],
+		4: () => [out.get(3) ?? second],
+		5: () => [out.get(2)!, out.get(4)!],
+		6: () => [out.get(5)!],
+		7: () => [out.get(6) ?? out.get(5)!]
+	};
+
+	const stages: Stage[] = [];
+	let offset = 0;
+	for (const [i, m] of markers.entries()) {
+		const [s0, s1] = from[m.number]!();
+		const source = documentWith(m.inputs[0]!, s0!);
+		const other = m.inputs[1] ? documentWith(m.inputs[1], s1!) : undefined;
+		const end = markers[i + 1]?.at ?? run.trace.length;
+		const sub: ConvertRun = {
+			op: STAGE_OPS[m.number]!,
+			source,
+			...(other ? { second: other } : {}),
+			final: made(m.number),
+			trace: run.trace.slice(m.at + 1, end)
+		};
+		const names = namesOf(sub, deadName);
+		const places = await layoutOf(sub, names, layout);
+		out.set(m.number, {
+			names: names.result,
+			places: places ?? source.states.map((s) => ({ id: s.id, x: s.x, y: s.y }))
+		});
+		stages.push({
+			number: m.number,
+			key: m.key,
+			run: sub,
+			names,
+			places,
+			offset,
+			length: sub.trace.length
+		});
+		offset += sub.trace.length;
+	}
+	return { op: run.op, stages, total: offset };
+}
+
+/** The frame at step `index` of the plan, with the stage it is in and its place in the stage. */
+export function planFrame(
+	plan: Plan,
+	index: number
+): { frame: Frame; stage: Stage; stageIndex: number; local: number } {
+	const at = Math.min(Math.max(index, 0), plan.total - 1);
+	let stageIndex = plan.stages.findIndex((s) => at < s.offset + s.length);
+	if (stageIndex < 0) stageIndex = plan.stages.length - 1;
+	const stage = plan.stages[stageIndex]!;
+	const local = at - stage.offset;
+	return { frame: frameAt(stage.run, stage.names, local), stage, stageIndex, local };
+}
+
+/** The document of the finished result, with `title`. */
+export function planResult(plan: Plan, title: string): MachineDocument {
+	const last = plan.stages[plan.stages.length - 1]!;
+	return resultDocument(last.run, last.names, last.places, last.run.final, title);
+}
+
+/** The seven stages of an intersection as chips, with where each one starts; a skipped one is not present. */
+export function chipsOf(
+	plan: Plan
+): { number: number; key: string; present: boolean; offset: number }[] {
+	if (plan.op !== 'intersection') return [];
+	return INTERSECTION_STAGE_KEYS.map((key, i) => {
+		const stage = plan.stages.find((s) => s.number === i + 1);
+		return { number: i + 1, key, present: stage !== undefined, offset: stage?.offset ?? -1 };
+	});
 }

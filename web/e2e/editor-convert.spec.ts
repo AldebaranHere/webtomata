@@ -274,6 +274,101 @@ test('"Konversi selesai!" shows for two seconds when the last step is reached, a
 	await expect(done).toBeVisible();
 });
 
+/** Duplicates the open machine in "Mesin saya", so that there is a second machine of the same alphabet. */
+async function addCopy(page: Page, title: string) {
+	await page.getByRole('button', { name: /^Mesin saya \(\d+\)$/ }).click();
+	const list = page.getByRole('dialog', { name: 'Mesin saya' });
+	await list.getByRole('button', { name: `Tindakan untuk ${title}` }).click();
+	await list.getByRole('button', { name: 'Duplikat' }).click();
+	await expect(list.getByText(`${title} (salinan)`, { exact: true })).toBeVisible();
+	await list.getByRole('button', { name: 'Tutup' }).click();
+}
+
+const stageLine = (page: Page) => panel(page).locator('.stage');
+const chip = (page: Page, n: number) =>
+	panel(page)
+		.getByRole('list', { name: 'Tahap' })
+		.getByRole('button', { name: new RegExp(`^Tahap ${n}[: ]`) });
+
+test('intersection of an NDFSM with a copy of itself goes through all seven stages, with chips that jump', async ({
+	page
+}) => {
+	await openNdfsm(page);
+	await addCopy(page, 'Pilihan dengan transisi ε');
+	const row = operation(page, 'Irisan');
+	await row
+		.getByRole('combobox', { name: 'Irisan dengan' })
+		.selectOption({ label: 'Pilihan dengan transisi ε (salinan) · NDFSM' });
+	await row.getByRole('button', { name: 'Mulai' }).click();
+
+	await expect(stageLine(page)).toHaveText('Tahap 1 dari 7 · Lengkapi mesin pertama menjadi DFSM');
+	await expect(panel(page).getByText(/^Langkah 1 dari \d+ di tahap ini$/)).toBeVisible();
+	await expect(button(page, 'Irisan')).toBeVisible();
+	for (let n = 1; n <= 7; n++) await expect(chip(page, n)).toBeEnabled();
+	await expect(chip(page, 1)).toHaveAttribute('aria-current', 'step');
+
+	// A chip jumps to the start of its stage, and the canvas shows the machine of that stage.
+	await chip(page, 5).click();
+	await expect(stageLine(page)).toHaveText('Tahap 5 dari 7 · Gabungan kedua komplemen');
+	await expect(panel(page).getByText(/^Langkah 1 dari 5 di tahap ini$/)).toBeVisible();
+	await expect(sentence(page)).toContainText('Salin mesin pertama');
+	await expect(shown(page)).toBeVisible();
+
+	await button(page, 'Ke hasil').click();
+	await expect(stageLine(page)).toHaveText(
+		'Tahap 7 dari 7 · Komplemen hasil gabungan: inilah irisannya'
+	);
+	await expect(panel(page).getByText('Konversi selesai!')).toBeVisible();
+	await panel(page).getByRole('button', { name: 'Buka sebagai mesin baru' }).click();
+	await expect(page.locator('.bar .title')).toHaveText(
+		'Irisan Pilihan dengan transisi ε dan Pilihan dengan transisi ε (salinan)'
+	);
+});
+
+test('a stage that has nothing to do is shown greyed, with the reason, and the player starts at stage 2', async ({
+	page
+}) => {
+	await openDfsm(page);
+	await addCopy(page, 'Berakhiran 01');
+	const row = operation(page, 'Irisan');
+	await row
+		.getByRole('combobox', { name: 'Irisan dengan' })
+		.selectOption({ label: 'Berakhiran 01 (salinan) · DFSM' });
+	await row.getByRole('button', { name: 'Mulai' }).click();
+	// "Berakhiran 01" is a complete DFSM, so the two "make complete" stages before the union are skipped.
+	await expect(stageLine(page)).toHaveText('Tahap 2 dari 7 · Komplemen mesin pertama');
+	await expect(chip(page, 1)).toBeDisabled();
+	await expect(chip(page, 1)).toHaveAccessibleName(
+		/^Tahap 1 dilewati: .*Tidak ada yang perlu dikerjakan\.$/
+	);
+	await expect(chip(page, 3)).toBeDisabled();
+	await expect(chip(page, 6)).toBeEnabled();
+	await expectNoAxeViolations(page);
+	// Play goes on across the stages, and the last step is the end of stage 7.
+	await button(page, 'Ke hasil').click();
+	await expect(stageLine(page)).toContainText('Tahap 7 dari 7');
+	await expectNoAxeViolations(page);
+});
+
+test('every chip of the stages is at least 44 px, and the chips do not run out of the panel', async ({
+	page
+}) => {
+	await openNdfsm(page);
+	await addCopy(page, 'Pilihan dengan transisi ε');
+	const row = operation(page, 'Irisan');
+	await row
+		.getByRole('combobox', { name: 'Irisan dengan' })
+		.selectOption({ label: 'Pilihan dengan transisi ε (salinan) · NDFSM' });
+	await row.getByRole('button', { name: 'Mulai' }).click();
+	const box = (await panel(page).boundingBox())!;
+	for (let n = 1; n <= 7; n++) {
+		const b = (await chip(page, n).boundingBox())!;
+		expect(b.width, `chip ${n}`).toBeGreaterThanOrEqual(44);
+		expect(b.height, `chip ${n}`).toBeGreaterThanOrEqual(44);
+		expect(b.x + b.width).toBeLessThanOrEqual(box.x + box.width);
+	}
+});
+
 test('a conversion with one step says it is done at once', async ({ page }) => {
 	await openDfsm(page);
 	await operation(page, 'Tambah dead state').getByRole('button', { name: 'Mulai' }).click();
