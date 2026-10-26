@@ -188,10 +188,80 @@ fn stages(trace: &[ConversionStep]) -> Vec<u8> {
     trace
         .iter()
         .filter_map(|s| match s.change {
-            Change::Stage { stage } => Some(stage),
+            Change::Stage { stage, .. } => Some(stage),
             _ => None,
         })
         .collect()
+}
+
+/// The machines that each stage starts from, by stage number.
+fn stage_inputs(trace: &[ConversionStep]) -> Vec<(u8, Vec<Fsm>)> {
+    trace
+        .iter()
+        .filter_map(|s| match &s.change {
+            Change::Stage { stage, inputs } => Some((*stage, inputs.clone())),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn each_stage_carries_the_machines_it_starts_from() {
+    let (result, trace) = run(A_STAR_B_STAR, ONLY_A);
+    let stages = stage_inputs(&trace);
+    assert_eq!(
+        stages
+            .iter()
+            .map(|(n, i)| (*n, i.len()))
+            .collect::<Vec<_>>(),
+        [(1, 1), (2, 1), (3, 1), (4, 1), (5, 2), (6, 1), (7, 1)]
+    );
+    let input = |n: u8, k: usize| stages.iter().find(|(s, _)| *s == n).unwrap().1[k].clone();
+    let b = ConversionBudget::default();
+    let dfsm = |m: &Fsm| match determinize(m, b).unwrap() {
+        Conversion::Finished { dfsm, .. } => dfsm,
+        Conversion::Stopped { .. } => panic!("stopped"),
+    };
+    // The first stage of each side starts from the machine of the student.
+    assert_eq!(input(1, 0), fsm(A_STAR_B_STAR));
+    assert_eq!(input(3, 0), fsm(ONLY_A));
+    // Every stage starts from what the stage before it made.
+    assert_eq!(dfsm(&input(1, 0)), input(2, 0));
+    assert_eq!(complement(&input(2, 0)).unwrap().fsm, input(5, 0));
+    assert_eq!(dfsm(&input(3, 0)), input(4, 0));
+    assert_eq!(complement(&input(4, 0)).unwrap().fsm, input(5, 1));
+    assert_eq!(union(&input(5, 0), &input(5, 1)).unwrap().fsm, input(6, 0));
+    assert_eq!(dfsm(&input(6, 0)), input(7, 0));
+    assert_eq!(complement(&input(7, 0)).unwrap().fsm, result);
+}
+
+#[test]
+fn a_stage_that_is_skipped_has_no_marker_and_the_next_one_starts_from_the_machine() {
+    let (_, trace) = run(EVEN, A_STAR_B_STAR_DFSM);
+    let stages = stage_inputs(&trace);
+    assert_eq!(
+        stages.iter().map(|(n, _)| *n).collect::<Vec<_>>(),
+        [2, 4, 5, 6, 7]
+    );
+    // Both machines were complete DFSMs: stages 2 and 4 start from them as they are.
+    assert_eq!(stages[0].1, vec![fsm(EVEN)]);
+    assert_eq!(stages[1].1, vec![fsm(A_STAR_B_STAR_DFSM)]);
+}
+
+#[test]
+fn a_stopped_intersection_keeps_the_machines_of_the_stages_it_began() {
+    let tiny = ConversionBudget {
+        max_states: 1,
+        ..ConversionBudget::default()
+    };
+    match intersection(&fsm(A_STAR_B_STAR), &fsm(ONLY_A), tiny).unwrap() {
+        Intersection::Stopped { partial_trace, .. } => {
+            let stages = stage_inputs(&partial_trace);
+            assert_eq!(stages[0].0, 1);
+            assert_eq!(stages[0].1, vec![fsm(A_STAR_B_STAR)]);
+        }
+        Intersection::Finished { .. } => panic!("the budget should stop it"),
+    }
 }
 
 #[test]
