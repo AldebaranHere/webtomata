@@ -5,8 +5,8 @@
 
 use engine_core::{
     Budget, Conversion, ConversionBudget, Equivalence, EquivalenceBudget, Fsm, FsmKind,
-    Minimization, MinimizeBudget, Simulation, SymbolId, determinize, equivalent, minimize,
-    simulate,
+    Minimization, MinimizeBudget, Simulation, SymbolId, Xor, determinize, equivalent, minimize,
+    simulate, xor,
 };
 use serde_json::Value;
 
@@ -141,5 +141,83 @@ fn equivalence_matches_automata_lib() {
     assert!(
         same >= 20 && different >= 20,
         "{same} equal, {different} different"
+    );
+}
+
+/// Is any accepting state reachable from the start state?
+fn accepts_something(fsm: &Fsm) -> bool {
+    let mut seen = vec![fsm.start.unwrap()];
+    let mut next = 0;
+    while next < seen.len() {
+        let from = seen[next];
+        next += 1;
+        for t in fsm.transitions.iter().filter(|t| t.from == from) {
+            if !seen.contains(&t.to) {
+                seen.push(t.to);
+            }
+        }
+    }
+    seen.iter().any(|q| fsm.accepting.contains(q))
+}
+
+#[test]
+fn xor_matches_automata_lib() {
+    let all = cases(include_str!("fixtures/xor.json"));
+    assert!(all.len() >= 100);
+    let (mut empty, mut not_empty, mut with_ndfsm) = (0, 0, 0);
+    for (n, case) in all.iter().enumerate() {
+        let first = fsm(case, "first");
+        let second = fsm(case, "second");
+        if first.kind == FsmKind::Ndfsm || second.kind == FsmKind::Ndfsm {
+            with_ndfsm += 1;
+        }
+        let Xor::Finished { fsm: result, .. } =
+            xor(&first, &second, ConversionBudget::default()).unwrap()
+        else {
+            panic!("case {n}: stopped");
+        };
+        assert_eq!(result.kind, FsmKind::Dfsm, "case {n}");
+        // A string is in the XOR exactly when one machine accepts it and the other does not:
+        // the verdicts of the two machines that were given are the reference.
+        let expected = verdicts(case, "accepts");
+        for ((a, b), want) in verdicts(case, "firstAccepts")
+            .into_iter()
+            .zip(verdicts(case, "secondAccepts"))
+            .zip(&expected)
+        {
+            assert_eq!(a != b, *want, "case {n}: the fixture itself");
+        }
+        check_strings(case, &result, &expected, &format!("case {n}"));
+        // The same language as `(a ^ b).minify()` of automata-lib, and the same size when minimal.
+        same_language(&result, &fsm(case, "expected"), &format!("case {n}"));
+        let Minimization::Finished { dfsm: minimal, .. } =
+            minimize(&result, MinimizeBudget::default()).unwrap()
+        else {
+            panic!("case {n}: minimize stopped");
+        };
+        assert_eq!(
+            minimal.states.len() as u64,
+            case["expectedStates"].as_u64().unwrap(),
+            "case {n}"
+        );
+        // Empty exactly when the two machines are equivalent.
+        let is_empty = !accepts_something(&result);
+        assert_eq!(is_empty, case["empty"].as_bool().unwrap(), "case {n}");
+        let both = equivalent(&first, &second, EquivalenceBudget::default()).unwrap();
+        assert_eq!(
+            is_empty,
+            matches!(both, Equivalence::Equivalent { .. }),
+            "case {n}"
+        );
+        if is_empty {
+            empty += 1;
+        } else {
+            not_empty += 1;
+        }
+    }
+    // The fixtures hold both: pairs that are equivalent and pairs that are not, and NDFSMs.
+    assert!(
+        empty >= 10 && not_empty >= 10 && with_ndfsm >= 30,
+        "{empty} empty, {not_empty} not empty, {with_ndfsm} with an NDFSM"
     );
 }

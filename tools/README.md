@@ -4,7 +4,7 @@ Dev-only scripts. Nothing here ships with the site.
 
 ## Differential-test fixtures (`gen_fixtures.py`)
 
-The Rust tests in `crates/engine-core/tests/differential.rs` compare the engine with the Python package `automata-lib`. The answers of that package are in `crates/engine-core/tests/fixtures/*.json`. The files are committed, so `cargo test` needs no Python.
+The Rust tests in `crates/engine-core/tests/differential.rs` compare the engine with the Python package `automata-lib`. The answers of that package are in `crates/engine-core/tests/fixtures/*.json`: NFA → DFA (`determinize.json`), minimization (`minimize.json`), equivalence (`equivalence.json`) and XOR (`xor.json`: pairs of DFAs, NFAs and one of each, with the verdicts of both machines for a list of strings, so that the XOR is also checked without the `^` of the package). The reference of the XOR is made complete, because `^` gives a partial DFA without its trap state and the engine's machines are complete. The files are committed, so `cargo test` needs no Python.
 
 Change the fixtures only when the script changes. To make them again:
 
@@ -13,7 +13,7 @@ Change the fixtures only when the script changes. To make them again:
 3. Run the script from the repository root: `.venv-fixtures/bin/python tools/gen_fixtures.py`
 4. Run `cargo test -p engine-core --test differential`.
 
-The seed is fixed. The same versions give the same files, on any computer.
+The seed is fixed. The same versions give the same files, on any computer (also with another `PYTHONHASHSEED`: the numbering of the states does not depend on the order of a set).
 
 ## Smoke test (`smoke.mjs`)
 
