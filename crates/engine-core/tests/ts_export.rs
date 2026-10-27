@@ -35,6 +35,7 @@ fn the_types_match_the_json() {
         "FsmToRegexBudget",
         "RegexBudget",
         "SimplifyBudget",
+        "ViaMachineBudget",
         "SimulationStep",
         "Simulation",
         "Conversion",

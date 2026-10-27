@@ -297,6 +297,45 @@ fn simplify_gives_text_and_a_trace() {
     assert_eq!(stopped["reason"], "max_checks");
 }
 
+#[test]
+fn simplify_via_machine_gives_text_and_a_trace() {
+    let value = ok(api::simplify_via_machine(
+        "1*00*1((0∪11*0)0*1)*",
+        r#"["0","1"]"#,
+        None,
+    ));
+    assert_eq!(value["result"], "finished");
+    assert_eq!(value["regex"], "(1*0+1)+");
+    // The plain identities already get to the short plus, so the original is kept.
+    assert_eq!(
+        value["trace"][0]["message"]["key"],
+        "via_machine.kept_original"
+    );
+    assert_eq!(
+        value["trace"][1]["message"]["key"],
+        "simplify.concat_star_plus"
+    );
+
+    let long = ok(api::simplify_via_machine(
+        "(0∪11*0)(1∪00*1)(1∪00*1)*(0∪11*0)*",
+        r#"["0","1"]"#,
+        None,
+    ));
+    assert_eq!(long["result"], "finished");
+
+    let stopped = ok(api::simplify_via_machine(
+        "a*∪aa",
+        &ab(),
+        Some(r#"{"maxChecks": 0}"#),
+    ));
+    assert_eq!(stopped["result"], "stopped");
+    assert_eq!(stopped["reason"], "max_checks");
+    assert_eq!(
+        err(api::simplify_via_machine("a∪", &ab(), None))["key"],
+        "regex.unexpected_end"
+    );
+}
+
 // ---- closure operations ----
 
 #[test]
