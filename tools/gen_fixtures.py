@@ -222,46 +222,90 @@ def other_nfa(rng, nfa, symbols):
     return random_nfa(rng, symbols)
 
 
-def xor_cases(rng):
-    """XOR (the symmetric difference) of two machines of either kind, with the same alphabet.
+def as_dfa(machine):
+    return machine if isinstance(machine, DFA) else DFA.from_nfa(machine)
 
-    The reference is `(a ^ b).minify()` of automata-lib (made complete), with an NFA made a DFA first. The
-    strings carry the verdicts of the two machines that were given, so the engine is also
-    checked against a reference that does not use `^`: a string is in the XOR exactly when
-    one machine accepts it and the other does not.
-    """
+
+def machine_of(machine):
+    return dfa_json(machine) if isinstance(machine, DFA) else nfa_json(machine)
+
+
+def random_pair(rng, symbols):
+    """Two machines of either kind with the same alphabet; often the same language."""
+    kind = rng.choice(["dfa-dfa", "nfa-nfa", "dfa-nfa"])
+    if kind == "dfa-dfa":
+        first = random_dfa(rng, symbols)
+        return first, other_dfa(rng, first, symbols)
+    if kind == "nfa-nfa":
+        first = random_nfa(rng, symbols)
+        return first, other_nfa(rng, first, symbols)
+    return random_dfa(rng, symbols), random_nfa(rng, symbols)
+
+
+def pair_case(rng, symbols, first, second, result, combine):
+    """One case of an operation on two machines. The reference `result` is made minimal and
+    complete: `^`, `|` and `&` give a partial DFA with the trap state taken away, and the engine's
+    machines are complete, so the numbers of states would differ by the trap state. The verdicts
+    of the two machines that were given, and `combine` of them, are a reference that does not use
+    the operation of the package at all."""
+    result = result.minify().to_complete()
+    strings = random_strings(rng, symbols)
+    first_accepts = [first.accepts_input("".join(s)) for s in strings]
+    second_accepts = [second.accepts_input("".join(s)) for s in strings]
+    return {
+        "first": machine_of(first),
+        "second": machine_of(second),
+        "expected": dfa_json(result),
+        "expectedStates": len(result.states),
+        "empty": result.isempty(),
+        "strings": strings,
+        "accepts": [combine(a, b) for a, b in zip(first_accepts, second_accepts)],
+        "firstAccepts": first_accepts,
+        "secondAccepts": second_accepts,
+    }
+
+
+def pair_cases(operation, combine):
+    """The cases of an operation on two machines: `operation(a, b)` is the reference."""
+
+    def make(rng):
+        cases = []
+        for _ in range(COUNT):
+            symbols = random_symbols(rng)
+            first, second = random_pair(rng, symbols)
+            result = operation(as_dfa(first), as_dfa(second))
+            cases.append(pair_case(rng, symbols, first, second, result, combine))
+        return cases
+
+    return make
+
+
+# XOR (the symmetric difference) of two machines: the reference is `a ^ b` of automata-lib. A string is
+# in the XOR exactly when one machine accepts it and the other does not.
+xor_cases = pair_cases(lambda a, b: a ^ b, lambda a, b: a != b)
+# Union and intersection of two machines of either kind: `a | b` and `a & b`.
+union_cases = pair_cases(lambda a, b: a | b, lambda a, b: a or b)
+intersection_cases = pair_cases(lambda a, b: a & b, lambda a, b: a and b)
+
+
+def complement_cases(rng):
+    """Complement of a complete DFA: the reference is `~a` of automata-lib."""
     cases = []
     for _ in range(COUNT):
         symbols = random_symbols(rng)
-        kind = rng.choice(["dfa-dfa", "nfa-nfa", "dfa-nfa"])
-        if kind == "dfa-dfa":
-            first = random_dfa(rng, symbols)
-            second = other_dfa(rng, first, symbols)
-        elif kind == "nfa-nfa":
-            first = random_nfa(rng, symbols)
-            second = other_nfa(rng, first, symbols)
-        else:
-            first = random_dfa(rng, symbols)
-            second = random_nfa(rng, symbols)
-        as_dfa = lambda m: m if isinstance(m, DFA) else DFA.from_nfa(m)
-        # `^` gives a partial DFA with the trap state taken away; the engine's machines are
-        # complete, so the reference is made complete too before it is counted.
-        difference = (as_dfa(first) ^ as_dfa(second)).minify().to_complete()
+        machine = random_dfa(rng, symbols)
+        reference = (~machine).minify().to_complete()
         strings = random_strings(rng, symbols)
-        first_accepts = [first.accepts_input("".join(s)) for s in strings]
-        second_accepts = [second.accepts_input("".join(s)) for s in strings]
-        to_json = lambda m: dfa_json(m) if isinstance(m, DFA) else nfa_json(m)
+        accepts = [machine.accepts_input("".join(s)) for s in strings]
         cases.append(
             {
-                "first": to_json(first),
-                "second": to_json(second),
-                "expected": dfa_json(difference),
-                "expectedStates": len(difference.states),
-                "empty": difference.isempty(),
+                "input": dfa_json(machine),
+                "expected": dfa_json(reference),
+                "expectedStates": len(reference.states),
+                "empty": reference.isempty(),
                 "strings": strings,
-                "accepts": [a != b for a, b in zip(first_accepts, second_accepts)],
-                "firstAccepts": first_accepts,
-                "secondAccepts": second_accepts,
+                "accepts": [not a for a in accepts],
+                "inputAccepts": accepts,
             }
         )
     return cases
@@ -274,6 +318,9 @@ def main():
         ("minimize", minimize_cases),
         ("equivalence", equivalence_cases),
         ("xor", xor_cases),
+        ("union", union_cases),
+        ("intersection", intersection_cases),
+        ("complement", complement_cases),
     ]:
         rng = random.Random(f"{SEED}-{name}")
         cases = make(rng)
