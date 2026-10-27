@@ -118,6 +118,30 @@ export const en: Record<MessageKey, string> = {
 		'The machine "{title}" uses an old format that can no longer be opened. The data was not deleted.',
 	'storage.skipped_many': '{count} machines could not be opened. The data was not deleted.',
 	'storage.dismiss': 'Dismiss the message',
+	// TODO(review): the wording of sharing is a draft until the feedback guide (U4).
+	'share.open_button': 'Share',
+	'share.title': 'Share machine',
+	'share.close': 'Close',
+	'share.note':
+		'This link holds your whole machine. Anyone who has the link can see this machine. The link is not stored on a server.',
+	'share.link_label': 'Link',
+	'share.copy': 'Copy link',
+	'share.copied': 'Link copied.',
+	'share.copy_failed': 'Could not copy. Select the link and copy it yourself.',
+	'share.sheet': 'Share with an app…',
+	'share.long':
+		'This link is long ({count} characters), so some chat apps may cut it. Check that it opens.',
+	'share.opened': 'The machine from the link was opened as a new machine: {title}.',
+	'share.invalid_link':
+		'This link is not a whole WebTomata machine. It may have been cut when it was copied. Your machine is not changed.',
+	'share.too_big':
+		'This link holds too much data, so it was not opened. Your machine is not changed.',
+	'share.unsupported_browser':
+		'This browser cannot open compressed links yet. Try a newer browser. Your machine is not changed.',
+	'document.invalid_file':
+		'The data is not a valid WebTomata machine (part: {at}). Your machine is not changed.',
+	'document.unsupported_version':
+		'This machine was made by a newer version of WebTomata (version {found}). Your machine is not changed.',
 	'editor.title_set': 'The title is now {title}.',
 	'document.invalid_title':
 		'A title cannot be longer than 100 characters or contain forbidden characters.',

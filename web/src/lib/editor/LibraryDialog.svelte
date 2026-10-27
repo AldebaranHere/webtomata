@@ -190,6 +190,9 @@
 									<button type="button" onclick={() => run(() => library.duplicate(entry.id))}>
 										{t('library.duplicate')}
 									</button>
+									<button type="button" onclick={() => library.share(entry.id)}>
+										{t('share.open_button')}
+									</button>
 								{/if}
 								<button
 									type="button"

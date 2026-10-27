@@ -47,6 +47,8 @@ class Library {
 	private keys = 0;
 	/** The editor sets this, so that the title of the open machine is changed through it (undo works). */
 	renameCurrent: (title: string) => Problem | null = () => null;
+	/** The page sets this: it shows the share dialog for a saved machine (the row action "Bagikan"). */
+	share: (id: string) => void = () => undefined;
 
 	/** Opens the machine of the last visit. Starts again if the page was left and came back. */
 	async start(makeSample: () => Sample): Promise<void> {

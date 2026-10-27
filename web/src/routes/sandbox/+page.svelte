@@ -4,9 +4,12 @@
 	import Editor from '#lib/editor/Editor.svelte';
 	import Toast from '#lib/editor/Toast.svelte';
 	import { createDocument } from '#lib/editor/document.ts';
+	import type { MachineDocument } from '#lib/editor/document.ts';
+	import { decodeLink, linkFragment } from '#lib/share/link.ts';
 	import { markTourSeen, tourSeen } from '#lib/editor/tour.ts';
 	import { EXAMPLES, buildExample } from '#lib/examples/examples.ts';
 	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
+	import { id as idMessages } from '#lib/i18n/id.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
 	import { library } from '#lib/storage/library.svelte.ts';
 	import { localizedTitle } from '#lib/storage/titles.ts';
@@ -18,10 +21,45 @@
 	let editor = $state<Editor | undefined>();
 	let skipped = $state(true);
 
+	// A link of a shared machine (`#m1=...`) opens as a machine of its own, never over the one of the
+	// student, and the address is cleaned so that a reload does not open it again.
+	let linkNote = $state<{ key: MessageKey; params: Record<string, string | number> } | null>(null);
+	async function openLink() {
+		const fragment = linkFragment(location.hash);
+		if (fragment === null) return;
+		history.replaceState(null, '', location.pathname + location.search);
+		const result = await decodeLink(fragment);
+		if (!result.ok) {
+			// A message that has no words of its own is a damaged link.
+			const known = Object.hasOwn(idMessages, result.error.key);
+			linkNote = known
+				? { key: result.error.key as MessageKey, params: result.error.params }
+				: { key: 'share.invalid_link', params: {} };
+			return;
+		}
+		const doc = result.value;
+		const problem = await library.openExample({
+			doc,
+			titles: { id: doc.title, en: doc.title },
+			tests: []
+		});
+		linkNote = problem
+			? { key: problem.key as MessageKey, params: problem.params }
+			: {
+					key: 'share.opened',
+					params: { title: doc.title || t('editor.untitled') }
+				};
+	}
+
 	onMount(() => {
 		skipped = false;
 		seen = tourSeen();
-		void library.start(() => ({ doc: createDocument() }));
+		void library.start(() => ({ doc: createDocument() })).then(openLink);
+		// A link pasted in a tab that already shows the Sandbox only changes the fragment: the page is not
+		// loaded again, so the change itself must open it.
+		const onHash = () => void openLink();
+		window.addEventListener('hashchange', onHash);
+		return () => window.removeEventListener('hashchange', onHash);
 	});
 	onDestroy(() => {
 		library.hide();
@@ -55,6 +93,26 @@
 		const example = EXAMPLES.find((e) => e.id === id);
 		if (!example) return;
 		exampleFailed = (await library.openExample(buildExample(example, getLocale()))) !== null;
+	}
+
+	// The share dialog is code that is needed only when it is opened: it is loaded then.
+	let sharing = $state.raw<MachineDocument | null>(null);
+	let ShareDialog = $state<Component<{ doc: MachineDocument; onclose: () => void }> | null>(null);
+	// The row action of "Mesin saya": a saved machine is read, and the list gives way to the dialog.
+	async function shareSaved(id: string) {
+		const doc = await library.readDocument(id);
+		if (!doc) return;
+		library.hide();
+		share(doc);
+	}
+	$effect(() => {
+		library.share = (id) => void shareSaved(id);
+	});
+	function share(doc: MachineDocument) {
+		sharing = doc;
+		if (!ShareDialog) {
+			void import('#lib/share/ShareDialog.svelte').then((module) => (ShareDialog = module.default));
+		}
 	}
 
 	// The list is code that is needed only when it is opened: it is loaded then.
@@ -93,6 +151,12 @@
 </svelte:head>
 
 <h1 class="sr-only">{t('nav.sandbox')}</h1>
+{#if linkNote}
+	<p class="notice" role="status">
+		<span>{t(linkNote.key, linkNote.params)}</span>
+		<button type="button" onclick={() => (linkNote = null)}>{t('storage.dismiss')}</button>
+	</p>
+{/if}
 {#if notice}
 	<p class="notice" role="status">
 		<span>{notice}</span>
@@ -118,6 +182,7 @@
 			}}
 			onhelp={openTour}
 			onopendoc={(doc) => void library.openDocument(doc, true)}
+			onshare={share}
 			machines={{ others, load: (id) => library.readDocument(id) }}
 		/>
 	{/key}
@@ -125,6 +190,7 @@
 	<div class="frame" aria-busy="true"></div>
 {/if}
 {#if Dialog}<Dialog />{/if}
+{#if sharing && ShareDialog}<ShareDialog doc={sharing} onclose={() => (sharing = null)} />{/if}
 {#if tourOpen && Tour}<Tour onclose={closeTour} />{/if}
 {#if library.deleted && !library.open}
 	<div class="toast-slot">
