@@ -708,8 +708,17 @@
 		.editor > :global(.rail) {
 			order: 3;
 		}
+		/* A button of the bar keeps its 44 px, and the title gives way: the gaps are small (the hit area is the button). */
 		.bar {
+			gap: var(--space-1);
 			padding: 0 var(--space-2) 0 var(--space-4);
+		}
+		.help,
+		.machines,
+		.fit,
+		.phone-history,
+		.bar :global(.save) {
+			flex-shrink: 0;
 		}
 		/* The bar is full: on a phone, auto layout is in the menu of the empty canvas. */
 		.layout {
@@ -730,7 +739,8 @@
 			display: none;
 		}
 		.title {
-			flex-grow: 1;
+			flex: 1 1 0;
+			min-width: 0;
 		}
 	}
 </style>
