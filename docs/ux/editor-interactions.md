@@ -493,3 +493,8 @@ S7-3 is three pull requests: Mesin → regex (A), Regex → NDFSM (B) and Sederh
 - **The result** is the text block of Mesin → regex (with the notation bullets and "Salin"). When no identity applies, there is no player: the line "Ekspresinya sudah tidak bisa diperpendek dengan identitas yang ada." shows under the field and goes away when the text changes.
 - **From Mesin → regex:** the result has a button "Pakai di Sederhanakan" that puts the expression in the field, closes the player and puts the focus in the field. It is only there when every symbol of the machine is one character, because the field reads one character for each symbol.
 - **The identities** are those of Rich's section 6.4. A rule that depends on the meaning of the parts ("jika L(β) ⊆ L(α)") is decided by the engine with its machines; if that is too big, the rule is not used, which is always safe. The steps are leftmost and innermost.
+
+### Two more identities in Sederhanakan (S7-4a)
+
+- **`αα* = α+`** (also `α*α`, and for a run of parts: `1*00*1(1*00*1)*` becomes `(1*0+1)+`) and **`γ ∪ α+γ = α*γ`** (also `γ ∪ γα+`, with γ possibly `ε`). They make the expression of a machine short: `1*00*1((0∪11*0)0*1)*` becomes `(1*0+1)+`, and `0∪11*0` becomes `1*0`. Each step is smaller than the one before, so the process ends.
+- The sentences write the identity in Rich's notation and name the parts (`body`, `plus`, `rest`); there is no new button. Every expression that Sederhanakan makes of an old expression may now be shorter, and a plus (`0+`) may appear where `00*` was.

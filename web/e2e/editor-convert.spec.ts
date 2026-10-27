@@ -707,3 +707,15 @@ test('the buttons of the two operations are at least 44 px, and disabled while t
 	await expect(regexRow(page).getByRole('button', { name: 'Sederhanakan' })).toBeEnabled();
 	await expectNoAxeViolations(page);
 });
+
+test('Sederhanakan turns the expression of a machine into the short plus', async ({ page }) => {
+	await openDfsm(page);
+	await field(page).fill('1*00*1((0∪11*0)0*1)*');
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan' }).click();
+	await expect(sentence(page)).toContainText('αα* = α+');
+	await button(page, 'Ke hasil').click();
+	await expect(panel(page).getByRole('region', { name: 'Ekspresi reguler' })).toHaveText(
+		'(1*0+1)+'
+	);
+	await expectNoAxeViolations(page);
+});

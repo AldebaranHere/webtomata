@@ -565,6 +565,10 @@ export const en: Record<MessageKey, string> = {
 	'simplify.plus_star': '(α*)+ = α*. {before} becomes {after}.',
 	'simplify.plus_empty': '∅+ = ∅. {before} becomes {after}.',
 	'simplify.plus_epsilon': 'ε+ = ε. {before} becomes {after}.',
+	'simplify.concat_star_plus':
+		'αα* = α+ (or α*α = α+): {body} and its star are joined into a plus. {before} becomes {after}.',
+	'simplify.union_plus_absorb':
+		'γ ∪ α+γ = α*γ (or γ ∪ γα+ = γα*), with γ = {rest} and α+ = {plus}: the union with γ is already covered, so the plus becomes a star. {before} becomes {after}.',
 	'simplify.unknown_symbol': 'The symbol {symbol} is not known.',
 
 	'page.soon': 'Coming soon.',

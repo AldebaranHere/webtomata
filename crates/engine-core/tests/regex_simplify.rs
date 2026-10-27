@@ -77,6 +77,16 @@ fn each_rule_rewrites_and_names_itself() {
         ("(a∪b)*a*", "(a∪b)*", "simplify.concat_star_subset"),
         ("(a∪ε)*", "a*", "simplify.star_union_subset"),
         ("(b∪bb)*", "b*", "simplify.star_union_subset"),
+        ("aa*", "a+", "simplify.concat_star_plus"),
+        ("a*a", "a+", "simplify.concat_star_plus"),
+        ("(ab)(ab)*", "(ab)+", "simplify.concat_star_plus"),
+        ("c(ab)*ab", "c(ab)+", "simplify.concat_star_plus"),
+        ("(a∪b)(a∪b)*", "(a∪b)+", "simplify.concat_star_plus"),
+        ("ε∪a+", "a*", "simplify.union_plus_absorb"),
+        ("a+∪ε", "a*", "simplify.union_plus_absorb"),
+        ("b∪a+b", "a*b", "simplify.union_plus_absorb"),
+        ("b∪ba+", "ba*", "simplify.union_plus_absorb"),
+        ("cb∪a+cb", "a*cb", "simplify.union_plus_absorb"),
     ];
     for (input, expected, key) in cases {
         assert_eq!(
@@ -91,6 +101,8 @@ fn each_rule_rewrites_and_names_itself() {
 fn rules_do_not_fire_when_their_condition_fails() {
     for input in [
         "a", "a∪b", "ab∪ba", "a*∪b", "a*b*", "(a∪b)*", "(ab)*", "a+", "aa∪b",
+        // The run before the star is not the body of the star.
+        "ba*", "aba*", "(ab)*a", "a*b", "a∪a+b", "b∪a+c", "ab∪a+c",
     ] {
         assert_eq!(run(input, &abc()), (input.to_string(), vec![]), "{input}");
     }
@@ -204,6 +216,63 @@ fn exercise_3_simplifies_as_far_as_the_identities_go() {
     }
 }
 
+// ---- the identities that turn the expression of a machine into a short one (S7-4a) ----
+
+#[test]
+fn a_run_of_parts_before_a_star_of_the_same_run_becomes_a_plus() {
+    let a = alphabet(&["0", "1"]);
+    // The star is the loop of the run, so the run and the star are one plus.
+    assert_eq!(
+        run("1*00*1(1*00*1)*", &a),
+        (
+            "(1*0+1)+".to_string(),
+            vec![
+                "simplify.concat_star_plus",
+                "simplify.concat_star_plus",
+                "simplify.concat_star_plus"
+            ]
+        )
+    );
+}
+
+#[test]
+fn the_expression_of_the_minimal_machine_and_the_one_of_the_owner_reach_the_same_plus() {
+    let a = alphabet(&["0", "1"]);
+    // From fsm_to_regex of the minimal DFSM of (1*00*1)+, and the expression that Sederhanakan made of it.
+    for text in ["1*00*1(00*1∪11*00*1)*", "1*00*1((0∪11*0)0*1)*"] {
+        assert_eq!(run(text, &a).0, "(1*0+1)+", "{text}");
+    }
+    // 0 ∪ 11*0 is 1*0.
+    assert_eq!(run("0∪11*0", &a).0, "1*0");
+}
+
+#[test]
+fn the_new_identities_name_the_parts() {
+    let a = alphabet(&["a", "b"]);
+    let Simplification::Finished { trace, .. } =
+        simplify(&parse("b∪a+b", &a), &a, SimplifyBudget::default()).unwrap()
+    else {
+        panic!("stopped");
+    };
+    let step = &trace[0];
+    assert_eq!(step.message.key, "simplify.union_plus_absorb");
+    assert_eq!(text_param(&step.message, "plus"), "a+");
+    assert_eq!(text_param(&step.message, "rest"), "b");
+    assert_eq!(text_param(&step.message, "after"), "a*b");
+    let Simplification::Finished { trace, .. } =
+        simplify(&parse("(ab)(ab)*", &a), &a, SimplifyBudget::default()).unwrap()
+    else {
+        panic!("stopped");
+    };
+    assert_eq!(text_param(&trace[0].message, "body"), "ab");
+    let Simplification::Finished { trace, .. } =
+        simplify(&parse("ε∪a+", &a), &a, SimplifyBudget::default()).unwrap()
+    else {
+        panic!("stopped");
+    };
+    assert_eq!(text_param(&trace[0].message, "rest"), "ε");
+}
+
 // ---- budgets and errors ----
 
 #[test]
@@ -296,6 +365,32 @@ proptest! {
                 &Change::Expression { expression: regex.to_text(&a) }
             ),
             None => prop_assert_eq!(&regex, &r),
+        }
+    }
+
+    #[test]
+    fn the_new_identities_keep_the_language(alpha in arb_regex(), rest in arb_regex()) {
+        let a = abc();
+        let plus = Regex::Plus(Box::new(alpha.clone()));
+        let star = Regex::Star(Box::new(alpha.clone()));
+        let cat = |x: &Regex, y: &Regex| Regex::Concat(Box::new(x.clone()), Box::new(y.clone()));
+        let union = |x: &Regex, y: &Regex| Regex::Union(Box::new(x.clone()), Box::new(y.clone()));
+        let starts = [
+            union(&rest, &cat(&plus, &rest)),
+            union(&rest, &cat(&rest, &plus)),
+            union(&Regex::Epsilon, &plus),
+            cat(&alpha, &star),
+            cat(&star, &alpha),
+            cat(&cat(&rest, &alpha), &star),
+        ];
+        for start in starts {
+            let Simplification::Finished { regex, .. } =
+                simplify(&start, &a, SimplifyBudget::default()).unwrap()
+            else {
+                panic!("stopped");
+            };
+            prop_assert!(regex.size() <= start.size());
+            prop_assert!(same_language(&start, &regex, &a), "{}", start.to_text(&a));
         }
     }
 

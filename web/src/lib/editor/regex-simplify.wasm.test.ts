@@ -60,6 +60,24 @@ describe('Sederhanakan with the real engine', () => {
 		expect(simplifyFrameAt(outcome.run, 0).marked).toEqual({ before: '', part: 'a*', after: '' });
 	});
 
+	it('turns the expression of a machine into the short plus, with the two new identities', async () => {
+		for (const text of ['1*00*1((0∪11*0)0*1)*', '1*00*1(00*1∪11*00*1)*']) {
+			const outcome = await runSimplify(engine, text);
+			if (outcome.kind !== 'finished') throw new Error(`${text}: ${outcome.kind}`);
+			expect(outcome.run.regex, text).toBe('(1*0+1)+');
+			const keys = outcome.run.trace.map((step) => step.message.key);
+			expect(keys).toContain('simplify.concat_star_plus');
+			expect(same(text, outcome.run.regex), text).toBe(true);
+		}
+		const outcome = await runSimplify(engine, '0∪11*0');
+		if (outcome.kind !== 'finished') throw new Error(outcome.kind);
+		expect(outcome.run.regex).toBe('1*0');
+		expect(outcome.run.trace.map((step) => step.message.key)).toEqual([
+			'simplify.concat_star_plus',
+			'simplify.union_plus_absorb'
+		]);
+	});
+
 	it('says that an expression is already as simple as it gets', async () => {
 		expect(await runSimplify(engine, 'ab*')).toEqual({ kind: 'unchanged' });
 	});

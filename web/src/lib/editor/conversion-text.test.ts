@@ -91,7 +91,7 @@ describe('conversionText', () => {
 				].map((m) => m[1]!)
 			)
 		);
-		expect(keys.size).toBeGreaterThanOrEqual(85);
+		expect(keys.size).toBeGreaterThanOrEqual(87);
 		for (const key of keys) {
 			expect(Object.hasOwn(id, key), `id ${key}`).toBe(true);
 			expect(Object.hasOwn(en, key), `en ${key}`).toBe(true);

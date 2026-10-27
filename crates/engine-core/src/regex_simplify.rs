@@ -8,7 +8,9 @@
 //!   L(β) ⊆ L(α) (`union_subset`), and `αγ ∪ αδ = α(γ ∪ δ)` or `γα ∪ δα = (γ ∪ δ)α`
 //!   (`union_factor_left`, `union_factor_right`; concatenation distributes over union, used in
 //!   the direction that makes the expression smaller);
-//! - concatenation: `∅α = ∅` (`concat_empty`), `εα = α` (`concat_epsilon`);
+//!   and `γ ∪ α+γ = α*γ` or `γ ∪ γα+ = γα*`, where γ may be `ε` (`union_plus_absorb`);
+//! - concatenation: `∅α = ∅` (`concat_empty`), `εα = α` (`concat_epsilon`), and a run of parts
+//!   next to a star of the same run: `αα* = α+` or `α*α = α+` (`concat_star_plus`);
 //! - star: `∅* = ε` (`star_empty`), `ε* = ε` (`star_epsilon`), `(α*)* = α*` (`star_star`),
 //!   `(α+)* = α*` (`star_plus`), `α*α* = α*` (`star_repeat`), `α*β* = β*` if L(α*) ⊆ L(β*) and
 //!   `α*β* = α*` if L(β*) ⊆ L(α*) (`concat_star_subset`), `(α ∪ β)* = α*` if L(β) ⊆ L(α*)
@@ -116,6 +118,48 @@ fn without(parts: &[Regex], skip: usize) -> Vec<Regex> {
     let mut rest = parts.to_vec();
     rest.remove(skip);
     rest
+}
+
+/// The parts of a member of a union that `plus_absorb` compares: a concatenation is its parts and `ε`
+/// is none.
+fn rest_members(r: &Regex) -> Vec<Regex> {
+    if *r == Regex::Epsilon {
+        Vec::new()
+    } else {
+        concat_members(r)
+    }
+}
+
+/// The concatenation of the parts, or `ε` for none.
+fn join_parts(parts: Vec<Regex>) -> Regex {
+    if parts.is_empty() {
+        Regex::Epsilon
+    } else {
+        fold(parts, Regex::Concat)
+    }
+}
+
+/// `γ ∪ α+γ = α*γ` and `γ ∪ γα+ = γα*`: when `y` is `γ` with a plus in front of it (or behind it), the union
+/// of `x = γ` and `y` is the star of that plus with `γ`. Returns the new `x`, the plus, and `γ`.
+fn plus_absorb(x: &Regex, y: &Regex) -> Option<(Regex, Regex, Vec<Regex>)> {
+    let rest = rest_members(x);
+    let parts = concat_members(y);
+    if let Some(Regex::Plus(body)) = parts.first()
+        && parts[1..] == rest[..]
+    {
+        let mut all = vec![Regex::Star(body.clone())];
+        all.extend(rest.clone());
+        return Some((join_parts(all), parts[0].clone(), rest));
+    }
+    let last = parts.len() - 1;
+    if let Some(Regex::Plus(body)) = parts.last()
+        && parts[..last] == rest[..]
+    {
+        let mut all = rest.clone();
+        all.push(Regex::Star(body.clone()));
+        return Some((join_parts(all), parts[last].clone(), rest));
+    }
+    None
 }
 
 fn check_symbols(r: &Regex, alphabet: &Alphabet) -> Result<(), Message> {
@@ -269,6 +313,24 @@ impl Run<'_> {
         }
         for i in 0..n {
             for j in 0..n {
+                if i == j {
+                    continue;
+                }
+                if let Some((new, plus, rest)) = plus_absorb(&parts[i], &parts[j]) {
+                    let mut all = parts.to_vec();
+                    all[i] = new;
+                    all.remove(j);
+                    let after = fold(all, Regex::Union);
+                    let message = self
+                        .message("simplify.union_plus_absorb", r, &after)
+                        .with("plus", self.text(&plus))
+                        .with("rest", self.text(&join_parts(rest)));
+                    return Ok(Some((after, message)));
+                }
+            }
+        }
+        for i in 0..n {
+            for j in 0..n {
                 if i != j && self.included(&parts[j], &parts[i])? {
                     let after = fold(without(parts, j), Regex::Union);
                     return Ok(Some(self.absorb(
@@ -307,6 +369,29 @@ impl Run<'_> {
         if let Some(i) = parts.iter().position(|p| *p == Regex::Epsilon) {
             let after = fold(without(parts, i), Regex::Concat);
             let message = self.message("simplify.concat_epsilon", r, &after);
+            return Ok(Some((after, message)));
+        }
+        for (i, part) in parts.iter().enumerate() {
+            let Regex::Star(body) = part else {
+                continue;
+            };
+            let run = concat_members(body);
+            let k = run.len();
+            // The run is just before the star (αα*), or just after it (α*α).
+            let from = if i >= k && parts[i - k..i] == run[..] {
+                i - k
+            } else if i + k < parts.len() && parts[i + 1..=i + k] == run[..] {
+                i
+            } else {
+                continue;
+            };
+            let mut all = parts[..from].to_vec();
+            all.push(Regex::Plus(body.clone()));
+            all.extend_from_slice(&parts[from + k + 1..]);
+            let after = fold(all, Regex::Concat);
+            let message = self
+                .message("simplify.concat_star_plus", r, &after)
+                .with("body", self.text(body));
             return Ok(Some((after, message)));
         }
         for i in 0..parts.len().saturating_sub(1) {
