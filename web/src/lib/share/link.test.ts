@@ -177,7 +177,8 @@ describe('a link that is not a machine fails calmly, and never throws', () => {
 
 	it('refuses a prototype key and keeps no trace of it', async () => {
 		const doc = JSON.parse(serializeDocument(endsWith01()));
-		const text = JSON.stringify({ ...doc }).replace('{', '{"__proto__":{"polluted":true},');
+		// The key goes in as the first of the object, in the text itself (an object literal would set the prototype).
+		const text = '{"__proto__":{"polluted":true},' + JSON.stringify(doc).slice(1);
 		const link = `m1=${base64url(await deflate(bytes(text)))}`;
 		const result = await decodeLink(link);
 		expect(result.ok).toBe(false);
