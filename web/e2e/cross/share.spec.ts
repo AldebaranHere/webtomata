@@ -82,13 +82,14 @@ test('the machine is downloaded as a JSON file and as a .jff file', async ({ pag
 	const json = page.waitForEvent('download');
 	await dialog(page).getByRole('button', { name: 'Unduh JSON' }).click();
 	const jsonFile = await json;
-	expect(jsonFile.suggestedFilename()).toBe('Berakhiran 01.webtomata.json');
+	// WebKit on Linux writes a space of the name as an underscore in the name that it suggests; the page gives the name with the space.
+	expect(jsonFile.suggestedFilename()).toMatch(/^Berakhiran[ _]01\.webtomata\.json$/);
 	const text = (await import('node:fs')).readFileSync((await jsonFile.path())!, 'utf8');
 	expect(JSON.parse(text).states).toHaveLength(3);
 	const jff = page.waitForEvent('download');
 	await dialog(page).getByRole('button', { name: 'Unduh .jff (JFLAP)' }).click();
 	const jffFile = await jff;
-	expect(jffFile.suggestedFilename()).toBe('Berakhiran 01.jff');
+	expect(jffFile.suggestedFilename()).toMatch(/^Berakhiran[ _]01\.jff$/);
 	const xml = (await import('node:fs')).readFileSync((await jffFile.path())!, 'utf8');
 	expect(xml).toContain('<type>fa</type>');
 });
