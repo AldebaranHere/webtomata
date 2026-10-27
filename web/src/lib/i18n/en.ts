@@ -505,7 +505,9 @@ export const en: Record<MessageKey, string> = {
 	'convert.insert_empty': 'Insert ∅, the empty set',
 	'convert.insert_open': 'Insert an opening parenthesis',
 	'convert.insert_close': 'Insert a closing parenthesis',
-	'convert.regex_expression': 'Expression: {expression}',
+	'convert.regex_expression': 'Expression:',
+	'convert.copy_latex': 'Copy LaTeX',
+	'convert.regex_preview': 'Preview:',
 	'regex.empty_set':
 		'∅: make state {states} the start state. It is not an accepting state, so no string is accepted.',
 	'regex.epsilon':
@@ -534,7 +536,7 @@ export const en: Record<MessageKey, string> = {
 		'Shorten the expression with the identities of the book, one at a time.',
 	'convert.play_simplify': 'Simplify',
 	'convert.regex_form_hint': 'Write a regular expression, then choose the operation.',
-	'convert.simplify_start': 'Starting expression: {expression}',
+	'convert.simplify_start': 'Starting expression:',
 	'convert.simplify_now': 'Now',
 	'convert.simplify_unchanged':
 		'The expression cannot be made shorter with the identities that we have.',

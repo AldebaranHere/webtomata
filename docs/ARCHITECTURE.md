@@ -28,15 +28,15 @@ flowchart LR
 
 One WASM call for each user action. Every function takes text and returns one text, in the same envelope: `{ "ok": true, "value": … }` or `{ "ok": false, "error": <message> }`. Bad input never throws. Details are in ADR 0014 and in the doc comment of `crates/engine-core/src/api.rs`.
 
-| Group               | Functions (JavaScript names)                                                             |
-| ------------------- | ---------------------------------------------------------------------------------------- |
-| Machines            | `loadMachine`, `validate`, `nondeterministicStates`, `addTrapState`                      |
-| Run                 | `simulate(machine, input, budget?)`                                                      |
-| Conversions         | `determinize`, `minimize`, `equivalent(candidate, reference, budget?)`                   |
+| Group               | Functions (JavaScript names)                                                                                                            |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Machines            | `loadMachine`, `validate`, `nondeterministicStates`, `addTrapState`                                                                     |
+| Run                 | `simulate(machine, input, budget?)`                                                                                                     |
+| Conversions         | `determinize`, `minimize`, `equivalent(candidate, reference, budget?)`                                                                  |
 | Regular expressions | `regexToFsm(text, alphabet, budget?)`, `fsmToRegex`, `simplify(text, alphabet, budget?)`, `simplifyViaMachine(text, alphabet, budget?)` |
-| Closure             | `complement`, `union`, `intersection`, `xor`                                             |
-| JFLAP               | `importJff(xml)`, `exportJff(machine, layout)`                                           |
-| Other               | `version`                                                                                |
+| Closure             | `complement`, `union`, `intersection`, `xor`                                                                                            |
+| JFLAP               | `importJff(xml)`, `exportJff(machine, layout)`                                                                                          |
+| Other               | `version`                                                                                                                               |
 
 - **Machines** are the machine file (`schemaVersion` 1). **Budgets** are partial JSON objects: a missing field keeps the default, and an unknown field is an error. The web client adds smaller budgets than the engine defaults (`WEB_BUDGETS` in `client.ts`) so that a cheap phone does not work for long.
 - **Strings come with names.** `simulate` returns the input as symbol names, and `equivalent` returns the witness and the wrong-string lists as names in the alphabet of the candidate, so the UI never looks up a number in the wrong alphabet.

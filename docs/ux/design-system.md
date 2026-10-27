@@ -51,13 +51,14 @@ The wireframes pass AA except four things. They are fixed in the tokens:
 
 ## Type
 
-| Token                                                      | Value                                                                                                                                |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `--font-ui`                                                | Plus Jakarta Sans, then the system font                                                                                              |
-| `--font-mono`                                              | JetBrains Mono, then the system mono font. Used for strings, symbols and traces.                                                     |
-| `--weight-regular`, `--weight-strong`                      | 400, 600. Only these two (`CLAUDE.md` allows two weights). The bold 700 of the wireframes' project name is 600.                      |
-| `--text-2xs` … `--text-2xl`                                | 11, 12, 13, 14 (base), 16, 20, 24 px, and a fluid 28–40 px for the page title. All in `rem`, so the reader's font size is respected. |
-| `--leading-tight`, `--leading-normal`, `--leading-relaxed` | 1.25, 1.5, 1.6                                                                                                                       |
+| Token                                                      | Value                                                                                                                                                                           |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--font-ui`                                                | Plus Jakarta Sans, then the system font                                                                                                                                         |
+| `--font-math`                                              | The system math and serif fonts (Cambria Math, STIX Two Math, Times New Roman, Georgia, serif); nothing is downloaded. Used for a regular expression drawn as a book writes it. |
+| `--font-mono`                                              | JetBrains Mono, then the system mono font. Used for strings, symbols and traces.                                                                                                |
+| `--weight-regular`, `--weight-strong`                      | 400, 600. Only these two (`CLAUDE.md` allows two weights). The bold 700 of the wireframes' project name is 600.                                                                 |
+| `--text-2xs` … `--text-2xl`                                | 11, 12, 13, 14 (base), 16, 20, 24 px, and a fluid 28–40 px for the page title. All in `rem`, so the reader's font size is respected.                                            |
+| `--leading-tight`, `--leading-normal`, `--leading-relaxed` | 1.25, 1.5, 1.6                                                                                                                                                                  |
 
 **Fonts** are self-hosted from the packages `@fontsource/plus-jakarta-sans` and `@fontsource/jetbrains-mono` (SIL Open Font License 1.1), Latin only, in woff2 only, with `font-display: swap`. The home page loads three files (UI regular and strong, mono regular: about 46 KB). The Greek letters of the mono font (ε, Σ), 4 KB each, are a separate file that the browser downloads only when a page shows such a letter. Symbols such as `∪` and `→` are not in the Latin subset, and fall back to the system font.
 
