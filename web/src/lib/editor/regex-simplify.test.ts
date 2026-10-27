@@ -13,7 +13,7 @@ const trace: ConversionStep[] = [
 	step('simplify.union_empty', 'a(εb)', { before: 'a∪∅', after: 'a' }),
 	step('simplify.concat_epsilon', 'ab', { before: 'εb', after: 'b' })
 ];
-const run: SimplifyRun = { text: '(a∪∅)(εb)', regex: 'ab', trace };
+const run: SimplifyRun = { text: '(a∪∅)(εb)', regex: 'ab', route: 'plain', trace };
 
 describe('markPart', () => {
 	it('cuts the whole in three at the first place of the part', () => {
@@ -52,9 +52,14 @@ describe('simplifyFrameAt', () => {
 
 describe('runSimplify', () => {
 	const asked: [string, string[]][] = [];
+	const through: [string, string[]][] = [];
 	const engineOf = (answer: EngineResult<RegexOutcome>): SimplifyEngine => ({
 		simplify: async (text, alphabet) => {
 			asked.push([text, alphabet]);
+			return answer;
+		},
+		simplifyViaMachine: async (text, alphabet) => {
+			through.push([text, alphabet]);
 			return answer;
 		}
 	});
@@ -68,6 +73,36 @@ describe('runSimplify', () => {
 		const outcome = await runSimplify(engineOf(done), '(a∪∅)(εb)');
 		expect(asked).toEqual([['(a∪∅)(εb)', ['a', 'b']]]);
 		expect(outcome).toMatchObject({ kind: 'finished', run: { regex: 'ab', text: '(a∪∅)(εb)' } });
+	});
+
+	it('asks the engine for the route through the machine, and keeps the route in the run', async () => {
+		asked.length = 0;
+		through.length = 0;
+		const outcome = await runSimplify(engineOf(done), '(a∪∅)(εb)', 'machine');
+		expect(through).toEqual([['(a∪∅)(εb)', ['a', 'b']]]);
+		expect(asked).toEqual([]);
+		expect(outcome).toMatchObject({ kind: 'finished', run: { route: 'machine', regex: 'ab' } });
+		expect(await runSimplify(engineOf(done), 'ab')).toMatchObject({ run: { route: 'plain' } });
+	});
+
+	it('never says "unchanged" for the route through the machine, which always has a step', async () => {
+		const kept: EngineResult<RegexOutcome> = {
+			ok: true,
+			value: {
+				result: 'finished',
+				regex: 'ab',
+				trace: [
+					{
+						message: { key: 'via_machine.kept_original', params: {} },
+						change: { kind: 'expression', expression: 'ab' }
+					}
+				]
+			}
+		};
+		expect(await runSimplify(engineOf(kept), 'ab', 'machine')).toMatchObject({
+			kind: 'finished',
+			run: { regex: 'ab' }
+		});
 	});
 
 	it('says "unchanged" when no identity applies', async () => {

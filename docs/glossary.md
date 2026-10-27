@@ -83,3 +83,5 @@ Also in S7-3b (`TODO(review)`): "Regex → NDFSM" (Rich: `regextofsm`), "Alfabet
 Also in S7-3c (`TODO(review)`): "Sederhanakan" (simplify; Rich section 6.4), "identitas" (identity), "Pakai di Sederhanakan" (use in Simplify), "Sekarang" (the expression now), and the sentences of the 17 rules (`simplify.*`). The sentences write each identity in Rich's notation and then say it in words.
 
 Also in S7-4a (`TODO(review)`): the sentences of `concat_star_plus` and `union_plus_absorb` (they say "bintangnya digabung menjadi plus" and "plus menjadi bintang").
+
+Also in S7-4b (`TODO(review)`): "Sederhanakan lewat mesin" (simplify through the machine), "mesin minimal" (the minimal DFSM), "bagian" (a part of an expression: a symbol or an operator, the unit of its size), and the four sentences `via_machine.*`.

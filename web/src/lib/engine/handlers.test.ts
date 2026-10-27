@@ -127,6 +127,10 @@ describe('every method reaches the engine', () => {
 			ok: true,
 			value: { result: 'finished', regex: 'a*' }
 		});
+		expect(call('simplifyViaMachine', 'a*∪aa', ['a', 'b'])).toMatchObject({
+			ok: true,
+			value: { result: 'finished', regex: 'a*' }
+		});
 		expect(call('regexToFsm', 'a*c', ['a', 'b'])).toMatchObject({
 			ok: false,
 			error: { key: 'regex.unknown_symbol' }

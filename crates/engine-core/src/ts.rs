@@ -10,8 +10,8 @@ use crate::{
     Budget, Change, Compiled, Conversion, ConversionBudget, ConversionStep, Counterexample,
     Equivalence, EquivalenceBudget, FsmKind, FsmToRegexBudget, Intersection, Issue, Jff, JffState,
     Label, Message, Minimization, MinimizeBudget, Nondeterminism, Operation, Param, RegexBudget,
-    Severity, SimplifyBudget, Simulation, StateId, Step, StopReason, SymbolId, Transition, Witness,
-    Xor,
+    Severity, SimplifyBudget, Simulation, StateId, Step, StopReason, SymbolId, Transition,
+    ViaMachineBudget, Witness, Xor,
 };
 use ts_rs::{Config, TS};
 
@@ -151,6 +151,7 @@ pub fn declarations() -> String {
         FsmToRegexBudget,
         RegexBudget,
         SimplifyBudget,
+        ViaMachineBudget,
         Step,
         Simulation,
         Conversion,

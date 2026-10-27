@@ -58,6 +58,7 @@ export const WEB_BUDGETS = {
 	regexToFsm: { maxStates: 500 },
 	fsmToRegex: { maxNodes: 500 },
 	simplify: { maxChecks: 500, maxSteps: 5_000 },
+	simplifyViaMachine: { maxStates: 500, maxNodes: 500, maxSteps: 5_000, maxChecks: 500 },
 	intersection: { maxStates: 500 },
 	xor: { maxStates: 500 }
 } as const;
@@ -80,6 +81,7 @@ const BUDGET_ARGUMENT: Partial<Record<EngineMethod, number>> = {
 	regexToFsm: 2,
 	fsmToRegex: 1,
 	simplify: 2,
+	simplifyViaMachine: 2,
 	intersection: 2,
 	xor: 2
 };

@@ -7,7 +7,8 @@ import type {
 	ConversionStep,
 	EngineResult,
 	RegexOutcome,
-	SimplifyBudget
+	SimplifyBudget,
+	ViaMachineBudget
 } from '../engine/types.ts';
 import { stopKey } from './conversion.ts';
 import { alphabetOf, engineRefusal, textRefusal } from './regex-compile.ts';
@@ -19,7 +20,16 @@ export interface SimplifyEngine {
 		alphabet: string[],
 		budget?: Partial<SimplifyBudget>
 	): Promise<EngineResult<RegexOutcome>>;
+	/** The same, but through the minimal machine; the shorter result wins. */
+	simplifyViaMachine(
+		text: string,
+		alphabet: string[],
+		budget?: Partial<ViaMachineBudget>
+	): Promise<EngineResult<RegexOutcome>>;
 }
+
+/** `plain`: the identities alone. `machine`: also through the minimal machine. */
+export type SimplifyRoute = 'plain' | 'machine';
 
 /** A finished simplification with at least one step. */
 export interface SimplifyRun {
@@ -27,6 +37,7 @@ export interface SimplifyRun {
 	text: string;
 	/** The expression at the end. */
 	regex: string;
+	route: SimplifyRoute;
 	trace: readonly ConversionStep[];
 }
 
@@ -37,16 +48,27 @@ export type SimplifyOutcome =
 	| { kind: 'stopped'; key: MessageKey }
 	| { kind: 'refused'; key: MessageKey; params: Params };
 
-/** Simplifies `text`: one call to the engine. A call that fails (a crash, a timeout) throws. */
-export async function runSimplify(engine: SimplifyEngine, text: string): Promise<SimplifyOutcome> {
+/**
+ * Simplifies `text`: one call to the engine. A call that fails (a crash, a timeout) throws. The route
+ * through the machine always has a step (it says which way was taken), so it is never `unchanged`.
+ */
+export async function runSimplify(
+	engine: SimplifyEngine,
+	text: string,
+	route: SimplifyRoute = 'plain'
+): Promise<SimplifyOutcome> {
 	const refusal = textRefusal(text);
 	if (refusal) return { kind: 'refused', ...refusal };
-	const answer = await engine.simplify(text, alphabetOf(text));
+	const alphabet = alphabetOf(text);
+	const answer =
+		route === 'machine'
+			? await engine.simplifyViaMachine(text, alphabet)
+			: await engine.simplify(text, alphabet);
 	if (!answer.ok) return { kind: 'refused', ...engineRefusal(answer.error) };
 	const value = answer.value;
 	if (value.result === 'stopped') return { kind: 'stopped', key: stopKey(value.reason) };
 	if (value.trace.length === 0) return { kind: 'unchanged' };
-	return { kind: 'finished', run: { text, regex: value.regex, trace: value.trace } };
+	return { kind: 'finished', run: { text, regex: value.regex, route, trace: value.trace } };
 }
 
 /** An expression cut in three at the part that a step changed, to mark it. */

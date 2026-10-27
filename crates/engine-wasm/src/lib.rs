@@ -66,6 +66,11 @@ pub fn simplify(text: &str, alphabet: &str, budget: Option<String>) -> String {
     api::simplify(text, alphabet, budget.as_deref())
 }
 
+#[wasm_bindgen(js_name = simplifyViaMachine)]
+pub fn simplify_via_machine(text: &str, alphabet: &str, budget: Option<String>) -> String {
+    api::simplify_via_machine(text, alphabet, budget.as_deref())
+}
+
 #[wasm_bindgen]
 pub fn complement(machine: &str) -> String {
     api::complement(machine)

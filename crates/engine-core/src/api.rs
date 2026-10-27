@@ -20,7 +20,7 @@ use crate::trace::ConversionStep;
 use crate::{
     Compiled, Conversion, ConversionBudget, Equivalence, EquivalenceBudget, Extraction,
     FsmToRegexBudget, MAX_JSON_BYTES, Minimization, MinimizeBudget, RegexBudget, Simplification,
-    SimplifyBudget, Simulation, StopReason,
+    SimplifyBudget, Simulation, StopReason, ViaMachineBudget,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -275,6 +275,32 @@ pub fn simplify(text: &str, alphabet_json: &str, budget_json: Option<&str>) -> S
                 partial_trace,
             },
         })
+    };
+    finish(run())
+}
+
+/// Simplifies a regular expression the plain way and through the minimal machine, and keeps the
+/// shorter. The trace says which route was taken.
+pub fn simplify_via_machine(text: &str, alphabet_json: &str, budget_json: Option<&str>) -> String {
+    let run = || -> Result<RegexOutcome, Message> {
+        let alphabet = alphabet(alphabet_json)?;
+        let budget = budget::<ViaMachineBudget>(budget_json)?;
+        let regex = crate::parse_regex(text, &alphabet)?;
+        Ok(
+            match crate::simplify_via_machine(&regex, &alphabet, budget)? {
+                Simplification::Finished { regex, trace } => RegexOutcome::Finished {
+                    regex: regex.to_text(&alphabet),
+                    trace,
+                },
+                Simplification::Stopped {
+                    reason,
+                    partial_trace,
+                } => RegexOutcome::Stopped {
+                    reason,
+                    partial_trace,
+                },
+            },
+        )
     };
     finish(run())
 }

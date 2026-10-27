@@ -33,7 +33,7 @@ One WASM call for each user action. Every function takes text and returns one te
 | Machines            | `loadMachine`, `validate`, `nondeterministicStates`, `addTrapState`                      |
 | Run                 | `simulate(machine, input, budget?)`                                                      |
 | Conversions         | `determinize`, `minimize`, `equivalent(candidate, reference, budget?)`                   |
-| Regular expressions | `regexToFsm(text, alphabet, budget?)`, `fsmToRegex`, `simplify(text, alphabet, budget?)` |
+| Regular expressions | `regexToFsm(text, alphabet, budget?)`, `fsmToRegex`, `simplify(text, alphabet, budget?)`, `simplifyViaMachine(text, alphabet, budget?)` |
 | Closure             | `complement`, `union`, `intersection`, `xor`                                             |
 | JFLAP               | `importJff(xml)`, `exportJff(machine, layout)`                                           |
 | Other               | `version`                                                                                |
