@@ -122,8 +122,12 @@ test('a machine of a newer version is skipped and kept, never overwritten', asyn
 test('when every machine is unreadable a new one is made, and none is deleted', async ({
 	page
 }) => {
-	await openSandbox(page);
+	// No example and no edit: a change that waits for its delay of 800 ms is saved at once when the page
+	// is hidden (the test above), and on a busy runner that save came after the row was made unreadable
+	// and put the good machine back over it. The machine of a first visit has nothing waiting.
+	await openSandbox(page, { example: false });
 	await expect.poll(async () => (await records(page)).length).toBe(1);
+	await expect(status(page)).toHaveClass(/saved/);
 	await engineSettled(page);
 	const [good] = await records(page);
 	await putRow(page, { ...good!, doc: 'not json at all', openedAt: good!.openedAt + 1000 });
@@ -131,6 +135,8 @@ test('when every machine is unreadable a new one is made, and none is deleted', 
 	await page.locator('.editor[data-ready]').waitFor();
 	// The new machine is empty, so "Coba contoh" is over it.
 	await expect(page.getByRole('region', { name: 'Coba contoh' })).toBeVisible();
+	// The test must not end while the engine of this page is still loading its file.
+	await engineSettled(page);
 	const all = await records(page);
 	expect(all).toHaveLength(2);
 	expect(all.find((r) => r.id === good!.id)!.doc).toBe('not json at all');

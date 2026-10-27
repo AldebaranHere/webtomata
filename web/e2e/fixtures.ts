@@ -6,6 +6,13 @@ import type { Page } from '@playwright/test';
 
 export { expect };
 
+/**
+ * The load of the WASM file, by page: how many requests for it started and how many are over (done or
+ * failed). The worker asks for it a little after the first render, and a test that ends or reloads
+ * while it is under way cancels it, which the watch below counts as a failed request.
+ */
+const wasmLoads = new WeakMap<Page, { started: number; over: number }>();
+
 export const test = base.extend<{ watch: void; allowedProblem: RegExp | undefined }>({
 	// Problems that a test causes on purpose (a blocked file, for example): a pattern for the text
 	// of the problem. Use it with test.use({ allowedProblem: /pattern/ }). It is one pattern, not a
@@ -17,13 +24,23 @@ export const test = base.extend<{ watch: void; allowedProblem: RegExp | undefine
 	watch: [
 		async ({ page, allowedProblem }, use) => {
 			const problems: string[] = [];
+			const wasm = { started: 0, over: 0 };
+			wasmLoads.set(page, wasm);
+			const isWasm = (request: { url(): string }) => request.url().endsWith('.wasm');
+			page.on('request', (request) => {
+				if (isWasm(request)) wasm.started++;
+			});
+			page.on('requestfinished', (request) => {
+				if (isWasm(request)) wasm.over++;
+			});
 			page.on('console', (message) => {
 				if (message.type() === 'error') problems.push(`console error: ${message.text()}`);
 			});
 			page.on('pageerror', (error) => problems.push(`uncaught error: ${error.message}`));
-			page.on('requestfailed', (request) =>
-				problems.push(`request failed: ${request.url()} (${request.failure()?.errorText})`)
-			);
+			page.on('requestfailed', (request) => {
+				if (isWasm(request)) wasm.over++;
+				problems.push(`request failed: ${request.url()} (${request.failure()?.errorText})`);
+			});
 			page.on('response', (response) => {
 				if (response.status() >= 400) problems.push(`${response.status()}: ${response.url()}`);
 			});
@@ -69,13 +86,21 @@ export async function clearTests(page: Page): Promise<void> {
 }
 
 /**
- * Waits until the engine has answered once (the first check of the machine is done). A test that
- * reloads the page right after it opened must wait for this: the reload cancels the load of the
- * worker and of the WASM file that is still under way, and the page then logs a failed request
- * (seen in WebKit on a slow runner).
+ * Waits until the engine has loaded and answered once. A test that reloads the page right after it
+ * opened, or that ends right after it opened, must wait for this: the reload (or the end) cancels
+ * the load of the WASM file that is still under way, and the page then logs a failed request (seen in
+ * WebKit on a slow runner). Two things are waited for: the first check of the machine is done, and the
+ * request for the WASM file has started and is over (it may not have started when the machine is
+ * empty, which has nothing to check, so the text "Memeriksa…" alone says nothing).
  */
 export async function engineSettled(page: Page): Promise<void> {
 	await expect(page.getByText('Memeriksa…')).toHaveCount(0);
+	await expect
+		.poll(() => {
+			const wasm = wasmLoads.get(page);
+			return wasm !== undefined && wasm.started > 0 && wasm.started === wasm.over;
+		})
+		.toBe(true);
 }
 
 /**
