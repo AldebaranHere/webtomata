@@ -81,3 +81,5 @@ Added in S7-3 (`TODO(review)`): "Mesin → regex" (FSM → regex; Rich: `fsmtore
 Also in S7-3b (`TODO(review)`): "Regex → NDFSM" (Rich: `regextofsm`), "Alfabet: ..." (the alphabet that the page reads from the expression), "Sisipkan" (insert, for the buttons of the operators), the sentences of the steps (they use the glossary terms union, konkatenasi and Kleene star), and the messages about a mistake in an expression ("tidak punya pasangan", "belum lengkap").
 
 Also in S7-3c (`TODO(review)`): "Sederhanakan" (simplify; Rich section 6.4), "identitas" (identity), "Pakai di Sederhanakan" (use in Simplify), "Sekarang" (the expression now), and the sentences of the 17 rules (`simplify.*`). The sentences write each identity in Rich's notation and then say it in words.
+
+Also in S7-4a (`TODO(review)`): the sentences of `concat_star_plus` and `union_plus_absorb` (they say "bintangnya digabung menjadi plus" and "plus menjadi bintang").

@@ -571,6 +571,10 @@ export const id = {
 	'simplify.plus_star': '(α*)+ = α*. {before} menjadi {after}.',
 	'simplify.plus_empty': '∅+ = ∅. {before} menjadi {after}.',
 	'simplify.plus_epsilon': 'ε+ = ε. {before} menjadi {after}.',
+	'simplify.concat_star_plus':
+		'αα* = α+ (atau α*α = α+): {body} dan bintangnya digabung menjadi plus. {before} menjadi {after}.',
+	'simplify.union_plus_absorb':
+		'γ ∪ α+γ = α*γ (atau γ ∪ γα+ = γα*), dengan γ = {rest} dan α+ = {plus}: union dengan γ sudah termuat, jadi plus menjadi bintang. {before} menjadi {after}.',
 	'simplify.unknown_symbol': 'Simbol {symbol} tidak dikenal.',
 
 	'page.soon': 'Segera hadir.',
