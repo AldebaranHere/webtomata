@@ -4,6 +4,7 @@
 
 use engine_core::{Alphabet, Fsm, FsmKind, Regex, StateId, SymbolId, Transition};
 use proptest::prelude::*;
+use std::collections::{BTreeSet, HashMap};
 
 // Rich: L = {w in {a, b}* : |w| is even}
 pub const EVEN: &str = r#"{"schemaVersion":1,"kind":"dfsm","alphabet":["a","b"],"states":[0,1],"start":0,"accepting":[0],"transitions":[{"from":0,"on":"a","to":1},{"from":0,"on":"b","to":1},{"from":1,"on":"a","to":0},{"from":1,"on":"b","to":0}]}"#;
@@ -142,4 +143,124 @@ pub fn all_strings(k: usize, max_len: usize) -> Vec<Vec<SymbolId>> {
         all.extend(level.iter().cloned());
     }
     all
+}
+
+// ---- references that are written in the tests and do not use the engine's algorithms ----
+
+/// Every word over the symbols, by length up to `max`, as lists of names.
+pub fn all_words(names: &[String], max: usize) -> Vec<Vec<String>> {
+    let mut words = vec![Vec::new()];
+    let mut from = 0;
+    for _ in 0..max {
+        let end = words.len();
+        for i in from..end {
+            for name in names {
+                let mut longer = words[i].clone();
+                longer.push(name.clone());
+                words.push(longer);
+            }
+        }
+        from = end;
+    }
+    words
+}
+
+/// How long the words are, so that every alphabet gives about the same number of them.
+pub fn longest(names: usize) -> usize {
+    match names {
+        0 => 0,
+        1 => 10,
+        2 => 8,
+        _ => 6,
+    }
+}
+
+/// Does the machine accept the word? Sets of states and the closure of ε-transitions, written
+/// here on purpose: it does not use `simulate`, so a mistake there cannot hide a mistake in an
+/// operation. The word is a list of names, because two machines may number the symbols differently.
+pub fn member(fsm: &Fsm, word: &[String]) -> bool {
+    let close = |set: &mut BTreeSet<StateId>| {
+        let mut stack: Vec<StateId> = set.iter().copied().collect();
+        while let Some(q) = stack.pop() {
+            for t in fsm
+                .transitions
+                .iter()
+                .filter(|t| t.from == q && t.on.is_none())
+            {
+                if set.insert(t.to) {
+                    stack.push(t.to);
+                }
+            }
+        }
+    };
+    let Some(start) = fsm.start else {
+        return false;
+    };
+    let mut now = BTreeSet::from([start]);
+    close(&mut now);
+    for name in word {
+        let Some(symbol) = fsm.alphabet.id(name) else {
+            return false;
+        };
+        let mut next = BTreeSet::new();
+        for t in &fsm.transitions {
+            if t.on == Some(symbol) && now.contains(&t.from) {
+                next.insert(t.to);
+            }
+        }
+        close(&mut next);
+        now = next;
+    }
+    now.iter().any(|q| fsm.accepting.binary_search(q).is_ok())
+}
+
+/// Does the regular expression match the word (a list of names of the alphabet)? Dynamic
+/// programming over the pieces of the word: `r` matches `word[i..j]`. It uses no machine and no
+/// derivative, and none of the code of the engine except the syntax tree, so it is a reference
+/// for `regex_to_fsm`, `fsm_to_regex` and `simplify` that shares no algorithm with them.
+pub fn matches(regex: &Regex, alphabet: &Alphabet, word: &[String]) -> bool {
+    let word: Vec<SymbolId> = word
+        .iter()
+        .map(|name| alphabet.id(name).expect("a symbol of the alphabet"))
+        .collect();
+    let mut memo = HashMap::new();
+    pieces(regex, &word, 0, word.len(), &mut memo)
+}
+
+/// `kind` 0: `regex` matches `word[i..j]`. `kind` 1: `regex*` does.
+type Memo = HashMap<(usize, u8, usize, usize), bool>;
+
+fn pieces(regex: &Regex, word: &[SymbolId], i: usize, j: usize, memo: &mut Memo) -> bool {
+    let key = (regex as *const Regex as usize, 0, i, j);
+    if let Some(&known) = memo.get(&key) {
+        return known;
+    }
+    let answer = match regex {
+        Regex::Empty => false,
+        Regex::Epsilon => i == j,
+        Regex::Symbol(c) => j == i + 1 && word[i] == *c,
+        Regex::Union(a, b) => pieces(a, word, i, j, memo) || pieces(b, word, i, j, memo),
+        Regex::Concat(a, b) => {
+            (i..=j).any(|k| pieces(a, word, i, k, memo) && pieces(b, word, k, j, memo))
+        }
+        Regex::Star(a) => repeats(a, word, i, j, memo),
+        // One or more: a piece, then any number of pieces.
+        Regex::Plus(a) => {
+            (i..=j).any(|k| pieces(a, word, i, k, memo) && repeats(a, word, k, j, memo))
+        }
+    };
+    memo.insert(key, answer);
+    answer
+}
+
+/// Does `regex*` match `word[i..j]`? The empty piece, or a nonempty piece and then `regex*` again.
+fn repeats(regex: &Regex, word: &[SymbolId], i: usize, j: usize, memo: &mut Memo) -> bool {
+    let key = (regex as *const Regex as usize, 1, i, j);
+    if let Some(&known) = memo.get(&key) {
+        return known;
+    }
+    let answer = i == j
+        || (i + 1..=j).any(|k| pieces(regex, word, i, k, memo) && repeats(regex, word, k, j, memo));
+    memo.insert(key, answer);
+    answer
 }
