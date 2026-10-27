@@ -4,12 +4,14 @@
 //! their states in different ways.
 
 use engine_core::{
-    Budget, Conversion, ConversionBudget, Equivalence, EquivalenceBudget, Fsm, FsmKind,
-    Intersection, Minimization, MinimizeBudget, Severity, Simulation, StateId, SymbolId, Xor,
-    complement, determinize, equivalent, intersection, minimize, simulate, union, validate, xor,
+    Alphabet, Budget, Compiled, Conversion, ConversionBudget, Equivalence, EquivalenceBudget, Fsm,
+    FsmKind, Intersection, Minimization, MinimizeBudget, RegexBudget, Severity, Simulation,
+    SymbolId, Xor, complement, determinize, equivalent, intersection, minimize, parse_regex,
+    regex_to_fsm, simulate, union, validate, xor,
 };
 use serde_json::Value;
-use std::collections::BTreeSet;
+mod common;
+use common::{all_words, longest, matches, member};
 
 fn cases(text: &str) -> Vec<Value> {
     let file: Value = serde_json::from_str(text).unwrap();
@@ -229,73 +231,6 @@ fn xor_matches_automata_lib() {
 // were given (a string is in the union when one of them accepts it, and so on); and an acceptor that
 // is written here and does not use the engine at all (`member`), which is asked about *every* string
 // up to a length, not only the sample of the fixtures.
-
-/// Every word over the symbols, by length up to `max`, as lists of names.
-fn all_words(names: &[String], max: usize) -> Vec<Vec<String>> {
-    let mut words = vec![Vec::new()];
-    let mut from = 0;
-    for _ in 0..max {
-        let end = words.len();
-        for i in from..end {
-            for name in names {
-                let mut longer = words[i].clone();
-                longer.push(name.clone());
-                words.push(longer);
-            }
-        }
-        from = end;
-    }
-    words
-}
-
-/// How long the words are, so that every alphabet gives about the same number of them.
-fn longest(names: usize) -> usize {
-    match names {
-        0 => 0,
-        1 => 10,
-        2 => 8,
-        _ => 6,
-    }
-}
-
-/// Does the machine accept the word? Sets of states and the closure of ε-transitions, written
-/// here on purpose: it does not use `simulate`, so a mistake there cannot hide a mistake in an
-/// operation. The word is a list of names, because two machines may number the symbols differently.
-fn member(fsm: &Fsm, word: &[String]) -> bool {
-    let close = |set: &mut BTreeSet<StateId>| {
-        let mut stack: Vec<StateId> = set.iter().copied().collect();
-        while let Some(q) = stack.pop() {
-            for t in fsm
-                .transitions
-                .iter()
-                .filter(|t| t.from == q && t.on.is_none())
-            {
-                if set.insert(t.to) {
-                    stack.push(t.to);
-                }
-            }
-        }
-    };
-    let Some(start) = fsm.start else {
-        return false;
-    };
-    let mut now = BTreeSet::from([start]);
-    close(&mut now);
-    for name in word {
-        let Some(symbol) = fsm.alphabet.id(name) else {
-            return false;
-        };
-        let mut next = BTreeSet::new();
-        for t in &fsm.transitions {
-            if t.on == Some(symbol) && now.contains(&t.from) {
-                next.insert(t.to);
-            }
-        }
-        close(&mut next);
-        now = next;
-    }
-    now.iter().any(|q| fsm.accepting.binary_search(q).is_ok())
-}
 
 /// A result of an operation must be a machine that the engine itself calls valid.
 fn assert_valid(fsm: &Fsm, what: &str) {
@@ -753,4 +688,78 @@ fn machines_with_one_symbol_or_none_work_in_every_operation() {
         minimal_states(&run_intersection(&even, &odd), "intersection"),
         1
     );
+}
+
+// ---- regular expression to NFA ----
+
+#[test]
+fn regex_to_fsm_matches_automata_lib_the_matcher_and_every_word() {
+    let all = cases(include_str!("fixtures/regex.json"));
+    assert!(all.len() >= 100);
+    let mut with_empty_string = 0;
+    for (n, case) in all.iter().enumerate() {
+        let what = format!("regex case {n}");
+        let names: Vec<String> = case["alphabet"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| s.as_str().unwrap().to_string())
+            .collect();
+        let alphabet = Alphabet::new(names).unwrap();
+        let text = case["text"].as_str().unwrap();
+        let regex = parse_regex(text, &alphabet).unwrap();
+        let Compiled::Finished { fsm, .. } =
+            regex_to_fsm(&regex, &alphabet, RegexBudget::default()).unwrap()
+        else {
+            panic!("{what}: stopped");
+        };
+        assert_eq!(fsm.kind, FsmKind::Ndfsm, "{what}");
+        assert_valid(&fsm, &what);
+        // The verdicts of the package are the reference of the matcher written here, of the acceptor
+        // written here and of `simulate`: if they agree with the package, they can judge the rest.
+        let want = verdicts(case, "accepts");
+        for (word, want) in named_strings(case).iter().zip(&want) {
+            assert_eq!(
+                matches(&regex, &alphabet, word),
+                *want,
+                "{what}: the matcher on {word:?}"
+            );
+            assert_eq!(
+                member(&fsm, word),
+                *want,
+                "{what}: the acceptor on {word:?}"
+            );
+        }
+        check_strings(case, &fsm, &want, &what);
+        // Every word: the machine and the expression agree.
+        for word in all_words(alphabet.names(), longest(alphabet.names().len())) {
+            assert_eq!(
+                member(&fsm, &word),
+                matches(&regex, &alphabet, &word),
+                "{what} on {word:?}"
+            );
+        }
+        // The machine of the package: the same language, and the same size when both are minimal.
+        same_language(&fsm, &fsm_of(case), &what);
+        assert_eq!(
+            minimal_states(&fsm, &what) as u64,
+            case["expectedStates"].as_u64().unwrap(),
+            "{what}"
+        );
+        if member(&fsm, &[]) {
+            with_empty_string += 1;
+        }
+    }
+    // The set has expressions whose language holds the empty string and expressions whose does not
+    // (the empty set cannot be written in the syntax of the package, so no language is empty here).
+    assert!(
+        with_empty_string >= 20 && all.len() - with_empty_string >= 20,
+        "{with_empty_string} of {} hold the empty string",
+        all.len()
+    );
+}
+
+/// The machine of the package of a regular expression case.
+fn fsm_of(case: &Value) -> Fsm {
+    fsm(case, "expected")
 }

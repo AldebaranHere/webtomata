@@ -311,6 +311,56 @@ def complement_cases(rng):
     return cases
 
 
+def random_regex(rng, symbols, depth):
+    """A random regular expression as a tree: ("eps",), ("sym", c), ("union", a, b), ("concat", a, b),
+    ("star", a) or ("plus", a). The empty set is not made: the package has no way to write it."""
+    if depth == 0 or rng.random() < 0.25:
+        return ("eps",) if rng.random() < 0.15 else ("sym", rng.choice(symbols))
+    kind = rng.choice(["union", "concat", "star", "plus", "concat", "union"])
+    if kind in ("star", "plus"):
+        return (kind, random_regex(rng, symbols, depth - 1))
+    return (kind, random_regex(rng, symbols, depth - 1), random_regex(rng, symbols, depth - 1))
+
+
+def regex_text(node, ours):
+    """The tree as text, with a parenthesis around every compound part, so that no rule of precedence
+    is needed: in Rich's notation (`ε`, `∪`) for the engine, and in the syntax of the package (`()`, `|`)."""
+    kind = node[0]
+    if kind == "eps":
+        return "ε" if ours else "()"
+    if kind == "sym":
+        return node[1]
+    if kind in ("star", "plus"):
+        return f"({regex_text(node[1], ours)})" + ("*" if kind == "star" else "+")
+    left, right = regex_text(node[1], ours), regex_text(node[2], ours)
+    if kind == "union":
+        return f"({left}{'∪' if ours else '|'}{right})"
+    return f"({left}{right})"
+
+
+def regex_cases(rng):
+    """Regular expression → NFA: the reference is `NFA.from_regex` of automata-lib, made a minimal complete DFA."""
+    cases = []
+    while len(cases) < COUNT:
+        symbols = random_symbols(rng)
+        tree = random_regex(rng, symbols, 4)
+        nfa = NFA.from_regex(regex_text(tree, False), input_symbols=set(symbols))
+        reference = DFA.from_nfa(nfa).minify().to_complete()
+        strings = random_strings(rng, symbols)
+        cases.append(
+            {
+                "text": regex_text(tree, True),
+                "alphabet": sorted(symbols),
+                "expected": dfa_json(reference),
+                "expectedStates": len(reference.states),
+                "empty": reference.isempty(),
+                "strings": strings,
+                "accepts": [nfa.accepts_input("".join(w)) for w in strings],
+            }
+        )
+    return cases
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     for name, make in [
@@ -321,6 +371,7 @@ def main():
         ("union", union_cases),
         ("intersection", intersection_cases),
         ("complement", complement_cases),
+        ("regex", regex_cases),
     ]:
         rng = random.Random(f"{SEED}-{name}")
         cases = make(rng)
