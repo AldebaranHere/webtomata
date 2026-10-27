@@ -23,7 +23,9 @@
 </script>
 
 <section aria-labelledby="simplify-heading">
-	<h3 id="simplify-heading" tabindex="-1" bind:this={heading}>{t('convert.op.simplify')}</h3>
+	<h3 id="simplify-heading" tabindex="-1" bind:this={heading}>
+		{run.route === 'machine' ? t('convert.op.simplify_via_machine') : t('convert.op.simplify')}
+	</h3>
 	<p class="mono">{t('convert.simplify_start', { expression: run.text })}</p>
 	<p class="muted">{t('convert.step_of', { n: player.index + 1, total })}</p>
 	<p class="done" role="status">{player.justDone ? t('convert.done') : ''}</p>
@@ -42,7 +44,9 @@
 		index={player.index}
 		{total}
 		playing={player.playing}
-		playLabel={t('convert.play_simplify')}
+		playLabel={run.route === 'machine'
+			? t('convert.play_simplify_via_machine')
+			: t('convert.play_simplify')}
 		ongo={player.go}
 		ontoggle={player.toggle}
 	/>

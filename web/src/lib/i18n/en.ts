@@ -570,6 +570,19 @@ export const en: Record<MessageKey, string> = {
 	'simplify.union_plus_absorb':
 		'γ ∪ α+γ = α*γ (or γ ∪ γα+ = γα*), with γ = {rest} and α+ = {plus}: the union with γ is already covered, so the plus becomes a star. {before} becomes {after}.',
 	'simplify.unknown_symbol': 'The symbol {symbol} is not known.',
+	// TODO(review): the wording of "lewat mesin" is a draft.
+	'convert.op.simplify_via_machine': 'Simplify through the machine',
+	'convert.op.simplify_via_machine_hint':
+		'Turn it into a machine, minimize, turn it back into a regex, then simplify. The result can be much shorter.',
+	'convert.play_simplify_via_machine': 'Simplify through the machine',
+	'via_machine.machine':
+		'Turn the expression into a machine: NDFSM with {ndfsm_states} states, DFSM with {dfsm_states} states, then the minimal DFSM with {minimal_states} states. There is only one minimal machine for a language, whatever the form of the expression.',
+	'via_machine.expression':
+		'Turn the minimal machine back into an expression by state elimination: {expression}. The next steps use identities.',
+	'via_machine.kept_original':
+		'Through the machine the expression has {machine_size} parts; your own expression, simplified, has {original_size} parts. So the plain Simplify result is used.',
+	'via_machine.too_big':
+		'The machine is too big to process here. So the plain Simplify result is used.',
 
 	'page.soon': 'Coming soon.',
 	'page.home': 'Back to home'

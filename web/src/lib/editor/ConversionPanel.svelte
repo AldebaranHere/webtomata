@@ -27,7 +27,7 @@
 	import CompilePlayer from './CompilePlayer.svelte';
 	import SimplifyPlayer from './SimplifyPlayer.svelte';
 	import { runSimplify } from './regex-simplify.ts';
-	import type { SimplifyRun } from './regex-simplify.ts';
+	import type { SimplifyRoute, SimplifyRun } from './regex-simplify.ts';
 	import RegexPlayer from './RegexPlayer.svelte';
 	import {
 		alphabetOf,
@@ -50,7 +50,9 @@
 
 	type Say = { key: MessageKey; params: Params };
 
-	let working = $state<ListedOp | RegexOp | 'regex_to_fsm' | 'simplify' | null>(null);
+	let working = $state<
+		ListedOp | RegexOp | 'regex_to_fsm' | 'simplify' | 'simplify_via_machine' | null
+	>(null);
 	let note = $state<Say | null>(null);
 	// A conversion that makes a regular expression (it has its own player), and the view it shows.
 	let regexRun = $state.raw<RegexRun | null>(null);
@@ -293,14 +295,14 @@
 		field.setSelectionRange(at.caret, at.caret);
 	}
 
-	async function startSimplify() {
+	async function startSimplify(route: SimplifyRoute) {
 		if (working) return;
-		working = 'simplify';
+		working = route === 'machine' ? 'simplify_via_machine' : 'simplify';
 		note = null;
 		regexError = null;
 		unchanged = false;
 		try {
-			const outcome = await runSimplify(engine, regexInput);
+			const outcome = await runSimplify(engine, regexInput, route);
 			if (outcome.kind === 'finished') {
 				simplifyRun = outcome.run;
 			} else if (outcome.kind === 'unchanged') {
@@ -677,11 +679,27 @@
 								disabled={regexReason !== null || working !== null}
 								aria-describedby="convert-hint-simplify"
 								aria-busy={working === 'simplify'}
-								onclick={() => void startSimplify()}
+								onclick={() => void startSimplify('plain')}
 							>
 								{working === 'simplify' ? t('convert.working') : t('convert.op.simplify')}
 							</button>
 							<span class="muted" id="convert-hint-simplify">{t('convert.op.simplify_hint')}</span>
+						</div>
+						<div class="action">
+							<button
+								type="button"
+								disabled={regexReason !== null || working !== null}
+								aria-describedby="convert-hint-simplify-via-machine"
+								aria-busy={working === 'simplify_via_machine'}
+								onclick={() => void startSimplify('machine')}
+							>
+								{working === 'simplify_via_machine'
+									? t('convert.working')
+									: t('convert.op.simplify_via_machine')}
+							</button>
+							<span class="muted" id="convert-hint-simplify-via-machine"
+								>{t('convert.op.simplify_via_machine_hint')}</span
+							>
 						</div>
 					</div>
 				</form>

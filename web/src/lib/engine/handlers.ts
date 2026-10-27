@@ -20,6 +20,7 @@ export interface Wasm {
 	regexToFsm(text: string, alphabet: string, budget?: string): string;
 	fsmToRegex(machine: string, budget?: string): string;
 	simplify(text: string, alphabet: string, budget?: string): string;
+	simplifyViaMachine(text: string, alphabet: string, budget?: string): string;
 	complement(machine: string): string;
 	union(first: string, second: string): string;
 	intersection(first: string, second: string, budget?: string): string;
@@ -81,6 +82,8 @@ export function createHandlers(wasm: Wasm): Handlers {
 		fsmToRegex: (machine, budget) => wasm.fsmToRegex(text(machine), optional(budget)),
 		simplify: (expression, alphabet, budget) =>
 			wasm.simplify(expression, text(alphabet), optional(budget)),
+		simplifyViaMachine: (expression, alphabet, budget) =>
+			wasm.simplifyViaMachine(expression, text(alphabet), optional(budget)),
 		complement: (machine) => wasm.complement(text(machine)),
 		union: (first, second) => wasm.union(text(first), text(second)),
 		intersection: (first, second, budget) =>

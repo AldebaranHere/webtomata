@@ -18,6 +18,14 @@ const engine: SimplifyEngine = {
 	simplify: async (text, alphabet, budget) =>
 		JSON.parse(
 			wasm.simplify(text, JSON.stringify(alphabet), budget ? JSON.stringify(budget) : null)
+		),
+	simplifyViaMachine: async (text, alphabet, budget) =>
+		JSON.parse(
+			wasm.simplifyViaMachine(
+				text,
+				JSON.stringify(alphabet),
+				budget ? JSON.stringify(budget) : null
+			)
 		)
 };
 
@@ -78,6 +86,24 @@ describe('Sederhanakan with the real engine', () => {
 		]);
 	});
 
+	it('goes through the machine for a long expression, and says which way it went', async () => {
+		const long =
+			'(0∪11*0)(1∪00*1)(ε∪1((0∪11*0)(1∪00*1)1)*(0∪11*0)(1∪00*1)∪(0∪1((0∪11*0)(1∪00*1)1)*(0∪11*0)(1∪00*1)0)((1∪00*1)(0∪1((0∪11*0)(1∪00*1)1)*(0∪11*0)(1∪00*1)0))*(1∪00*1∪(1∪00*1)1((0∪11*0)(1∪00*1)1)*(0∪11*0)(1∪00*1)))';
+		const outcome = await runSimplify(engine, long, 'machine');
+		if (outcome.kind !== 'finished') throw new Error(outcome.kind);
+		expect(outcome.run.regex).toBe('(1*0+1)+');
+		expect(outcome.run.route).toBe('machine');
+		const keys = outcome.run.trace.map((step) => step.message.key);
+		expect(keys.slice(0, 2)).toEqual(['via_machine.machine', 'via_machine.expression']);
+		expect(same(long, outcome.run.regex)).toBe(true);
+		// Every frame has an expression, and the last one is the result.
+		expect(simplifyFrameAt(outcome.run, outcome.run.trace.length - 1).expression).toBe('(1*0+1)+');
+		// A short expression keeps its own way.
+		const kept = await runSimplify(engine, '(1*00*1)+', 'machine');
+		if (kept.kind !== 'finished') throw new Error(kept.kind);
+		expect(kept.run.trace[0]!.message.key).toBe('via_machine.kept_original');
+	});
+
 	it('says that an expression is already as simple as it gets', async () => {
 		expect(await runSimplify(engine, 'ab*')).toEqual({ kind: 'unchanged' });
 	});
@@ -105,6 +131,7 @@ describe('Sederhanakan with the real engine', () => {
 			params: { position: 3 }
 		});
 		const none: SimplifyEngine = {
+			...engine,
 			simplify: (text, alphabet) => engine.simplify(text, alphabet, { maxChecks: 0 })
 		};
 		expect(await runSimplify(none, 'a*∪aa')).toMatchObject({ kind: 'stopped' });

@@ -82,16 +82,17 @@ describe('conversionText', () => {
 				'fsm_regex.rs',
 				'regex.rs',
 				'regex_simplify.rs',
+				'regex_machine.rs',
 				'regex_fsm.rs'
 			].flatMap((file) =>
 				[
 					...read(file).matchAll(
-						/"((?:determinize|minimize|trap|complement|union|intersection|xor|product|fsm_to_regex|regex|simplify)\.[a-z_.]+)"/g
+						/"((?:determinize|minimize|trap|complement|union|intersection|xor|product|fsm_to_regex|regex|simplify|via_machine)\.[a-z_.]+)"/g
 					)
 				].map((m) => m[1]!)
 			)
 		);
-		expect(keys.size).toBeGreaterThanOrEqual(87);
+		expect(keys.size).toBeGreaterThanOrEqual(91);
 		for (const key of keys) {
 			expect(Object.hasOwn(id, key), `id ${key}`).toBe(true);
 			expect(Object.hasOwn(en, key), `en ${key}`).toBe(true);

@@ -123,6 +123,12 @@ describe('the web budgets', () => {
 		expect(workers[0]!.posted[0]!.args[2]).toEqual({ maxChecks: 7, maxSteps: 5_000 });
 	});
 
+	it('are added to the call that goes through the machine', () => {
+		const { engine, workers } = setup();
+		void engine.simplifyViaMachine('a', ['a']);
+		expect(workers[0]!.posted[0]!.args[2]).toEqual(WEB_BUDGETS.simplifyViaMachine);
+	});
+
 	it('are not added to a method that has no budget', () => {
 		const { engine, workers } = setup();
 		void engine.complement(machine);
@@ -136,6 +142,8 @@ describe('the web budgets', () => {
 		expect(WEB_BUDGETS.determinize.maxStates).toBeLessThan(2_000);
 		expect(WEB_BUDGETS.equivalent.maxPairs).toBeLessThan(100_000);
 		expect(WEB_BUDGETS.simplify.maxChecks).toBeLessThan(5_000);
+		expect(WEB_BUDGETS.simplifyViaMachine.maxStates).toBeLessThan(2_000);
+		expect(WEB_BUDGETS.simplifyViaMachine.maxNodes).toBeLessThan(2_000);
 	});
 });
 

@@ -22,7 +22,8 @@ import type {
 	SimplifyBudget,
 	SimulateBudget,
 	SimulationReport,
-	StopReason
+	StopReason,
+	ViaMachineBudget
 } from './types.ts';
 
 import type { Message } from './types.ts';
@@ -78,6 +79,11 @@ export interface EngineApi {
 		alphabet: string[],
 		budget?: Partial<SimplifyBudget>
 	): EngineResult<RegexOutcome>;
+	simplifyViaMachine(
+		text: string,
+		alphabet: string[],
+		budget?: Partial<ViaMachineBudget>
+	): EngineResult<RegexOutcome>;
 	complement(machine: Machine): EngineResult<Operation>;
 	union(first: Machine, second: Machine): EngineResult<Operation>;
 	intersection(
@@ -107,6 +113,7 @@ export const METHODS = [
 	'regexToFsm',
 	'fsmToRegex',
 	'simplify',
+	'simplifyViaMachine',
 	'complement',
 	'union',
 	'intersection',

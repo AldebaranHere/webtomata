@@ -576,6 +576,19 @@ export const id = {
 	'simplify.union_plus_absorb':
 		'γ ∪ α+γ = α*γ (atau γ ∪ γα+ = γα*), dengan γ = {rest} dan α+ = {plus}: union dengan γ sudah termuat, jadi plus menjadi bintang. {before} menjadi {after}.',
 	'simplify.unknown_symbol': 'Simbol {symbol} tidak dikenal.',
+	// TODO(review): the wording of "lewat mesin" is a draft.
+	'convert.op.simplify_via_machine': 'Sederhanakan lewat mesin',
+	'convert.op.simplify_via_machine_hint':
+		'Ubah ke mesin, minimalkan, kembali ke regex, lalu sederhanakan. Hasilnya bisa jauh lebih pendek.',
+	'convert.play_simplify_via_machine': 'Sederhanakan lewat mesin',
+	'via_machine.machine':
+		'Ubah ekspresi menjadi mesin: NDFSM {ndfsm_states} state, DFSM {dfsm_states} state, lalu DFSM minimal {minimal_states} state. Mesin minimal hanya ada satu untuk setiap bahasa, apa pun bentuk ekspresinya.',
+	'via_machine.expression':
+		'Ubah mesin minimal kembali menjadi ekspresi dengan penghapusan state: {expression}. Langkah berikutnya memakai identitas.',
+	'via_machine.kept_original':
+		'Lewat mesin, ekspresinya {machine_size} bagian; ekspresi aslimu setelah disederhanakan {original_size} bagian. Jadi hasil Sederhanakan biasa yang dipakai.',
+	'via_machine.too_big':
+		'Mesinnya terlalu besar untuk diproses di sini. Jadi hasil Sederhanakan biasa yang dipakai.',
 
 	'page.soon': 'Segera hadir.',
 	'page.home': 'Kembali ke beranda'

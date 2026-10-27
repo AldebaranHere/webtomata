@@ -508,11 +508,15 @@ test('Regex → NDFSM shows the alphabet of the text, builds the machine part by
 }) => {
 	await openDfsm(page);
 	await expect(regexRow(page)).toContainText('Tulis ekspresi reguler dulu.');
-	await expect(regexRow(page).getByRole('button', { name: 'Regex → NDFSM' })).toBeDisabled();
+	await expect(
+		regexRow(page).getByRole('button', { name: 'Regex → NDFSM', exact: true })
+	).toBeDisabled();
 	await field(page).fill('(a∪b)*abb');
 	await expect(regexRow(page)).toContainText('Alfabet: a, b');
-	await expect(regexRow(page).getByRole('button', { name: 'Regex → NDFSM' })).toBeEnabled();
-	await regexRow(page).getByRole('button', { name: 'Regex → NDFSM' }).click();
+	await expect(
+		regexRow(page).getByRole('button', { name: 'Regex → NDFSM', exact: true })
+	).toBeEnabled();
+	await regexRow(page).getByRole('button', { name: 'Regex → NDFSM', exact: true }).click();
 	await expect(panel(page).getByRole('heading', { name: 'Regex → NDFSM' })).toBeFocused();
 	await expect(panel(page).getByText('Ekspresi: (a∪b)*abb')).toBeVisible();
 	await expect(panel(page).getByText(/^Langkah 1 dari \d+$/)).toBeVisible();
@@ -602,7 +606,7 @@ test('a finger puts an operator in the field and starts the conversion', async (
 	await field(page).evaluate((el: HTMLInputElement) => el.setSelectionRange(1, 1));
 	await touchTap(page, regexRow(page).getByRole('button', { name: 'Sisipkan ∪, gabungan' }));
 	await expect(field(page)).toHaveValue('a∪b');
-	await touchTap(page, regexRow(page).getByRole('button', { name: 'Regex → NDFSM' }));
+	await touchTap(page, regexRow(page).getByRole('button', { name: 'Regex → NDFSM', exact: true }));
 	await expect(panel(page).getByText(/^Langkah 1 dari \d+$/)).toBeVisible();
 	await touchTap(page, button(page, 'Ke hasil'));
 	await expect(button(page, 'Buka sebagai mesin baru')).toBeVisible();
@@ -627,8 +631,10 @@ test('Sederhanakan names the rule and the parts, marks the new part, and ends at
 }) => {
 	await openDfsm(page);
 	await field(page).fill('a*∪aa');
-	await regexRow(page).getByRole('button', { name: 'Sederhanakan' }).click();
-	await expect(panel(page).getByRole('heading', { name: 'Sederhanakan' })).toBeFocused();
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan', exact: true }).click();
+	await expect(
+		panel(page).getByRole('heading', { name: 'Sederhanakan', exact: true })
+	).toBeFocused();
 	await expect(panel(page).getByText('Ekspresi awal: a*∪aa')).toBeVisible();
 	await expect(panel(page).getByText('Langkah 1 dari 1')).toBeVisible();
 	await expect(sentence(page)).toContainText('α ∪ β = α jika L(β) ⊆ L(α)');
@@ -645,7 +651,7 @@ test('Sederhanakan names the rule and the parts, marks the new part, and ends at
 test('Sederhanakan goes through several identities, one at each step', async ({ page }) => {
 	await openDfsm(page);
 	await field(page).fill('(a∪∅)(εb)');
-	await regexRow(page).getByRole('button', { name: 'Sederhanakan' }).click();
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan', exact: true }).click();
 	await expect(panel(page).getByText('Langkah 1 dari 2')).toBeVisible();
 	await expect(sentence(page)).toContainText('∅ ∪ α = α');
 	await expect(panel(page).locator('.now code')).toHaveText('aεb');
@@ -660,13 +666,13 @@ test('Sederhanakan says when nothing can be shortened, and a mistake with its po
 }) => {
 	await openDfsm(page);
 	await field(page).fill('ab*');
-	await regexRow(page).getByRole('button', { name: 'Sederhanakan' }).click();
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan', exact: true }).click();
 	await expect(regexRow(page)).toContainText(
 		'Ekspresinya sudah tidak bisa diperpendek dengan identitas yang ada.'
 	);
 	await field(page).fill('a∪');
 	await expect(regexRow(page).getByText('sudah tidak bisa diperpendek')).toHaveCount(0);
-	await regexRow(page).getByRole('button', { name: 'Sederhanakan' }).click();
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan', exact: true }).click();
 	await expect(regexRow(page)).toContainText('Ekspresinya belum lengkap');
 });
 
@@ -678,7 +684,7 @@ test('the result of Mesin → regex can go into the field of Sederhanakan', asyn
 	await expect(field(page)).toHaveValue('(1∪0(0∪10)*11)*0(0∪10)*1');
 	await expect(field(page)).toBeFocused();
 	await expect(regexRow(page)).toContainText('Alfabet: 0, 1');
-	await regexRow(page).getByRole('button', { name: 'Sederhanakan' }).click();
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan', exact: true }).click();
 	// The expression of the engine has no identity left to use.
 	await expect(regexRow(page)).toContainText('sudah tidak bisa diperpendek');
 });
@@ -687,7 +693,7 @@ test('a finger starts Sederhanakan', async ({ page, isMobile }) => {
 	test.skip(!isMobile, 'a phone only');
 	await openDfsm(page);
 	await field(page).fill('a*∪aa');
-	await touchTap(page, regexRow(page).getByRole('button', { name: 'Sederhanakan' }));
+	await touchTap(page, regexRow(page).getByRole('button', { name: 'Sederhanakan', exact: true }));
 	await expect(sentence(page)).toContainText('α ∪ β = α');
 	await touchTap(page, button(page, 'Tutup'));
 	await expect(field(page)).toHaveValue('a*∪aa');
@@ -697,25 +703,86 @@ test('the buttons of the two operations are at least 44 px, and disabled while t
 	page
 }) => {
 	await openDfsm(page);
-	for (const name of ['Regex → NDFSM', 'Sederhanakan']) {
-		const b = regexRow(page).getByRole('button', { name });
+	for (const name of ['Regex → NDFSM', 'Sederhanakan', 'Sederhanakan lewat mesin']) {
+		const b = regexRow(page).getByRole('button', { name, exact: true });
 		await expect(b).toBeDisabled();
 		const box = (await b.boundingBox())!;
 		expect(box.height, name).toBeGreaterThanOrEqual(44);
 	}
 	await field(page).fill('a');
-	await expect(regexRow(page).getByRole('button', { name: 'Sederhanakan' })).toBeEnabled();
+	await expect(
+		regexRow(page).getByRole('button', { name: 'Sederhanakan', exact: true })
+	).toBeEnabled();
 	await expectNoAxeViolations(page);
 });
 
 test('Sederhanakan turns the expression of a machine into the short plus', async ({ page }) => {
 	await openDfsm(page);
 	await field(page).fill('1*00*1((0∪11*0)0*1)*');
-	await regexRow(page).getByRole('button', { name: 'Sederhanakan' }).click();
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan', exact: true }).click();
 	await expect(sentence(page)).toContainText('αα* = α+');
 	await button(page, 'Ke hasil').click();
 	await expect(panel(page).getByRole('region', { name: 'Ekspresi reguler' })).toHaveText(
 		'(1*0+1)+'
 	);
 	await expectNoAxeViolations(page);
+});
+
+// ---- Sederhanakan lewat mesin (S7-4b) ----
+
+const LONG =
+	'(0∪11*0)(1∪00*1)(ε∪1((0∪11*0)(1∪00*1)1)*(0∪11*0)(1∪00*1)∪(0∪1((0∪11*0)(1∪00*1)1)*(0∪11*0)(1∪00*1)0)((1∪00*1)(0∪1((0∪11*0)(1∪00*1)1)*(0∪11*0)(1∪00*1)0))*(1∪00*1∪(1∪00*1)1((0∪11*0)(1∪00*1)1)*(0∪11*0)(1∪00*1)))';
+
+test('Sederhanakan lewat mesin turns a long expression into the short plus, and says the way it went', async ({
+	page
+}) => {
+	await openDfsm(page);
+	await field(page).fill(LONG);
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan lewat mesin' }).click();
+	await expect(
+		panel(page).getByRole('heading', { name: 'Sederhanakan lewat mesin' })
+	).toBeFocused();
+	await expect(sentence(page)).toContainText('Ubah ekspresi menjadi mesin: NDFSM');
+	await expect(sentence(page)).toContainText('DFSM minimal 3 state');
+	await button(page, 'Maju').click();
+	await expect(sentence(page)).toContainText('penghapusan state: 1*00*1(00*1∪11*00*1)*');
+	await expect(panel(page).locator('.now code')).toHaveText('1*00*1(00*1∪11*00*1)*');
+	await expectNoAxeViolations(page);
+	await button(page, 'Ke hasil').click();
+	await expect(panel(page).getByRole('region', { name: 'Ekspresi reguler' })).toHaveText(
+		'(1*0+1)+'
+	);
+	await expect(panel(page).getByText('Konversi selesai!')).toBeVisible();
+	await expectNoAxeViolations(page);
+});
+
+test('Sederhanakan lewat mesin keeps the plain result when the machine is not shorter', async ({
+	page
+}) => {
+	await openDfsm(page);
+	await field(page).fill('(1*00*1)+');
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan lewat mesin' }).click();
+	await expect(sentence(page)).toContainText('Jadi hasil Sederhanakan biasa yang dipakai.');
+	await button(page, 'Ke hasil').click();
+	await expect(panel(page).getByRole('region', { name: 'Ekspresi reguler' })).toHaveText(
+		'(1*0+1)+'
+	);
+});
+
+test('a finger starts Sederhanakan lewat mesin, and a mistake is shown as for the other buttons', async ({
+	page,
+	isMobile
+}) => {
+	await openDfsm(page);
+	await field(page).fill('a∪');
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan lewat mesin' }).click();
+	await expect(regexRow(page)).toContainText('Ekspresinya belum lengkap');
+	test.skip(!isMobile, 'a phone only, for the rest');
+	await field(page).fill(LONG);
+	await touchTap(page, regexRow(page).getByRole('button', { name: 'Sederhanakan lewat mesin' }));
+	await expect(sentence(page)).toContainText('Ubah ekspresi menjadi mesin');
+	await touchTap(page, button(page, 'Ke hasil'));
+	await expect(panel(page).getByRole('region', { name: 'Ekspresi reguler' })).toHaveText(
+		'(1*0+1)+'
+	);
 });
