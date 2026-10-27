@@ -212,12 +212,68 @@ def equivalence_cases(rng):
     return cases
 
 
+def other_nfa(rng, nfa, symbols):
+    """A second NFA: often the same language, sometimes a small change."""
+    pick = rng.choice(["same", "dfa", "random", "random"])
+    if pick == "same":
+        return nfa
+    if pick == "dfa":
+        return DFA.from_nfa(nfa)
+    return random_nfa(rng, symbols)
+
+
+def xor_cases(rng):
+    """XOR (the symmetric difference) of two machines of either kind, with the same alphabet.
+
+    The reference is `(a ^ b).minify()` of automata-lib (made complete), with an NFA made a DFA first. The
+    strings carry the verdicts of the two machines that were given, so the engine is also
+    checked against a reference that does not use `^`: a string is in the XOR exactly when
+    one machine accepts it and the other does not.
+    """
+    cases = []
+    for _ in range(COUNT):
+        symbols = random_symbols(rng)
+        kind = rng.choice(["dfa-dfa", "nfa-nfa", "dfa-nfa"])
+        if kind == "dfa-dfa":
+            first = random_dfa(rng, symbols)
+            second = other_dfa(rng, first, symbols)
+        elif kind == "nfa-nfa":
+            first = random_nfa(rng, symbols)
+            second = other_nfa(rng, first, symbols)
+        else:
+            first = random_dfa(rng, symbols)
+            second = random_nfa(rng, symbols)
+        as_dfa = lambda m: m if isinstance(m, DFA) else DFA.from_nfa(m)
+        # `^` gives a partial DFA with the trap state taken away; the engine's machines are
+        # complete, so the reference is made complete too before it is counted.
+        difference = (as_dfa(first) ^ as_dfa(second)).minify().to_complete()
+        strings = random_strings(rng, symbols)
+        first_accepts = [first.accepts_input("".join(s)) for s in strings]
+        second_accepts = [second.accepts_input("".join(s)) for s in strings]
+        to_json = lambda m: dfa_json(m) if isinstance(m, DFA) else nfa_json(m)
+        cases.append(
+            {
+                "first": to_json(first),
+                "second": to_json(second),
+                "expected": dfa_json(difference),
+                "expectedStates": len(difference.states),
+                "empty": difference.isempty(),
+                "strings": strings,
+                "accepts": [a != b for a, b in zip(first_accepts, second_accepts)],
+                "firstAccepts": first_accepts,
+                "secondAccepts": second_accepts,
+            }
+        )
+    return cases
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     for name, make in [
         ("determinize", determinize_cases),
         ("minimize", minimize_cases),
         ("equivalence", equivalence_cases),
+        ("xor", xor_cases),
     ]:
         rng = random.Random(f"{SEED}-{name}")
         cases = make(rng)
