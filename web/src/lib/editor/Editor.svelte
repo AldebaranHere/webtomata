@@ -55,6 +55,7 @@
 		firstRun,
 		onhelp,
 		onopendoc,
+		onshare,
 		machines
 	}: {
 		doc: MachineDocument;
@@ -78,6 +79,8 @@
 		onhelp?: () => void;
 		/** The result of a conversion: a document that the page opens as a machine of its own. */
 		onopendoc?: (doc: MachineDocument) => void;
+		/** The share button: the page shows the dialog for this document (the machine as it is now). */
+		onshare?: (doc: MachineDocument) => void;
 		/** The other saved machines, for the second machine of a union, and how to read one. */
 		machines?: Pick<ConversionProps, 'others' | 'load'>;
 	} = $props();
@@ -372,6 +375,21 @@
 					</svg>
 				</button>
 			{/if}
+			{#if onshare && snapshot.doc.states.length > 0}
+				<button
+					type="button"
+					class="share"
+					aria-label={t('share.open_button')}
+					onclick={() => onshare(snapshot.doc)}
+				>
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+						<circle cx="6" cy="12" r="2.4" />
+						<circle cx="18" cy="6" r="2.4" />
+						<circle cx="18" cy="18" r="2.4" />
+						<path d="M8.1 10.9l7.8-3.8M8.1 13.1l7.8 3.8" stroke-linecap="round" />
+					</svg>
+				</button>
+			{/if}
 			{#if library}
 				<button
 					type="button"
@@ -611,10 +629,12 @@
 	}
 	.fit:hover,
 	.help:hover,
+	.share:hover,
 	.machines:hover {
 		background: var(--color-neutral-tint);
 	}
-	.help {
+	.help,
+	.share {
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -627,7 +647,8 @@
 		color: var(--color-ink);
 		cursor: pointer;
 	}
-	.help svg {
+	.help svg,
+	.share svg {
 		stroke: currentColor;
 		stroke-width: 1.8;
 	}
@@ -692,6 +713,10 @@
 		}
 		/* The bar is full: on a phone, auto layout is in the menu of the empty canvas. */
 		.layout {
+			display: none;
+		}
+		/* The bar is full: on a phone "Bagikan" is in the row of the machine in "Mesin saya". */
+		.share {
 			display: none;
 		}
 		.phone-history,

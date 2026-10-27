@@ -87,3 +87,5 @@ Also in S7-4a (`TODO(review)`): the sentences of `concat_star_plus` and `union_p
 Also in S7-4b (`TODO(review)`): "Sederhanakan lewat mesin" (simplify through the machine), "mesin minimal" (the minimal DFSM), "bagian" (a part of an expression: a symbol or an operator, the unit of its size), and the four sentences `via_machine.*`.
 
 Also in S7-5 (`TODO(review)`): "Salin LaTeX" (copy LaTeX) and "Pratinjau" (preview).
+
+Added in S10b-1 (`TODO(review)`): "Bagikan" (share), "tautan" (link), "Salin tautan" (copy link), "dimampatkan" (compressed) and the sentences of `share.*`.

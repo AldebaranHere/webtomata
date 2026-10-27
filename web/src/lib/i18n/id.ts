@@ -118,6 +118,30 @@ export const id = {
 		'Mesin "{title}" memakai format lama yang tidak lagi bisa dibuka. Datanya tidak dihapus.',
 	'storage.skipped_many': '{count} mesin tidak bisa dibuka. Datanya tidak dihapus.',
 	'storage.dismiss': 'Tutup pesan',
+	// TODO(review): the wording of sharing is a draft until the feedback guide (U4).
+	'share.open_button': 'Bagikan',
+	'share.title': 'Bagikan mesin',
+	'share.close': 'Tutup',
+	'share.note':
+		'Tautan ini memuat seluruh mesinmu. Siapa pun yang punya tautannya bisa melihat mesin ini. Tautannya tidak disimpan di server.',
+	'share.link_label': 'Tautan',
+	'share.copy': 'Salin tautan',
+	'share.copied': 'Tautan tersalin.',
+	'share.copy_failed': 'Tidak bisa menyalin. Pilih tautannya dan salin sendiri.',
+	'share.sheet': 'Bagikan lewat aplikasi…',
+	'share.long':
+		'Tautan ini panjang ({count} karakter), jadi sebagian aplikasi chat bisa memotongnya. Cek dulu bahwa tautannya terbuka.',
+	'share.opened': 'Mesin dari tautan dibuka sebagai mesin baru: {title}.',
+	'share.invalid_link':
+		'Tautan ini bukan mesin WebTomata yang utuh. Mungkin terpotong waktu disalin. Mesinmu tidak berubah.',
+	'share.too_big':
+		'Tautan ini memuat data yang terlalu besar, jadi tidak dibuka. Mesinmu tidak berubah.',
+	'share.unsupported_browser':
+		'Peramban ini belum bisa membuka tautan yang dimampatkan. Coba peramban yang lebih baru. Mesinmu tidak berubah.',
+	'document.invalid_file':
+		'Datanya bukan mesin WebTomata yang valid (bagian: {at}). Mesinmu tidak berubah.',
+	'document.unsupported_version':
+		'Mesin ini dibuat oleh WebTomata versi yang lebih baru (versi {found}). Mesinmu tidak berubah.',
 	'editor.title_set': 'Judul menjadi {title}.',
 	'document.invalid_title':
 		'Judul tidak boleh lebih dari 100 karakter atau berisi karakter yang dilarang.',
