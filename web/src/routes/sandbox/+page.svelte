@@ -24,9 +24,12 @@
 	// A link of a shared machine (`#m1=...`) opens as a machine of its own, never over the one of the
 	// student, and the address is cleaned so that a reload does not open it again.
 	let linkNote = $state<{ key: MessageKey; params: Record<string, string | number> } | null>(null);
+	// What was changed when a file was opened (a label that became a chain of states, a name that was repaired).
+	let fileNotes = $state.raw<{ key: MessageKey; params: Record<string, string | number> }[]>([]);
 	async function openLink() {
 		const fragment = linkFragment(location.hash);
 		if (fragment === null) return;
+		fileNotes = [];
 		history.replaceState(null, '', location.pathname + location.search);
 		const result = await decodeLink(fragment);
 		if (!result.ok) {
@@ -95,6 +98,36 @@
 		exampleFailed = (await library.openExample(buildExample(example, getLocale()))) !== null;
 	}
 
+	// A file of a machine, from "Buka file…": always a new machine, never over the open one. The code that reads
+	// it (and the engine) is loaded only now. A file that cannot be opened is said in the list, which stays open.
+	const known = (key: string) => Object.hasOwn(idMessages, key);
+	async function openFromFile(file: File) {
+		const [{ openFile }, { engine }] = await Promise.all([
+			import('#lib/share/open-file.ts'),
+			import('#lib/engine/client.ts')
+		]);
+		const result = await openFile(file, engine);
+		if (!result.ok) {
+			library.problem = known(result.error.key)
+				? { key: result.error.key, params: result.error.params }
+				: { key: 'import.unreadable', params: {} };
+			return;
+		}
+		const { doc, notes } = result.value;
+		const problem = await library.openDocument(doc);
+		if (problem) return;
+		fileNotes = notes
+			.filter((note) => known(note.key))
+			.map((note) => ({ key: note.key as MessageKey, params: note.params }));
+		linkNote = {
+			key: 'import.opened',
+			params: { title: doc.title || t('editor.untitled') }
+		};
+	}
+	$effect(() => {
+		library.openFile = (file) => void openFromFile(file);
+	});
+
 	// The share dialog is code that is needed only when it is opened: it is loaded then.
 	let sharing = $state.raw<MachineDocument | null>(null);
 	let ShareDialog = $state<Component<{ doc: MachineDocument; onclose: () => void }> | null>(null);
@@ -152,10 +185,18 @@
 
 <h1 class="sr-only">{t('nav.sandbox')}</h1>
 {#if linkNote}
-	<p class="notice" role="status">
-		<span>{t(linkNote.key, linkNote.params)}</span>
+	<div class="notice" role="status">
+		<div>
+			{t(linkNote.key, linkNote.params)}
+			{#if fileNotes.length > 0}
+				{t('import.notes_label')}
+				<ul>
+					{#each fileNotes as note, i (i)}<li>{t(note.key, note.params)}</li>{/each}
+				</ul>
+			{/if}
+		</div>
 		<button type="button" onclick={() => (linkNote = null)}>{t('storage.dismiss')}</button>
-	</p>
+	</div>
 {/if}
 {#if notice}
 	<p class="notice" role="status">
@@ -218,6 +259,10 @@
 		background: var(--color-warning-tint);
 		color: var(--color-warning-ink);
 		font-size: var(--text-sm);
+	}
+	.notice ul {
+		margin: var(--space-1) 0 0;
+		padding-left: var(--space-4);
 	}
 	.notice button {
 		flex: none;

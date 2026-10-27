@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><structure>
+	<type>pda</type>
+	<automaton>
+		<state id="0" name="q0">
+			<initial/>
+		</state>
+	</automaton>
+</structure>

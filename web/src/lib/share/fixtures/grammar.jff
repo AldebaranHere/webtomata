@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><structure>
+	<type>grammar</type>
+	<production>
+		<left>S</left>
+		<right>aS</right>
+	</production>
+</structure>

@@ -148,6 +148,28 @@ export const en: Record<MessageKey, string> = {
 	'share.export_failed': 'A file cannot be made from this machine. Try downloading JSON.',
 	'jff.symbol_not_single_character':
 		'JFLAP only supports symbols of one character, so "{symbol}" cannot be written to a .jff file. Change the symbol first, or download JSON.',
+	'import.open_button': 'Open file…',
+	'import.opened': 'The file was opened as a new machine: {title}.',
+	'import.notes_label': 'What was changed when the file was opened:',
+	'import.too_big':
+		'This file is bigger than 1 MB, so it was not opened. Your machine has not changed.',
+	'import.unknown_type':
+		'WebTomata opens .jff files (from JFLAP) and JSON files from WebTomata. This file is neither. Your machine has not changed.',
+	'import.unreadable': 'This file cannot be read. Your machine has not changed.',
+	'jff.unsupported_type':
+		'This JFLAP file has the type "{type}". WebTomata can only open finite automata (type fa) so far. Your machine has not changed.',
+	'jff.xml_invalid':
+		'This .jff file is damaged: its XML cannot be read at line {line}, column {column}. Your machine has not changed.',
+	'jff.invalid_structure':
+		'This .jff file is not complete: the element {element} is missing or wrong at line {line}. Your machine has not changed.',
+	'jff.multiple_initial_states':
+		'This .jff file has more than one initial state, but a machine can have only one. Your machine has not changed.',
+	'jff.label_expanded':
+		'The label "{label}" has several symbols, so its transition was split into a chain of new states between state {from} and state {to}.',
+	'machine.limit_exceeded':
+		'The machine in this file is too big ({what}, at most {limit}). Your machine has not changed.',
+	'document.name_changed':
+		'The name of the state {from} was changed to {to} because it did not follow the rules for names.',
 	'document.invalid_file':
 		'The data is not a valid WebTomata machine (part: {at}). Your machine is not changed.',
 	'document.unsupported_version':

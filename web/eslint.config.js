@@ -38,6 +38,7 @@ export default ts.config(
 			'src/lib/editor/regex-compile.wasm.test.ts',
 			'src/lib/editor/regex-simplify.wasm.test.ts',
 			'src/lib/share/files.wasm.test.ts',
+			'src/lib/share/open-file.wasm.test.ts',
 			'src/lib/editor/document.wasm.test.ts',
 			'src/lib/editor/run.wasm.test.ts',
 			'src/lib/examples/examples.wasm.test.ts',
