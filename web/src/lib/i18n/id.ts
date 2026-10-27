@@ -130,7 +130,7 @@ export const id = {
 	'share.copy_failed': 'Tidak bisa menyalin. Pilih tautannya dan salin sendiri.',
 	'share.sheet': 'Bagikan lewat aplikasi…',
 	'share.long':
-		'Tautan ini panjang ({count} karakter), jadi sebagian aplikasi chat bisa memotongnya. Cek dulu bahwa tautannya terbuka.',
+		'Tautan ini panjang ({count} karakter), jadi sebagian aplikasi chat bisa memotongnya. Cek dulu bahwa tautannya terbuka, atau simpan sebagai file.',
 	'share.opened': 'Mesin dari tautan dibuka sebagai mesin baru: {title}.',
 	'share.invalid_link':
 		'Tautan ini bukan mesin WebTomata yang utuh. Mungkin terpotong waktu disalin. Mesinmu tidak berubah.',
@@ -138,6 +138,16 @@ export const id = {
 		'Tautan ini memuat data yang terlalu besar, jadi tidak dibuka. Mesinmu tidak berubah.',
 	'share.unsupported_browser':
 		'Peramban ini belum bisa membuka tautan yang dimampatkan. Coba peramban yang lebih baru. Mesinmu tidak berubah.',
+	'share.files_label': 'Atau simpan sebagai file:',
+	'share.download_jff': 'Unduh .jff (JFLAP)',
+	'share.download_json': 'Unduh JSON',
+	'share.saved': 'File {name} diunduh.',
+	'share.file_fallback': 'mesin',
+	'share.unused_symbols':
+		'Catatan: simbol {symbols} tidak dipakai transisi mana pun, jadi tidak ikut tersimpan di file .jff (JFLAP tidak punya alfabet).',
+	'share.export_failed': 'File ini tidak bisa dibuat dari mesin ini. Coba unduh JSON.',
+	'jff.symbol_not_single_character':
+		'JFLAP hanya mendukung simbol satu karakter, jadi "{symbol}" tidak bisa ditulis ke file .jff. Ubah dulu simbolnya, atau unduh JSON.',
 	'document.invalid_file':
 		'Datanya bukan mesin WebTomata yang valid (bagian: {at}). Mesinmu tidak berubah.',
 	'document.unsupported_version':

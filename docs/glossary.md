@@ -89,3 +89,5 @@ Also in S7-4b (`TODO(review)`): "Sederhanakan lewat mesin" (simplify through the
 Also in S7-5 (`TODO(review)`): "Salin LaTeX" (copy LaTeX) and "Pratinjau" (preview).
 
 Added in S10b-1 (`TODO(review)`): "Bagikan" (share), "tautan" (link), "Salin tautan" (copy link), "dimampatkan" (compressed) and the sentences of `share.*`.
+
+Also in S10b-2 (`TODO(review)`): "Unduh" (download), "simpan sebagai file" (save as a file), "alfabet" in the note about the `.jff`, and the sentences of `share.*` about files.

@@ -289,3 +289,154 @@ test('the row of a machine in the list has "Bagikan", for any saved machine', as
 	await expect(page.getByRole('dialog', { name: 'Mesin saya' })).toHaveCount(0);
 	void isMobile;
 });
+
+// ---- S10b-2, the machine as a file ----
+
+/** A small document of two states as a link: the title, the symbols and the transitions can be chosen. */
+function smallLink(
+	title: string,
+	alphabet: string[],
+	transitions: [number, string, number][]
+): string {
+	const doc = {
+		schemaVersion: 1,
+		title,
+		kind: 'dfsm',
+		alphabet,
+		states: [
+			{ id: 0, name: 'q0', x: 100, y: 100 },
+			{ id: 1, name: 'q1', x: 300, y: 100 }
+		],
+		start: 0,
+		accepting: [1],
+		transitions: transitions.map(([from, on, to]) => ({ from, on, to })),
+		nextStateId: 2
+	};
+	return `m1=${base64url(deflateRawSync(Buffer.from(JSON.stringify(doc))))}`;
+}
+
+/** Opens a link in a fresh page of another context (nothing saved there) and its share dialog. */
+async function shareOf(
+	browser: import('@playwright/test').Browser,
+	baseURL: string | undefined,
+	link: string
+) {
+	const context = await browser.newContext({ baseURL, acceptDownloads: true });
+	const page = await context.newPage();
+	await page.goto(`/sandbox#${link}`);
+	await page.locator('.editor[data-ready]').waitFor();
+	await openShare(page);
+	return { page, context };
+}
+
+const readDownload = async (download: import('@playwright/test').Download) => {
+	const path = await download.path();
+	return (await import('node:fs')).readFileSync(path, 'utf8');
+};
+
+test('the machine is downloaded as a JSON file, named by its title, that holds the whole document', async ({
+	page
+}) => {
+	await openSandbox(page);
+	await openShare(page);
+	const waiting = page.waitForEvent('download');
+	await dialog(page).getByRole('button', { name: 'Unduh JSON' }).click();
+	const download = await waiting;
+	expect(download.suggestedFilename()).toBe('Berakhiran 01.webtomata.json');
+	const doc = JSON.parse(await readDownload(download));
+	expect(doc).toMatchObject({ schemaVersion: 1, title: 'Berakhiran 01', kind: 'dfsm' });
+	expect(doc.states).toHaveLength(3);
+	await expect(dialog(page).getByText('File Berakhiran 01.webtomata.json diunduh.')).toBeVisible();
+});
+
+test('the machine is downloaded as a .jff file of JFLAP, with the states and the transitions', async ({
+	page
+}) => {
+	await openSandbox(page);
+	await openShare(page);
+	const waiting = page.waitForEvent('download');
+	await dialog(page).getByRole('button', { name: 'Unduh .jff (JFLAP)' }).click();
+	const download = await waiting;
+	expect(download.suggestedFilename()).toBe('Berakhiran 01.jff');
+	const xml = await readDownload(download);
+	expect(xml).toContain('<type>fa</type>');
+	expect(xml.match(/<state /g)).toHaveLength(3);
+	expect(xml.match(/<transition>/g)).toHaveLength(6);
+	expect(xml.match(/<initial\/>/g)).toHaveLength(1);
+	expect(xml.match(/<final\/>/g)).toHaveLength(1);
+});
+
+test('the name of a file is the title with what a file name cannot have taken out', async ({
+	browser,
+	baseURL
+}) => {
+	const { page, context } = await shareOf(
+		browser,
+		baseURL,
+		smallLink('a/b:c*? "d"', ['a'], [[0, 'a', 1]])
+	);
+	try {
+		const waiting = page.waitForEvent('download');
+		await dialog(page).getByRole('button', { name: 'Unduh .jff (JFLAP)' }).click();
+		expect((await waiting).suggestedFilename()).toBe('a-b-c-- -d.jff');
+	} finally {
+		await context.close();
+	}
+});
+
+test('a symbol of several characters cannot go in a .jff: the page says why, and JSON still works', async ({
+	browser,
+	baseURL
+}) => {
+	const { page, context } = await shareOf(
+		browser,
+		baseURL,
+		smallLink('Panjang', ['num'], [[0, 'num', 1]])
+	);
+	try {
+		await dialog(page).getByRole('button', { name: 'Unduh .jff (JFLAP)' }).click();
+		await expect(dialog(page)).toContainText('JFLAP hanya mendukung simbol satu karakter');
+		await expect(dialog(page)).toContainText('"num"');
+		await expectNoAxeViolations(page);
+		const waiting = page.waitForEvent('download');
+		await dialog(page).getByRole('button', { name: 'Unduh JSON' }).click();
+		expect((await waiting).suggestedFilename()).toBe('Panjang.webtomata.json');
+		// The message of the failure goes when a file is given.
+		await expect(dialog(page)).not.toContainText('JFLAP hanya mendukung');
+	} finally {
+		await context.close();
+	}
+});
+
+test('a symbol that no transition reads is said to be lost in the .jff', async ({
+	browser,
+	baseURL
+}) => {
+	const { page, context } = await shareOf(
+		browser,
+		baseURL,
+		smallLink('Sisa', ['a', 'b', 'c'], [[0, 'a', 1]])
+	);
+	try {
+		await expect(dialog(page)).toContainText('simbol b, c tidak dipakai transisi mana pun');
+	} finally {
+		await context.close();
+	}
+});
+
+test('the buttons of the files are at least 44 px, and a finger gives the file too', async ({
+	page,
+	isMobile
+}) => {
+	await openSandbox(page);
+	await openShare(page);
+	for (const name of ['Unduh .jff (JFLAP)', 'Unduh JSON']) {
+		const box = (await dialog(page).getByRole('button', { name }).boundingBox())!;
+		expect(box.height, name).toBeGreaterThanOrEqual(44);
+	}
+	await expectNoAxeViolations(page);
+	if (!isMobile) return;
+	const waiting = page.waitForEvent('download');
+	await touchTap(page, dialog(page).getByRole('button', { name: 'Unduh JSON' }));
+	expect((await waiting).suggestedFilename()).toBe('Berakhiran 01.webtomata.json');
+});

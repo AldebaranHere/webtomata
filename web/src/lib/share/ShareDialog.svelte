@@ -1,7 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { engine } from '#lib/engine/client.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
+	import { id as idMessages } from '#lib/i18n/id.ts';
+	import type { MessageKey } from '#lib/i18n/id.ts';
 	import type { MachineDocument } from '#lib/editor/document.ts';
+	import {
+		JFF_EXTENSION,
+		JSON_EXTENSION,
+		download,
+		fileName,
+		jffFile,
+		jsonFile,
+		unusedSymbols
+	} from './files.ts';
 	import { LINK_CHAT_LIMIT, encodeLink, isLongForChat, shareUrl } from './link.ts';
 
 	// "Bagikan": the machine as a link. A native <dialog> (as "Mesin saya"): the focus trap, Esc and the
@@ -15,6 +27,38 @@
 	let url = $state('');
 	let fragment = $state('');
 	let copy = $state<'copied' | 'failed' | null>(null);
+	// The files: what was given, or why a file could not be made. A message that has no words of its own is
+	// shown as the calm "cannot".
+	let saved = $state<string | null>(null);
+	let fileProblem = $state<{ key: MessageKey; params: Record<string, string | number> } | null>(
+		null
+	);
+	const unused = $derived(unusedSymbols(doc));
+	const fallbackName = () => t('share.file_fallback');
+
+	async function saveJff() {
+		saved = null;
+		const result = await jffFile(engine, doc);
+		if (!result.ok) {
+			const known = Object.hasOwn(idMessages, result.error.key);
+			fileProblem = known
+				? { key: result.error.key as MessageKey, params: result.error.params }
+				: { key: 'share.export_failed', params: {} };
+			return;
+		}
+		fileProblem = null;
+		const name = fileName(doc.title, JFF_EXTENSION, fallbackName());
+		download(name, result.value, 'application/xml');
+		saved = name;
+	}
+
+	function saveJson() {
+		fileProblem = null;
+		const name = fileName(doc.title, JSON_EXTENSION, fallbackName());
+		download(name, jsonFile(doc), 'application/json');
+		saved = name;
+	}
+
 	// The share sheet of the system: on a phone, where the person is used to it.
 	const canShare =
 		typeof navigator !== 'undefined' &&
@@ -103,6 +147,20 @@
 			</div>
 			<p class="muted status" role="status">
 				{copy === 'copied' ? t('share.copied') : copy === 'failed' ? t('share.copy_failed') : ''}
+			</p>
+			<p class="muted">{t('share.files_label')}</p>
+			<div class="actions">
+				<button type="button" onclick={() => void saveJff()}>{t('share.download_jff')}</button>
+				<button type="button" onclick={saveJson}>{t('share.download_json')}</button>
+			</div>
+			{#if unused.length > 0}
+				<p class="muted">{t('share.unused_symbols', { symbols: unused.join(', ') })}</p>
+			{/if}
+			{#if fileProblem}
+				<p class="warning" role="status">{t(fileProblem.key, fileProblem.params)}</p>
+			{/if}
+			<p class="muted status" role="status">
+				{saved === null ? '' : t('share.saved', { name: saved })}
 			</p>
 		</div>
 	</div>

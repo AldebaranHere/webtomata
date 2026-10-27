@@ -130,7 +130,7 @@ export const en: Record<MessageKey, string> = {
 	'share.copy_failed': 'Could not copy. Select the link and copy it yourself.',
 	'share.sheet': 'Share with an app…',
 	'share.long':
-		'This link is long ({count} characters), so some chat apps may cut it. Check that it opens.',
+		'This link is long ({count} characters), so some chat apps may cut it. Check that it opens, or save a file instead.',
 	'share.opened': 'The machine from the link was opened as a new machine: {title}.',
 	'share.invalid_link':
 		'This link is not a whole WebTomata machine. It may have been cut when it was copied. Your machine is not changed.',
@@ -138,6 +138,16 @@ export const en: Record<MessageKey, string> = {
 		'This link holds too much data, so it was not opened. Your machine is not changed.',
 	'share.unsupported_browser':
 		'This browser cannot open compressed links yet. Try a newer browser. Your machine is not changed.',
+	'share.files_label': 'Or save as a file:',
+	'share.download_jff': 'Download .jff (JFLAP)',
+	'share.download_json': 'Download JSON',
+	'share.saved': 'The file {name} was downloaded.',
+	'share.file_fallback': 'machine',
+	'share.unused_symbols':
+		'Note: the symbols {symbols} are read by no transition, so they are not kept in the .jff file (JFLAP has no alphabet).',
+	'share.export_failed': 'A file cannot be made from this machine. Try downloading JSON.',
+	'jff.symbol_not_single_character':
+		'JFLAP only supports symbols of one character, so "{symbol}" cannot be written to a .jff file. Change the symbol first, or download JSON.',
 	'document.invalid_file':
 		'The data is not a valid WebTomata machine (part: {at}). Your machine is not changed.',
 	'document.unsupported_version':
