@@ -50,6 +50,8 @@
 
 	/* Type. Two weights only: regular and strong. */
 	--font-ui: 'Plus Jakarta Sans', system-ui, sans-serif;
+	--font-math:
+		'Cambria Math', 'STIX Two Math', 'Latin Modern Math', 'Times New Roman', Georgia, serif;
 	--font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace;
 	--weight-regular: 400;
 	--weight-strong: 600;

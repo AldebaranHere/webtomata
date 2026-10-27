@@ -4,6 +4,7 @@
 	import { regexText } from './conversion-text.ts';
 	import type { ConversionShown } from './conversion-props.ts';
 	import PlayerControls from './PlayerControls.svelte';
+	import RegexMath from './RegexMath.svelte';
 	import RegexResult from './RegexResult.svelte';
 	import { createPlayer } from './player.svelte.ts';
 	import { regexFrameAt, regexNamesOf } from './regex-conversion.ts';
@@ -70,7 +71,7 @@
 						<tr class:hot={frame.hot.includes(i)} aria-current={frame.hot.includes(i) || undefined}>
 							<th scope="row" class="mono">{row.from}</th>
 							<td class="mono">{row.to}</td>
-							<td class="mono">{row.expression}</td>
+							<td><RegexMath text={row.expression} /></td>
 						</tr>
 					{/each}
 				</tbody>

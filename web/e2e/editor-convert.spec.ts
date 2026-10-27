@@ -786,3 +786,62 @@ test('a finger starts Sederhanakan lewat mesin, and a mistake is shown as for th
 		'(1*0+1)+'
 	);
 });
+
+// ---- the expression drawn as a book writes it (S7-5) ----
+
+test('the result is drawn with raised * and +, and a copy of it is still the plain expression', async ({
+	page
+}) => {
+	await openDfsm(page);
+	await field(page).fill('1*00*1(1*00*1)*');
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan', exact: true }).click();
+	await button(page, 'Ke hasil').click();
+	const result = panel(page).getByRole('region', { name: 'Ekspresi reguler' });
+	await expect(result).toHaveText('(1*0+1)+');
+	// Three raised signs: the two + and the *.
+	await expect(result.locator('sup')).toHaveText(['*', '+', '+']);
+	// The raised signs do not make the line taller than a line of plain text.
+	const line = await result.locator('.math').evaluate((el) => {
+		const range = document.createRange();
+		range.selectNodeContents(el);
+		return range.getBoundingClientRect().height / parseFloat(getComputedStyle(el).fontSize);
+	});
+	expect(line).toBeLessThan(1.6);
+	await expectNoAxeViolations(page);
+});
+
+test('a preview under the field draws what is typed, and goes when the field is empty', async ({
+	page
+}) => {
+	await openDfsm(page);
+	await expect(regexRow(page).locator('.preview')).toHaveCount(0);
+	await field(page).fill('(0∪1)*01+');
+	const preview = regexRow(page).locator('.preview');
+	await expect(preview).toContainText('Pratinjau:');
+	await expect(preview.locator('sup')).toHaveText(['*', '+']);
+	// The preview is for the eyes: the field says the same to a screen reader.
+	await expect(preview).toHaveAttribute('aria-hidden', 'true');
+	await field(page).fill('');
+	await expect(regexRow(page).locator('.preview')).toHaveCount(0);
+	await field(page).fill('(0∪1');
+	await expect(preview.locator('.union')).toHaveText('∪');
+	await expectNoAxeViolations(page);
+});
+
+test('Salin LaTeX copies the expression written for a report', async ({
+	page,
+	context,
+	browserName
+}) => {
+	test.skip(browserName !== 'chromium', 'only Chrome lets a test grant the clipboard');
+	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+	await openDfsm(page);
+	await field(page).fill('1*00*1(1*00*1)*');
+	await regexRow(page).getByRole('button', { name: 'Sederhanakan', exact: true }).click();
+	await button(page, 'Ke hasil').click();
+	await button(page, 'Salin LaTeX').click();
+	await expect(panel(page).getByText('Tersalin.')).toBeVisible();
+	expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('(1^{*}0^{+}1)^{+}');
+	await button(page, 'Salin').click();
+	expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('(1*0+1)+');
+});

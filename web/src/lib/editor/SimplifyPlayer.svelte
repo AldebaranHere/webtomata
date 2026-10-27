@@ -4,6 +4,7 @@
 	import { compileText } from './conversion-text.ts';
 	import PlayerControls from './PlayerControls.svelte';
 	import { createPlayer } from './player.svelte.ts';
+	import RegexMath from './RegexMath.svelte';
 	import RegexResult from './RegexResult.svelte';
 	import { simplifyFrameAt } from './regex-simplify.ts';
 	import type { SimplifyRun } from './regex-simplify.ts';
@@ -26,7 +27,7 @@
 	<h3 id="simplify-heading" tabindex="-1" bind:this={heading}>
 		{run.route === 'machine' ? t('convert.op.simplify_via_machine') : t('convert.op.simplify')}
 	</h3>
-	<p class="mono">{t('convert.simplify_start', { expression: run.text })}</p>
+	<p>{t('convert.simplify_start')} <RegexMath text={run.text} /></p>
 	<p class="muted">{t('convert.step_of', { n: player.index + 1, total })}</p>
 	<p class="done" role="status">{player.justDone ? t('convert.done') : ''}</p>
 
@@ -34,10 +35,8 @@
 
 	<div class="now">
 		<span class="muted">{t('convert.simplify_now')}</span>
-		<code>
-			{#if frame.marked}{frame.marked.before}<mark>{frame.marked.part}</mark>{frame.marked
-					.after}{:else}{frame.expression}{/if}
-		</code>
+		<!-- prettier-ignore -->
+		<code>{#if frame.marked}<RegexMath text={frame.marked.before} /><mark><RegexMath text={frame.marked.part} /></mark><RegexMath text={frame.marked.after} />{:else}<RegexMath text={frame.expression} />{/if}</code>
 	</div>
 
 	<PlayerControls
@@ -82,9 +81,7 @@
 		color: var(--color-muted);
 		font-size: var(--text-sm);
 	}
-	.mono,
 	code {
-		font-family: var(--font-mono);
 		overflow-wrap: anywhere;
 	}
 	.done:empty {

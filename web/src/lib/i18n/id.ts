@@ -513,7 +513,9 @@ export const id = {
 	'convert.insert_empty': 'Sisipkan ∅, himpunan kosong',
 	'convert.insert_open': 'Sisipkan tanda kurung buka',
 	'convert.insert_close': 'Sisipkan tanda kurung tutup',
-	'convert.regex_expression': 'Ekspresi: {expression}',
+	'convert.regex_expression': 'Ekspresi:',
+	'convert.copy_latex': 'Salin LaTeX',
+	'convert.regex_preview': 'Pratinjau:',
 	'regex.empty_set':
 		'∅: buat state {states} sebagai start state. Ia bukan accepting state, jadi tidak ada string yang diterima.',
 	'regex.epsilon':
@@ -541,7 +543,7 @@ export const id = {
 	'convert.op.simplify_hint': 'Perpendek ekspresi dengan identitas dari buku, satu per satu.',
 	'convert.play_simplify': 'Sederhanakan',
 	'convert.regex_form_hint': 'Tulis ekspresi reguler, lalu pilih operasinya.',
-	'convert.simplify_start': 'Ekspresi awal: {expression}',
+	'convert.simplify_start': 'Ekspresi awal:',
 	'convert.simplify_now': 'Sekarang',
 	'convert.simplify_unchanged':
 		'Ekspresinya sudah tidak bisa diperpendek dengan identitas yang ada.',

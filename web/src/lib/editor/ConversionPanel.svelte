@@ -28,6 +28,7 @@
 	import SimplifyPlayer from './SimplifyPlayer.svelte';
 	import { runSimplify } from './regex-simplify.ts';
 	import type { SimplifyRoute, SimplifyRun } from './regex-simplify.ts';
+	import RegexMath from './RegexMath.svelte';
 	import RegexPlayer from './RegexPlayer.svelte';
 	import {
 		alphabetOf,
@@ -651,6 +652,13 @@
 							: t('convert.regex_alphabet', { symbols: symbols.join(', ') })}
 						· {t('convert.regex_symbols_note')}
 					</p>
+					{#if regexInput.trim() !== ''}
+						<!-- A preview of what is typed, drawn as a book writes it. The field says the same to a screen reader. -->
+						<p class="preview" aria-hidden="true">
+							<span class="muted">{t('convert.regex_preview')}</span>
+							<RegexMath text={regexInput} />
+						</p>
+					{/if}
 					{#if regexError}
 						<p class="note" id="convert-regex-error" role="status">
 							{t(regexError.key, regexError.params)}
@@ -952,6 +960,12 @@
 	.piece {
 		min-width: var(--target-min);
 		padding: 0;
+	}
+	.preview {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: var(--space-2);
 	}
 	.actions {
 		display: flex;

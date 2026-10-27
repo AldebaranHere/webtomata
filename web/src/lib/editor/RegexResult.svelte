@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { t } from '#lib/i18n/index.svelte.ts';
+	import RegexMath from './RegexMath.svelte';
+	import { toLatex } from './regex-math.ts';
 
 	// The result of a conversion that makes a regular expression: the text (it scrolls and can be reached
 	// with the keyboard), the notation of Rich with one line for each sign, and "Salin". `onuse`, when it is
@@ -8,9 +10,10 @@
 
 	let copy = $state<'copied' | 'failed' | null>(null);
 
-	async function copyRegex() {
+	// `Salin` copies the expression; `Salin LaTeX` copies it for a report.
+	async function copyText(text: string) {
 		try {
-			await navigator.clipboard.writeText(regex);
+			await navigator.clipboard.writeText(text);
 			copy = 'copied';
 		} catch {
 			copy = 'failed';
@@ -22,7 +25,7 @@
 	<h4>{t('convert.regex_result')}</h4>
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 	<div class="scroll" role="region" aria-label={t('convert.regex_result')} tabindex="0">
-		<code>{regex}</code>
+		<RegexMath text={regex} />
 	</div>
 	<p class="muted">{t('convert.regex_notation')}</p>
 	<ul class="notation">
@@ -31,8 +34,11 @@
 		<li>{t('convert.regex_notation_empty')}</li>
 	</ul>
 	<div class="end">
-		<button type="button" class="primary" onclick={() => void copyRegex()}>
+		<button type="button" class="primary" onclick={() => void copyText(regex)}>
 			{t('convert.copy')}
+		</button>
+		<button type="button" onclick={() => void copyText(toLatex(regex))}>
+			{t('convert.copy_latex')}
 		</button>
 		{#if onuse}
 			<button type="button" onclick={onuse}>{t('convert.use_in_simplify')}</button>
@@ -74,10 +80,6 @@
 	button:focus-visible {
 		outline: var(--focus-ring-width) solid var(--focus-ring-color);
 		outline-offset: var(--focus-ring-offset);
-	}
-	code {
-		font-family: var(--font-mono);
-		overflow-wrap: anywhere;
 	}
 	.notation {
 		margin: 0;

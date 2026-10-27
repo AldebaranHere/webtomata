@@ -5,6 +5,7 @@
 	import type { ConversionShown } from './conversion-props.ts';
 	import PlayerControls from './PlayerControls.svelte';
 	import { createPlayer } from './player.svelte.ts';
+	import RegexMath from './RegexMath.svelte';
 	import { compileFrameAt } from './regex-compile.ts';
 	import type { CompileRun } from './regex-compile.ts';
 
@@ -37,7 +38,7 @@
 
 <section aria-labelledby="compile-heading">
 	<h3 id="compile-heading" tabindex="-1" bind:this={heading}>{t('convert.op.regex_to_fsm')}</h3>
-	<p class="expression mono">{t('convert.regex_expression', { expression: run.text })}</p>
+	<p>{t('convert.regex_expression')} <RegexMath text={run.text} /></p>
 	<p class="muted">{t('convert.step_of', { n: player.index + 1, total })}</p>
 	<p class="done" role="status">{player.justDone ? t('convert.done') : ''}</p>
 
@@ -81,10 +82,6 @@
 	.muted {
 		color: var(--color-muted);
 		font-size: var(--text-sm);
-	}
-	.mono {
-		font-family: var(--font-mono);
-		overflow-wrap: anywhere;
 	}
 	.done:empty {
 		display: none;
