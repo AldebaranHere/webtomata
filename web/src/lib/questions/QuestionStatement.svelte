@@ -1,13 +1,16 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
+	import { readOpen, saveOpen } from './statement-fold.ts';
 	import { chipsOf, paragraphsOf } from './statement.ts';
 	import type { QuestionPage } from './summaries.ts';
 
 	// The left column of the page of a question (a bar above the canvas on a phone): where the question is in
 	// the syllabus, its title, the statement and the chips. The statement is plain text, shown as paragraphs and
-	// code, never as HTML. On a phone only the first paragraph shows until "Lihat soal lengkap" is pressed.
+	// code, never as HTML. A laptop always shows all of it. A phone shows only the title and a button until the
+	// student opens the statement, so that the canvas and the panel have the room; the choice is remembered.
 	let { question }: { question: QuestionPage } = $props();
 
 	const english = $derived(getLocale() === 'en');
@@ -17,49 +20,50 @@
 	);
 	const chips = $derived(chipsOf(question));
 	const pattern = $derived(question.pattern.replaceAll('-', ' '));
-	let expanded = $state(false);
+
+	// Hidden in the prerendered page; the saved choice is read once the page is in the browser.
+	let open = $state(false);
+	onMount(() => {
+		open = readOpen();
+	});
+	function toggle() {
+		open = !open;
+		saveOpen(open);
+	}
 </script>
 
 {#snippet paragraph(pieces: { kind: 'text' | 'code'; text: string }[])}
-	<p>
+	<p class="extra">
 		{#each pieces as piece, i (i)}{#if piece.kind === 'code'}<code>{piece.text}</code
 				>{:else}{piece.text}{/if}{/each}
 	</p>
 {/snippet}
 
-<aside class="statement" aria-labelledby="question-title">
-	<nav class="crumbs" aria-label={t('soal.crumbs')}>
+<aside class="statement" class:open aria-labelledby="question-title">
+	<nav class="crumbs extra" aria-label={t('soal.crumbs')}>
 		<a href={resolve('/soal')}>{t('nav.soal')}</a>
 		<span aria-hidden="true">›</span>
 		<span>{t('soal.week', { week: question.week })}</span>
 	</nav>
-	<p class="meta">
+	<p class="meta extra">
 		{t('soal.position', question.position)} · {t('soal.pattern', { pattern })}
 	</p>
-	<h1 id="question-title">{title}</h1>
-
-	{#if statement[0]}{@render paragraph(statement[0])}{/if}
-
-	<div class="rest" class:expanded id="question-rest">
-		{#each statement.slice(1) as pieces, i (i)}{@render paragraph(pieces)}{/each}
-		<ul class="chips">
-			{#each chips as chip (chip.key)}
-				<li>{t(chip.key as MessageKey, chip.params)}</li>
-			{/each}
-		</ul>
-		{#if question.type === 'write-regex'}
-			<p class="note">{t('soal.regex_soon')}</p>
-		{/if}
+	<div class="top">
+		<h1 id="question-title">{title}</h1>
+		<button type="button" class="toggle" aria-expanded={open} onclick={toggle}>
+			{open ? t('soal.hide_statement') : t('soal.show_statement')}
+		</button>
 	</div>
-	<button
-		type="button"
-		class="toggle"
-		aria-expanded={expanded}
-		aria-controls="question-rest"
-		onclick={() => (expanded = !expanded)}
-	>
-		{expanded ? t('soal.show_less') : t('soal.show_full')}
-	</button>
+
+	{#each statement as pieces, i (i)}{@render paragraph(pieces)}{/each}
+	<ul class="chips extra">
+		{#each chips as chip (chip.key)}
+			<li>{t(chip.key as MessageKey, chip.params)}</li>
+		{/each}
+	</ul>
+	{#if question.type === 'write-regex'}
+		<p class="note extra">{t('soal.regex_soon')}</p>
+	{/if}
 </aside>
 
 <style>
@@ -80,9 +84,16 @@
 		font-size: var(--text-xl);
 		line-height: var(--leading-tight);
 	}
+	.top {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-3);
+	}
 	.crumbs {
 		display: flex;
 		flex-wrap: wrap;
+		align-items: center;
 		gap: var(--space-2);
 		color: var(--color-muted);
 		font-size: var(--text-sm);
@@ -103,11 +114,6 @@
 		background: var(--color-neutral-tint);
 		font-family: var(--font-mono);
 		font-size: 0.95em;
-	}
-	.rest {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-3);
 	}
 	.chips {
 		display: flex;
@@ -132,14 +138,15 @@
 	}
 	.toggle {
 		display: none;
-		align-self: flex-start;
+		flex: none;
+		align-items: center;
 		min-height: var(--target-min);
-		padding: 0 var(--space-2);
-		border: 0;
-		background: transparent;
-		color: var(--color-accent-ink);
+		padding: 0 var(--space-3);
+		border: 1px solid var(--color-border-strong);
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+		color: var(--color-ink);
 		font: inherit;
-		text-decoration: underline;
 		cursor: pointer;
 	}
 	.toggle:focus-visible,
@@ -147,20 +154,31 @@
 		outline: var(--focus-ring-width) solid var(--focus-ring-color);
 		outline-offset: var(--focus-ring-offset);
 	}
-	/* A phone: the statement is a bar above the canvas; the rest waits behind the button. */
+	/* A phone: the statement is a bar above the canvas. Closed, it is one line (the title and a button), so
+	   that the canvas and the panel have the room; open, it is at most half of the height and scrolls. */
 	@media (max-width: 63.99rem) {
 		.statement {
 			flex: none;
-			max-height: 45dvh;
-			padding: var(--space-2) var(--space-4);
+			gap: var(--space-2);
+			max-height: 50dvh;
+			padding: var(--space-1) var(--space-4);
 			border-bottom: 1px solid var(--color-border);
 		}
-		.rest:not(.expanded) {
+		.statement:not(.open) .extra {
 			display: none;
+		}
+		.top h1 {
+			min-width: 0;
+			overflow: hidden;
+			font-size: var(--text-lg);
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+		.statement.open .top h1 {
+			white-space: normal;
 		}
 		.toggle {
 			display: inline-flex;
-			align-items: center;
 		}
 	}
 </style>
