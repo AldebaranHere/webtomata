@@ -10,7 +10,7 @@ Terima kasih sudah ingin membantu WebTomata. Proyek ini gratis, open source (AGP
 - Perubahan pada engine harus disertai tes. Perbaikan bug dimulai dari tes yang gagal.
 - Teks untuk pengguna harus lewat i18n (`id` dan `en`). Istilah mengikuti [docs/glossary.md](docs/glossary.md).
 - Jangan menambahkan dependensi baru tanpa alasan yang jelas dan tanpa diskusi di issue lebih dulu.
-- Soal dan panduan harus asli: jangan menyalin dari tugas, kuis, atau ujian mata kuliah mana pun.
+- Soal dan panduan harus asli: jangan menyalin dari tugas, kuis, atau ujian mata kuliah mana pun. Untuk menambahkan soal, ikuti [`content/questions/README.md`](content/questions/README.md).
 - Contoh mesin adalah satu file JSON di `content/examples/` (lihat contoh yang ada; sebuah tes memeriksa setiap string di dalamnya dengan engine). Contoh harus berupa pola, bukan jawaban tugas.
 - Jangan menyalin kode dari JFLAP atau proyek lain yang lisensinya tidak sesuai AGPL-3.0.
 - Jangan pernah mengunggah rahasia, kunci API, atau file buku teks dan materi kuliah.
@@ -25,7 +25,7 @@ Thanks for helping. WebTomata is free, open source (AGPL-3.0), with no accounts 
 - Engine changes need tests; a bug fix starts with a failing test.
 - User-facing text goes through i18n (`id` and `en`); terms follow `docs/glossary.md`.
 - Open an issue before adding a dependency.
-- Questions and guides must be original: never copied from homework, quizzes or exams.
+- Questions and guides must be original: never copied from homework, quizzes or exams. To add a question, follow [`content/questions/README.md`](content/questions/README.md).
 - An example machine is one JSON file in `content/examples/` (copy an existing one; a test runs every string in it through the engine). An example is a pattern, never an answer to homework.
 - Never copy code from JFLAP or any project whose license is incompatible with AGPL-3.0.
 - Never commit secrets, API keys, or textbook and course files.
