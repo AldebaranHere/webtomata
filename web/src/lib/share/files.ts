@@ -50,9 +50,11 @@ export async function jffFile(engine: JffEngine, doc: MachineDocument): Promise<
 	return answer.ok ? { ok: true, value: answer.value } : { ok: false, error: answer.error };
 }
 
-/** Gives the text to the person as a file, as a click on a link to it. Nothing leaves the device. */
-export function download(name: string, text: string, type: string): void {
-	const url = URL.createObjectURL(new Blob([text], { type: `${type};charset=utf-8` }));
+/** Gives the text (or a ready file, such as a picture) to the person as a file, as a click on a link to it. Nothing leaves the device. */
+export function download(name: string, data: string | Blob, type: string): void {
+	const blob =
+		typeof data === 'string' ? new Blob([data], { type: `${type};charset=utf-8` }) : data;
+	const url = URL.createObjectURL(blob);
 	const link = document.createElement('a');
 	link.href = url;
 	link.download = name;

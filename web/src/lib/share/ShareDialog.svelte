@@ -14,6 +14,7 @@
 		jsonFile,
 		unusedSymbols
 	} from './files.ts';
+	import { diagramSvg, svgToPng } from './image.ts';
 	import { LINK_CHAT_LIMIT, encodeLink, isLongForChat, shareUrl } from './link.ts';
 
 	// "Bagikan": the machine as a link. A native <dialog> (as "Mesin saya"): the focus trap, Esc and the
@@ -49,6 +50,33 @@
 		fileProblem = null;
 		const name = fileName(doc.title, JFF_EXTENSION, fallbackName());
 		download(name, result.value, 'application/xml');
+		saved = name;
+	}
+
+	/** Why a picture could not be made: a message with words of its own, or the calm "cannot". */
+	function pictureProblem(error: {
+		key: string;
+		params: Record<string, string | number | boolean>;
+	}) {
+		const known = Object.hasOwn(idMessages, error.key);
+		fileProblem = known
+			? { key: error.key as MessageKey, params: error.params as Record<string, string | number> }
+			: { key: 'image.failed', params: {} };
+	}
+
+	async function saveImage(kind: 'svg' | 'png') {
+		saved = null;
+		const drawn = diagramSvg(doc, t('diagram.start'));
+		if (!drawn.ok) return pictureProblem(drawn.error);
+		let data: string | Blob = drawn.value.svg;
+		if (kind === 'png') {
+			const png = await svgToPng(drawn.value);
+			if (!png.ok) return pictureProblem(png.error);
+			data = png.value;
+		}
+		fileProblem = null;
+		const name = fileName(doc.title, `.${kind}`, fallbackName());
+		download(name, data, kind === 'svg' ? 'image/svg+xml' : 'image/png');
 		saved = name;
 	}
 
@@ -156,6 +184,23 @@
 			{#if unused.length > 0}
 				<p class="muted">{t('share.unused_symbols', { symbols: unused.join(', ') })}</p>
 			{/if}
+			<p class="muted">{t('share.images_label')}</p>
+			<div class="actions">
+				<button
+					type="button"
+					disabled={doc.states.length === 0}
+					onclick={() => void saveImage('svg')}
+				>
+					{t('share.download_svg')}
+				</button>
+				<button
+					type="button"
+					disabled={doc.states.length === 0}
+					onclick={() => void saveImage('png')}
+				>
+					{t('share.download_png')}
+				</button>
+			</div>
 			{#if fileProblem}
 				<p class="warning" role="status">{t(fileProblem.key, fileProblem.params)}</p>
 			{/if}

@@ -555,3 +555,12 @@ S7-3 is three pull requests: Mesin → regex (A), Regex → NDFSM (B) and Sederh
 - **A change of the machine closes the result,** as in the players; "Tutup" goes back to the form with the text kept. There is no "Bandingkan lagi" button, because a result is never old: a change closes it, and the form is one press away.
 - **Not in S8:** comparing with another saved machine (Later), a button that adds the shortest string to the test strings, and the reference solution of a question (Soal, Q3, which will reuse this result).
 
+## The machine as a picture (S11, plan approved on 2026-10-28)
+
+- **In the same dialog "Bagikan mesin"**, under the file buttons: "Atau simpan sebagai gambar:" with "Unduh SVG" and "Unduh PNG" (44 px, same sheet on a phone). The line "File <nama> diunduh." (a live region) is shared with the files. The buttons are off for a machine with no states. Nothing leaves the device.
+- **The name** of the file is the title with `.svg` or `.png`, by the same rules as the other files.
+- **The SVG** is written from the geometry of the canvas, so it is the picture on the screen: circles, a double circle for each accepting state, the edges with their arrowheads, the start arrow and its word, and the labels (with a white halo, as on the canvas). It has fixed colors on a white background and no CSS variable, script, style sheet or link, so Word, a slide or a browser shows it the same. Selection, the lit states of a player and the marks of the checks are not in it. Names and labels are written as XML text, so `<`, `&`, quotes and emoji are safe.
+- **The PNG** is that SVG drawn on a canvas at 2 times its size (so it is sharp in a slide), white background. The longest side stays within 4,096 px: a bigger drawing gets a smaller scale, and one that is too big even at 1 times says "Mesin ini terlalu besar untuk gambar PNG. Coba unduh SVG." Any other failure says "Gambar ini tidak bisa dibuat. Coba unduh SVG, atau file .jff."
+- **The code** is loaded with the dialog. The picture is drawn from a `data:` URL, which the content security policy already allows (`img-src 'self' data:`); nothing in the policy changed.
+- **Not in S11:** TikZ (in "Later"), the steps of a conversion as pictures, and a transparent background.
+

@@ -146,6 +146,12 @@ export const en: Record<MessageKey, string> = {
 	'share.unused_symbols':
 		'Note: the symbols {symbols} are read by no transition, so they are not kept in the .jff file (JFLAP has no alphabet).',
 	'share.export_failed': 'A file cannot be made from this machine. Try downloading JSON.',
+	'share.images_label': 'Or save as a picture:',
+	'share.download_svg': 'Download SVG',
+	'share.download_png': 'Download PNG',
+	'image.empty': 'There is no state yet, so there is no picture to save.',
+	'image.too_big': 'This machine is too big for a PNG picture. Try downloading SVG.',
+	'image.failed': 'This picture cannot be made. Try downloading SVG, or a .jff file.',
 	'jff.symbol_not_single_character':
 		'JFLAP only supports symbols of one character, so "{symbol}" cannot be written to a .jff file. Change the symbol first, or download JSON.',
 	'import.open_button': 'Open file…',
