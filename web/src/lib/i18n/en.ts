@@ -632,6 +632,21 @@ export const en: Record<MessageKey, string> = {
 	'convert.op.simplify_via_machine': 'Simplify through the machine',
 	'convert.op.simplify_via_machine_hint':
 		'Turn it into a machine, minimize, turn it back into a regex, then simplify. The result can be much shorter.',
+	'convert.op.compare': 'Compare with this machine',
+	'convert.op.compare_hint': 'The open machine is checked against the expression above.',
+	'compare.same_title': 'Equivalent.',
+	'compare.same': 'Your machine and the expression accept the same set of strings.',
+	'compare.different_title': 'Not the same yet.',
+	'compare.different': 'Your machine and the expression differ on some strings.',
+	'compare.accepted_heading': 'Accepted by your machine, but the expression rejects',
+	'compare.rejected_heading': 'Rejected by your machine, but the expression accepts',
+	'compare.none': 'None. This part is already right.',
+	'compare.truncated': 'This list was cut, so it is not every string that differs.',
+	'compare.run_heading': "Your machine's computation for {string}",
+	'compare.run_accepts': 'Your machine accepts {string}, but the expression rejects it.',
+	'compare.run_rejects': 'Your machine rejects {string}, but the expression accepts it.',
+	'compare.symbol_missing':
+		'The expression uses the symbol {symbols}, which is not in the alphabet of the machine. Add the symbol to the alphabet first, or remove it from the expression.',
 	'convert.play_simplify_via_machine': 'Simplify through the machine',
 	'via_machine.machine':
 		'Turn the expression into a machine: NDFSM with {ndfsm_states} states, DFSM with {dfsm_states} states, then the minimal DFSM with {minimal_states} states. There is only one minimal machine for a language, whatever the form of the expression.',

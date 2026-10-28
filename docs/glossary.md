@@ -93,3 +93,5 @@ Added in S10b-1 (`TODO(review)`): "Bagikan" (share), "tautan" (link), "Salin tau
 Also in S10b-2 (`TODO(review)`): "Unduh" (download), "simpan sebagai file" (save as a file), "alfabet" in the note about the `.jff`, and the sentences of `share.*` about files.
 
 Also in S10b-3 (`TODO(review)`): "Buka file" (open a file), "rangkaian state" (a chain of states, in the note about a label of several symbols), "bertipe" (of the type) and the sentences of `import.*` and `jff.*`.
+
+Also in S8 (`TODO(review)`): "Bandingkan" (compare), "ekuivalen" (equivalent), "Belum sama" (not the same yet) and the sentences of `compare.*`.
