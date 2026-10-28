@@ -314,6 +314,7 @@
 		background: var(--color-neutral-tint);
 		font-family: var(--font-mono);
 		font-size: 0.95em;
+		line-height: 1;
 	}
 	.related {
 		display: flex;
