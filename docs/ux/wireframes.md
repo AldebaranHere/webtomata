@@ -90,5 +90,20 @@ The layout is the approved wireframe of Soal (`soal-laptop.png`, `soal-phone.png
 - **The machine** starts with the alphabet of the question, and as an NDFSM for an NDFSM question. The title bar shows the title of the question in the language of the page. What the student builds is saved on this device for this question (one record, `soal:<id>`), kept apart from the machines of the Sandbox: the Sandbox never opens it and "Mesin saya" does not list it.
 - **Saved work that cannot be read:** "Pekerjaanmu sebelumnya di soal ini tidak bisa dibaca, jadi soal dimulai dari awal. Pekerjaan lama tetap tersimpan sampai kamu mengubah mesin." (with "Tutup").
 - **A `write-regex` question** shows the statement and "Kolom jawaban untuk soal ini menyusul." until Q4.
-- **Not here yet:** "Periksa", the feedback, the hints (Q4), the status of the question (Q5) and "Panduan terkait" (when the guide exists).
+- **Not here yet:** the status of the question (Q5) and "Panduan terkait" (when the guide exists). (The feedback and the hints came with Q4b, below.)
+
+## The feedback of a question (Q4b, plan approved on 2026-10-29)
+
+The tab "Umpan balik" and the hints, from the approved Soal wireframe and `docs/ux/feedback-copy.md`. Wording is that guide's.
+
+- **The tab.** A fourth tab of the panel, **first** in the row (Umpan balik, Simulasi, Tabel, Definisi), and the one that is open when the page opens. It is only on the page of a machine question; the Sandbox does not have it. The panel keeps it in the page, so a result is not lost when the student looks at another tab.
+- **The button** "Periksa jawaban" (after the first check, "Periksa lagi") is at the top of the tab, 44 px, with the one-line intro "Bangun mesinmu, lalu periksa. Hasilnya muncul di sini." until there is a result. While the engine works it says "Memeriksa…". The solution file is fetched only then.
+- **The result**, in a live region, in this order, each part only when it applies:
+  1. **Structure.** If it is not sound: a neutral card "Lihat dulu strukturnya." with a line for each problem (the checks of the editor, or "Soal ini meminta DFSM…", "Soal ini membatasi n state…", "…mesin minimal…", "…transisi ε…", the alphabet) and "Setelah bagian ini sesuai dengan soal, periksa lagi." **There is no verdict until it is sound.** If it is sound: one line, "**Struktur valid.** Setiap state punya transisi untuk 0, 1."
+  2. **Verdict.** A card with a title and a detail: "Tepat." (success tint); "Belum tepat, tapi sudah dekat." (the shortest wrong string has at most 4 symbols, the two lists at most 5 strings together, not cut) or "Belum tepat." (warning tint); "Pemeriksaan dihentikan." (the engine stopped); "Pemeriksaan belum bisa dijalankan." (no answer file or engine).
+  3. **Two lists** of wrong strings as chips (44 px, at most 8 and then "dan n lainnya"), shortest first: "Diterima mesinmu, padahal seharusnya ditolak" and "Ditolak mesinmu, padahal seharusnya diterima"; an empty list says "Tidak ada. Bagian ini sudah benar."; a cut list says so. A chip runs that string in Simulasi.
+  4. **The shortest wrong string:** "Komputasi string terpendek yang salah: …", the lines of the computation as in Simulasi with the last one marked "← di sini", one guiding question ("Setelah 10, mesinmu ada di q0. Apakah itu yang perlu diingat mesin?"; for the empty string, "Pada string kosong, mesinmu menerima/menolak. Apakah itu yang diminta soal?") and "Coba di Simulasi", which opens Simulasi with that string at its first step.
+- **A result that is old.** When the machine changes after a check, the result stays and a note says "Mesinmu sudah berubah. Periksa lagi untuk hasil terbaru."
+- **The hints** are in the left column ("Petunjuk"; on a phone, behind "Lihat soal"): none are shown at first, and "Tampilkan petunjuk berikutnya (1 dari 2)" shows the next one. A shown hint stays while the page is open; another question starts closed. They are never opened by themselves.
+- **A regular expression question** has no Umpan balik until its answer box exists.
 

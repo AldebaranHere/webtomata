@@ -2,7 +2,7 @@
 	import { onMount, untrack } from 'svelte';
 	import type { MessageKey } from '#lib/i18n/id.ts';
 	import type { Params } from '#lib/i18n/translate.ts';
-	import type { Component } from 'svelte';
+	import type { Component, Snippet } from 'svelte';
 	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
 	import { engine } from '#lib/engine/client.ts';
 	import Announcer from './Announcer.svelte';
@@ -15,8 +15,8 @@
 	import TestList from './TestList.svelte';
 	import { createRunner } from './run.ts';
 	import type { Text } from './run-text.ts';
-	import { PANEL_TABS, readTab, saveTab } from './panel-tab.ts';
-	import type { PanelTab } from './panel-tab.ts';
+	import { SANDBOX_TABS, readTab, saveTab } from './panel-tab.ts';
+	import type { FeedbackContext, PanelTab } from './panel-tab.ts';
 	import type { TableViewProps as TableProps } from './table-props.ts';
 	import type { ConversionProps, ConversionShown } from './conversion-props.ts';
 	import type { Kind } from './document.ts';
@@ -57,7 +57,9 @@
 		onopendoc,
 		onshare,
 		machines,
-		tabs = PANEL_TABS
+		tabs = SANDBOX_TABS,
+		startTab,
+		feedbackSlot
 	}: {
 		doc: MachineDocument;
 		autosave?: Autosave;
@@ -84,8 +86,12 @@
 		onshare?: (doc: MachineDocument) => void;
 		/** The other saved machines, for the second machine of a union, and how to read one. */
 		machines?: Pick<ConversionProps, 'others' | 'load'>;
-		/** The tabs of the panel, in order. A page of a question leaves out Konversi. */
+		/** The tabs of the panel, in order. A page of a question leaves out Konversi and adds Umpan balik. */
 		tabs?: readonly PanelTab[];
+		/** The tab that opens first, if the panel has it (else the one that was open last). */
+		startTab?: PanelTab;
+		/** What the tab Umpan balik shows. It gets the machine as it is now and a way to run a string in Simulasi. */
+		feedbackSlot?: Snippet<[FeedbackContext]>;
 	} = $props();
 
 	/** The title of the machine, as one undo step (the list "Mesin saya" calls this). */
@@ -213,10 +219,7 @@
 
 	// The tabs of the panel; the last one that was open is remembered on this device.
 	let tab = $state<PanelTab>(
-		readTab(
-			undefined,
-			untrack(() => tabs)
-		)
+		untrack(() => (startTab && tabs.includes(startTab) ? startTab : readTab(undefined, tabs)))
 	);
 	function chooseTab(next: PanelTab) {
 		tab = next;
@@ -294,6 +297,11 @@
 
 	const active = $derived(new Set(run.view?.active ?? []));
 	const taken = $derived(new Set(run.view?.taken.map((e) => `${e.from}>${e.to}`) ?? []));
+	// A string from the feedback of a question: Simulasi opens and the run starts at its first step.
+	function tryString(input: string) {
+		chooseTab('simulation');
+		void startRun(input, false);
+	}
 	async function startRun(input: string, play: boolean) {
 		await runner.start(editor.getState().doc, input);
 		if (play) runner.play();
@@ -463,9 +471,12 @@
 			ondismiss={() => editor.dismissToast()}
 		/>
 	</div>
+	{#snippet feedbackPane()}
+		{#if feedbackSlot}{@render feedbackSlot({ doc: snapshot.doc, tryString })}{/if}
+	{/snippet}
 	<!-- Nothing to run, test or copy exists before a machine is chosen: the panel waits for one. -->
 	{#if !showFirstRun}
-		<SidePanel {tab} {tabs} ontab={chooseTab}>
+		<SidePanel {tab} {tabs} ontab={chooseTab} feedback={feedbackSlot ? feedbackPane : undefined}>
 			{#snippet simulation()}
 				<RunPanel
 					status={run.status}

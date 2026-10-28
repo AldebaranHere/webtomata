@@ -449,6 +449,17 @@ export const en: Record<MessageKey, string> = {
 		'On the empty string, your machine accepts. Is that what the question asks?',
 	'feedback.guide_empty_rejects':
 		'On the empty string, your machine rejects. Is that what the question asks?',
+	'feedback.heading': 'Feedback',
+	'feedback.intro': 'Build your machine, then check it. The result appears here.',
+	'feedback.check_button': 'Check my answer',
+	'feedback.check_again': 'Check again',
+	'feedback.stale': 'Your machine has changed. Check again for the latest result.',
+	'feedback.try_button': 'Try it in Simulasi',
+	'feedback.chip_label': 'Try {string} in Simulasi',
+	'feedback.here': 'here',
+	'feedback.hint_button': 'Show the next hint ({n} of {total})',
+	'feedback.hints_heading': 'Hints',
+	'panel.tab_feedback': 'Feedback',
 	'panduan.description':
 		'Guides to the patterns for designing DFSMs, NDFSMs and regular expressions.',
 

@@ -106,3 +106,5 @@ Added in Q3b (`TODO(review)`): "Lihat soal" (show the question) and "Sembunyikan
 
 Added in Q4a (follow the approved U4 guide): the sentences of `feedback.*`, in particular "Lihat dulu strukturnya.", "Struktur valid.", "Komputasi string terpendek yang salah" and the guiding question "Setelah {string}, mesinmu ada di {states}. Apakah itu yang perlu diingat mesin?" (the last is the one new sentence, a generic form of the guiding question of the guide).
 
+Added in Q4b (follow the approved U4 guide): "Umpan balik" (feedback), "Periksa jawaban" (check my answer), "Periksa lagi", "Coba di Simulasi", "Petunjuk" (hint) and the sentences of `feedback.*` for the screen.
+

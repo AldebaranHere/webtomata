@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
+	import { hintButton } from './feedback-view.ts';
 	import { readOpen, saveOpen } from './statement-fold.ts';
 	import { chipsOf, paragraphsOf } from './statement.ts';
 	import type { QuestionPage } from './summaries.ts';
@@ -20,6 +21,15 @@
 	);
 	const chips = $derived(chipsOf(question));
 	const pattern = $derived(question.pattern.replaceAll('-', ' '));
+
+	// The hints: one at a time, only when the student asks, and only while the page is open.
+	const hints = $derived(
+		(question.hints ?? []).map((hint) =>
+			paragraphsOf(english && hint.en ? hint.en : hint.id).flat()
+		)
+	);
+	let shown = $state(0);
+	const next = $derived(hintButton(shown, hints.length));
 
 	// Hidden in the prerendered page; the saved choice is read once the page is in the browser.
 	let open = $state(false);
@@ -63,6 +73,24 @@
 	</ul>
 	{#if question.type === 'write-regex'}
 		<p class="note extra">{t('soal.regex_soon')}</p>
+	{/if}
+	{#if hints.length > 0}
+		<section class="hints extra" aria-labelledby="hints-heading">
+			<h2 id="hints-heading">{t('feedback.hints_heading')}</h2>
+			<ol aria-live="polite">
+				{#each hints.slice(0, shown) as pieces, i (i)}
+					<li>
+						{#each pieces as piece, j (j)}{#if piece.kind === 'code'}<code>{piece.text}</code
+								>{:else}{piece.text}{/if}{/each}
+					</li>
+				{/each}
+			</ol>
+			{#if next}
+				<button type="button" class="hint-button" onclick={() => (shown += 1)}>
+					{t(next.key, next.params)}
+				</button>
+			{/if}
+		</section>
 	{/if}
 </aside>
 
@@ -135,6 +163,44 @@
 		background: var(--color-warning-tint);
 		color: var(--color-warning-ink);
 		font-size: var(--text-sm);
+	}
+	.hints {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+	.hints h2 {
+		margin: 0;
+		font-size: var(--text-base);
+	}
+	.hints ol {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.hints li {
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-md);
+		background: var(--color-neutral-tint);
+		color: var(--color-neutral-ink);
+	}
+	.hint-button {
+		align-self: flex-start;
+		min-height: var(--target-min);
+		padding: 0 var(--space-3);
+		border: 1px solid var(--color-border-strong);
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+		color: var(--color-ink);
+		font: inherit;
+		cursor: pointer;
+	}
+	.hint-button:focus-visible {
+		outline: var(--focus-ring-width) solid var(--focus-ring-color);
+		outline-offset: var(--focus-ring-offset);
 	}
 	.toggle {
 		display: none;

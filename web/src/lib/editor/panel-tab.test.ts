@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StorageLike } from '#lib/i18n/translate.ts';
-import { PANEL_TAB_KEY, PANEL_TABS, nextTab, readTab, saveTab } from './panel-tab.ts';
+import { PANEL_TAB_KEY, PANEL_TABS, SANDBOX_TABS, nextTab, readTab, saveTab } from './panel-tab.ts';
 
 const memory = (): StorageLike & { data: Map<string, string> } => {
 	const data = new Map<string, string>();
@@ -20,8 +20,18 @@ const blocked: StorageLike = {
 };
 
 describe('the tabs of the panel', () => {
-	it('are Simulasi, Tabel, Definisi and Konversi, in that order', () => {
-		expect(PANEL_TABS).toEqual(['simulation', 'table', 'definition', 'conversion']);
+	it('are Simulasi, Tabel, Definisi and Konversi in the Sandbox, in that order', () => {
+		expect(SANDBOX_TABS).toEqual(['simulation', 'table', 'definition', 'conversion']);
+	});
+
+	it('also have Umpan balik, which only the page of a question shows', () => {
+		expect(PANEL_TABS).toEqual(['simulation', 'table', 'definition', 'conversion', 'feedback']);
+		// The Sandbox never opens it, even if it was the tab that was saved last.
+		const storage = memory();
+		saveTab('feedback', storage);
+		expect(readTab(storage)).toBe('simulation');
+		expect(readTab(storage, ['feedback', 'simulation'])).toBe('feedback');
+		expect(nextTab('conversion', 'ArrowRight')).toBe('simulation');
 	});
 
 	it('start on Simulasi, and remember the last choice on this device', () => {

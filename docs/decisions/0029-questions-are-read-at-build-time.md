@@ -41,3 +41,9 @@ The questions are YAML files in `content/questions` (ADR 0021). The list page (Q
 - **Tests with an outside truth.** For every question file of the repository the solution is graded as right; a machine with one state flipped between accepting and not is graded against a small machine runner in the test and every string up to length 6, so the verdict, the witness being the shortest, and both lists are checked; 80 random machines are graded the same way.
 - **Not in Q4a:** the UI (Q4b), and regular expression questions (their answer box comes with the first such question).
 
+## Q4b: the screen
+
+- **Umpan balik is a tab of the panel**, first, and open when the page opens (`startTab`). The editor takes a `feedbackSlot` snippet that gets the machine as it is now and `tryString`, which opens Simulasi and starts a run (the same `startRun` as the Run panel). `PANEL_TABS` lists the five tabs; the Sandbox has `SANDBOX_TABS` (the first four), and a tab that a panel does not have is never opened, even if it was the one saved last.
+- **The check** fetches `jawaban.json`, calls `grade` in the page (the engine runs in its worker) and shows the result. A result for an older call is dropped; a result is marked old when the machine changes. The page keeps the pane mounted (hidden when another tab is open), so a result is not lost.
+- **The hints** are in the left column, in memory only (progress is Q5).
+
