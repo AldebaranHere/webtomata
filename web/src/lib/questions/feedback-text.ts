@@ -47,7 +47,18 @@ export const FEEDBACK_KEYS: readonly string[] = [
 	'feedback.computation_heading',
 	'feedback.guide_end',
 	'feedback.guide_empty_accepts',
-	'feedback.guide_empty_rejects'
+	'feedback.guide_empty_rejects',
+	'feedback.heading',
+	'feedback.intro',
+	'feedback.check_button',
+	'feedback.check_again',
+	'feedback.stale',
+	'feedback.try_button',
+	'feedback.chip_label',
+	'feedback.here',
+	'feedback.hint_button',
+	'feedback.hints_heading',
+	'panel.tab_feedback'
 ];
 
 /** The text of one problem of the structure. The engine's own problems are those of the checks of the editor. */

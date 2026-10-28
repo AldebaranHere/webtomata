@@ -447,6 +447,17 @@ export const id = {
 		'Pada string kosong, mesinmu menerima. Apakah itu yang diminta soal?',
 	'feedback.guide_empty_rejects':
 		'Pada string kosong, mesinmu menolak. Apakah itu yang diminta soal?',
+	'feedback.heading': 'Umpan balik',
+	'feedback.intro': 'Bangun mesinmu, lalu periksa. Hasilnya muncul di sini.',
+	'feedback.check_button': 'Periksa jawaban',
+	'feedback.check_again': 'Periksa lagi',
+	'feedback.stale': 'Mesinmu sudah berubah. Periksa lagi untuk hasil terbaru.',
+	'feedback.try_button': 'Coba di Simulasi',
+	'feedback.chip_label': 'Coba {string} di Simulasi',
+	'feedback.here': 'di sini',
+	'feedback.hint_button': 'Tampilkan petunjuk berikutnya ({n} dari {total})',
+	'feedback.hints_heading': 'Petunjuk',
+	'panel.tab_feedback': 'Umpan balik',
 	'panduan.description': 'Panduan pola merancang DFSM, NDFSM dan ekspresi reguler.',
 
 	// TODO(review): the wording of the conversions is a draft until the feedback guide (U4).

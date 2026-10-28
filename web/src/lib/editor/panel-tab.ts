@@ -4,8 +4,17 @@ import type { StorageLike } from '#lib/i18n/translate.ts';
 import { deviceStorage } from './tour.ts';
 
 export const PANEL_TAB_KEY = 'webtomata.panel.tab';
-export const PANEL_TABS = ['simulation', 'table', 'definition', 'conversion'] as const;
+/** Every tab that a panel can have. The Sandbox has the first four; a page of a question adds Umpan balik. */
+export const PANEL_TABS = ['simulation', 'table', 'definition', 'conversion', 'feedback'] as const;
 export type PanelTab = (typeof PANEL_TABS)[number];
+export const SANDBOX_TABS: readonly PanelTab[] = PANEL_TABS.slice(0, 4);
+
+/** What a tab of Umpan balik needs from the editor: the machine as it is now, and a way to run a string in Simulasi. */
+export interface FeedbackContext {
+	doc: import('./document.ts').MachineDocument;
+	/** Opens Simulasi and starts a run of the string (as typed: symbols of one character, or separated by spaces). */
+	tryString: (input: string) => void;
+}
 
 const isTab = (value: unknown): value is PanelTab =>
 	typeof value === 'string' && (PANEL_TABS as readonly string[]).includes(value);
@@ -13,7 +22,7 @@ const isTab = (value: unknown): value is PanelTab =>
 /** The tab that was open last, when the panel has it (`tabs` is the list of tabs of this panel); else the first. */
 export function readTab(
 	storage: StorageLike | undefined = deviceStorage(),
-	tabs: readonly PanelTab[] = PANEL_TABS
+	tabs: readonly PanelTab[] = SANDBOX_TABS
 ): PanelTab {
 	try {
 		const saved = storage?.getItem(PANEL_TAB_KEY);
@@ -35,7 +44,7 @@ export function saveTab(tab: PanelTab, storage: StorageLike | undefined = device
 export function nextTab(
 	current: PanelTab,
 	key: string,
-	tabs: readonly PanelTab[] = PANEL_TABS
+	tabs: readonly PanelTab[] = SANDBOX_TABS
 ): PanelTab | null {
 	const at = tabs.indexOf(current);
 	if (key === 'ArrowRight') return tabs[(at + 1) % tabs.length]!;

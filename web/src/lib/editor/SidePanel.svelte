@@ -3,7 +3,7 @@
 	import { onMount, tick } from 'svelte';
 	import type { MessageKey } from '#lib/i18n/id.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
-	import { PANEL_TABS, nextTab } from './panel-tab.ts';
+	import { SANDBOX_TABS, nextTab } from './panel-tab.ts';
 	import type { PanelTab } from './panel-tab.ts';
 	import {
 		DEFAULT_REM,
@@ -37,7 +37,8 @@
 		table,
 		definition,
 		conversion,
-		tabs = PANEL_TABS
+		feedback,
+		tabs = SANDBOX_TABS
 	}: {
 		tab: PanelTab;
 		ontab: (tab: PanelTab) => void;
@@ -45,6 +46,8 @@
 		table: Snippet;
 		definition: Snippet;
 		conversion: Snippet;
+		/** The tab Umpan balik (only on the page of a question). It stays in the page, so that a result is not lost. */
+		feedback?: Snippet;
 		/** The tabs that this panel has, in order. */
 		tabs?: readonly PanelTab[];
 	} = $props();
@@ -59,7 +62,8 @@
 		simulation: 'panel.tab_simulation',
 		table: 'panel.tab_table',
 		definition: 'panel.tab_definition',
-		conversion: 'panel.tab_conversion'
+		conversion: 'panel.tab_conversion',
+		feedback: 'panel.tab_feedback'
 	};
 
 	// The width on a laptop: the panel is pulled wider by its left edge (for the table), and the
@@ -269,6 +273,17 @@
 			>
 				{@render simulation()}
 			</div>
+			{#if feedback}
+				<div
+					role="tabpanel"
+					id="panel-pane-feedback"
+					aria-labelledby="panel-tab-feedback"
+					class="pane"
+					hidden={tab !== 'feedback'}
+				>
+					{@render feedback()}
+				</div>
+			{/if}
 			{#if tab === 'table'}
 				<div role="tabpanel" id="panel-pane-table" aria-labelledby="panel-tab-table" class="pane">
 					{@render table()}

@@ -1,8 +1,9 @@
 <script lang="ts">
 	import Editor from '#lib/editor/Editor.svelte';
 	import type { MachineDocument } from '#lib/editor/document.ts';
-	import type { PanelTab } from '#lib/editor/panel-tab.ts';
+	import type { FeedbackContext, PanelTab } from '#lib/editor/panel-tab.ts';
 	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
+	import FeedbackPanel from '#lib/questions/FeedbackPanel.svelte';
 	import QuestionStatement from '#lib/questions/QuestionStatement.svelte';
 	import { createAutosave, openStore } from '#lib/storage/index.ts';
 	import type { Autosave } from '#lib/storage/index.ts';
@@ -12,12 +13,17 @@
 	// The page of one question: the statement, and the editor with the alphabet of the question. What the
 	// student builds is saved on this device for this question (storage/question-work.ts), apart from the
 	// machines of the Sandbox. The panel has no Konversi tab here, and there is no share button, list of
-	// machines or tour. The feedback ("Periksa") and the hints come with Q4.
+	// machines or tour. Umpan balik is the first tab ("Periksa jawaban", Q4b).
 	let { data } = $props();
 
 	const question = $derived(data.question);
 	const title = $derived(getLocale() === 'en' ? question.title.en : question.title.id);
-	const TABS: readonly PanelTab[] = ['simulation', 'table', 'definition'];
+	// A machine question has Umpan balik, first; a regular expression question has no answer box yet.
+	const TABS = $derived<readonly PanelTab[]>(
+		question.type === 'write-regex'
+			? ['simulation', 'table', 'definition']
+			: ['feedback', 'simulation', 'table', 'definition']
+	);
 
 	interface Ready {
 		doc: MachineDocument;
@@ -58,8 +64,12 @@
 	<meta name="description" content={t('soal.page_description', { title })} />
 </svelte:head>
 
+{#snippet feedbackSlot(context: FeedbackContext)}
+	<FeedbackPanel {question} doc={context.doc} ontry={context.tryString} />
+{/snippet}
+
 <div class="question">
-	<QuestionStatement {question} />
+	{#key question.id}<QuestionStatement {question} />{/key}
 	<div class="work">
 		{#if unreadable}
 			<p class="notice" role="status">
@@ -75,6 +85,8 @@
 					persistent={ready.persistent}
 					titles={ready.titles}
 					tabs={TABS}
+					startTab="feedback"
+					{feedbackSlot}
 				/>
 			{:else}
 				<div class="frame" aria-busy="true"></div>

@@ -75,11 +75,16 @@ test('the page does not carry the solution, which is in a file of its own', asyn
 	expect(data).not.toContain('examples');
 });
 
-test('the editor has the alphabet of the question and the tabs of a question only', async ({
+test('the editor has the alphabet of the question and the tabs of a question only (no Konversi)', async ({
 	page
 }) => {
 	await openQuestion(page);
-	await expect(panel(page).getByRole('tab')).toHaveCount(3);
+	await expect(panel(page).getByRole('tab')).toHaveText([
+		'Umpan balik',
+		'Simulasi',
+		'Tabel',
+		'Definisi'
+	]);
 	await expect(panel(page).getByRole('tab', { name: 'Konversi' })).toHaveCount(0);
 	await addState(page);
 	await panel(page).getByRole('tab', { name: 'Definisi' }).click();
