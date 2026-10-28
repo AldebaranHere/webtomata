@@ -63,8 +63,16 @@ try {
 		check('TBT', tbt, tbt <= METRICS.tbtMs, `${Math.round(tbt)} ms (max ${METRICS.tbtMs})`);
 	}
 } finally {
-	await chrome.kill();
+	// A Chrome that does not stop must not hold the job: the scores are known by now (CI run 40713994567 had
+	// every route ok, and then the process did not end until the limit of the step, 6 minutes later).
+	try {
+		await withTimeout(Promise.resolve(chrome.kill()), 10_000, 'stopping Chrome');
+	} catch (error) {
+		console.log(`${error.message}; the process ends anyway.`);
+	}
 	closeServer();
 }
 
-if (failed) process.exit(1);
+// Ends the process whatever handle is still open (a Chrome that is not gone, a socket of the server): the
+// result is in `failed`.
+process.exit(failed ? 1 : 0);
