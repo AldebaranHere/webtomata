@@ -73,8 +73,8 @@ export function loadSummaries(
 }
 
 /**
- * What the page of a question shows. The solution, the examples and the hints are not here: the page
- * must not carry the answer (the feedback of Q4 gets them from a file of its own).
+ * What the page of a question shows. The solution and the examples are not here: the page must not carry
+ * the answer (the check of Q4 fetches the solution from `jawaban.json` when the student asks).
  */
 export interface QuestionPage {
 	id: string;
@@ -87,6 +87,8 @@ export interface QuestionPage {
 	week: number;
 	pattern: string;
 	references: Question['references'];
+	/** Shown one at a time, only when the student asks (a hint is a help, not the answer). */
+	hints: Question['hints'];
 	/** The place of the question in the whole list, counted from 1. */
 	position: { n: number; total: number };
 }
@@ -103,6 +105,7 @@ export function pageOf(question: Question, position: { n: number; total: number 
 		week: question.week,
 		pattern: question.pattern,
 		references: question.references,
+		hints: question.hints,
 		position
 	};
 }

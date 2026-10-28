@@ -98,9 +98,11 @@ Also in S8 (`TODO(review)`): "Bandingkan" (compare), "ekuivalen" (equivalent), "
 
 Also in S11 (`TODO(review)`): "gambar" (picture) in "simpan sebagai gambar" and the sentences of `image.*`.
 
-Added in U4 (`TODO(review)`): the draft sentences of `docs/ux/feedback-copy.md`, in particular "Tepat.", "Belum tepat, tapi sudah dekat.", "Pemeriksaan dihentikan.", and "petunjuk" (hint).
+Added in U4 (approved by the owner on 2026-10-29): the draft sentences of `docs/ux/feedback-copy.md`, in particular "Tepat.", "Belum tepat, tapi sudah dekat.", "Pemeriksaan dihentikan.", and "petunjuk" (hint).
 
 Added in Q3a (approved by the owner on 2026-10-29): "Soal" list words "Jenis" (type), "Tingkat" (level), "Mudah", "Sedang", "Sulit", "Pola" (pattern), "Terapkan" (apply), "Hapus filter", and the sentences of `soal.*`. The three sample questions in `content/questions` are drafts for the owner to review.
 
 Added in Q3b (`TODO(review)`): "Lihat soal" (show the question) and "Sembunyikan soal" (hide the question), "Harus DFSM", "Harus NDFSM", "Harus minimal", "Tanpa transisi ε", "Boleh tidak lengkap", "Maks. n state" and the sentences of `soal.*` for the page of a question.
+
+Added in Q4a (follow the approved U4 guide): the sentences of `feedback.*`, in particular "Lihat dulu strukturnya.", "Struktur valid.", "Komputasi string terpendek yang salah" and the guiding question "Setelah {string}, mesinmu ada di {states}. Apakah itu yang perlu diingat mesin?" (the last is the one new sentence, a generic form of the guiding question of the guide).
 

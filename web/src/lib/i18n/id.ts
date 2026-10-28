@@ -413,6 +413,40 @@ export const id = {
 	'soal.regex_soon': 'Kolom jawaban untuk soal ini menyusul.',
 	'soal.unreadable':
 		'Pekerjaanmu sebelumnya di soal ini tidak bisa dibaca, jadi soal dimulai dari awal. Pekerjaan lama tetap tersimpan sampai kamu mengubah mesin.',
+	'feedback.structure_title': 'Lihat dulu strukturnya.',
+	'feedback.structure_hint': 'Setelah bagian ini sesuai dengan soal, periksa lagi.',
+	'feedback.structure_valid': 'Struktur valid.',
+	'feedback.structure_valid_complete': 'Setiap state punya transisi untuk {symbols}.',
+	'feedback.need_dfsm': 'Soal ini meminta DFSM. Ubah jenis mesin menjadi DFSM di tab Tabel.',
+	'feedback.too_many_states': 'Soal ini membatasi {max} state. Mesinmu punya {count}.',
+	'feedback.not_minimal': 'Soal ini meminta mesin minimal. Masih ada state yang bisa digabung.',
+	'feedback.epsilon_not_allowed': 'Soal ini tidak mengizinkan transisi ε. Mesinmu punya {count}.',
+	'feedback.alphabet_missing': 'Alfabet mesinmu belum punya simbol {symbols} dari soal.',
+	'feedback.alphabet_extra': 'Alfabet mesinmu punya simbol {symbols} yang tidak ada di soal.',
+	'feedback.right_title': 'Tepat.',
+	'feedback.right_detail': 'Mesinmu menerima semua string yang diminta dan menolak yang lain.',
+	'feedback.close_title': 'Belum tepat, tapi sudah dekat.',
+	'feedback.far_title': 'Belum tepat.',
+	'feedback.detail_accepts': 'Mesinmu menerima beberapa string yang seharusnya ditolak.',
+	'feedback.detail_rejects': 'Mesinmu menolak beberapa string yang seharusnya diterima.',
+	'feedback.detail_both': 'Mesinmu berbeda dari bahasa yang diminta pada beberapa string.',
+	'feedback.far_detail':
+		'Mesinmu berbeda dari bahasa yang diminta pada banyak string. Coba jalankan string pendek dulu.',
+	'feedback.stopped_title': 'Pemeriksaan dihentikan.',
+	'feedback.stopped_detail': 'Mesinmu terlalu besar untuk diperiksa di sini. Coba sederhanakan.',
+	'feedback.failed_title': 'Pemeriksaan belum bisa dijalankan.',
+	'feedback.failed_detail': 'Jawabanmu belum bisa diperiksa sekarang. Mesinmu tidak berubah.',
+	'feedback.list_accepted': 'Diterima mesinmu, padahal seharusnya ditolak',
+	'feedback.list_rejected': 'Ditolak mesinmu, padahal seharusnya diterima',
+	'feedback.list_none': 'Tidak ada. Bagian ini sudah benar.',
+	'feedback.list_truncated': 'Daftar ini dipotong, jadi bukan semua string yang berbeda.',
+	'feedback.computation_heading': 'Komputasi string terpendek yang salah: {string}',
+	'feedback.guide_end':
+		'Setelah {string}, mesinmu ada di {states}. Apakah itu yang perlu diingat mesin?',
+	'feedback.guide_empty_accepts':
+		'Pada string kosong, mesinmu menerima. Apakah itu yang diminta soal?',
+	'feedback.guide_empty_rejects':
+		'Pada string kosong, mesinmu menolak. Apakah itu yang diminta soal?',
 	'panduan.description': 'Panduan pola merancang DFSM, NDFSM dan ekspresi reguler.',
 
 	// TODO(review): the wording of the conversions is a draft until the feedback guide (U4).

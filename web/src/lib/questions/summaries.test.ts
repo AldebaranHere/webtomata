@@ -115,7 +115,7 @@ describe('loadQuestions and pageOf', () => {
 		);
 	});
 
-	it('gives a page only what the page of a question shows: not the solution, the examples or the hints', () => {
+	it('gives a page only what the page of a question shows: not the solution or the examples', () => {
 		const [question] = loadQuestions({ '/q/x.yaml': file('x') }, validate);
 		const page = pageOf(question!, { n: 2, total: 3 });
 		expect(Object.keys(page).sort()).toEqual(
@@ -123,6 +123,7 @@ describe('loadQuestions and pageOf', () => {
 				'alphabet',
 				'constraints',
 				'difficulty',
+				'hints',
 				'id',
 				'pattern',
 				'position',
@@ -136,6 +137,7 @@ describe('loadQuestions and pageOf', () => {
 		expect(page.position).toEqual({ n: 2, total: 3 });
 		expect(page.statement.id).toContain('Σ = {0, 1}');
 		expect(JSON.stringify(page)).not.toContain('q0 0 q0');
-		expect(JSON.stringify(page)).not.toContain('Cukup ingat');
+		expect(JSON.stringify(page)).not.toContain('examples');
+		expect(page.hints?.[0]?.id).toContain('Cukup ingat');
 	});
 });
