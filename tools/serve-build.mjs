@@ -22,7 +22,7 @@ export async function serveBuild(dir, port = 0) {
 	const server = createServer((req, res) => {
 		let decoded;
 		try {
-			decoded = decodeURIComponent((req.url ?? '/').split('?')[0]);
+			decoded = decodeURIComponent((req.url ?? '/').split('?')[0]).replaceAll('\\', '/');
 		} catch {
 			return res.writeHead(400).end();
 		}
