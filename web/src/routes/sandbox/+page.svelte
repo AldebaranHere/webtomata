@@ -11,8 +11,12 @@
 	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
 	import { id as idMessages } from '#lib/i18n/id.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
+	import { OG_TYPE_WEBSITE, ogLocale } from '#lib/seo.ts';
 	import { library } from '#lib/storage/library.svelte.ts';
 	import { localizedTitle } from '#lib/storage/titles.ts';
+
+	const localeTag = $derived(ogLocale(getLocale()));
+	const pageTitle = $derived(`${t('nav.sandbox')} · ${t('app.name')}`);
 
 	// The Sandbox opens the machine of the last visit, saved on this device (docs/decisions/0023).
 	// With nothing saved it opens an empty machine, and the editor shows "Coba contoh" over it (X1).
@@ -179,8 +183,12 @@
 </script>
 
 <svelte:head>
-	<title>{t('nav.sandbox')} · {t('app.name')}</title>
+	<title>{pageTitle}</title>
 	<meta name="description" content={t('sandbox.description')} />
+	<meta property="og:title" content={pageTitle} />
+	<meta property="og:description" content={t('sandbox.description')} />
+	<meta property="og:type" content={OG_TYPE_WEBSITE} />
+	<meta property="og:locale" content={localeTag} />
 </svelte:head>
 
 <h1 class="sr-only">{t('nav.sandbox')}</h1>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { t } from '#lib/i18n/index.svelte.ts';
+	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
+	import { OG_TYPE_WEBSITE, ogLocale } from '#lib/seo.ts';
 	import { openStore } from '#lib/storage/index.ts';
 	import type { MachineStore } from '#lib/storage/store.ts';
 	import { loadProgress, resetProgress, statusOf, summarize } from '#lib/storage/progress.ts';
@@ -83,11 +84,18 @@
 		apply(pending);
 		sheet?.close();
 	}
+
+	const localeTag = $derived(ogLocale(getLocale()));
+	const pageTitle = $derived(`${t('nav.soal')} · ${t('app.name')}`);
 </script>
 
 <svelte:head>
-	<title>{t('nav.soal')} · {t('app.name')}</title>
+	<title>{pageTitle}</title>
 	<meta name="description" content={t('soal.description')} />
+	<meta property="og:title" content={pageTitle} />
+	<meta property="og:description" content={t('soal.description')} />
+	<meta property="og:type" content={OG_TYPE_WEBSITE} />
+	<meta property="og:locale" content={localeTag} />
 </svelte:head>
 
 <div class="page">

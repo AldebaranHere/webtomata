@@ -57,9 +57,12 @@
 		<span>{t('soal.week', { week: question.week })}</span>
 	</nav>
 	<p class="meta extra">
-		{t('soal.position', question.position)} · {t('soal.pattern', {
-			pattern
-		})}{#if status !== 'none'}
+		{t('soal.position', question.position)} · {#if question.hasGuide}<a
+				href={resolve('/panduan/[id]', { id: question.pattern })}
+				>{t('soal.pattern', { pattern })}</a
+			>{:else}{t('soal.pattern', {
+				pattern
+			})}{/if}{#if status !== 'none'}
 			· <span class="status {status}">{t(`soal.status.${status}`)}</span>{/if}
 	</p>
 	<div class="top">
@@ -130,7 +133,8 @@
 		color: var(--color-muted);
 		font-size: var(--text-sm);
 	}
-	.crumbs a {
+	.crumbs a,
+	.meta a {
 		display: inline-flex;
 		align-items: center;
 		min-height: var(--target-min);
@@ -224,7 +228,8 @@
 		cursor: pointer;
 	}
 	.toggle:focus-visible,
-	.crumbs a:focus-visible {
+	.crumbs a:focus-visible,
+	.meta a:focus-visible {
 		outline: var(--focus-ring-width) solid var(--focus-ring-color);
 		outline-offset: var(--focus-ring-offset);
 	}

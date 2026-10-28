@@ -27,10 +27,14 @@ function makeTempBuild() {
 	mkdirSync(dir);
 	mkdirSync(sibling);
 	mkdirSync(join(dir, 'soal'));
+	mkdirSync(join(dir, 'soal', 'berakhiran-10'));
 	mkdirSync(join(dir, 'folder'));
 	writeFileSync(join(dir, 'index.html'), '<h1>Home</h1>');
 	writeFileSync(join(dir, 'soal.html'), '<h1>Soal list</h1>');
 	writeFileSync(join(dir, 'soal', '__data.json'), '{"ok":true}');
+	writeFileSync(join(dir, 'soal', 'berakhiran-10.html'), '<h1>Question</h1>');
+	writeFileSync(join(dir, 'soal', 'berakhiran-10', '__data.json'), '{"q":1}');
+	writeFileSync(join(dir, 'sitemap.xml'), '<urlset/>');
 	writeFileSync(join(dir, 'folder', 'index.html'), '<h1>Folder index</h1>');
 	writeFileSync(join(sibling, 'secret.txt'), 'do not read');
 	return {
@@ -51,6 +55,15 @@ test('serves index.html at /, soal.html at /soal even when soal/ exists, and 404
 		const soal = await fetch(`${origin}/soal`);
 		assert.equal(soal.status, 200);
 		assert.equal(await soal.text(), '<h1>Soal list</h1>');
+
+		const nested = await fetch(`${origin}/soal/berakhiran-10`);
+		assert.equal(nested.status, 200);
+		assert.equal(await nested.text(), '<h1>Question</h1>');
+
+		const sitemap = await fetch(`${origin}/sitemap.xml`);
+		assert.equal(sitemap.status, 200);
+		assert.match(sitemap.headers.get('content-type') ?? '', /application\/xml/);
+		assert.equal(await sitemap.text(), '<urlset/>');
 
 		const folder = await fetch(`${origin}/folder`);
 		assert.equal(folder.status, 200);
