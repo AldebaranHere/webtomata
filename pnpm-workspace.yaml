@@ -6,15 +6,20 @@ allowBuilds:
   esbuild: false
   workerd: false
 
-# Known advisories that we accept until 2026-10-29. Then remove them and add a pnpm override for
-# undici >= 7.30.1 (check first that no newer wrangler already includes it).
-# GHSA-xjj6-f33q-929c (high, a denial of service through content-encodings), GHSA-4qv8-2p9j-2685
-# (an EventSource parser) and GHSA-f72v-6w45-q472 (an SRI bypass), all in undici 7.29.1. undici
-# reaches us only through wrangler > miniflare, our deploy and local-dev tool, which talks only to
-# Cloudflare. The fixed version 7.30.1 was published on 2026-10-15, and our rule is to wait two
-# weeks. undici sits next to the Cloudflare token in the deploy job, so we do not hurry.
+# undici 7.29.1 reaches us only through wrangler > miniflare, our deploy and local-dev tool, which talks
+# only to Cloudflare. Five advisories (GHSA-4w7w-5xrc-9h26, GHSA-2m5v-pch6-74hx, GHSA-qrxm-fqhp-jwvm,
+# GHSA-9fm3-97px-rjf6, GHSA-55wc-3pg8-jfw6, and the three that we accepted before) are fixed in 7.30.1,
+# which was published on 2026-10-15. Our rule is to wait two weeks, so this entry is from 2026-10-29. It is
+# an exact version. The newest wrangler (4.154.0) is two days old, so wrangler stays where it is and
+# only undici is moved. Remove the entry when the pinned wrangler already needs undici 7.30.1 or later.
+overrides:
+  undici: 7.30.1
+
+# Advisories that we accept, with the reason and the date.
+# GHSA-gcqx-w48m-w2h4 (low): deepmerge 4.3.1 mergeObject() lets a crafted object poison prototypes. There is
+# no patched version. It reaches us only through @sveltejs/vite-plugin-svelte, which merges our own
+# configuration objects when the site is built; no input from a visitor reaches it. Accepted on 2026-10-29;
+# look again when a patched deepmerge or a vite-plugin-svelte without it is two weeks old.
 auditConfig:
   ignoreGhsas:
-    - GHSA-xjj6-f33q-929c
-    - GHSA-4qv8-2p9j-2685
-    - GHSA-f72v-6w45-q472
+    - GHSA-gcqx-w48m-w2h4
