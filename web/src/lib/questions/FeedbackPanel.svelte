@@ -26,13 +26,16 @@
 	let {
 		question,
 		doc,
-		ontry
+		ontry,
+		onchecked
 	}: {
 		question: QuestionPage;
 		/** The machine as it is now. */
 		doc: MachineDocument;
 		/** Runs a string in Simulasi. */
 		ontry: (input: string) => void;
+		/** Said after each check, with the kind of the result (the page keeps the progress). */
+		onchecked?: (kind: Grade['kind']) => void;
 	} = $props();
 
 	let checking = $state(false);
@@ -68,6 +71,7 @@
 		if (mine !== sequence) return;
 		result = { grade: outcome, doc: asked, question: asking };
 		checking = false;
+		onchecked?.(outcome.kind);
 		// The result is announced (it is a live region); the focus goes to its heading for a keyboard.
 		queueMicrotask(() => heading?.focus());
 	}
@@ -88,21 +92,29 @@
 </script>
 
 <section class="feedback" aria-labelledby="feedback-heading">
-	<h3 id="feedback-heading" tabindex="-1" bind:this={heading}>{t('feedback.heading')}</h3>
+	<!-- The heading and the button share a row, so that the verdict is in view in a small panel. -->
+	<div class="top">
+		<h3 id="feedback-heading" tabindex="-1" bind:this={heading}>{t('feedback.heading')}</h3>
+		<div class="actions">
+			<button
+				type="button"
+				class="primary"
+				disabled={checking}
+				aria-busy={checking}
+				onclick={check}
+			>
+				{checking
+					? t('check.checking')
+					: result
+						? t('feedback.check_again')
+						: t('feedback.check_button')}
+			</button>
+		</div>
+	</div>
 
 	{#if result === null && !checking}
 		<p class="muted">{t('feedback.intro')}</p>
 	{/if}
-
-	<div class="actions">
-		<button type="button" class="primary" disabled={checking} aria-busy={checking} onclick={check}>
-			{checking
-				? t('check.checking')
-				: result
-					? t('feedback.check_again')
-					: t('feedback.check_button')}
-		</button>
-	</div>
 
 	<div class="result" role="status" aria-live="polite">
 		{#if checking}
@@ -123,12 +135,7 @@
 				</div>
 			{:else}
 				{@const valid = structureValid(result.question)}
-				<div class="card ok">
-					<p>
-						<strong>{t(valid.title.key)}</strong>
-						{#if valid.detail}{t(valid.detail.key, valid.detail.params)}{/if}
-					</p>
-				</div>
+				<!-- The verdict first, so that it is in view in a small panel; then the line about the structure. -->
 				{#if verdict}
 					<div
 						class="card"
@@ -139,6 +146,12 @@
 						{#if verdict.detail}<p>{t(verdict.detail.key, verdict.detail.params)}</p>{/if}
 					</div>
 				{/if}
+				<div class="card ok">
+					<p>
+						<strong>{t(valid.title.key)}</strong>
+						{#if valid.detail}{t(valid.detail.key, valid.detail.params)}{/if}
+					</p>
+				</div>
 
 				{#each lists as { key, heading: listHeading, list } (key)}
 					{@const chips = visibleChips(list)}
@@ -299,6 +312,13 @@
 		border-radius: var(--radius-md);
 		background: var(--color-neutral-tint);
 		color: var(--color-neutral-ink);
+	}
+	.top {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-2);
 	}
 	.actions {
 		display: flex;

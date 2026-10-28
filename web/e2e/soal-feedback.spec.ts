@@ -6,6 +6,8 @@
 import { engineSettled, expect, expectNoAxeViolations, test } from './fixtures.ts';
 import type { Page } from '@playwright/test';
 import { putRow } from './cross/db.ts';
+import { ENDS_WITH_1, ONE_OFF, RIGHT, docJson } from './question-machines.ts';
+import type { Spec } from './question-machines.ts';
 
 const panel = (page: Page) => page.getByRole('complementary', { name: 'Panel' });
 const feedback = (page: Page) => panel(page).locator('#panel-pane-feedback');
@@ -14,69 +16,6 @@ const check = (page: Page) =>
 		name: /^(Periksa jawaban|Periksa lagi|Check my answer|Check again)$/
 	});
 const result = (page: Page) => feedback(page).getByRole('status');
-
-interface Spec {
-	kind?: 'dfsm' | 'ndfsm';
-	alphabet?: string[];
-	states: string[];
-	start?: number;
-	accepting: number[];
-	/** [from, symbol or null, to] */
-	transitions: [number, string | null, number][];
-}
-
-/** A document file as the page saves it (the transitions in the order that the engine sorts them). */
-function docJson(spec: Spec): string {
-	const alphabet = spec.alphabet ?? ['0', '1'];
-	const index = (on: string | null) => (on === null ? -1 : alphabet.indexOf(on));
-	const transitions = [...spec.transitions]
-		.sort((a, b) => a[0] - b[0] || index(a[1]) - index(b[1]) || a[2] - b[2])
-		.map(([from, on, to]) => ({ from, on, to }));
-	return JSON.stringify({
-		schemaVersion: 1,
-		title: '',
-		kind: spec.kind ?? 'dfsm',
-		alphabet,
-		states: spec.states.map((name, id) => ({ id, name, x: 100 + 150 * id, y: 120 })),
-		start: spec.start ?? 0,
-		accepting: spec.accepting,
-		transitions,
-		nextStateId: spec.states.length
-	});
-}
-
-// Strings that end with 10, the right answer to berakhiran-10.
-const RIGHT: Spec = {
-	states: ['q0', 'q1', 'q2'],
-	accepting: [2],
-	transitions: [
-		[0, '0', 0],
-		[0, '1', 1],
-		[1, '1', 1],
-		[1, '0', 2],
-		[2, '1', 1],
-		[2, '0', 0]
-	]
-};
-// The same, except that the string "10" itself is rejected: the machines differ on one string.
-const ONE_OFF: Spec = {
-	states: ['s', 'b', 'q0', 'q1', 'q2'],
-	accepting: [4],
-	transitions: [
-		[0, '0', 2],
-		[0, '1', 1],
-		[1, '0', 2],
-		[1, '1', 3],
-		[2, '0', 2],
-		[2, '1', 3],
-		[3, '1', 3],
-		[3, '0', 4],
-		[4, '1', 3],
-		[4, '0', 2]
-	]
-};
-// Strings that end with 1: wrong on very many strings.
-const ENDS_WITH_1: Spec = { ...RIGHT, accepting: [1] };
 
 /** Opens the question with this machine saved as the work of the student. */
 async function openWith(page: Page, spec: Spec, id = 'berakhiran-10') {
@@ -119,6 +58,45 @@ test('says "Tepat." for a right answer, with the structure as valid', async ({ p
 	await expect(result(page).getByRole('heading', { level: 4 })).toHaveCount(0);
 	await expect(check(page)).toHaveText('Periksa lagi');
 	await expectNoAxeViolations(page);
+});
+
+test('shows the verdict first and the line "Struktur valid." after it, so that the verdict is seen without scrolling', async ({
+	page
+}) => {
+	await openWith(page, ONE_OFF);
+	await check(page).click();
+	const verdict = result(page).locator('.card', { hasText: 'Belum tepat, tapi sudah dekat.' });
+	const structure = result(page).locator('.card', { hasText: 'Struktur valid.' });
+	await expect(verdict).toBeVisible();
+	await expect(structure).toBeVisible();
+	const verdictBox = (await verdict.boundingBox())!;
+	const structureBox = (await structure.boundingBox())!;
+	expect(verdictBox.y).toBeLessThan(structureBox.y);
+	// The verdict is right under the button, and inside the panel without scrolling it.
+	const buttonBox = (await check(page).boundingBox())!;
+	expect(verdictBox.y).toBeGreaterThan(buttonBox.y);
+	expect(verdictBox.y - (buttonBox.y + buttonBox.height)).toBeLessThan(40);
+	// The same for a right answer.
+	await openWith(page, RIGHT);
+	await check(page).click();
+	const right = result(page).locator('.card', { hasText: 'Tepat.' });
+	const valid = result(page).locator('.card', { hasText: 'Struktur valid.' });
+	expect((await right.boundingBox())!.y).toBeLessThan((await valid.boundingBox())!.y);
+});
+
+test('on a phone of 360 px the whole verdict is in view in the panel, without scrolling it', async ({
+	page,
+	isMobile
+}) => {
+	test.skip(!isMobile, 'the panel of a phone is small');
+	await page.setViewportSize({ width: 360, height: 740 });
+	await openWith(page, RIGHT);
+	await check(page).click();
+	const verdict = result(page).locator('.card', { hasText: 'Tepat.' });
+	await expect(verdict).toBeVisible();
+	const card = (await verdict.boundingBox())!;
+	const panelBox = (await panel(page).boundingBox())!;
+	expect(card.y + card.height).toBeLessThanOrEqual(panelBox.y + panelBox.height);
 });
 
 test('says "dekat" for one wrong string, with the computation and one guiding question', async ({
