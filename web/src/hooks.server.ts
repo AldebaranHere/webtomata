@@ -1,7 +1,7 @@
 // Preloads the three core Latin fonts (UI 400/600 and mono 400) in the prerendered HTML head so
 // the browser fetches them alongside the stylesheets instead of discovering them after first paint
 // (which caused a font-swap layout shift on prose guide pages). The Greek subset stays lazy.
-import type { Handle } from '@sveltejs/kit';
+import type { Handle } from '@sveltejs/kit/hooks';
 
 export const handle: Handle = ({ event, resolve }) =>
 	resolve(event, {
