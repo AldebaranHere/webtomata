@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { loadSummaries, summaryOf } from './summaries.ts';
+import { loadQuestions, loadSummaries, pageOf, summaryOf } from './summaries.ts';
 import { createSchemaValidator } from './load.ts';
 
 const schema = JSON.parse(
@@ -100,5 +100,42 @@ describe('summaryOf', () => {
 			week: 4,
 			pattern: 'p'
 		});
+	});
+});
+
+describe('loadQuestions and pageOf', () => {
+	it('gives the whole questions, in the order of the file names, with the same checks', () => {
+		const questions = loadQuestions(
+			{ '/q/b.yaml': file('b'), '/q/a.yaml': file('a'), '/q/_template.yaml': template },
+			validate
+		);
+		expect(questions.map((q) => q.id)).toEqual(['a', 'b']);
+		expect(() => loadQuestions({ '/q/x.yaml': file('y') }, validate)).toThrowError(
+			/must be the name/
+		);
+	});
+
+	it('gives a page only what the page of a question shows: not the solution, the examples or the hints', () => {
+		const [question] = loadQuestions({ '/q/x.yaml': file('x') }, validate);
+		const page = pageOf(question!, { n: 2, total: 3 });
+		expect(Object.keys(page).sort()).toEqual(
+			[
+				'alphabet',
+				'constraints',
+				'difficulty',
+				'id',
+				'pattern',
+				'position',
+				'references',
+				'statement',
+				'title',
+				'type',
+				'week'
+			].sort()
+		);
+		expect(page.position).toEqual({ n: 2, total: 3 });
+		expect(page.statement.id).toContain('Σ = {0, 1}');
+		expect(JSON.stringify(page)).not.toContain('q0 0 q0');
+		expect(JSON.stringify(page)).not.toContain('Cukup ingat');
 	});
 });

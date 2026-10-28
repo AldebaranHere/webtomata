@@ -57,6 +57,15 @@ export function facets(items: readonly ListItem[]): {
 	};
 }
 
+/** The place of a question in a list (counted from 1), or null when it is not in it. */
+export function positionOf(
+	items: readonly ListItem[],
+	id: string
+): { n: number; total: number } | null {
+	const at = items.findIndex((item) => item.id === id);
+	return at < 0 ? null : { n: at + 1, total: items.length };
+}
+
 export const activeCount = (filters: Filters): number =>
 	[filters.week, filters.type, filters.difficulty].filter((v) => v !== null).length;
 

@@ -6,6 +6,7 @@ import { LIMITS, serializeDocument } from '../editor/document.ts';
 import type { Kind } from '../editor/document.ts';
 import { readTests } from '../editor/test-list.ts';
 import { readStoredDocument } from './migrate.ts';
+import { isQuestionRecord } from './question-work.ts';
 import type { Unreadable } from './migrate.ts';
 import { newId } from './store.ts';
 import type { MachineStore, SavedMachine, Titles } from './store.ts';
@@ -32,7 +33,8 @@ export interface Problem {
 
 /** The machines, the one opened last first. A machine that cannot be read is in the list, marked. */
 export async function listEntries(store: MachineStore): Promise<Entry[]> {
-	const records = await store.list();
+	// The machines of the questions are not in the list of the student (question-work.ts).
+	const records = (await store.list()).filter((record) => !isQuestionRecord(record.id));
 	return records
 		.map((record): Entry => {
 			const read = readStoredDocument(record.doc);

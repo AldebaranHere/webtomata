@@ -20,3 +20,12 @@ The questions are YAML files in `content/questions` (ADR 0021). The list page (Q
 - The list has no JavaScript cost for reading questions; the size of the page did not grow beyond the filters and the cards (67 KB gzip of 170 KB).
 - A question file that exists only on one computer (not in the repository) shows in the list of that computer's build, so the browser tests never count all the questions.
 - Cards are not links until the question page exists (Q3b); the prerenderer refuses a link to a page that does not exist.
+
+## Q3b: the page of a question and the work of the student
+
+- **One page for each question**, prerendered (`/soal/<id>`), with `entries()` from the same files and checks. The page gets only what it shows: the statement, title, type, alphabet, constraints, week, level, textbook sections and the place in the list. The solution, the examples and the hints are not in it (a test fails if they are).
+- **The work of the student** is one record for each question in the same store as "Mesin saya", with the id `soal:<id of the question>` (`web/src/lib/storage/question-work.ts`). No new field and no migration: the id says what the record is. `openLatest` (the machine that the Sandbox opens) and `listEntries` (the list "Mesin saya") leave these records out, so a question machine is never opened by the Sandbox, even when it was opened last. Q5 (progress) can find them by the prefix.
+- **A record that cannot be read** is not changed when the page opens: the machine starts again in memory, a notice says so, and the old text stays until the first change is saved. A store that refuses the first write does not stop the page: the save status says it later.
+- **The editor of a question** takes a list of panel tabs (Simulasi, Tabel, Definisi), and the page leaves out the share button, the list of machines, the tour and the examples. A remembered tab that this panel does not have opens the first tab.
+- **The cards of the list are links** (the title, with the whole card as its target).
+

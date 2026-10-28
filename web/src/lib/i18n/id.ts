@@ -396,6 +396,23 @@ export const id = {
 	'soal.sheet_title': 'Filter soal',
 	'soal.apply': 'Terapkan',
 	'soal.close': 'Tutup',
+	'soal.crumbs': 'Navigasi soal',
+	'soal.position': 'Soal {n} dari {total}',
+	'soal.page_description':
+		'Soal latihan: {title}. Buat jawabanmu di editor dan lihat hasilnya di perangkatmu.',
+	'soal.show_full': 'Lihat soal lengkap',
+	'soal.show_less': 'Sembunyikan',
+	'soal.chip.dfsm': 'Harus DFSM',
+	'soal.chip.ndfsm': 'Harus NDFSM',
+	'soal.chip.regex': 'Tulis ekspresi reguler',
+	'soal.chip.max_states': 'Maks. {count} state',
+	'soal.chip.incomplete': 'Boleh tidak lengkap',
+	'soal.chip.minimal': 'Harus minimal',
+	'soal.chip.no_epsilon': 'Tanpa transisi ε',
+	'soal.chip.references': '{text}',
+	'soal.regex_soon': 'Kolom jawaban untuk soal ini menyusul.',
+	'soal.unreadable':
+		'Pekerjaanmu sebelumnya di soal ini tidak bisa dibaca, jadi soal dimulai dari awal. Pekerjaan lama tetap tersimpan sampai kamu mengubah mesin.',
 	'panduan.description': 'Panduan pola merancang DFSM, NDFSM dan ekspresi reguler.',
 
 	// TODO(review): the wording of the conversions is a draft until the feedback guide (U4).

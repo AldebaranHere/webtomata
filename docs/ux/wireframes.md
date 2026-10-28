@@ -80,3 +80,15 @@ These do not block M1. Each has an owner task.
 - **Phone.** Under 48 rem the filters leave the page; a button "Filter (n)" (n is the number of filters that are set) opens a sheet from the bottom with the three groups, "Hapus filter", "Tutup" and "Terapkan". Nothing applies before "Terapkan", and "Tutup" leaves the list as it was.
 - **Empty states.** No questions at all: "Belum ada soal." No match: "Tidak ada soal yang cocok dengan filter ini." with "Hapus filter".
 
+## The page of a question (Q3b, plan approved on 2026-10-29)
+
+The layout is the approved wireframe of Soal (`soal-laptop.png`, `soal-phone.png`), without the feedback part (Q4).
+
+- **Laptop.** Left column of 22 rem: "Soal › Minggu 1" (a link back to the list), "Soal 2 dari 3 · Pola: berakhiran x", the title, the statement, and the chips (the type of the answer, each constraint that is not at its default, the textbook sections as one chip). Next to it the editor: the canvas, and the panel with the tabs Simulasi, Tabel and Definisi. There is no Konversi tab, share button, list of machines or tour on this page.
+- **Phone.** A bar above the canvas with the crumbs, the line "Soal 2 dari 3", the title and the first paragraph of the statement; "Lihat soal lengkap" shows the rest and the chips ("Sembunyikan" folds them). The bar is at most 45% of the height. Then the editor as in the Sandbox.
+- **The statement** is plain text: a blank line starts a paragraph and `backticks` make code. It is never shown as HTML.
+- **The machine** starts with the alphabet of the question, and as an NDFSM for an NDFSM question. The title bar shows the title of the question in the language of the page. What the student builds is saved on this device for this question (one record, `soal:<id>`), kept apart from the machines of the Sandbox: the Sandbox never opens it and "Mesin saya" does not list it.
+- **Saved work that cannot be read:** "Pekerjaanmu sebelumnya di soal ini tidak bisa dibaca, jadi soal dimulai dari awal. Pekerjaan lama tetap tersimpan sampai kamu mengubah mesin." (with "Tutup").
+- **A `write-regex` question** shows the statement and "Kolom jawaban untuk soal ini menyusul." until Q4.
+- **Not here yet:** "Periksa", the feedback, the hints (Q4), the status of the question (Q5) and "Panduan terkait" (when the guide exists).
+

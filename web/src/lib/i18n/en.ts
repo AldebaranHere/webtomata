@@ -390,6 +390,23 @@ export const en: Record<MessageKey, string> = {
 	'soal.sheet_title': 'Filter questions',
 	'soal.apply': 'Apply',
 	'soal.close': 'Close',
+	'soal.crumbs': 'Question navigation',
+	'soal.position': 'Question {n} of {total}',
+	'soal.page_description':
+		'Practice question: {title}. Build your answer in the editor and see the result on your device.',
+	'soal.show_full': 'Show the full question',
+	'soal.show_less': 'Hide',
+	'soal.chip.dfsm': 'Must be a DFSM',
+	'soal.chip.ndfsm': 'Must be an NDFSM',
+	'soal.chip.regex': 'Write a regular expression',
+	'soal.chip.max_states': 'At most {count} states',
+	'soal.chip.incomplete': 'May be incomplete',
+	'soal.chip.minimal': 'Must be minimal',
+	'soal.chip.no_epsilon': 'No ε-transitions',
+	'soal.chip.references': '{text}',
+	'soal.regex_soon': 'The answer box for this question is coming.',
+	'soal.unreadable':
+		'Your earlier work on this question cannot be read, so the question starts again. The old work stays saved until you change the machine.',
 	'panduan.description':
 		'Guides to the patterns for designing DFSMs, NDFSMs and regular expressions.',
 

@@ -7,8 +7,8 @@
 
 	let { children } = $props();
 
-	// The Sandbox is an app that fills the screen: no footer, and the editor takes the height.
-	const app = $derived(page.route.id === '/sandbox');
+	// The Sandbox and the page of a question are apps that fill the screen: no footer, and the editor takes the height.
+	const app = $derived(page.route.id === '/sandbox' || page.route.id === '/soal/[id]');
 
 	// The pages are prerendered in Indonesian; this applies the language the user saved.
 	onMount(loadLocale);
