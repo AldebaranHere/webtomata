@@ -146,6 +146,12 @@ export const id = {
 	'share.unused_symbols':
 		'Catatan: simbol {symbols} tidak dipakai transisi mana pun, jadi tidak ikut tersimpan di file .jff (JFLAP tidak punya alfabet).',
 	'share.export_failed': 'File ini tidak bisa dibuat dari mesin ini. Coba unduh JSON.',
+	'share.images_label': 'Atau simpan sebagai gambar:',
+	'share.download_svg': 'Unduh SVG',
+	'share.download_png': 'Unduh PNG',
+	'image.empty': 'Belum ada state, jadi belum ada gambar yang bisa disimpan.',
+	'image.too_big': 'Mesin ini terlalu besar untuk gambar PNG. Coba unduh SVG.',
+	'image.failed': 'Gambar ini tidak bisa dibuat. Coba unduh SVG, atau file .jff.',
 	'jff.symbol_not_single_character':
 		'JFLAP hanya mendukung simbol satu karakter, jadi "{symbol}" tidak bisa ditulis ke file .jff. Ubah dulu simbolnya, atau unduh JSON.',
 	'import.open_button': 'Buka file…',
