@@ -97,3 +97,5 @@ Also in S10b-3 (`TODO(review)`): "Buka file" (open a file), "rangkaian state" (a
 Also in S8 (`TODO(review)`): "Bandingkan" (compare), "ekuivalen" (equivalent), "Belum sama" (not the same yet) and the sentences of `compare.*`.
 
 Also in S11 (`TODO(review)`): "gambar" (picture) in "simpan sebagai gambar" and the sentences of `image.*`.
+
+Added in U4 (`TODO(review)`): the draft sentences of `docs/ux/feedback-copy.md`, in particular "Tepat.", "Belum tepat, tapi sudah dekat.", "Pemeriksaan dihentikan.", and "petunjuk" (hint).
