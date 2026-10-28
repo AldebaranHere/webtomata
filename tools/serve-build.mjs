@@ -2,7 +2,7 @@
 // check, the smoke test and the browser tests (web/e2e).
 import { createServer } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
-import { extname, join, normalize, resolve } from 'node:path';
+import { extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { createGzip } from 'node:zlib';
 
 const TYPES = {
@@ -19,9 +19,15 @@ const TYPES = {
 export async function serveBuild(dir, port = 0) {
 	const buildDir = resolve(dir);
 	const server = createServer((req, res) => {
-		let path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname));
-		let file = join(buildDir, path);
-		if (!file.startsWith(buildDir)) return res.writeHead(403).end();
+		let decoded;
+		try {
+			decoded = decodeURIComponent((req.url ?? '/').split('?')[0]);
+		} catch {
+			return res.writeHead(400).end();
+		}
+		let file = resolve(buildDir, '.' + decoded.replace(/^[\\/]+/, '/'));
+		const rel = relative(buildDir, file);
+		if (rel.startsWith('..') || isAbsolute(rel)) return res.writeHead(403).end();
 		// Like the real host: /sandbox is served from sandbox.html, even when a folder of the same name
 		// exists (/soal has soal.html and the folder soal/ with its __data.json).
 		if (!existsSync(file) || statSync(file).isDirectory()) {
