@@ -91,3 +91,5 @@ Also in S7-5 (`TODO(review)`): "Salin LaTeX" (copy LaTeX) and "Pratinjau" (previ
 Added in S10b-1 (`TODO(review)`): "Bagikan" (share), "tautan" (link), "Salin tautan" (copy link), "dimampatkan" (compressed) and the sentences of `share.*`.
 
 Also in S10b-2 (`TODO(review)`): "Unduh" (download), "simpan sebagai file" (save as a file), "alfabet" in the note about the `.jff`, and the sentences of `share.*` about files.
+
+Also in S10b-3 (`TODO(review)`): "Buka file" (open a file), "rangkaian state" (a chain of states, in the note about a label of several symbols), "bertipe" (of the type) and the sentences of `import.*` and `jff.*`.

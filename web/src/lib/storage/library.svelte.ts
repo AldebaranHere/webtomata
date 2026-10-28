@@ -49,6 +49,8 @@ class Library {
 	renameCurrent: (title: string) => Problem | null = () => null;
 	/** The page sets this: it shows the share dialog for a saved machine (the row action "Bagikan"). */
 	share: (id: string) => void = () => undefined;
+	/** The page sets this: it opens a file of a machine (`.jff` or JSON) as a new machine. */
+	openFile: (file: File) => void = () => undefined;
 
 	/** Opens the machine of the last visit. Starts again if the page was left and came back. */
 	async start(makeSample: () => Sample): Promise<void> {

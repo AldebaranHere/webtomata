@@ -20,6 +20,7 @@
 	let renaming = $state<string | null>(null);
 	let renameProblem = $state<string | null>(null);
 	let busy = $state(false);
+	let picker: HTMLInputElement;
 
 	const currentId = $derived(library.current?.opened.record.id);
 	/** The title of a row, in the language of the page when it comes from our content. */
@@ -39,6 +40,13 @@
 		}
 	});
 	onMount(() => () => dialog?.open && dialog.close());
+
+	/** The file that was chosen: it is opened as a new machine (the page does it), and the field is made empty so that the same file can be chosen again. */
+	function onPicked() {
+		const [file] = picker.files ?? [];
+		picker.value = '';
+		if (file) library.openFile(file);
+	}
 
 	function when(entry: Entry): string {
 		const ago = relativeTime(entry.updatedAt, Date.now());
@@ -116,6 +124,16 @@
 			>
 				{t('library.new')}
 			</button>
+			<button type="button" class="new secondary" onclick={() => picker.click()}>
+				{t('import.open_button')}
+			</button>
+			<input
+				bind:this={picker}
+				type="file"
+				accept=".jff,.json,application/json"
+				hidden
+				onchange={onPicked}
+			/>
 
 			{#if library.problem}
 				<p class="problem" role="alert">{text(library.problem)}</p>
@@ -290,6 +308,11 @@
 		font: inherit;
 		font-weight: var(--weight-strong);
 		cursor: pointer;
+	}
+	.new.secondary {
+		border: 1px solid var(--color-border);
+		background: transparent;
+		color: var(--color-ink);
 	}
 	ul {
 		display: flex;

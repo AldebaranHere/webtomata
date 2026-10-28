@@ -148,6 +148,27 @@ export const id = {
 	'share.export_failed': 'File ini tidak bisa dibuat dari mesin ini. Coba unduh JSON.',
 	'jff.symbol_not_single_character':
 		'JFLAP hanya mendukung simbol satu karakter, jadi "{symbol}" tidak bisa ditulis ke file .jff. Ubah dulu simbolnya, atau unduh JSON.',
+	'import.open_button': 'Buka file…',
+	'import.opened': 'File dibuka sebagai mesin baru: {title}.',
+	'import.notes_label': 'Yang diubah waktu membuka file:',
+	'import.too_big': 'File ini lebih besar dari 1 MB, jadi tidak dibuka. Mesinmu tidak berubah.',
+	'import.unknown_type':
+		'WebTomata membuka file .jff (dari JFLAP) dan file JSON dari WebTomata. File ini bukan keduanya. Mesinmu tidak berubah.',
+	'import.unreadable': 'File ini tidak bisa dibaca. Mesinmu tidak berubah.',
+	'jff.unsupported_type':
+		'File JFLAP ini bertipe "{type}". WebTomata baru bisa membuka automaton hingga (tipe fa). Mesinmu tidak berubah.',
+	'jff.xml_invalid':
+		'File .jff ini rusak: XML-nya tidak terbaca di baris {line}, kolom {column}. Mesinmu tidak berubah.',
+	'jff.invalid_structure':
+		'File .jff ini tidak lengkap: elemen {element} tidak ada atau salah di baris {line}. Mesinmu tidak berubah.',
+	'jff.multiple_initial_states':
+		'File .jff ini punya lebih dari satu state awal, padahal sebuah mesin hanya boleh punya satu. Mesinmu tidak berubah.',
+	'jff.label_expanded':
+		'Label "{label}" terdiri dari beberapa simbol, jadi transisinya dipecah menjadi rangkaian state baru antara state {from} dan state {to}.',
+	'machine.limit_exceeded':
+		'Mesin di file ini terlalu besar ({what}, paling banyak {limit}). Mesinmu tidak berubah.',
+	'document.name_changed':
+		'Nama state {from} diganti menjadi {to} karena tidak memenuhi aturan nama.',
 	'document.invalid_file':
 		'Datanya bukan mesin WebTomata yang valid (bagian: {at}). Mesinmu tidak berubah.',
 	'document.unsupported_version':
