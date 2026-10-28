@@ -99,3 +99,5 @@ Also in S8 (`TODO(review)`): "Bandingkan" (compare), "ekuivalen" (equivalent), "
 Also in S11 (`TODO(review)`): "gambar" (picture) in "simpan sebagai gambar" and the sentences of `image.*`.
 
 Added in U4 (`TODO(review)`): the draft sentences of `docs/ux/feedback-copy.md`, in particular "Tepat.", "Belum tepat, tapi sudah dekat.", "Pemeriksaan dihentikan.", and "petunjuk" (hint).
+
+Added in Q3a (`TODO(review)`): "Soal" list words "Jenis" (type), "Tingkat" (level), "Mudah", "Sedang", "Sulit", "Pola" (pattern), "Terapkan" (apply), "Hapus filter", and the sentences of `soal.*`. The three sample questions in `content/questions` are drafts for the owner to review.

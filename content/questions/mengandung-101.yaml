@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=./schema.json
+#
+# A draft by Claude for the owner to review (Q3a, 2026-10-29). It becomes one of the starter
+# questions of Q6 after the owner has approved the wording.
+
+schemaVersion: 1
+id: mengandung-101
+
+title:
+  id: String yang mengandung 101
+  en: Strings that contain 101
+
+statement:
+  id: |-
+    Buat NDFSM atas alfabet `Σ = {0, 1}` yang menerima semua string yang mengandung `101` sebagai substring (di mana saja), dan menolak string lainnya.
+
+    Kamu boleh memakai transisi ε.
+  en: |-
+    Build an NDFSM over `Σ = {0, 1}` that accepts every string that contains `101` as a substring (anywhere), and rejects all other strings.
+
+    You may use ε-transitions.
+
+type: build-ndfsm
+alphabet: [0, 1]
+
+difficulty: 2
+week: 2
+pattern: menebak
+
+references:
+  rich: ["5.4"]
+  sipser: ["1.2"]
+
+hints:
+  - id: NDFSM boleh "menebak" di mana `101` mulai.
+    en: An NDFSM may "guess" where `101` starts.
+  - id: Setelah `101` dibaca, mesin tidak perlu memeriksa apa pun lagi.
+    en: After `101` has been read, the machine does not need to check anything more.
+
+examples:
+  accept: ["101", "0101", "1010", "11011010"]
+  reject: ["", "1", "10", "011", "1001", "0110"]
+
+solution:
+  start: q0
+  accepting: [q3]
+  transitions:
+    - q0 0,1 q0
+    - q0 1 q1
+    - q1 0 q2
+    - q2 1 q3
+    - q3 0,1 q3

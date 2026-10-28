@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=./schema.json
+#
+# A draft by Claude for the owner to review (Q3a, 2026-10-29). It becomes one of the starter
+# questions of Q6 after the owner has approved the wording.
+
+schemaVersion: 1
+id: berakhiran-10
+
+title:
+  id: String yang diakhiri 10
+  en: Strings that end with 10
+
+statement:
+  id: |-
+    Buat DFSM atas alfabet `Σ = {0, 1}` yang menerima semua string yang diakhiri `10`, dan menolak string lainnya.
+
+    Mesinmu harus lengkap: setiap state punya transisi untuk `0` dan `1`.
+  en: |-
+    Build a DFSM over `Σ = {0, 1}` that accepts every string that ends with `10`, and rejects all other strings.
+
+    Your machine must be complete: every state has a transition for `0` and for `1`.
+
+type: build-dfsm
+alphabet: [0, 1]
+
+difficulty: 1
+week: 1
+pattern: berakhiran-x
+
+references:
+  rich: ["5.2"]
+  sipser: ["1.1"]
+
+hints:
+  - id: State tidak perlu mengingat seluruh string, cukup beberapa simbol terakhir yang penting.
+    en: A state does not need to remember the whole string, only the last few symbols that matter.
+  - id: Pikirkan tiga keadaan, "belum ada kemajuan", "baru membaca 1", dan "baru membaca 10".
+    en: Think of three situations, "no progress", "just read 1", and "just read 10".
+
+examples:
+  accept: ["10", "110", "0010", "1010"]
+  reject: ["", "0", "1", "01", "100", "101"]
+
+solution:
+  start: q0
+  accepting: [q2]
+  transitions:
+    - q0 0 q0
+    - q0 1 q1
+    - q1 1 q1
+    - q1 0 q2
+    - q2 1 q1
+    - q2 0 q0

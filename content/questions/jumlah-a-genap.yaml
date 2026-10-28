@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=./schema.json
+#
+# A draft by Claude for the owner to review (Q3a, 2026-10-29). It becomes one of the starter
+# questions of Q6 after the owner has approved the wording.
+
+schemaVersion: 1
+id: jumlah-a-genap
+
+title:
+  id: Jumlah a genap
+  en: An even number of a
+
+statement:
+  id: |-
+    Buat DFSM atas alfabet `Σ = {a, b}` yang menerima semua string yang jumlah `a`-nya genap (nol juga genap), berapa pun jumlah `b`.
+
+    Mesinmu boleh punya paling banyak 2 state.
+  en: |-
+    Build a DFSM over `Σ = {a, b}` that accepts every string with an even number of `a` (zero is even), whatever the number of `b`.
+
+    Your machine may have at most 2 states.
+
+type: build-dfsm
+alphabet: [a, b]
+
+constraints:
+  maxStates: 2
+
+difficulty: 2
+week: 1
+pattern: hitung-mod-k
+
+references:
+  rich: ["5.2"]
+
+hints:
+  - id: Simbol `b` tidak mengubah apa pun yang perlu diingat.
+    en: The symbol `b` changes nothing that needs to be remembered.
+  - id: Yang perlu diingat hanya apakah jumlah `a` sejauh ini genap atau ganjil.
+    en: All that needs to be remembered is whether the number of `a` so far is even or odd.
+
+examples:
+  accept: ["", "b", "aa", "abab", "bbaab"]
+  reject: ["a", "ab", "aaa", "bab", "ababa"]
+
+solution:
+  start: q0
+  accepting: [q0]
+  transitions:
+    - q0 a q1
+    - q1 a q0
+    - q0 b q0
+    - q1 b q1
