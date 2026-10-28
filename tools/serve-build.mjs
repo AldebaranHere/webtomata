@@ -2,7 +2,7 @@
 // check, the smoke test and the browser tests (web/e2e).
 import { createServer } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
-import { extname, join, normalize, resolve } from 'node:path';
+import { extname, join, normalize, resolve, sep } from 'node:path';
 import { createGzip } from 'node:zlib';
 
 const TYPES = {
@@ -18,10 +18,18 @@ const TYPES = {
 /** Starts the server on `port` (a free port if it is 0). Returns `{ origin, close }`. */
 export async function serveBuild(dir, port = 0) {
 	const buildDir = resolve(dir);
+	const rootPrefix = buildDir + sep;
 	const server = createServer((req, res) => {
-		let path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname));
+		let decoded;
+		try {
+			decoded = decodeURIComponent((req.url ?? '/').split('?')[0]).replaceAll('\\', '/');
+		} catch {
+			return res.writeHead(400).end();
+		}
+		if (decoded.split('/').includes('..')) return res.writeHead(403).end();
+		let path = normalize('/' + decoded);
 		let file = join(buildDir, path);
-		if (!file.startsWith(buildDir)) return res.writeHead(403).end();
+		if (!file.startsWith(rootPrefix)) return res.writeHead(403).end();
 		// Like the real host: /sandbox is served from sandbox.html, even when a folder of the same name
 		// exists (/soal has soal.html and the folder soal/ with its __data.json).
 		if (!existsSync(file) || statSync(file).isDirectory()) {
