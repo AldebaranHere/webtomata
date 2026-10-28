@@ -26,7 +26,9 @@ export async function serveBuild(dir, port = 0) {
 		} catch {
 			return res.writeHead(400).end();
 		}
-		let file = normalize(join(buildDir, decoded));
+		if (decoded.split('/').includes('..')) return res.writeHead(403).end();
+		let path = normalize('/' + decoded);
+		let file = join(buildDir, path);
 		if (!file.startsWith(rootPrefix)) return res.writeHead(403).end();
 		// Like the real host: /sandbox is served from sandbox.html, even when a folder of the same name
 		// exists (/soal has soal.html and the folder soal/ with its __data.json).
