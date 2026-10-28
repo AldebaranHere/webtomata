@@ -68,6 +68,15 @@ These do not block M1. Each has an owner task.
 3. **The example machines** in "Coba contoh": X1 ships three (Berakhiran 01, Jumlah a genap, a union through ε); the regex example of the wireframe joins with S7, and "Buka file .jff atau JSON" with S10b. They must be patterns, never course homework.
 4. **Section numbers** "Rich 5.2 · Sipser 1.1" come from the first wireframes and are not verified. Check them in G3 and Q6 before they ship.
 5. **Question titles** in the guide ("Soal terkait") are placeholders until Q6.
-6. **Screens not drawn yet:** the Soal list page (Q3), (the Tabel and Definisi tabs were drawn and approved on 2026-10-26; see editor-interactions.md), (the Konversi tab and the conversion step view were drawn and approved on 2026-10-26; see editor-interactions.md), the "compare with regex" view (S8), and error and stopped states of the engine (S2). Each needs a wireframe before its task starts, and the owner approves it.
+6. **Screens not drawn yet:** (the Soal list page was drawn and approved on 2026-10-29; see below), (the Tabel and Definisi tabs were drawn and approved on 2026-10-26; see editor-interactions.md), (the Konversi tab and the conversion step view were drawn and approved on 2026-10-26; see editor-interactions.md), the "compare with regex" view (S8), and error and stopped states of the engine (S2). Each needs a wireframe before its task starts, and the owner approves it.
 7. **The word "Sandbox"** has no course source. It stays unless the owner or the lecturer asks for an Indonesian word.
 8. **Sorting and size of the guide list.** Six cards fit; a longer list may need a search box. Decide in G3.
+
+## Soal list page (Q3a, approved on 2026-10-29)
+
+- **The page.** A heading "Soal", one sentence ("Latihan membuat mesin dan ekspresi reguler. Kamu mengerjakannya di editor, dan hasilnya diperiksa di perangkatmu."), the filters, the count ("12 soal", a live region), and a grid of cards (about 16 rem wide, as many as fit).
+- **Filters.** Three groups of chips, one choice in each, with "Semua" for none: Minggu (the weeks that some question has), Jenis (Buat DFSM, Buat NDFSM, Tulis regex) and Tingkat (Mudah, Sedang, Sulit). Native radio buttons, so the keyboard and a screen reader work as they should. Chips are 44 px high. The choice is kept in the address (`?minggu=1&jenis=build-dfsm&tingkat=2`); a value that is not known is ignored.
+- **A card** shows "Minggu 1 · Pola: berakhiran x", the title (in the language of the page), the type as a tag and the difficulty. The status "selesai" comes with Q5. The cards are in the order of the syllabus: the earlier week first, then the easier question. A card becomes a link to the question with Q3b.
+- **Phone.** Under 48 rem the filters leave the page; a button "Filter (n)" (n is the number of filters that are set) opens a sheet from the bottom with the three groups, "Hapus filter", "Tutup" and "Terapkan". Nothing applies before "Terapkan", and "Tutup" leaves the list as it was.
+- **Empty states.** No questions at all: "Belum ada soal." No match: "Tidak ada soal yang cocok dengan filter ini." with "Hapus filter".
+

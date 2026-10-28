@@ -22,9 +22,12 @@ export async function serveBuild(dir, port = 0) {
 		let path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname));
 		let file = join(buildDir, path);
 		if (!file.startsWith(buildDir)) return res.writeHead(403).end();
-		if (existsSync(file) && statSync(file).isDirectory()) file = join(file, 'index.html');
-		// Like the real host: /sandbox is served from sandbox.html.
-		if (!existsSync(file) && existsSync(`${file}.html`)) file = `${file}.html`;
+		// Like the real host: /sandbox is served from sandbox.html, even when a folder of the same name
+		// exists (/soal has soal.html and the folder soal/ with its __data.json).
+		if (!existsSync(file) || statSync(file).isDirectory()) {
+			if (existsSync(`${file}.html`)) file = `${file}.html`;
+			else if (existsSync(file) && statSync(file).isDirectory()) file = join(file, 'index.html');
+		}
 		if (!existsSync(file)) return res.writeHead(404).end();
 		const type = TYPES[extname(file)] ?? 'application/octet-stream';
 		res.writeHead(200, { 'content-type': type, 'content-encoding': 'gzip' });
