@@ -16,12 +16,13 @@ Status: **approved by the owner on 2026-10-29.** The sentences of Q4 (`feedback.
 
 ## 2. The order of the feedback panel (Q4)
 
-Each part is shown only when it applies, in this order. No numbers on the parts.
+Each part is shown only when it applies, in this order. No numbers on the parts. **The verdict comes first** (changed on 2026-10-29 after the phone test of PR 96: in a small panel the verdict was below the fold). A machine whose structure is not sound gets the structure card alone, and no verdict.
 
 | Part | Shown when | Tone |
 | --- | --- | --- |
-| Structure check | The machine breaks a rule of its type or of the question (for example "harus DFSM", "maksimal 4 state") | A neutral card with the facts. It never says "wrong". |
-| Verdict | The structure is valid | One title sentence, then one detail sentence. |
+| Structure check | The machine breaks a rule of its type or of the question (for example "harus DFSM", "maksimal 4 state") | A neutral card with the facts. It never says "wrong". It is shown **alone**, with no verdict. |
+| Verdict | The structure is valid | One title sentence, then one detail sentence. First in the result. |
+| Structure is valid | The structure is valid | One line after the verdict ("Struktur valid. Setiap state punya transisi untuk 0, 1."). |
 | Two lists | The language is not right | Two short headings and chips of strings, shortest first. |
 | Shortest wrong string | The language is not right | The computation as lines, the wrong step marked, and one guiding question. |
 | Hint | The student asks | One hint at a time, in order. Never open by itself. |

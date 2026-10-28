@@ -60,6 +60,45 @@ test('says "Tepat." for a right answer, with the structure as valid', async ({ p
 	await expectNoAxeViolations(page);
 });
 
+test('shows the verdict first and the line "Struktur valid." after it, so that the verdict is seen without scrolling', async ({
+	page
+}) => {
+	await openWith(page, ONE_OFF);
+	await check(page).click();
+	const verdict = result(page).locator('.card', { hasText: 'Belum tepat, tapi sudah dekat.' });
+	const structure = result(page).locator('.card', { hasText: 'Struktur valid.' });
+	await expect(verdict).toBeVisible();
+	await expect(structure).toBeVisible();
+	const verdictBox = (await verdict.boundingBox())!;
+	const structureBox = (await structure.boundingBox())!;
+	expect(verdictBox.y).toBeLessThan(structureBox.y);
+	// The verdict is right under the button, and inside the panel without scrolling it.
+	const buttonBox = (await check(page).boundingBox())!;
+	expect(verdictBox.y).toBeGreaterThan(buttonBox.y);
+	expect(verdictBox.y - (buttonBox.y + buttonBox.height)).toBeLessThan(40);
+	// The same for a right answer.
+	await openWith(page, RIGHT);
+	await check(page).click();
+	const right = result(page).locator('.card', { hasText: 'Tepat.' });
+	const valid = result(page).locator('.card', { hasText: 'Struktur valid.' });
+	expect((await right.boundingBox())!.y).toBeLessThan((await valid.boundingBox())!.y);
+});
+
+test('on a phone of 360 px the whole verdict is in view in the panel, without scrolling it', async ({
+	page,
+	isMobile
+}) => {
+	test.skip(!isMobile, 'the panel of a phone is small');
+	await page.setViewportSize({ width: 360, height: 740 });
+	await openWith(page, RIGHT);
+	await check(page).click();
+	const verdict = result(page).locator('.card', { hasText: 'Tepat.' });
+	await expect(verdict).toBeVisible();
+	const card = (await verdict.boundingBox())!;
+	const panelBox = (await panel(page).boundingBox())!;
+	expect(card.y + card.height).toBeLessThanOrEqual(panelBox.y + panelBox.height);
+});
+
 test('says "dekat" for one wrong string, with the computation and one guiding question', async ({
 	page
 }) => {
