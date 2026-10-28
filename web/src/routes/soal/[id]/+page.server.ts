@@ -1,21 +1,15 @@
 // The page of each question is made when the site is built, from content/questions (see the list in
 // ../+page.server.ts, and docs/decisions/0029). The page gets what it shows (the statement, the
-// alphabet, the constraints, the place in the list) and not the solution, the examples or the hints.
+// alphabet, the constraints, the hints, the place in the list) and not the solution or the examples (the
+// solution is in jawaban.json, which the page fetches when the student asks to check an answer).
 import { error } from '@sveltejs/kit';
-import { createSchemaValidator } from '#lib/questions/load.ts';
 import { positionOf, sortItems } from '#lib/questions/list.ts';
-import { loadQuestions, pageOf, summaryOf } from '#lib/questions/summaries.ts';
-import schema from '../../../../../content/questions/schema.json';
+import { pageOf, summaryOf } from '#lib/questions/summaries.ts';
+import { allQuestions } from '#lib/server/questions.ts';
 
 export const prerender = true;
 
-const files = import.meta.glob('../../../../../content/questions/*.{yaml,yml}', {
-	query: '?raw',
-	import: 'default',
-	eager: true
-}) as Record<string, string>;
-
-const questions = () => loadQuestions(files, createSchemaValidator(schema));
+const questions = allQuestions;
 
 /** One page for each question. */
 export function entries() {

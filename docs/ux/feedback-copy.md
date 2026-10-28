@@ -2,7 +2,7 @@
 
 How WebTomata talks when a student's answer is not yet right. It covers the feedback panel of **Soal** (Q4) and the messages of the editor (checks, runs). It is a guide for writing, not a list of finished strings: the strings live in `web/src/lib/i18n/id.ts` and `en.ts`, and every new one follows the rules here.
 
-Status: **draft for the owner's review.** Each Indonesian sentence below is a proposal and is marked `TODO(review)` in `docs/glossary.md` until the owner confirms it. Do not invent a term: use `docs/glossary.md`.
+Status: **approved by the owner on 2026-10-29.** The sentences of Q4 (`feedback.*` in the message files, see `web/src/lib/questions/feedback-text.ts`) follow this guide; a change of a sentence starts here. Do not invent a term: use `docs/glossary.md`.
 
 ## 1. The voice
 

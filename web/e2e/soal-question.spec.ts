@@ -56,6 +56,25 @@ test('shows where the question is, the statement with its code, and the chips', 
 	);
 });
 
+test('the page does not carry the solution, which is in a file of its own', async ({ request }) => {
+	// The transitions of the solution of berakhiran-10 are written "q1 0 q2", "q0 1 q1" and so on.
+	for (const path of [`/soal/${ID}`, `/soal/${ID}/__data.json`, '/soal', '/soal/__data.json']) {
+		const text = await (await request.get(path)).text();
+		expect(text, path).not.toMatch(/q\d [01] q\d/);
+		expect(text, path).not.toContain('"solution"');
+	}
+	const answer = await request.get(`/soal/${ID}/jawaban.json`);
+	expect(answer.status()).toBe(200);
+	const file = await answer.json();
+	expect(file.schemaVersion).toBe(1);
+	expect(file.solution.accepting).toEqual(['q2']);
+	expect(file.solution.transitions).toContain('q1 0 q2');
+	// The hints are in the page (they are a help), and the examples are not in it.
+	const data = await (await request.get(`/soal/${ID}/__data.json`)).text();
+	expect(data).toContain('State tidak perlu mengingat');
+	expect(data).not.toContain('examples');
+});
+
 test('the editor has the alphabet of the question and the tabs of a question only', async ({
 	page
 }) => {

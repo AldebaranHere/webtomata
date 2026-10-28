@@ -407,6 +407,48 @@ export const en: Record<MessageKey, string> = {
 	'soal.regex_soon': 'The answer box for this question is coming.',
 	'soal.unreadable':
 		'Your earlier work on this question cannot be read, so the question starts again. The old work stays saved until you change the machine.',
+	'feedback.structure_title': 'Look at the structure first.',
+	'feedback.structure_hint': 'When this part matches the question, check again.',
+	'feedback.structure_valid': 'The structure is valid.',
+	'feedback.structure_valid_complete': 'Every state has a transition for {symbols}.',
+	'feedback.need_dfsm':
+		'This question asks for a DFSM. Change the machine type to DFSM in the Tabel tab.',
+	'feedback.too_many_states': 'This question allows {max} states. Your machine has {count}.',
+	'feedback.not_minimal':
+		'This question asks for a minimal machine. Some states can still be merged.',
+	'feedback.epsilon_not_allowed':
+		'This question does not allow ε-transitions. Your machine has {count}.',
+	'feedback.alphabet_missing':
+		'The alphabet of your machine does not have the symbol {symbols} of the question yet.',
+	'feedback.alphabet_extra':
+		'The alphabet of your machine has the symbol {symbols}, which is not in the question.',
+	'feedback.right_title': 'That is right.',
+	'feedback.right_detail':
+		'Your machine accepts every string that is asked for and rejects all others.',
+	'feedback.close_title': 'Not quite, but close.',
+	'feedback.far_title': 'Not quite.',
+	'feedback.detail_accepts': 'Your machine accepts some strings that it should reject.',
+	'feedback.detail_rejects': 'Your machine rejects some strings that it should accept.',
+	'feedback.detail_both':
+		'Your machine differs from the language that is asked for on some strings.',
+	'feedback.far_detail':
+		'Your machine differs from the language that is asked for on many strings. Try short strings first.',
+	'feedback.stopped_title': 'The check was stopped.',
+	'feedback.stopped_detail': 'Your machine is too big to check here. Try to simplify it.',
+	'feedback.failed_title': 'The check cannot run.',
+	'feedback.failed_detail':
+		'Your answer cannot be checked right now. Your machine has not changed.',
+	'feedback.list_accepted': 'Accepted by your machine, but it should be rejected',
+	'feedback.list_rejected': 'Rejected by your machine, but it should be accepted',
+	'feedback.list_none': 'None. This part is already right.',
+	'feedback.list_truncated': 'This list was cut, so it is not every string that differs.',
+	'feedback.computation_heading': 'Computation of the shortest wrong string: {string}',
+	'feedback.guide_end':
+		'After {string}, your machine is in {states}. Is that what the machine needs to remember?',
+	'feedback.guide_empty_accepts':
+		'On the empty string, your machine accepts. Is that what the question asks?',
+	'feedback.guide_empty_rejects':
+		'On the empty string, your machine rejects. Is that what the question asks?',
 	'panduan.description':
 		'Guides to the patterns for designing DFSMs, NDFSMs and regular expressions.',
 
