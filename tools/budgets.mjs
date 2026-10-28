@@ -18,5 +18,7 @@ export const ROUTES = [
 	{ path: '/', scores: SANDBOX },
 	{ path: '/sandbox', scores: SANDBOX },
 	{ path: '/soal', scores: LIST },
+	// The page of a question has the editor, so it has the budget of the sandbox.
+	{ path: '/soal/berakhiran-10', scores: SANDBOX },
 	{ path: '/panduan', scores: LIST }
 ];

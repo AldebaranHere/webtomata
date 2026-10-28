@@ -56,3 +56,20 @@ describe('the tabs of the panel', () => {
 		expect(nextTab('table', 'Enter')).toBeNull();
 	});
 });
+
+describe('a panel with fewer tabs', () => {
+	const three = ['simulation', 'table', 'definition'] as const;
+
+	it('moves round the tabs that it has', () => {
+		expect(nextTab('definition', 'ArrowRight', three)).toBe('simulation');
+		expect(nextTab('simulation', 'ArrowLeft', three)).toBe('definition');
+		expect(nextTab('simulation', 'End', three)).toBe('definition');
+		expect(nextTab('table', 'Home', three)).toBe('simulation');
+	});
+
+	it('opens the first tab when the one that was saved is not among them', () => {
+		const storage = { getItem: () => 'conversion', setItem: () => undefined };
+		expect(readTab(storage, three)).toBe('simulation');
+		expect(readTab({ getItem: () => 'table', setItem: () => undefined }, three)).toBe('table');
+	});
+});

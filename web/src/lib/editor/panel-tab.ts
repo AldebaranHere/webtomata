@@ -10,12 +10,16 @@ export type PanelTab = (typeof PANEL_TABS)[number];
 const isTab = (value: unknown): value is PanelTab =>
 	typeof value === 'string' && (PANEL_TABS as readonly string[]).includes(value);
 
-export function readTab(storage: StorageLike | undefined = deviceStorage()): PanelTab {
+/** The tab that was open last, when the panel has it (`tabs` is the list of tabs of this panel); else the first. */
+export function readTab(
+	storage: StorageLike | undefined = deviceStorage(),
+	tabs: readonly PanelTab[] = PANEL_TABS
+): PanelTab {
 	try {
 		const saved = storage?.getItem(PANEL_TAB_KEY);
-		return isTab(saved) ? saved : 'simulation';
+		return isTab(saved) && tabs.includes(saved) ? saved : tabs[0]!;
 	} catch {
-		return 'simulation';
+		return tabs[0]!;
 	}
 }
 
@@ -28,11 +32,15 @@ export function saveTab(tab: PanelTab, storage: StorageLike | undefined = device
 }
 
 /** The tab that an arrow key, Home or End goes to, or null for any other key. The arrows go round. */
-export function nextTab(current: PanelTab, key: string): PanelTab | null {
-	const at = PANEL_TABS.indexOf(current);
-	if (key === 'ArrowRight') return PANEL_TABS[(at + 1) % PANEL_TABS.length]!;
-	if (key === 'ArrowLeft') return PANEL_TABS[(at + PANEL_TABS.length - 1) % PANEL_TABS.length]!;
-	if (key === 'Home') return PANEL_TABS[0];
-	if (key === 'End') return PANEL_TABS[PANEL_TABS.length - 1]!;
+export function nextTab(
+	current: PanelTab,
+	key: string,
+	tabs: readonly PanelTab[] = PANEL_TABS
+): PanelTab | null {
+	const at = tabs.indexOf(current);
+	if (key === 'ArrowRight') return tabs[(at + 1) % tabs.length]!;
+	if (key === 'ArrowLeft') return tabs[(at + tabs.length - 1) % tabs.length]!;
+	if (key === 'Home') return tabs[0]!;
+	if (key === 'End') return tabs[tabs.length - 1]!;
 	return null;
 }

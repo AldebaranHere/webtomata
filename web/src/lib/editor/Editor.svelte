@@ -15,7 +15,7 @@
 	import TestList from './TestList.svelte';
 	import { createRunner } from './run.ts';
 	import type { Text } from './run-text.ts';
-	import { readTab, saveTab } from './panel-tab.ts';
+	import { PANEL_TABS, readTab, saveTab } from './panel-tab.ts';
 	import type { PanelTab } from './panel-tab.ts';
 	import type { TableViewProps as TableProps } from './table-props.ts';
 	import type { ConversionProps, ConversionShown } from './conversion-props.ts';
@@ -56,7 +56,8 @@
 		onhelp,
 		onopendoc,
 		onshare,
-		machines
+		machines,
+		tabs = PANEL_TABS
 	}: {
 		doc: MachineDocument;
 		autosave?: Autosave;
@@ -83,6 +84,8 @@
 		onshare?: (doc: MachineDocument) => void;
 		/** The other saved machines, for the second machine of a union, and how to read one. */
 		machines?: Pick<ConversionProps, 'others' | 'load'>;
+		/** The tabs of the panel, in order. A page of a question leaves out Konversi. */
+		tabs?: readonly PanelTab[];
 	} = $props();
 
 	/** The title of the machine, as one undo step (the list "Mesin saya" calls this). */
@@ -209,7 +212,12 @@
 	);
 
 	// The tabs of the panel; the last one that was open is remembered on this device.
-	let tab = $state<PanelTab>(readTab());
+	let tab = $state<PanelTab>(
+		readTab(
+			undefined,
+			untrack(() => tabs)
+		)
+	);
 	function chooseTab(next: PanelTab) {
 		tab = next;
 		saveTab(next);
@@ -457,7 +465,7 @@
 	</div>
 	<!-- Nothing to run, test or copy exists before a machine is chosen: the panel waits for one. -->
 	{#if !showFirstRun}
-		<SidePanel {tab} ontab={chooseTab}>
+		<SidePanel {tab} {tabs} ontab={chooseTab}>
 			{#snippet simulation()}
 				<RunPanel
 					status={run.status}

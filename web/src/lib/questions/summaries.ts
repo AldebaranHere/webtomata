@@ -21,19 +21,19 @@ export function summaryOf(question: Question): ListItem {
 const baseName = (path: string) => path.slice(path.lastIndexOf('/') + 1);
 
 /**
- * The summaries of the files (`{ path: text }`, as `import.meta.glob` gives them), in the order of
+ * The questions of the files (`{ path: text }`, as `import.meta.glob` gives them), in the order of
  * the file names. A name that starts with an underscore is a template and is skipped. Throws one
  * error that lists every problem of every file.
  */
-export function loadSummaries(
+export function loadQuestions(
 	files: Readonly<Record<string, string>>,
 	validate: SchemaValidator
-): ListItem[] {
+): Question[] {
 	const names = Object.keys(files)
 		.filter((path) => !baseName(path).startsWith('_'))
 		.sort((a, b) => (baseName(a) < baseName(b) ? -1 : baseName(a) > baseName(b) ? 1 : 0));
 	const found: string[] = [];
-	const items: ListItem[] = [];
+	const questions: Question[] = [];
 	const owners = new Map<string, string>();
 	for (const path of names) {
 		const name = baseName(path);
@@ -54,12 +54,55 @@ export function loadSummaries(
 			continue;
 		}
 		owners.set(question.id, name);
-		items.push(summaryOf(question));
+		questions.push(question);
 	}
 	if (found.length > 0) {
 		throw new Error(
 			`The question files have problems:\n${found.map((line) => `  ${line}`).join('\n')}`
 		);
 	}
-	return items;
+	return questions;
+}
+
+/** The summaries of the files (see `loadQuestions`): what the list needs. */
+export function loadSummaries(
+	files: Readonly<Record<string, string>>,
+	validate: SchemaValidator
+): ListItem[] {
+	return loadQuestions(files, validate).map(summaryOf);
+}
+
+/**
+ * What the page of a question shows. The solution, the examples and the hints are not here: the page
+ * must not carry the answer (the feedback of Q4 gets them from a file of its own).
+ */
+export interface QuestionPage {
+	id: string;
+	title: Question['title'];
+	statement: Question['statement'];
+	type: Question['type'];
+	alphabet: string[];
+	constraints: Question['constraints'];
+	difficulty: Question['difficulty'];
+	week: number;
+	pattern: string;
+	references: Question['references'];
+	/** The place of the question in the whole list, counted from 1. */
+	position: { n: number; total: number };
+}
+
+export function pageOf(question: Question, position: { n: number; total: number }): QuestionPage {
+	return {
+		id: question.id,
+		title: question.title,
+		statement: question.statement,
+		type: question.type,
+		alphabet: question.alphabet,
+		constraints: question.constraints,
+		difficulty: question.difficulty,
+		week: question.week,
+		pattern: question.pattern,
+		references: question.references,
+		position
+	};
 }

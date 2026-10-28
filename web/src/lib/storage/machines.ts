@@ -4,6 +4,7 @@ import type { MachineDocument } from '../editor/document.ts';
 import { readTests } from '../editor/test-list.ts';
 import { readStoredDocument } from './migrate.ts';
 import type { Unreadable } from './migrate.ts';
+import { isQuestionRecord } from './question-work.ts';
 import { newId } from './store.ts';
 import type { MachineStore, SavedMachine, Titles } from './store.ts';
 
@@ -105,9 +106,10 @@ export async function openLatest(
 	makeSample: () => Sample,
 	now: () => number = Date.now
 ): Promise<Opened> {
-	const records = (await store.list()).sort(
-		(a, b) => b.openedAt - a.openedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-	);
+	// The machines of the questions are not machines of the Sandbox (question-work.ts).
+	const records = (await store.list())
+		.filter((r) => !isQuestionRecord(r.id))
+		.sort((a, b) => b.openedAt - a.openedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 	const skipped: Skipped[] = [];
 	for (const record of records) {
 		const read = readStoredDocument(record.doc);

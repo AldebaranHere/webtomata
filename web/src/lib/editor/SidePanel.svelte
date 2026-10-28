@@ -36,7 +36,8 @@
 		simulation,
 		table,
 		definition,
-		conversion
+		conversion,
+		tabs = PANEL_TABS
 	}: {
 		tab: PanelTab;
 		ontab: (tab: PanelTab) => void;
@@ -44,6 +45,8 @@
 		table: Snippet;
 		definition: Snippet;
 		conversion: Snippet;
+		/** The tabs that this panel has, in order. */
+		tabs?: readonly PanelTab[];
 	} = $props();
 
 	const KEY = 'webtomata.panel';
@@ -195,7 +198,7 @@
 	}
 
 	function onkeydown(event: KeyboardEvent) {
-		const next = nextTab(tab, event.key);
+		const next = nextTab(tab, event.key, tabs);
 		if (!next) return;
 		event.preventDefault();
 		void choose(next);
@@ -242,7 +245,7 @@
 	<div class="content" {hidden}>
 		<h2 class="sr-only">{t('panel.title')}</h2>
 		<div class="tabs" role="tablist" aria-label={t('panel.tabs')} {onkeydown} tabindex="-1">
-			{#each PANEL_TABS as id (id)}
+			{#each tabs as id (id)}
 				<button
 					type="button"
 					role="tab"

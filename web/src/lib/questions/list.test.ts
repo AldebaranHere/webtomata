@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	NO_FILTERS,
+	positionOf,
 	activeCount,
 	applyFilters,
 	facets,
@@ -119,6 +120,19 @@ describe('the filters in the address', () => {
 
 	it('reads a search with or without the question mark', () => {
 		expect(parseFilters('minggu=3')).toEqual({ ...NO_FILTERS, week: 3 });
+	});
+});
+
+describe('positionOf', () => {
+	it('is the place of a question in the sorted list, counted from 1', () => {
+		const sorted = sortItems(items);
+		expect(positionOf(sorted, 'a')).toEqual({ n: 1, total: 4 });
+		expect(positionOf(sorted, 'c')).toEqual({ n: 4, total: 4 });
+	});
+
+	it('is null for a question that is not in the list', () => {
+		expect(positionOf(items, 'zzz')).toBeNull();
+		expect(positionOf([], 'a')).toBeNull();
 	});
 });
 
