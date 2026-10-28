@@ -400,8 +400,8 @@ export const id = {
 	'soal.position': 'Soal {n} dari {total}',
 	'soal.page_description':
 		'Soal latihan: {title}. Buat jawabanmu di editor dan lihat hasilnya di perangkatmu.',
-	'soal.show_full': 'Lihat soal lengkap',
-	'soal.show_less': 'Sembunyikan',
+	'soal.show_statement': 'Lihat soal',
+	'soal.hide_statement': 'Sembunyikan soal',
 	'soal.chip.dfsm': 'Harus DFSM',
 	'soal.chip.ndfsm': 'Harus NDFSM',
 	'soal.chip.regex': 'Tulis ekspresi reguler',

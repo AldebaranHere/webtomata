@@ -102,5 +102,5 @@ Added in U4 (`TODO(review)`): the draft sentences of `docs/ux/feedback-copy.md`,
 
 Added in Q3a (approved by the owner on 2026-10-29): "Soal" list words "Jenis" (type), "Tingkat" (level), "Mudah", "Sedang", "Sulit", "Pola" (pattern), "Terapkan" (apply), "Hapus filter", and the sentences of `soal.*`. The three sample questions in `content/questions` are drafts for the owner to review.
 
-Added in Q3b (`TODO(review)`): "Lihat soal lengkap" (show the full question), "Harus DFSM", "Harus NDFSM", "Harus minimal", "Tanpa transisi ε", "Boleh tidak lengkap", "Maks. n state" and the sentences of `soal.*` for the page of a question.
+Added in Q3b (`TODO(review)`): "Lihat soal" (show the question) and "Sembunyikan soal" (hide the question), "Harus DFSM", "Harus NDFSM", "Harus minimal", "Tanpa transisi ε", "Boleh tidak lengkap", "Maks. n state" and the sentences of `soal.*` for the page of a question.
 

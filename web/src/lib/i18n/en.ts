@@ -394,8 +394,8 @@ export const en: Record<MessageKey, string> = {
 	'soal.position': 'Question {n} of {total}',
 	'soal.page_description':
 		'Practice question: {title}. Build your answer in the editor and see the result on your device.',
-	'soal.show_full': 'Show the full question',
-	'soal.show_less': 'Hide',
+	'soal.show_statement': 'Show the question',
+	'soal.hide_statement': 'Hide the question',
 	'soal.chip.dfsm': 'Must be a DFSM',
 	'soal.chip.ndfsm': 'Must be an NDFSM',
 	'soal.chip.regex': 'Write a regular expression',

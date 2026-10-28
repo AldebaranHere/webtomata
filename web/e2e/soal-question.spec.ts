@@ -30,17 +30,23 @@ test('a card of the list opens the page of its question', async ({ page }) => {
 	).toBeVisible();
 });
 
+/** A phone keeps the statement behind a button; a laptop shows it. Opens it when there is a button. */
+async function showStatement(page: Page) {
+	const toggle = page
+		.locator('.statement')
+		.getByRole('button', { name: 'Lihat soal', exact: true });
+	if (await toggle.isVisible()) await toggle.click();
+}
+
 test('shows where the question is, the statement with its code, and the chips', async ({
 	page
 }) => {
 	await openQuestion(page);
+	await showStatement(page);
 	const statement = page.locator('.statement');
 	await expect(statement).toContainText(/Soal \d+ dari \d+ · Pola: berakhiran x/);
 	await expect(statement.locator('code').first()).toHaveText('Σ = {0, 1}');
 	await expect(statement).toContainText('Buat DFSM atas alfabet');
-	// A phone keeps the rest of the question behind a button.
-	const toggle = statement.getByRole('button', { name: 'Lihat soal lengkap' });
-	if (await toggle.isVisible()) await toggle.click();
 	await expect(statement.getByText('Harus DFSM')).toBeVisible();
 	await expect(statement.getByText('Rich 5.2 · Sipser 1.1')).toBeVisible();
 	await expect(statement).toContainText('Mesinmu harus lengkap');
@@ -144,32 +150,126 @@ test('shows the question in English when the language is English', async ({ page
 	await expect(page.locator('.bar .title')).toHaveText('Strings that end with 10');
 });
 
-test('the targets are at least 44 px, the page has no violations, and a phone folds the question', async ({
+test('the targets are at least 44 px, and the page has no violations', async ({
 	page,
 	isMobile
 }) => {
 	await openQuestion(page);
+	await showStatement(page);
 	const statement = page.locator('.statement');
 	for (const target of [
 		statement.getByRole('link', { name: 'Soal', exact: true }),
-		...(isMobile ? [statement.getByRole('button', { name: 'Lihat soal lengkap' })] : [])
+		...(isMobile ? [statement.getByRole('button', { name: 'Sembunyikan soal' })] : [])
 	]) {
 		expect((await target.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
 	}
-	if (isMobile) {
-		await expect(statement.getByText('Harus DFSM')).toBeHidden();
-		await statement.getByRole('button', { name: 'Lihat soal lengkap' }).click();
-		await expect(statement.getByText('Harus DFSM')).toBeVisible();
-		await expect(statement.getByRole('button', { name: 'Sembunyikan' })).toHaveAttribute(
-			'aria-expanded',
-			'true'
-		);
-		await statement.getByRole('button', { name: 'Sembunyikan' }).click();
-	} else {
-		await expect(statement.getByRole('button', { name: 'Lihat soal lengkap' })).toBeHidden();
-		await expect(statement.getByText('Harus DFSM')).toBeVisible();
-	}
 	await expectNoAxeViolations(page);
+});
+
+test('a laptop always shows the statement, and has no button to hide it', async ({
+	page,
+	isMobile
+}) => {
+	test.skip(isMobile, 'a phone folds the statement');
+	await openQuestion(page);
+	const statement = page.locator('.statement');
+	await expect(statement.getByRole('button', { name: /soal$/ })).toBeHidden();
+	await expect(statement.getByText('Harus DFSM')).toBeVisible();
+	await expect(statement).toContainText('Buat DFSM atas alfabet');
+});
+
+test('on a phone the statement is hidden at first, so the canvas has the room', async ({
+	page,
+	isMobile
+}) => {
+	test.skip(!isMobile, 'the fold is for a phone');
+	await openQuestion(page);
+	const statement = page.locator('.statement');
+	// One line: the title and the button. The statement, the chips and the crumbs wait behind the button.
+	await expect(statement.getByRole('heading', { level: 1 })).toBeVisible();
+	await expect(statement.getByRole('button', { name: 'Lihat soal', exact: true })).toHaveAttribute(
+		'aria-expanded',
+		'false'
+	);
+	await expect(statement.getByText('Buat DFSM atas alfabet')).toBeHidden();
+	await expect(statement.getByText('Harus DFSM')).toBeHidden();
+	expect((await statement.boundingBox())!.height).toBeLessThanOrEqual(64);
+	// The canvas has most of the screen: at least a third of the height of the window.
+	const canvas = (await page.locator('.canvas, .stage').first().boundingBox())!;
+	expect(canvas.height).toBeGreaterThan(page.viewportSize()!.height / 3);
+});
+
+test('on a phone the student opens the statement and hides it again, and the choice is kept', async ({
+	page,
+	isMobile
+}) => {
+	test.skip(!isMobile, 'the fold is for a phone');
+	await openQuestion(page);
+	const statement = page.locator('.statement');
+	await statement.getByRole('button', { name: 'Lihat soal', exact: true }).click();
+	await expect(statement.getByText('Buat DFSM atas alfabet')).toBeVisible();
+	await expect(statement.getByText('Harus DFSM')).toBeVisible();
+	const hide = statement.getByRole('button', { name: 'Sembunyikan soal' });
+	await expect(hide).toHaveAttribute('aria-expanded', 'true');
+	// It never takes more than half of the height, and scrolls inside itself.
+	expect((await statement.boundingBox())!.height).toBeLessThanOrEqual(
+		page.viewportSize()!.height / 2 + 1
+	);
+	// Open stays open after a reload, and on the page of another question.
+	await page.reload();
+	await page.locator('.editor[data-ready]').waitFor();
+	await expect(statement.getByText('Buat DFSM atas alfabet')).toBeVisible();
+	await page.goto('/soal/jumlah-a-genap');
+	await page.locator('.editor[data-ready]').waitFor();
+	await expect(page.locator('.statement').getByText('Buat DFSM atas alfabet')).toBeVisible();
+	await page.locator('.statement').getByRole('button', { name: 'Sembunyikan soal' }).click();
+	await expect(page.locator('.statement').getByText('Buat DFSM atas alfabet')).toBeHidden();
+	await page.reload();
+	await page.locator('.editor[data-ready]').waitFor();
+	await expect(page.locator('.statement').getByText('Buat DFSM atas alfabet')).toBeHidden();
+});
+
+test('on the narrowest phones the closed bar is one line, inside the screen, and the canvas keeps the room', async ({
+	page,
+	isMobile
+}) => {
+	test.skip(!isMobile, 'the fold is for a phone');
+	for (const width of [320, 360, 412]) {
+		await page.setViewportSize({ width, height: 740 });
+		await openQuestion(page);
+		const statement = page.locator('.statement');
+		const button = statement.getByRole('button', { name: 'Lihat soal', exact: true });
+		const box = (await button.boundingBox())!;
+		expect(box.x, `${width}: button inside`).toBeGreaterThanOrEqual(0);
+		expect(box.x + box.width, `${width}: button inside`).toBeLessThanOrEqual(width);
+		expect(box.height, `${width}: 44 px`).toBeGreaterThanOrEqual(43.5);
+		expect((await statement.boundingBox())!.height, `${width}: one line`).toBeLessThanOrEqual(64);
+		const scrolls = await page.evaluate(
+			() => document.documentElement.scrollWidth > document.documentElement.clientWidth
+		);
+		expect(scrolls, `${width}: no sideways scroll`).toBe(false);
+		// The title keeps room next to the button, and is cut with an ellipsis, not wrapped.
+		const title = (await statement.getByRole('heading', { level: 1 }).boundingBox())!;
+		expect(title.width, `${width}: title`).toBeGreaterThan(60);
+		const canvas = (await page.locator('.stage').first().boundingBox())!;
+		expect(canvas.height, `${width}: canvas`).toBeGreaterThan(740 / 3);
+	}
+});
+
+test('the statement can be opened with the keyboard and a screen reader hears its state', async ({
+	page,
+	isMobile
+}) => {
+	test.skip(!isMobile, 'the fold is for a phone');
+	await openQuestion(page);
+	const button = page
+		.locator('.statement')
+		.getByRole('button', { name: 'Lihat soal', exact: true });
+	await button.focus();
+	await page.keyboard.press('Enter');
+	await expect(
+		page.locator('.statement').getByRole('button', { name: 'Sembunyikan soal' })
+	).toHaveAttribute('aria-expanded', 'true');
 });
 
 // The Sandbox itself must not have changed.
