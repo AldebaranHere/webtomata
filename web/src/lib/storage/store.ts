@@ -3,6 +3,7 @@
 // The list can be shown without reading any document: the title, the kind and the dates are
 // copies in the record. See docs/decisions/0023-saved-machines.md.
 import type { Kind } from '../editor/document.ts';
+import type { Progress } from './progress.ts';
 
 /** The title of a machine that comes from our own content, in both languages. */
 export interface Titles {
@@ -33,6 +34,12 @@ export interface SavedMachine {
 	 * file. Anything may have written it, so it is read with `readTests`.
 	 */
 	tests?: string[];
+	/**
+	 * Only on the record of a question (`soal:<id>`): how the student is doing on it (Q5). Anything may have
+	 * written it, so it is read with `readProgress`. Like `tests`, it is a field of the record and not of the
+	 * document.
+	 */
+	progress?: Progress;
 }
 
 /** The place where the records are kept. A write is whole or it is not made. */

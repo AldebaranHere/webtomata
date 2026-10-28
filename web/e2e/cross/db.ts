@@ -12,6 +12,7 @@ export interface Row {
 	openedAt: number;
 	doc: string;
 	titles?: { id: string; en: string };
+	progress?: unknown;
 }
 
 /** The records in the database of the page, read the way any code of the page could read them. */

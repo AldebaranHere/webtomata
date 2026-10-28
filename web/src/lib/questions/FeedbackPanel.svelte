@@ -26,13 +26,16 @@
 	let {
 		question,
 		doc,
-		ontry
+		ontry,
+		onchecked
 	}: {
 		question: QuestionPage;
 		/** The machine as it is now. */
 		doc: MachineDocument;
 		/** Runs a string in Simulasi. */
 		ontry: (input: string) => void;
+		/** Said after each check, with the kind of the result (the page keeps the progress). */
+		onchecked?: (kind: Grade['kind']) => void;
 	} = $props();
 
 	let checking = $state(false);
@@ -68,6 +71,7 @@
 		if (mine !== sequence) return;
 		result = { grade: outcome, doc: asked, question: asking };
 		checking = false;
+		onchecked?.(outcome.kind);
 		// The result is announced (it is a live region); the focus goes to its heading for a keyboard.
 		queueMicrotask(() => heading?.focus());
 	}

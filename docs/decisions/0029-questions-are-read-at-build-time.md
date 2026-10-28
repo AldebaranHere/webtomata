@@ -47,3 +47,11 @@ The questions are YAML files in `content/questions` (ADR 0021). The list page (Q
 - **The check** fetches `jawaban.json`, calls `grade` in the page (the engine runs in its worker) and shows the result. A result for an older call is dropped; a result is marked old when the machine changes. The page keeps the pane mounted (hidden when another tab is open), so a result is not lost.
 - **The hints** are in the left column, in memory only (progress is Q5).
 
+## Q5: the progress of the student
+
+- **A field on the record of the question** (`progress` on `soal:<id>`): `{ checks, solved, solvedAt?, checkedAt }`. No new store and no migration; a record without it is valid. It is data from the device, so `readProgress` checks it and treats anything that is not a good value as none.
+- **Written through the autosave** (`scheduleProgress`, next to `scheduleTests`): the same queue and delay as the machine, so a save of the machine keeps the progress and a save of the progress keeps the machine, in one write when both wait. The autosave also removes a bad value from the record.
+- **What counts** is in `recordCheck`: a verdict or a problem of the structure is an attempt, "Tepat." solves for good, a check that was stopped or could not run changes nothing.
+- **The list** reads the progress of the question records once, when it opens (`loadProgress`), and `resetProgress` removes the field from every question record and nothing else.
+- **A known edge:** if the page of a question is open in another tab when the progress is reset, its next save writes its own progress again. A store of its own would avoid it, at the cost of a migration; not done.
+

@@ -6,13 +6,14 @@
 	import { hintButton } from './feedback-view.ts';
 	import { readOpen, saveOpen } from './statement-fold.ts';
 	import { chipsOf, paragraphsOf } from './statement.ts';
+	import type { Status } from '#lib/storage/progress.ts';
 	import type { QuestionPage } from './summaries.ts';
 
 	// The left column of the page of a question (a bar above the canvas on a phone): where the question is in
 	// the syllabus, its title, the statement and the chips. The statement is plain text, shown as paragraphs and
 	// code, never as HTML. A laptop always shows all of it. A phone shows only the title and a button until the
 	// student opens the statement, so that the canvas and the panel have the room; the choice is remembered.
-	let { question }: { question: QuestionPage } = $props();
+	let { question, status = 'none' }: { question: QuestionPage; status?: Status } = $props();
 
 	const english = $derived(getLocale() === 'en');
 	const title = $derived(english ? question.title.en : question.title.id);
@@ -56,7 +57,10 @@
 		<span>{t('soal.week', { week: question.week })}</span>
 	</nav>
 	<p class="meta extra">
-		{t('soal.position', question.position)} · {t('soal.pattern', { pattern })}
+		{t('soal.position', question.position)} · {t('soal.pattern', {
+			pattern
+		})}{#if status !== 'none'}
+			· <span class="status {status}">{t(`soal.status.${status}`)}</span>{/if}
 	</p>
 	<div class="top">
 		<h1 id="question-title">{title}</h1>
@@ -135,6 +139,10 @@
 	.meta {
 		color: var(--color-muted);
 		font-size: var(--text-sm);
+	}
+	.status.solved {
+		color: var(--color-success-ink);
+		font-weight: var(--weight-strong);
 	}
 	code {
 		padding: 0 var(--space-1);

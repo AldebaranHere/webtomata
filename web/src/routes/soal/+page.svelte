@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
+	import { openStore } from '#lib/storage/index.ts';
+	import type { MachineStore } from '#lib/storage/store.ts';
+	import { loadProgress, resetProgress, statusOf, summarize } from '#lib/storage/progress.ts';
+	import type { Progress } from '#lib/storage/progress.ts';
 	import FilterGroups from '#lib/questions/FilterGroups.svelte';
 	import QuestionCard from '#lib/questions/QuestionCard.svelte';
 	import {
@@ -28,11 +32,41 @@
 	const shown = $derived(applyFilters(data.questions, filters));
 	const active = $derived(activeCount(filters));
 
+	// The progress of the student, read from the device once the page is in the browser (the page is prerendered
+	// and has none). It is shown only when the browser keeps it: with no storage there is nothing to show.
+	let store: MachineStore | null = null;
+	let progress = $state.raw<ReadonlyMap<string, Progress> | null>(null);
+	let confirming = $state(false);
+	let resetDone = $state(false);
+	const summary = $derived(progress ? summarize(data.questions, progress) : null);
+
 	// The prerendered page has no filter (an address with a search part cannot be prerendered), so the
 	// filters of the address are read here, once the page is in the browser.
 	onMount(() => {
 		filters = parseFilters(location.search);
+		void (async () => {
+			try {
+				const opened = await openStore();
+				if (!opened.persistent) return;
+				store = opened.store;
+				progress = await loadProgress(opened.store);
+			} catch {
+				// No progress to show; the list works without it.
+			}
+		})();
 	});
+
+	async function reset() {
+		confirming = false;
+		if (!store) return;
+		try {
+			await resetProgress(store);
+			progress = await loadProgress(store);
+			resetDone = true;
+		} catch {
+			// The list is as it was.
+		}
+	}
 
 	function apply(next: Filters) {
 		filters = next;
@@ -59,6 +93,42 @@
 <div class="page">
 	<h1>{t('nav.soal')}</h1>
 	<p class="intro">{t('soal.intro')}</p>
+	<!-- The line is read from the device after the page opens: its place is kept, so that the list does not jump. -->
+	<div class="progress">
+		{#if summary}
+			<p class="muted" role="status">
+				{t('soal.progress', { solved: summary.solved, total: summary.total })}
+				{#if resetDone}<span class="sr-only"> {t('soal.reset_done')}</span>{/if}
+			</p>
+			{#if summary.solved + summary.attempted > 0 && !confirming}
+				<button
+					type="button"
+					class="plain"
+					onclick={() => {
+						confirming = true;
+						resetDone = false;
+					}}
+				>
+					{t('soal.reset')}
+				</button>
+			{/if}
+		{/if}
+	</div>
+	{#if summary}
+		{#if confirming}
+			<div class="confirm" role="alertdialog" aria-labelledby="soal-reset-question">
+				<p id="soal-reset-question">{t('soal.reset_confirm')}</p>
+				<div class="row">
+					<button type="button" class="danger" onclick={() => void reset()}
+						>{t('soal.reset_yes')}</button
+					>
+					<button type="button" onclick={() => (confirming = false)}
+						>{t('soal.reset_cancel')}</button
+					>
+				</div>
+			</div>
+		{/if}
+	{/if}
 
 	{#if data.questions.length === 0}
 		<p class="empty">{t('soal.empty')}</p>
@@ -80,7 +150,7 @@
 		{:else}
 			<ul class="cards">
 				{#each shown as item (item.id)}
-					<li><QuestionCard {item} /></li>
+					<li><QuestionCard {item} status={statusOf(progress?.get(item.id))} /></li>
 				{/each}
 			</ul>
 		{/if}
@@ -122,6 +192,42 @@
 	.intro {
 		max-width: 40rem;
 		color: var(--color-muted);
+	}
+	.progress {
+		display: flex;
+		min-height: 1.5rem;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-3);
+	}
+	.progress p {
+		margin: 0;
+	}
+	.muted {
+		color: var(--color-muted);
+		font-size: var(--text-sm);
+	}
+	.confirm {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		padding: var(--space-3);
+		border: 1px solid var(--color-border-strong);
+		border-radius: var(--radius-lg);
+		background: var(--color-warning-tint);
+		color: var(--color-warning-ink);
+	}
+	.confirm p {
+		margin: 0;
+	}
+	.row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-2);
+	}
+	.danger {
+		border-color: var(--color-warning-ink);
+		font-weight: var(--weight-strong);
 	}
 	.count {
 		color: var(--color-muted);

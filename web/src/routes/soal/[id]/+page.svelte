@@ -8,6 +8,9 @@
 	import { createAutosave, openStore } from '#lib/storage/index.ts';
 	import type { Autosave } from '#lib/storage/index.ts';
 	import { openQuestionWork } from '#lib/storage/question-work.ts';
+	import { readProgress, recordCheck, statusOf } from '#lib/storage/progress.ts';
+	import type { Progress } from '#lib/storage/progress.ts';
+	import type { Grade } from '#lib/questions/grade.ts';
 	import type { Titles } from '#lib/storage/store.ts';
 
 	// The page of one question: the statement, and the editor with the alphabet of the question. What the
@@ -33,6 +36,16 @@
 	}
 	let ready = $state.raw<Ready | null>(null);
 	let unreadable = $state(false);
+	// How the student is doing on this question: read from the record, and changed by each check.
+	let progress = $state.raw<Progress | undefined>(undefined);
+	const status = $derived(statusOf(progress));
+
+	function checked(kind: Grade['kind']) {
+		const next = recordCheck(progress, kind, Date.now());
+		if (next === progress || next === undefined) return;
+		progress = next;
+		ready?.autosave.scheduleProgress(next);
+	}
 
 	// The machine of the question is opened once the page is in the browser (the storage is there), and again
 	// when another question is opened in the same page. An answer that comes after that is not used.
@@ -40,12 +53,14 @@
 		const current = question;
 		ready = null;
 		unreadable = false;
+		progress = undefined;
 		let stale = false;
 		void (async () => {
 			const { store, persistent } = await openStore();
 			const work = await openQuestionWork(store, current);
 			if (stale) return;
 			unreadable = work.unreadable;
+			progress = readProgress(work.record.progress);
 			ready = {
 				doc: work.doc,
 				autosave: createAutosave({ store, base: work.record }),
@@ -65,11 +80,16 @@
 </svelte:head>
 
 {#snippet feedbackSlot(context: FeedbackContext)}
-	<FeedbackPanel {question} doc={context.doc} ontry={context.tryString} />
+	<FeedbackPanel
+		{question}
+		doc={context.doc}
+		ontry={context.tryString}
+		onchecked={(kind) => checked(kind)}
+	/>
 {/snippet}
 
 <div class="question">
-	{#key question.id}<QuestionStatement {question} />{/key}
+	{#key question.id}<QuestionStatement {question} {status} />{/key}
 	<div class="work">
 		{#if unreadable}
 			<p class="notice" role="status">

@@ -107,3 +107,11 @@ The tab "Umpan balik" and the hints, from the approved Soal wireframe and `docs/
 - **The hints** are in the left column ("Petunjuk"; on a phone, behind "Lihat soal"): none are shown at first, and "Tampilkan petunjuk berikutnya (1 dari 2)" shows the next one. A shown hint stays while the page is open; another question starts closed. They are never opened by themselves.
 - **A regular expression question** has no Umpan balik until its answer box exists.
 
+## Progress on the questions (Q5, plan approved on 2026-10-29)
+
+- **On the list `/soal`.** Under the intro: "Progres: 1 dari 4 soal selesai" (a live region), and, when there is any progress, a quiet button "Atur ulang progres". It is shown only when the browser keeps data (with no storage there is nothing to show). Each card has a chip after the type and the level: "**Selesai**" (success tint) or "**Sudah dicoba**" (neutral); a question that was never checked has none.
+- **On the page of a question.** The meta line ends with the status: "Soal 2 dari 3 · Pola: berakhiran x · Selesai".
+- **What counts.** *Sudah dicoba*: at least one check that said something about the machine (a verdict, or a problem of the structure). *Selesai*: at least one check that said "Tepat.", for good: changing the machine later does not take it back (we keep the time of the first solve and the number of checks). A check that was stopped or could not run counts as nothing, and opening a question without checking it is not an attempt.
+- **Reset.** "Atur ulang progres" asks once more in a box under the line: "Hapus progres semua soal? Mesinmu tidak ikut dihapus." with "Ya, hapus" (it removes the progress from every question record and announces "Progres dihapus.") and "Batal". The machines that the student built stay.
+- **Not in Q5:** a filter by status, progress by week, a reset for one question, any account or sync.
+

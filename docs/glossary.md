@@ -108,3 +108,5 @@ Added in Q4a (follow the approved U4 guide): the sentences of `feedback.*`, in p
 
 Added in Q4b (follow the approved U4 guide): "Umpan balik" (feedback), "Periksa jawaban" (check my answer), "Periksa lagi", "Coba di Simulasi", "Petunjuk" (hint) and the sentences of `feedback.*` for the screen.
 
+Added in Q5 (`TODO(review)`): "Progres" (progress), "Selesai" (solved), "Sudah dicoba" (tried), "Atur ulang progres" (reset progress) and the sentences of `soal.reset_*`. The owner approved the wording "Selesai", "Sudah dicoba" and "Atur ulang progres" in the plan.
+

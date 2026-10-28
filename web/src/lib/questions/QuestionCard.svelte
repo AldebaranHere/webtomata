@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
+	import type { Status } from '#lib/storage/progress.ts';
 	import type { ListItem } from './list.ts';
 
 	// One question in the list: where it belongs in the syllabus, its title, its type and its difficulty.
 	// The title is the link to the page of the question; the whole card is its target (see the style).
-	let { item }: { item: ListItem } = $props();
+	let { item, status = 'none' }: { item: ListItem; status?: Status } = $props();
 
 	const title = $derived(getLocale() === 'en' ? item.title.en : item.title.id);
 	const pattern = $derived(item.pattern.replaceAll('-', ' '));
@@ -17,6 +18,9 @@
 	<p class="tags">
 		<span class="type">{t(`soal.type.${item.type}`)}</span>
 		<span class="level">{t(`soal.difficulty.${item.difficulty}`)}</span>
+		{#if status !== 'none'}
+			<span class="status {status}">{t(`soal.status.${status}`)}</span>
+		{/if}
 	</p>
 </article>
 
@@ -73,6 +77,17 @@
 		border-radius: var(--radius-md);
 		background: var(--color-accent-tint);
 		color: var(--color-accent-ink);
+	}
+	.status {
+		padding: var(--space-1) var(--space-2);
+		border-radius: var(--radius-md);
+		background: var(--color-neutral-tint);
+		color: var(--color-neutral-ink);
+	}
+	.status.solved {
+		background: var(--color-success-tint);
+		color: var(--color-success-ink);
+		font-weight: var(--weight-strong);
 	}
 	.level {
 		color: var(--color-muted);
