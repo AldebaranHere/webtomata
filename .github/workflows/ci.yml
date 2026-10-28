@@ -83,14 +83,14 @@ jobs:
 
   # Browser tests on the production build: the engine version loads, the editor flows work, and axe
   # finds no accessibility violation (docs/decisions/0018-playwright.md). Uses the Chrome of the
-  # runner. The tests are split over three computers; every test runs in exactly one of them.
+  # runner. The tests are split over four computers; every test runs in exactly one of them.
   e2e:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -108,7 +108,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:wasm
       - run: pnpm --filter web build
-      - run: pnpm --filter web test:e2e --shard=${{ matrix.shard }}/3
+      - run: pnpm --filter web test:e2e --shard=${{ matrix.shard }}/4
 
   # The performance, accessibility, best-practices and SEO scores of the budgets (CLAUDE.md, section 7).
   lighthouse:
