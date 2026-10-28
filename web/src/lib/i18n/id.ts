@@ -637,6 +637,21 @@ export const id = {
 	'convert.op.simplify_via_machine': 'Sederhanakan lewat mesin',
 	'convert.op.simplify_via_machine_hint':
 		'Ubah ke mesin, minimalkan, kembali ke regex, lalu sederhanakan. Hasilnya bisa jauh lebih pendek.',
+	'convert.op.compare': 'Bandingkan dengan mesin ini',
+	'convert.op.compare_hint': 'Mesin yang terbuka diperiksa terhadap ekspresi di atas.',
+	'compare.same_title': 'Ekuivalen.',
+	'compare.same': 'Mesinmu dan ekspresi menerima himpunan string yang sama.',
+	'compare.different_title': 'Belum sama.',
+	'compare.different': 'Mesinmu dan ekspresi berbeda pada beberapa string.',
+	'compare.accepted_heading': 'Diterima mesinmu, padahal ekspresi menolak',
+	'compare.rejected_heading': 'Ditolak mesinmu, padahal ekspresi menerima',
+	'compare.none': 'Tidak ada. Bagian ini sudah benar.',
+	'compare.truncated': 'Daftar ini dipotong, jadi bukan semua string yang berbeda.',
+	'compare.run_heading': 'Komputasi mesinmu untuk {string}',
+	'compare.run_accepts': 'Mesinmu menerima {string}, padahal ekspresi menolaknya.',
+	'compare.run_rejects': 'Mesinmu menolak {string}, padahal ekspresi menerimanya.',
+	'compare.symbol_missing':
+		'Ekspresi memakai simbol {symbols} yang tidak ada di alfabet mesin. Tambahkan simbolnya ke alfabet dulu, atau hapus dari ekspresi.',
 	'convert.play_simplify_via_machine': 'Sederhanakan lewat mesin',
 	'via_machine.machine':
 		'Ubah ekspresi menjadi mesin: NDFSM {ndfsm_states} state, DFSM {dfsm_states} state, lalu DFSM minimal {minimal_states} state. Mesin minimal hanya ada satu untuk setiap bahasa, apa pun bentuk ekspresinya.',

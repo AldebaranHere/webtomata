@@ -26,6 +26,9 @@
 	import PlayerControls from './PlayerControls.svelte';
 	import CompilePlayer from './CompilePlayer.svelte';
 	import SimplifyPlayer from './SimplifyPlayer.svelte';
+	import ComparePlayer from './ComparePlayer.svelte';
+	import { runCompare } from './compare.ts';
+	import type { CompareRun } from './compare.ts';
 	import { runSimplify } from './regex-simplify.ts';
 	import type { SimplifyRoute, SimplifyRun } from './regex-simplify.ts';
 	import RegexMath from './RegexMath.svelte';
@@ -52,7 +55,7 @@
 	type Say = { key: MessageKey; params: Params };
 
 	let working = $state<
-		ListedOp | RegexOp | 'regex_to_fsm' | 'simplify' | 'simplify_via_machine' | null
+		ListedOp | RegexOp | 'regex_to_fsm' | 'simplify' | 'simplify_via_machine' | 'compare' | null
 	>(null);
 	let note = $state<Say | null>(null);
 	// A conversion that makes a regular expression (it has its own player), and the view it shows.
@@ -63,6 +66,8 @@
 	let regexError = $state<Say | null>(null);
 	let compileRun = $state.raw<CompileRun | null>(null);
 	let simplifyRun = $state.raw<SimplifyRun | null>(null);
+	let compareRun = $state.raw<CompareRun | null>(null);
+	const compareReason = $derived(regexRefusalOf(doc));
 	// Sederhanakan found nothing to do.
 	let unchanged = $state(false);
 	let field = $state<HTMLInputElement>();
@@ -173,6 +178,7 @@
 		const changed = doc;
 		untrack(() => {
 			if (origin && !documentsEqual(origin.first, changed)) close();
+			if (compareRun && !documentsEqual(compareRun.source, changed)) close();
 		});
 	});
 
@@ -296,6 +302,31 @@
 		field.setSelectionRange(at.caret, at.caret);
 	}
 
+	async function startCompare() {
+		if (working) return;
+		working = 'compare';
+		note = null;
+		regexError = null;
+		unchanged = false;
+		const source = doc;
+		try {
+			const outcome = await runCompare(engine, source, regexInput);
+			// The machine may have changed while the engine worked: the answer would be about an old one.
+			if (!documentsEqual(source, doc)) return;
+			if (outcome.kind === 'finished') {
+				compareRun = outcome.run;
+			} else if (outcome.kind === 'stopped') {
+				note = { key: outcome.key, params: {} };
+			} else {
+				regexError = { key: outcome.key, params: outcome.params };
+			}
+		} catch {
+			note = { key: 'convert.engine_failed', params: {} };
+		} finally {
+			working = null;
+		}
+	}
+
 	async function startSimplify(route: SimplifyRoute) {
 		if (working) return;
 		working = route === 'machine' ? 'simplify_via_machine' : 'simplify';
@@ -344,6 +375,7 @@
 		playing = false;
 		compileRun = null;
 		simplifyRun = null;
+		compareRun = null;
 		regexRun = null;
 		plan = null;
 		origin = null;
@@ -373,6 +405,8 @@
 <div class="convert">
 	{#if simplifyRun}
 		<SimplifyPlayer run={simplifyRun} onclose={close} />
+	{:else if compareRun}
+		<ComparePlayer run={compareRun} onshow={(shown) => (regexView = shown)} onclose={close} />
 	{:else if compileRun}
 		<CompilePlayer
 			run={compileRun}
@@ -692,6 +726,22 @@
 								{working === 'simplify' ? t('convert.working') : t('convert.op.simplify')}
 							</button>
 							<span class="muted" id="convert-hint-simplify">{t('convert.op.simplify_hint')}</span>
+						</div>
+						<div class="action">
+							<button
+								type="button"
+								disabled={regexReason !== null || compareReason !== null || working !== null}
+								aria-describedby="convert-hint-compare"
+								aria-busy={working === 'compare'}
+								onclick={() => void startCompare()}
+							>
+								{working === 'compare' ? t('convert.working') : t('convert.op.compare')}
+							</button>
+							<span class="muted" id="convert-hint-compare">
+								{compareReason
+									? t(compareReason.key, compareReason.params)
+									: t('convert.op.compare_hint')}
+							</span>
 						</div>
 						<div class="action">
 							<button
