@@ -23,3 +23,7 @@ overrides:
 auditConfig:
   ignoreGhsas:
     - GHSA-gcqx-w48m-w2h4
+
+minimumReleaseAgeExclude:
+  - miniflare@5.20261023.2-beta
+  - wrangler@4.155.0

@@ -104,8 +104,24 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          pnpm --filter web exec wrangler deploy --message "$GITHUB_SHA" | tee deploy.log
-          url=$(grep -o 'https://[a-z0-9.-]*\.workers\.dev' deploy.log | head -n 1)
+          set -o pipefail
+          deploy_success=false
+          for attempt in 1 2 3; do
+            echo "Deploying to production (attempt $attempt)..."
+            if pnpm --filter web exec wrangler deploy --message "$GITHUB_SHA" 2>&1 | tee deploy.log; then
+              deploy_success=true
+              break
+            fi
+            echo "Deploy attempt $attempt failed; waiting 10s before retry..."
+            sleep 10
+          done
+
+          if [ "$deploy_success" != "true" ]; then
+            echo "Production deploy failed after 3 attempts."
+            exit 1
+          fi
+
+          url=$(grep -o 'https://[a-z0-9.-]*\.workers\.dev' deploy.log | head -n 1 || true)
           if [ -z "$url" ]; then
             echo "The deploy gave no URL."
             exit 1
@@ -122,13 +138,30 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
+          set -o pipefail
           # Previews need an existing Worker; the first production deploy creates it.
           if ! pnpm --filter web exec wrangler deployments list; then
             echo "No production deployment yet; skipping preview."
             exit 0
           fi
-          pnpm --filter web exec wrangler versions upload --preview-alias "pr-$PR" --message "PR $PR $GITHUB_SHA" | tee preview.log
-          url=$(grep -o 'https://pr-[a-z0-9.-]*\.workers\.dev' preview.log | head -n 1)
+          # Retry upload up to 3 times to handle transient API / asset upload session locks (e.g. code 10013)
+          upload_success=false
+          for attempt in 1 2 3; do
+            echo "Uploading preview version (attempt $attempt)..."
+            if pnpm --filter web exec wrangler versions upload --preview-alias "pr-$PR" --message "PR $PR $GITHUB_SHA" 2>&1 | tee preview.log; then
+              upload_success=true
+              break
+            fi
+            echo "Upload attempt $attempt failed; waiting 10s before retry..."
+            sleep 10
+          done
+
+          if [ "$upload_success" != "true" ]; then
+            echo "Preview upload failed after 3 attempts."
+            exit 1
+          fi
+
+          url=$(grep -o 'https://pr-[a-z0-9.-]*\.workers\.dev' preview.log | head -n 1 || true)
           if [ -n "$url" ]; then
             echo "url=$url" >> "$GITHUB_OUTPUT"
             gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body "Preview: $url (commit ${GITHUB_SHA::7})"
