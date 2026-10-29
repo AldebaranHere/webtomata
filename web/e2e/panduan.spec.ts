@@ -41,6 +41,12 @@ test('topic filters narrow the list, keep the choice in the address, and "Tampil
 
 	await page.reload();
 	await expect(page).toHaveURL(/\/panduan\?topik=dfsm$/);
+	await expect(
+		page.getByRole('group', { name: 'Filter topik' }).getByRole('radio', {
+			name: 'DFSM',
+			exact: true
+		})
+	).toBeChecked();
 	await expect(card(page, 'String berakhiran x')).toBeVisible();
 
 	await chooseTopic(page, 'Regex');
@@ -72,6 +78,10 @@ test('opens a guide page with its sections, contents navigation, and related que
 	await expect(
 		page.getByRole('heading', { level: 2, name: 'Contoh: berakhiran 01' })
 	).toBeVisible();
+	const embed = page.locator('figure.embed');
+	await expect(embed).toBeVisible();
+	await expect(embed.locator('svg[role="img"]')).toBeVisible();
+	await expect(embed.locator('figcaption')).toContainText('dua simbol terakhir adalah');
 	await expect(page.getByRole('heading', { level: 2, name: 'Langkah merancang' })).toBeVisible();
 	await expect(page.getByRole('heading', { level: 2, name: 'Kesalahan umum' })).toBeVisible();
 
@@ -113,7 +123,10 @@ test('shows the guide list and guide page in English when the language is Englis
 	await page.goto('/panduan/berakhiran-x');
 	const menu = page.getByRole('button', { name: 'Menu', exact: true });
 	if (await menu.isVisible()) await menu.click();
-	await page.getByRole('button', { name: 'EN, English' }).click();
+	await expect(async () => {
+		await page.getByRole('button', { name: 'EN, English' }).click();
+		await expect(page.locator('html')).toHaveAttribute('lang', 'en', { timeout: 1000 });
+	}).toPass();
 	await expect(
 		page.getByRole('heading', {
 			level: 1,
@@ -152,5 +165,19 @@ test('every interactive target is at least 44 px, and the pages have no accessib
 	for (const link of await page.locator('#soal a').all()) {
 		expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
 	}
+	const openInEditor = page.getByRole('link', { name: 'Buka di editor' });
+	expect((await openInEditor.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
 	await expectNoAxeViolations(page);
+});
+
+test('"Buka di editor" opens the embedded machine in the Sandbox and cleans the address', async ({
+	page
+}) => {
+	await page.goto('/panduan/berakhiran-x');
+	await page.getByRole('link', { name: 'Buka di editor' }).click();
+	await page.locator('.editor[data-ready]').waitFor();
+	await expect(page).toHaveURL(/\/sandbox$/);
+	await expect(page.getByRole('button', { name: /^State q0(,|$)/ })).toBeVisible();
+	await expect(page.getByRole('button', { name: /^State q1(,|$)/ })).toBeVisible();
+	await expect(page.getByRole('button', { name: /^State q2(,|$)/ })).toBeVisible();
 });

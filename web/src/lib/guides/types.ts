@@ -1,6 +1,7 @@
-// Types for Panduan guides (G1). A guide file in content/guides/<id>.md has YAML frontmatter
+// Types for Panduan guides (G1, G2). A guide file in content/guides/<id>.md has YAML frontmatter
 // validated against content/guides/schema.json and a small Markdown body parsed into typed blocks
 // at build time (never rendered with {@html}).
+import type { MachineDocument } from '#lib/editor/document.ts';
 
 export type GuideTopic = 'dfsm' | 'ndfsm' | 'regex' | 'operasi';
 
@@ -32,7 +33,13 @@ export interface InlinePiece {
 export type GuideBlock =
 	| { kind: 'paragraph'; pieces: InlinePiece[] }
 	| { kind: 'ordered-list'; items: InlinePiece[][] }
-	| { kind: 'unordered-list'; items: InlinePiece[][] };
+	| { kind: 'unordered-list'; items: InlinePiece[][] }
+	| {
+			kind: 'machine';
+			doc: MachineDocument;
+			openHref: string;
+			caption?: InlinePiece[];
+	  };
 
 export interface GuideSection {
 	id: string;

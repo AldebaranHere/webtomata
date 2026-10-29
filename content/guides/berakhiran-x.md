@@ -28,9 +28,10 @@ Mesin tidak perlu mengingat seluruh string. Ia hanya perlu tahu satu hal: awalan
 
 Misalkan alfabet adalah `Σ = {0, 1}` dan pola yang dicari adalah `x = 01`. Awalan dari `01` adalah string kosong `ε`, `0`, dan `01`.
 
-- `q0`: belum ada kemajuan (akhiran yang cocok adalah `ε`).
-- `q1`: simbol terakhir adalah `0`.
-- `q2`: dua simbol terakhir adalah `01` (accepting state).
+```machine
+example: berakhiran-01
+caption: "`q0`: belum ada kemajuan (akhiran yang cocok adalah `ε`). `q1`: simbol terakhir adalah `0`. `q2`: dua simbol terakhir adalah `01` (accepting state)."
+```
 
 ## Langkah merancang {#langkah}
 

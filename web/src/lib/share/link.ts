@@ -94,10 +94,15 @@ async function inflate(data: Uint8Array, limit: number): Promise<Uint8Array | 'b
 
 // ---- the link ----
 
+/** The uncompressed fragment (`m1u=...`) that holds `doc`, computed synchronously at build time. */
+export function encodePlainLink(doc: MachineDocument): string {
+	return PLAIN + toBase64Url(new TextEncoder().encode(serializeDocument(doc)));
+}
+
 /** The fragment (without the `#`) that holds the machine: `m1=...`, or `m1u=...` without compression. */
 export async function encodeLink(doc: MachineDocument): Promise<string> {
+	if (!compression()) return encodePlainLink(doc);
 	const bytes = new TextEncoder().encode(serializeDocument(doc));
-	if (!compression()) return PLAIN + toBase64Url(bytes);
 	return COMPRESSED + toBase64Url(await deflate(bytes));
 }
 

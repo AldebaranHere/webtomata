@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import MachineEmbed from '#lib/components/guides/MachineEmbed.svelte';
 	import type { InlinePiece } from '#lib/guides/types.ts';
 	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
 	import { OG_TYPE_ARTICLE, ogLocale } from '#lib/seo.ts';
@@ -122,6 +123,8 @@
 					{#each section.blocks as block, j (j)}
 						{#if block.kind === 'paragraph'}
 							<p>{@render inlineText(block.pieces)}</p>
+						{:else if block.kind === 'machine'}
+							<MachineEmbed doc={block.doc} openHref={block.openHref} caption={block.caption} />
 						{:else if block.kind === 'ordered-list'}
 							<ol>
 								{#each block.items as item, k (k)}

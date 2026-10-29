@@ -184,6 +184,12 @@ const files = import.meta.glob('../../../../content/examples/*.json', {
 	import: 'default'
 }) as Record<string, unknown>;
 
+/** The example id in `?example=<id>`, or null when the query has no example parameter. */
+export function exampleParam(search: string): string | null {
+	const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+	return params.get('example');
+}
+
 /** The examples that ship with the site, in order. A bad file stops the build (a test reads them). */
 export const EXAMPLES: readonly Example[] = Object.entries(files)
 	.map(([path, content]) => {

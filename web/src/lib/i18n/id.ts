@@ -490,6 +490,7 @@ export const id = {
 	'panduan.last_guide': 'Panduan terakhir',
 	'panduan.prev': '← {title}',
 	'panduan.next': '{title} →',
+	'panduan.open_in_editor': 'Buka di editor',
 
 	// TODO(review): the wording of the conversions is a draft until the feedback guide (U4).
 	'panel.tab_conversion': 'Konversi',

@@ -25,6 +25,8 @@ test('filters the guide list, opens the guide, and follows a related question', 
 			name: 'Cara membuat DFSM untuk string berakhiran x'
 		})
 	).toBeVisible();
+	await expect(page.locator('figure.embed svg[role="img"]')).toBeVisible();
+	await expect(page.getByRole('link', { name: 'Buka di editor' })).toBeVisible();
 
 	if (isMobile) {
 		const button = page.locator('.toc-toggle');
