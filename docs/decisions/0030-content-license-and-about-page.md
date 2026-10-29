@@ -44,3 +44,4 @@ Code licenses like the AGPL are designed for executable software and compilers, 
 - Students and teachers can verify licensing and privacy promises directly from `/tentang`.
 - No tracking scripts or analytics cookies are added, maintaining zero-telemetry integrity.
 - Page bundle size remains well within the 170 KB limit and Lighthouse budgets.
+
