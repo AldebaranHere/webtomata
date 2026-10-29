@@ -220,9 +220,12 @@ describe('the JFLAP files of the course', () => {
 	const present = existsSync(folder);
 
 	it.skipIf(!present)('import, become documents, and go back to JFLAP without a change', () => {
-		const files = readdirSync(folder).filter((name) => name.endsWith('.jff'));
+		const files = readdirSync(folder, { recursive: true })
+			.map(String)
+			.filter((name) => name.endsWith('.jff'));
 		let finite = 0;
-		for (const name of files) {
+		for (const rawName of files) {
+			const name = rawName.replace(/\\/g, '/');
 			const imported = importJff(readFileSync(new URL(name, folder), 'utf8'));
 			// Only the finite automata are in scope; the other types are refused by the engine.
 			if (!imported.ok) {
