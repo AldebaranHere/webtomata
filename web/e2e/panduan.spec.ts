@@ -143,6 +143,7 @@ test('/sitemap.xml lists the public pages, the questions and the guides', async 
 	expect(response.headers()['content-type']).toContain('application/xml');
 	const body = await response.text();
 	expect(body).toContain('<loc>https://webtomata.workers.dev/panduan</loc>');
+	expect(body).toContain('<loc>https://webtomata.workers.dev/tentang</loc>');
 	expect(body).toContain('<loc>https://webtomata.workers.dev/panduan/berakhiran-x</loc>');
 	expect(body).toContain('<loc>https://webtomata.workers.dev/soal/berakhiran-10</loc>');
 });

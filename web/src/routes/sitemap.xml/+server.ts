@@ -11,6 +11,7 @@ export function GET() {
 		'/sandbox',
 		'/soal',
 		'/panduan',
+		'/tentang',
 		...allQuestions().map((q) => `/soal/${q.id}`),
 		...allGuides().map((g) => `/panduan/${g.id}`)
 	];

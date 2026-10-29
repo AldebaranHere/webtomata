@@ -74,3 +74,6 @@ desktop.ini
 # Python virtual environments and caches (tools/)
 .venv-fixtures/
 __pycache__/
+
+# Specific files
+/content/questions/contoh-saya.yaml

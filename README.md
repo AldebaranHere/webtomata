@@ -68,4 +68,5 @@ WebTomata adalah alat web gratis dan open source untuk belajar mesin berhingga (
 
 ## Lisensi / License
 
-[AGPL-3.0](LICENSE).
+- **Kode sumber / Source code:** [AGPL-3.0](LICENSE).
+- **Materi soal dan panduan / Educational content (`content/`):** [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).

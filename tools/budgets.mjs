@@ -35,5 +35,6 @@ export const ROUTES = [
 	// The page of a question has the editor, so it has the budget of the sandbox.
 	{ path: '/soal/berakhiran-10', scores: SANDBOX },
 	{ path: '/panduan', scores: LIST },
-	{ path: '/panduan/berakhiran-x', scores: LIST }
+	{ path: '/panduan/berakhiran-x', scores: LIST },
+	{ path: '/tentang', scores: LIST }
 ];

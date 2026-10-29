@@ -9,7 +9,8 @@
 	const links = [
 		{ href: '/sandbox', label: 'nav.sandbox' },
 		{ href: '/soal', label: 'nav.soal' },
-		{ href: '/panduan', label: 'nav.panduan' }
+		{ href: '/panduan', label: 'nav.panduan' },
+		{ href: '/tentang', label: 'nav.tentang' }
 	] as const;
 
 	// On a phone the links are behind the Menu button.
