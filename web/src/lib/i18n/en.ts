@@ -493,6 +493,7 @@ export const en: Record<MessageKey, string> = {
 	'panduan.last_guide': 'Last guide',
 	'panduan.prev': '← {title}',
 	'panduan.next': '{title} →',
+	'panduan.open_in_editor': 'Open in editor',
 
 	'panel.tab_conversion': 'Conversion',
 	'convert.title': 'Conversion',

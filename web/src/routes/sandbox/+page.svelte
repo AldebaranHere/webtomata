@@ -7,7 +7,7 @@
 	import type { MachineDocument } from '#lib/editor/document.ts';
 	import { decodeLink, linkFragment } from '#lib/share/link.ts';
 	import { markTourSeen, tourSeen } from '#lib/editor/tour.ts';
-	import { EXAMPLES, buildExample } from '#lib/examples/examples.ts';
+	import { EXAMPLES, buildExample, exampleParam } from '#lib/examples/examples.ts';
 	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
 	import { id as idMessages } from '#lib/i18n/id.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
@@ -31,6 +31,16 @@
 	// What was changed when a file was opened (a label that became a chain of states, a name that was repaired).
 	let fileNotes = $state.raw<{ key: MessageKey; params: Record<string, string | number> }[]>([]);
 	async function openLink() {
+		const exampleId = exampleParam(location.search);
+		if (exampleId !== null) {
+			history.replaceState(null, '', location.pathname + location.hash);
+			const example = EXAMPLES.find((e) => e.id === exampleId);
+			if (example) {
+				fileNotes = [];
+				exampleFailed = (await library.openExample(buildExample(example, getLocale()))) !== null;
+			}
+			return;
+		}
 		const fragment = linkFragment(location.hash);
 		if (fragment === null) return;
 		fileNotes = [];

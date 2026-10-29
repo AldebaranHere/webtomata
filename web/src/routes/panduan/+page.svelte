@@ -8,13 +8,27 @@
 
 	let { data } = $props();
 
-	let topic = $state<GuideTopic | null>(null);
+	function initialTopic(): GuideTopic | null {
+		if (typeof location === 'undefined') return null;
+		const checked = document.querySelector<HTMLInputElement>('input[name="panduan-topic"]:checked');
+		if (checked && checked.value !== '') {
+			return parseTopicFilter(`?topik=${checked.value}`);
+		}
+		return parseTopicFilter(location.search);
+	}
+
+	let topic = $state<GuideTopic | null>(initialTopic());
 	const shown = $derived(applyTopicFilter(data.guides, topic));
 	const pageTitle = $derived(`${t('nav.panduan')} · ${t('app.name')}`);
 	const localeTag = $derived(ogLocale(getLocale()));
 
 	onMount(() => {
-		topic = parseTopicFilter(location.search);
+		const next = initialTopic();
+		topic = next;
+		const search = topicToSearch(next);
+		if (location.search !== search) {
+			history.replaceState(history.state, '', location.pathname + search);
+		}
 	});
 
 	function selectTopic(next: GuideTopic | null) {
@@ -48,6 +62,7 @@
 					<input
 						type="radio"
 						name="panduan-topic"
+						value=""
 						checked={topic === null}
 						onchange={() => selectTopic(null)}
 					/>
@@ -58,6 +73,7 @@
 						<input
 							type="radio"
 							name="panduan-topic"
+							value={option}
 							checked={topic === option}
 							onchange={() => selectTopic(option)}
 						/>

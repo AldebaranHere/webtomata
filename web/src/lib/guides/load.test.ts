@@ -75,6 +75,67 @@ describe('parseGuideFile', () => {
 		expect(guides).toHaveLength(1);
 		expect(guides[0]!.id).toBe('berakhiran-x');
 		expect(guides[0]!.sections.length).toBeGreaterThanOrEqual(3);
+		const contoh = guides[0]!.sections.find((s) => s.id === 'contoh');
+		expect(contoh?.blocks.some((b) => b.kind === 'machine')).toBe(true);
+	});
+
+	it('parses a machine block referencing an example and a caption', () => {
+		const md = `${VALID_GUIDE}\n\`\`\`machine\nexample: berakhiran-01\ncaption: "q0: awal. \`q2\`: accepting."\n\`\`\`\n`;
+		const { guide, problems } = parseGuideFile(md, validate);
+		expect(problems).toEqual([]);
+		const lastSection = guide!.sections.at(-1)!;
+		const embed = lastSection.blocks.at(-1)!;
+		expect(embed.kind).toBe('machine');
+		if (embed.kind === 'machine') {
+			expect(embed.doc.states).toHaveLength(3);
+			expect(embed.openHref).toBe('/sandbox?example=berakhiran-01');
+			expect(embed.caption).toEqual([
+				{ kind: 'text', text: 'q0: awal. ' },
+				{ kind: 'code', text: 'q2' },
+				{ kind: 'text', text: ': accepting.' }
+			]);
+		}
+	});
+
+	it('parses an inline machine block into a document and share link', () => {
+		const md = `${VALID_GUIDE}
+\`\`\`machine
+title: Satu state
+kind: dfsm
+alphabet: ["0"]
+states:
+  - { name: q0, x: 160, y: 200 }
+start: q0
+accepting: ["q0"]
+transitions:
+  - { from: q0, on: "0", to: q0 }
+caption: "Mesin satu state."
+\`\`\`
+`;
+		const { guide, problems } = parseGuideFile(md, validate);
+		expect(problems).toEqual([]);
+		const embed = guide!.sections.at(-1)!.blocks.at(-1)!;
+		expect(embed.kind).toBe('machine');
+		if (embed.kind === 'machine') {
+			expect(embed.doc.title).toBe('Satu state');
+			expect(embed.doc.states).toHaveLength(1);
+			expect(embed.openHref).toMatch(/^\/sandbox#m1u=[A-Za-z0-9_-]+$/);
+		}
+	});
+
+	it('reports the line for unknown examples, invalid inline machines, or unclosed machine fences', () => {
+		const unknownEx = `${VALID_GUIDE}\n\`\`\`machine\nexample: tidak-ada\n\`\`\`\n`;
+		const r1 = parseGuideFile(unknownEx, validate);
+		expect(r1.problems[0]?.message).toMatch(/unknown example "tidak-ada"/);
+		expect(r1.problems[0]?.line).toBeGreaterThan(30);
+
+		const unclosed = `${VALID_GUIDE}\n\`\`\`machine\nexample: berakhiran-01\n`;
+		const r2 = parseGuideFile(unclosed, validate);
+		expect(r2.problems[0]?.message).toMatch(/unclosed ```machine block/);
+
+		const badInline = `${VALID_GUIDE}\n\`\`\`machine\ntitle: Rusak\nkind: pda\n\`\`\`\n`;
+		const r3 = parseGuideFile(badInline, validate);
+		expect(r3.problems[0]?.message).toMatch(/kind/);
 	});
 
 	it('refuses a file without YAML frontmatter fences', () => {
