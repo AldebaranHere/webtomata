@@ -3,6 +3,7 @@
 	import type { MachineDocument } from '#lib/editor/document.ts';
 	import type { FeedbackContext, PanelTab } from '#lib/editor/panel-tab.ts';
 	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
+	import { OG_TYPE_WEBSITE, ogLocale } from '#lib/seo.ts';
 	import FeedbackPanel from '#lib/questions/FeedbackPanel.svelte';
 	import QuestionStatement from '#lib/questions/QuestionStatement.svelte';
 	import { createAutosave, openStore } from '#lib/storage/index.ts';
@@ -21,6 +22,9 @@
 
 	const question = $derived(data.question);
 	const title = $derived(getLocale() === 'en' ? question.title.en : question.title.id);
+	const localeTag = $derived(ogLocale(getLocale()));
+	const pageTitle = $derived(`${title} · ${t('nav.soal')} · ${t('app.name')}`);
+	const pageDescription = $derived(t('soal.page_description', { title }));
 	// A machine question has Umpan balik, first; a regular expression question has no answer box yet.
 	const TABS = $derived<readonly PanelTab[]>(
 		question.type === 'write-regex'
@@ -75,8 +79,12 @@
 </script>
 
 <svelte:head>
-	<title>{title} · {t('nav.soal')} · {t('app.name')}</title>
-	<meta name="description" content={t('soal.page_description', { title })} />
+	<title>{pageTitle}</title>
+	<meta name="description" content={pageDescription} />
+	<meta property="og:title" content={pageTitle} />
+	<meta property="og:description" content={pageDescription} />
+	<meta property="og:type" content={OG_TYPE_WEBSITE} />
+	<meta property="og:locale" content={localeTag} />
 </svelte:head>
 
 {#snippet feedbackSlot(context: FeedbackContext)}

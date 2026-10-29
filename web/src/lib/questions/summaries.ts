@@ -91,9 +91,15 @@ export interface QuestionPage {
 	hints: Question['hints'];
 	/** The place of the question in the whole list, counted from 1. */
 	position: { n: number; total: number };
+	/** Whether a guide with `id === pattern` exists in `content/guides/`. */
+	hasGuide?: boolean;
 }
 
-export function pageOf(question: Question, position: { n: number; total: number }): QuestionPage {
+export function pageOf(
+	question: Question,
+	position: { n: number; total: number },
+	hasGuide = false
+): QuestionPage {
 	return {
 		id: question.id,
 		title: question.title,
@@ -106,6 +112,7 @@ export function pageOf(question: Question, position: { n: number; total: number 
 		pattern: question.pattern,
 		references: question.references,
 		hints: question.hints,
-		position
+		position,
+		hasGuide
 	};
 }

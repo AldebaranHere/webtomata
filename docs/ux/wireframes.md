@@ -90,7 +90,7 @@ The layout is the approved wireframe of Soal (`soal-laptop.png`, `soal-phone.png
 - **The machine** starts with the alphabet of the question, and as an NDFSM for an NDFSM question. The title bar shows the title of the question in the language of the page. What the student builds is saved on this device for this question (one record, `soal:<id>`), kept apart from the machines of the Sandbox: the Sandbox never opens it and "Mesin saya" does not list it.
 - **Saved work that cannot be read:** "Pekerjaanmu sebelumnya di soal ini tidak bisa dibaca, jadi soal dimulai dari awal. Pekerjaan lama tetap tersimpan sampai kamu mengubah mesin." (with "Tutup").
 - **A `write-regex` question** shows the statement and "Kolom jawaban untuk soal ini menyusul." until Q4.
-- **Not here yet:** the status of the question (Q5) and "Panduan terkait" (when the guide exists). (The feedback and the hints came with Q4b, below.)
+- **Not here yet:** the status of the question came with Q5, below, and the pattern links to `/panduan/<pattern>` when the guide exists (G1, below). (The feedback and the hints came with Q4b, below.)
 
 ## The feedback of a question (Q4b, plan approved on 2026-10-29)
 
@@ -111,7 +111,18 @@ The tab "Umpan balik" and the hints, from the approved Soal wireframe and `docs/
 
 - **On the list `/soal`.** Under the intro: "Progres: 1 dari 4 soal selesai" (a live region), and, when there is any progress, a quiet button "Atur ulang progres". It is shown only when the browser keeps data (with no storage there is nothing to show). Each card has a chip after the type and the level: "**Selesai**" (success tint) or "**Sudah dicoba**" (neutral); a question that was never checked has none.
 - **On the page of a question.** The meta line ends with the status: "Soal 2 dari 3 · Pola: berakhiran x · Selesai".
-- **What counts.** *Sudah dicoba*: at least one check that said something about the machine (a verdict, or a problem of the structure). *Selesai*: at least one check that said "Tepat.", for good: changing the machine later does not take it back (we keep the time of the first solve and the number of checks). A check that was stopped or could not run counts as nothing, and opening a question without checking it is not an attempt.
+- **What counts.** _Sudah dicoba_: at least one check that said something about the machine (a verdict, or a problem of the structure). _Selesai_: at least one check that said "Tepat.", for good: changing the machine later does not take it back (we keep the time of the first solve and the number of checks). A check that was stopped or could not run counts as nothing, and opening a question without checking it is not an attempt.
 - **Reset.** "Atur ulang progres" asks once more in a box under the line: "Hapus progres semua soal? Mesinmu tidak ikut dihapus." with "Ya, hapus" (it removes the progress from every question record and announces "Progres dihapus.") and "Batal". The machines that the student built stay.
 - **Not in Q5:** a filter by status, progress by week, a reset for one question, any account or sync.
 
+## Guide pipeline and pages (G1, plan approved on 2026-10-29)
+
+The list `/panduan` and the guide page `/panduan/[id]` match `guides-laptop.png`, `guides-phone.png`, `guide-laptop.png`, and `guide-phone.png`, without the interactive `<MachineEmbed>` diagram (which comes in G2).
+
+- **Guide files.** Markdown files in `content/guides/<id>.md` with YAML frontmatter validated at build time against `content/guides/schema.json` (`schemaVersion: 1`, `id`, `order`, `topic`, `readingMinutes`, `cardTitle`, `title`, `summary`, optional `references`). The Markdown body is parsed at build time into typed blocks (intro paragraphs, `## Heading {#id}` sections, paragraphs, ordered and unordered lists, and inline `code` spans) and rendered with Svelte templates, never `{@html}`.
+- **The list `/panduan`.** Heading "Panduan", one-line intro, topic filter chips (`Semua`, `DFSM`, `NDFSM`, `Regex`, `Operasi`; native radio inputs, 44 px high, synced with `?topik=<topic>` in the address), and a 2-column grid of guide cards (1 column on phones). Each card links to `/panduan/<id>` and shows the topic pill, `cardTitle`, `summary`, and `{questions} soal terkait · {minutes} menit`. When no guides match a topic, an empty state offers "Tampilkan semua".
+- **A guide page `/panduan/[id]`.**
+  - **Laptop.** Sticky left table-of-contents sidebar (`Di halaman ini`) listing the guide's sections plus `Soal terkait` when matching questions exist, and a 68-ch reading column with breadcrumbs (`Panduan › <Topik>`), meta row (`<Topik> · <n> menit baca · <Referensi>`), `<h1>`, lead paragraph, numbered/headed sections, `Soal terkait` card linking to `/soal/<id>` for every question whose `pattern === guide.id`, and a previous/next guide pager at the bottom.
+  - **Phone.** Under 60 rem, the sidebar hides and a top bar shows `← Semua panduan` and an `Isi ▾` button (`aria-expanded`, 44 px) that toggles a dropdown menu of section links (closing on link click or `Escape`).
+- **Question → Guide link.** On `/soal/[id]`, when a guide with `id === question.pattern` exists, `Pola: <pattern>` in the meta line links to `/panduan/<pattern>`.
+- **SEO & sharing.** Every route sets Open Graph `<meta property="og:*">` tags (`og:title`, `og:description`, `og:type`, `og:locale`), and `/sitemap.xml` is prerendered at build time with `/`, `/sandbox`, `/soal`, `/panduan`, every `/soal/<id>`, and every `/panduan/<id>`.

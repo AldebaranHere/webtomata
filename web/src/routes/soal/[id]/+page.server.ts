@@ -5,6 +5,7 @@
 import { error } from '@sveltejs/kit';
 import { positionOf, sortItems } from '#lib/questions/list.ts';
 import { pageOf, summaryOf } from '#lib/questions/summaries.ts';
+import { allGuides } from '#lib/server/guides.ts';
 import { allQuestions } from '#lib/server/questions.ts';
 
 export const prerender = true;
@@ -21,5 +22,6 @@ export function load({ params }: { params: { id: string } }) {
 	const question = all.find((q) => q.id === params.id);
 	if (!question) error(404, 'There is no such question.');
 	const position = positionOf(sortItems(all.map(summaryOf)), question.id);
-	return { question: pageOf(question, position ?? { n: 1, total: all.length }) };
+	const hasGuide = allGuides().some((g) => g.id === question.pattern);
+	return { question: pageOf(question, position ?? { n: 1, total: all.length }, hasGuide) };
 }

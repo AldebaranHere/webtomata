@@ -5,8 +5,10 @@
 	import { engineVersion } from '#lib/engine/client.ts';
 	import { engineProblem } from '#lib/engine/problem.ts';
 	import type { EngineProblem } from '#lib/engine/problem.ts';
-	import { t } from '#lib/i18n/index.svelte.ts';
+	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
+	import { OG_TYPE_WEBSITE, ogLocale } from '#lib/seo.ts';
 
+	const localeTag = $derived(ogLocale(getLocale()));
 	let version = $state('');
 	let problem = $state<EngineProblem>();
 
@@ -33,6 +35,10 @@
 <svelte:head>
 	<title>{t('app.name')}</title>
 	<meta name="description" content={t('home.description')} />
+	<meta property="og:title" content={t('app.name')} />
+	<meta property="og:description" content={t('home.description')} />
+	<meta property="og:type" content={OG_TYPE_WEBSITE} />
+	<meta property="og:locale" content={localeTag} />
 </svelte:head>
 
 <div class="page">

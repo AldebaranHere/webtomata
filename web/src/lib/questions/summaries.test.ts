@@ -123,6 +123,7 @@ describe('loadQuestions and pageOf', () => {
 				'alphabet',
 				'constraints',
 				'difficulty',
+				'hasGuide',
 				'hints',
 				'id',
 				'pattern',
@@ -135,6 +136,8 @@ describe('loadQuestions and pageOf', () => {
 			].sort()
 		);
 		expect(page.position).toEqual({ n: 2, total: 3 });
+		expect(page.hasGuide).toBe(false);
+		expect(pageOf(question!, { n: 2, total: 3 }, true).hasGuide).toBe(true);
 		expect(page.statement.id).toContain('Σ = {0, 1}');
 		expect(JSON.stringify(page)).not.toContain('q0 0 q0');
 		expect(JSON.stringify(page)).not.toContain('examples');

@@ -12,7 +12,8 @@ const TYPES = {
 	'.json': 'application/json',
 	'.wasm': 'application/wasm',
 	'.svg': 'image/svg+xml',
-	'.txt': 'text/plain'
+	'.txt': 'text/plain',
+	'.xml': 'application/xml; charset=utf-8'
 };
 
 /** Starts the server on `port` (a free port if it is 0). Returns `{ origin, close }`. */
@@ -27,7 +28,7 @@ export async function serveBuild(dir, port = 0) {
 			return res.writeHead(400).end();
 		}
 		if (decoded.split('/').includes('..')) return res.writeHead(403).end();
-		let path = normalize('/' + decoded);
+		let path = normalize('/' + decoded.replace(/^\/+/, ''));
 		let file = join(buildDir, path);
 		if (!file.startsWith(rootPrefix)) return res.writeHead(403).end();
 		// Like the real host: /sandbox is served from sandbox.html, even when a folder of the same name
