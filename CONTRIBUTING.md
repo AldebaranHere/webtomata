@@ -5,6 +5,7 @@
 Terima kasih sudah ingin membantu WebTomata. Proyek ini gratis, open source (AGPL-3.0), tanpa akun dan tanpa pelacakan.
 
 - Kami mengikuti [tata tertib](CODE_OF_CONDUCT.md): sopan dan sabar, terutama kepada pemula.
+- Lisensi: kode sumber di bawah AGPL-3.0, sedangkan materi soal dan panduan di `content/` di bawah [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
 - Satu pull request untuk satu perubahan kecil. Jelaskan apa dan mengapa.
 - Gunakan [Conventional Commits](https://www.conventionalcommits.org/), contoh `feat(engine): ...` atau `fix(editor): ...`.
 - Perubahan pada engine harus disertai tes. Perbaikan bug dimulai dari tes yang gagal.
@@ -20,6 +21,7 @@ Terima kasih sudah ingin membantu WebTomata. Proyek ini gratis, open source (AGP
 Thanks for helping. WebTomata is free, open source (AGPL-3.0), with no accounts and no tracking.
 
 - We follow the [code of conduct](CODE_OF_CONDUCT.md): be polite and patient, especially with beginners.
+- Licenses: source code is licensed under AGPL-3.0, while questions and guides in `content/` are licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
 - One small change per pull request, with a clear what and why.
 - Use Conventional Commits (`feat(engine): ...`, `fix(editor): ...`).
 - Engine changes need tests; a bug fix starts with a failing test.

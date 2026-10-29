@@ -12,6 +12,7 @@ export const id = {
 	'nav.sandbox': 'Sandbox',
 	'nav.soal': 'Soal',
 	'nav.panduan': 'Panduan',
+	'nav.tentang': 'Tentang',
 
 	'lang.label': 'Bahasa',
 	'lang.id': 'ID',
@@ -783,6 +784,37 @@ export const id = {
 		'Lewat mesin, ekspresinya {machine_size} bagian; ekspresi aslimu setelah disederhanakan {original_size} bagian. Jadi hasil Sederhanakan biasa yang dipakai.',
 	'via_machine.too_big':
 		'Mesinnya terlalu besar untuk diproses di sini. Jadi hasil Sederhanakan biasa yang dipakai.',
+
+	'footer.tagline': 'Alat belajar mesin berhingga interaktif, open source dan gratis.',
+	'footer.about': 'Tentang',
+	'footer.code_license': 'Kode: AGPL-3.0',
+	'footer.content_license': 'Konten: CC BY-SA 4.0',
+	'footer.github': 'GitHub',
+
+	'tentang.title': 'Tentang WebTomata',
+	'tentang.description':
+		'WebTomata adalah alat belajar mesin berhingga interaktif untuk mahasiswa Teori Bahasa dan Automata. Gratis, open source, tanpa akun, dan tanpa pelacakan.',
+	'tentang.what_title': 'Apa itu WebTomata?',
+	'tentang.what_body':
+		'WebTomata adalah platform web interaktif untuk mempelajari konsep mesin berhingga (finite state automata) dan bahasa reguler. Dirancang khusus untuk mahasiswa mata kuliah Teori Bahasa dan Automata (ToC), alat ini membantu mahasiswa merancang mesin, menjalankan simulasi string, melakukan konversi dan minimalisasi mesin, serta berlatih soal latihan dengan umpan balik langsung.',
+	'tentang.textbooks_title': 'Buku teks dan rujukan',
+	'tentang.textbooks_body':
+		'Secara bawaan, WebTomata mengikuti notasi dan konvensi dari buku teks Elaine Rich (Automata, Computability and Complexity). Panduan dan soal juga menyertakan rujukan silang ke Michael Sipser (Introduction to the Theory of Computation). Setiap soal latihan dan panduan menyertakan nomor bab rujukan terkait.',
+	'tentang.privacy_title': 'Komitmen privasi',
+	'tentang.privacy_body':
+		'Tanpa akun dan tanpa pelacakan. Seluruh komputasi, algoritma konversi, simulasi, dan pemeriksaan jawaban berjalan sepenuhnya di dalam perambanmu menggunakan WebAssembly. Tidak ada pelacak pihak ketiga, tidak ada rekaman sesi, dan tidak ada data yang disimpan di server.',
+	'tentang.license_title': 'Lisensi dan open source',
+	'tentang.license_body':
+		'Kode sumber WebTomata dirilis di bawah lisensi GNU AGPL-3.0. Seluruh materi soal latihan dan panduan dirilis di bawah lisensi Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0). Kamu bebas mempelajari, mengadaptasi, dan berkontribusi kembali dengan tetap mencantumkan atribusi.',
+	'tentang.integrity_title': 'Integritas akademik',
+	'tentang.integrity_body':
+		'WebTomata dibuat sebagai sarana belajar mandiri. Soal-soal latihan berfokus pada pola perancangan umum dan bukan salinan dari tugas, kuis, atau ujian aktif mata kuliah mana pun.',
+	'tentang.bugs_title': 'Melaporkan masalah dan saran',
+	'tentang.bugs_body':
+		'Menemukan jawaban yang keliru dinilai, petunjuk yang membingungkan, atau masalah tampilan pada perambanmu? Kamu dapat melaporkannya atau mengajukan perbaikan melalui GitHub.',
+	'tentang.link_github': 'Repositori GitHub',
+	'tentang.link_issues': 'Laporkan bug atau soal keliru',
+	'tentang.link_contributing': 'Panduan kontribusi',
 
 	'page.soon': 'Segera hadir.',
 	'page.home': 'Kembali ke beranda'

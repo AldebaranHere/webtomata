@@ -4,10 +4,11 @@ import { expect, expectNoAxeViolations, test } from './fixtures.ts';
 import type { Page } from '@playwright/test';
 
 const ROUTES = [
-	{ path: '/', heading: 'WebTomata' },
-	{ path: '/sandbox', heading: 'Sandbox' },
-	{ path: '/soal', heading: 'Soal' },
-	{ path: '/panduan', heading: 'Panduan' }
+	{ path: '/', heading: 'WebTomata', navLabel: 'WebTomata' },
+	{ path: '/sandbox', heading: 'Sandbox', navLabel: 'Sandbox' },
+	{ path: '/soal', heading: 'Soal', navLabel: 'Soal' },
+	{ path: '/panduan', heading: 'Panduan', navLabel: 'Panduan' },
+	{ path: '/tentang', heading: 'Tentang WebTomata', navLabel: 'Tentang' }
 ] as const;
 
 // On a phone the links are behind the Menu button; on a laptop they are in the bar.
@@ -34,14 +35,14 @@ test('each link of the navigation opens its page and is marked as the current on
 	page
 }) => {
 	await page.goto('/');
-	for (const { path, heading } of ROUTES.slice(1)) {
+	for (const { path, heading, navLabel } of ROUTES.slice(1)) {
 		await openMenuIfPhone(page);
 		const nav = page.getByRole('navigation', { name: 'Navigasi utama' });
-		await nav.getByRole('link', { name: heading, exact: true }).click();
+		await nav.getByRole('link', { name: navLabel, exact: true }).click();
 		await expect(page).toHaveURL(path);
 		await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
 		await openMenuIfPhone(page);
-		await expect(nav.locator('a[aria-current="page"]')).toHaveText(heading);
+		await expect(nav.locator('a[aria-current="page"]')).toHaveText(navLabel);
 	}
 	await page.getByRole('link', { name: 'WebTomata' }).first().click();
 	await expect(page).toHaveURL('/');
@@ -67,25 +68,25 @@ test('the language switch changes the text and the page language, and is remembe
 	);
 	await page.getByRole('button', { name: 'EN, English' }).click();
 	await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-	await expect(page.locator('footer')).toHaveText('No account, no tracking.');
+	await expect(page.locator('footer')).toContainText('No account, no tracking.');
 	await expectNoAxeViolations(page);
 
 	await page.reload();
 	await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-	await expect(page.locator('footer')).toHaveText('No account, no tracking.');
+	await expect(page.locator('footer')).toContainText('No account, no tracking.');
 	await openMenuIfPhone(page);
 	await expect(page.getByRole('link', { name: 'Questions', exact: true })).toBeVisible();
 
 	await page.getByRole('button', { name: 'ID, Bahasa Indonesia' }).click();
 	await expect(page.locator('html')).toHaveAttribute('lang', 'id');
-	await expect(page.locator('footer')).toHaveText('Tanpa akun, tanpa pelacakan.');
+	await expect(page.locator('footer')).toContainText('Tanpa akun, tanpa pelacakan.');
 });
 
 test('a language that is not saved is ignored, and the page stays Indonesian', async ({ page }) => {
 	await page.addInitScript(() => localStorage.setItem('webtomata.lang', 'fr'));
 	await page.goto('/');
 	await expect(page.locator('html')).toHaveAttribute('lang', 'id');
-	await expect(page.locator('footer')).toHaveText('Tanpa akun, tanpa pelacakan.');
+	await expect(page.locator('footer')).toContainText('Tanpa akun, tanpa pelacakan.');
 });
 
 test('the page works when the browser blocks storage', async ({ page }) => {
@@ -98,7 +99,7 @@ test('the page works when the browser blocks storage', async ({ page }) => {
 	});
 	await page.goto('/');
 	await page.getByRole('button', { name: 'EN, English' }).click();
-	await expect(page.locator('footer')).toHaveText('No account, no tracking.');
+	await expect(page.locator('footer')).toContainText('No account, no tracking.');
 });
 
 test.describe('the phone menu', () => {

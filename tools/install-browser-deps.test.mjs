@@ -75,14 +75,17 @@ const calls = (env) =>
 	existsSync(env.log) ? readFileSync(env.log, 'utf8').trim().split('\n') : [];
 const installs = (env) => calls(env).filter((c) => c.startsWith('apt-get install'));
 
-test('nothing is installed when Playwright says that nothing is missing', () => {
+// The bash script targets apt-get on Ubuntu CI runners; skip on non-Linux developer machines.
+const it = (name, fn) => test(name, { skip: process.platform !== 'linux' }, fn);
+
+it('nothing is installed when Playwright says that nothing is missing', () => {
 	const env = setup({ missing: [] });
 	const result = run(env);
 	assert.equal(result.status, 0, result.stdout + result.stderr);
 	assert.equal(installs(env).length, 0);
 });
 
-test('what is missing is installed, once, without the recommended packages', () => {
+it('what is missing is installed, once, without the recommended packages', () => {
 	const env = setup({ fastFrom: 1 });
 	const result = run(env);
 	assert.equal(result.status, 0, result.stdout + result.stderr);
@@ -91,7 +94,7 @@ test('what is missing is installed, once, without the recommended packages', () 
 	assert.match(readFileSync(env.sources, 'utf8'), /mirror\+file:/);
 });
 
-test('a slow try is given up, and the next one uses the main Ubuntu archive', () => {
+it('a slow try is given up, and the next one uses the main Ubuntu archive', () => {
 	const env = setup({ fastFrom: 2 });
 	const result = run(env);
 	assert.equal(result.status, 0, result.stdout + result.stderr);
@@ -102,13 +105,13 @@ test('a slow try is given up, and the next one uses the main Ubuntu archive', ()
 	assert.doesNotMatch(sources, /mirror\+file:/);
 });
 
-test('the index of the packages is updated before each try', () => {
+it('the index of the packages is updated before each try', () => {
 	const env = setup({ fastFrom: 2 });
 	run(env);
 	assert.equal(calls(env).filter((c) => c.startsWith('apt-get update')).length >= 2, true);
 });
 
-test('when every try is slow it fails, after three tries, and does not hang', () => {
+it('when every try is slow it fails, after three tries, and does not hang', () => {
 	const env = setup({ fastFrom: 99 });
 	const result = run(env);
 	assert.equal(result.status, 1, result.stdout + result.stderr);
@@ -117,7 +120,7 @@ test('when every try is slow it fails, after three tries, and does not hang', ()
 	assert.ok(result.seconds < 30, `it took ${result.seconds} seconds`);
 });
 
-test('an apt that ignores the polite stop is killed after a short wait', () => {
+it('an apt that ignores the polite stop is killed after a short wait', () => {
 	const env = setup({ fastFrom: 2, stubborn: true });
 	const result = run(env);
 	assert.equal(result.status, 0, result.stdout + result.stderr);

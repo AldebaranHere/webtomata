@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import '#lib/styles/base.css';
 	import SiteHeader from '#lib/components/SiteHeader.svelte';
+	import SiteFooter from '#lib/components/SiteFooter.svelte';
 	import { loadLocale, t } from '#lib/i18n/index.svelte.ts';
 
 	let { children } = $props();
@@ -22,9 +23,7 @@
 		{@render children()}
 	</main>
 	{#if !app}
-		<footer>
-			<p>{t('app.privacy')}</p>
-		</footer>
+		<SiteFooter />
 	{/if}
 </div>
 
@@ -62,15 +61,5 @@
 	}
 	main:focus {
 		outline: none;
-	}
-	footer {
-		padding: var(--space-4);
-		border-top: 1px solid var(--color-border);
-		background: var(--color-surface);
-		color: var(--color-muted);
-		font-size: var(--text-sm);
-	}
-	footer p {
-		margin: 0;
 	}
 </style>

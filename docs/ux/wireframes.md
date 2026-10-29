@@ -126,4 +126,17 @@ The list `/panduan` and the guide page `/panduan/[id]` match `guides-laptop.png`
   - **Laptop.** Sticky left table-of-contents sidebar (`Di halaman ini`) listing the guide's sections plus `Soal terkait` when matching questions exist, and a 68-ch reading column with breadcrumbs (`Panduan › <Topik>`), meta row (`<Topik> · <n> menit baca · <Referensi>`), `<h1>`, lead paragraph, numbered/headed sections, `Soal terkait` card linking to `/soal/<id>` for every question whose `pattern === guide.id`, and a previous/next guide pager at the bottom.
   - **Phone.** Under 60 rem, the sidebar hides and a top bar shows `← Semua panduan` and an `Isi ▾` button (`aria-expanded`, 44 px) that toggles a dropdown menu of section links (closing on link click or `Escape`).
 - **Question → Guide link.** On `/soal/[id]`, when a guide with `id === question.pattern` exists, `Pola: <pattern>` in the meta line links to `/panduan/<pattern>`.
-- **SEO & sharing.** Every route sets Open Graph `<meta property="og:*">` tags (`og:title`, `og:description`, `og:type`, `og:locale`), and `/sitemap.xml` is prerendered at build time with `/`, `/sandbox`, `/soal`, `/panduan`, every `/soal/<id>`, and every `/panduan/<id>`.
+- **SEO & sharing.** Every route sets Open Graph `<meta property="og:*">` tags (`og:title`, `og:description`, `og:type`, `og:locale`), and `/sitemap.xml` is prerendered at build time with `/`, `/sandbox`, `/soal`, `/panduan`, `/tentang`, every `/soal/<id>`, and every `/panduan/<id>`.
+
+## About page and footer (D1, 2026-10-29)
+
+The `/tentang` page and the site footer (`SiteFooter.svelte`) provide project identity, textbook and notation alignment, privacy commitments, open-source licenses, and reporting links.
+
+- **The `/tentang` page.** Prerendered static page with `<h1>` "Tentang WebTomata", lead summary, and sections for:
+  - What WebTomata is (Indonesian-first interactive FSM learning tool for Theory of Computation).
+  - Textbooks & notation (Elaine Rich default, Michael Sipser cross-references).
+  - Privacy commitment ("Tanpa akun, tanpa pelacakan"; 100% in-browser client execution with WebAssembly; no cookies, tracking scripts, or telemetry).
+  - Licenses (AGPL-3.0 for software source code, CC BY-SA 4.0 for educational content in `content/`).
+  - Academic integrity (original pattern-based problems, never copied from active course homework/exams).
+  - Bug reporting (links to GitHub repository, issues, and contributing guide).
+- **The site footer (`SiteFooter.svelte`).** Rendered on all document/prose routes (`/`, `/soal`, `/panduan`, `/panduan/[id]`, `/tentang`). Displays WebTomata branding, tagline, links to `/tentang` and GitHub, and license/privacy notices. Full-screen canvas apps (`/sandbox` and `/soal/[id]`) omit the footer to preserve full-height `100dvh` workspace, with `/tentang` linked in the `<SiteHeader>` navigation and phone drawer menu.

@@ -12,6 +12,7 @@ export const en: Record<MessageKey, string> = {
 	'nav.sandbox': 'Sandbox',
 	'nav.soal': 'Questions',
 	'nav.panduan': 'Guides',
+	'nav.tentang': 'About',
 
 	'lang.label': 'Language',
 	'lang.id': 'ID',
@@ -786,6 +787,37 @@ export const en: Record<MessageKey, string> = {
 		'Through the machine the expression has {machine_size} parts; your own expression, simplified, has {original_size} parts. So the plain Simplify result is used.',
 	'via_machine.too_big':
 		'The machine is too big to process here. So the plain Simplify result is used.',
+
+	'footer.tagline': 'Free, open-source interactive finite automata learning tool.',
+	'footer.about': 'About',
+	'footer.code_license': 'Code: AGPL-3.0',
+	'footer.content_license': 'Content: CC BY-SA 4.0',
+	'footer.github': 'GitHub',
+
+	'tentang.title': 'About WebTomata',
+	'tentang.description':
+		'WebTomata is an interactive finite state machine learning tool for Theory of Computation students. Free, open source, no accounts, and no tracking.',
+	'tentang.what_title': 'What is WebTomata?',
+	'tentang.what_body':
+		'WebTomata is an interactive web platform for learning finite state automata and regular languages. Designed for Theory of Computation (ToC) students, it helps students design machines, simulate strings, convert and minimize automata, and practice exercise questions with instant, step-by-step feedback.',
+	'tentang.textbooks_title': 'Textbooks and references',
+	'tentang.textbooks_body':
+		'By default, WebTomata follows the notation and conventions of Elaine Rich (Automata, Computability and Complexity). Guides and questions also cross-reference Michael Sipser (Introduction to the Theory of Computation). Every question and guide cites its corresponding textbook sections.',
+	'tentang.privacy_title': 'Privacy commitment',
+	'tentang.privacy_body':
+		'No accounts and no tracking. All computations, conversions, simulations, and grading algorithms run entirely inside your browser using WebAssembly. There are no third-party trackers, no session replays, and no user data stored on any server.',
+	'tentang.license_title': 'Licenses and open source',
+	'tentang.license_body':
+		'The WebTomata source code is licensed under the GNU AGPL-3.0 license. All practice questions and design pattern guides are licensed under Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0). You are free to study, adapt, and contribute back with attribution.',
+	'tentang.integrity_title': 'Academic integrity',
+	'tentang.integrity_body':
+		'WebTomata is built for independent learning. Exercise questions focus on general design patterns and are never copied or paraphrased from active course homework, quizzes, or exams.',
+	'tentang.bugs_title': 'Reporting issues and feedback',
+	'tentang.bugs_body':
+		'Found an incorrect verdict, confusing phrasing, or an issue in your browser? You can report bugs or propose improvements through GitHub.',
+	'tentang.link_github': 'GitHub Repository',
+	'tentang.link_issues': 'Report a bug or wrong answer',
+	'tentang.link_contributing': 'Contribution Guide',
 
 	'page.soon': 'Coming soon.',
 	'page.home': 'Back to home'
