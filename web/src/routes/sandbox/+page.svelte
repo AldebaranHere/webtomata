@@ -3,7 +3,6 @@
 	import type { Component } from 'svelte';
 	import Editor from '#lib/editor/Editor.svelte';
 	import Toast from '#lib/editor/Toast.svelte';
-	import LanguageWorkstation from '#lib/language/LanguageWorkstation.svelte';
 	import { createDocument } from '#lib/editor/document.ts';
 	import type { MachineDocument } from '#lib/editor/document.ts';
 	import { decodeLink, linkFragment } from '#lib/share/link.ts';
@@ -26,6 +25,15 @@
 	let editor = $state<Editor | undefined>();
 	let skipped = $state(true);
 	let activeMode = $state<'fsm' | 'language'>('fsm');
+
+	let LanguageWorkstation = $state<Component | null>(null);
+	$effect(() => {
+		if (activeMode === 'language' && !LanguageWorkstation) {
+			void import('#lib/language/LanguageWorkstation.svelte').then(
+				(module) => (LanguageWorkstation = module.default)
+			);
+		}
+	});
 
 	// A link of a shared machine (`#m1=...`) opens as a machine of its own, never over the one of the
 	// student, and the address is cleaned so that a reload does not open it again.
@@ -253,7 +261,11 @@
 </div>
 
 {#if activeMode === 'language'}
-	<LanguageWorkstation />
+	{#if LanguageWorkstation}
+		<LanguageWorkstation />
+	{:else}
+		<div class="frame" aria-busy="true"></div>
+	{/if}
 {:else if library.current}
 	{#key library.current.key}
 		<Editor
