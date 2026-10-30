@@ -4,14 +4,7 @@
 	import { t, getLocale } from '#lib/i18n/index.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
 	import LanguageMathDisplay from './LanguageMathDisplay.svelte';
-
-	interface PresetLanguage {
-		id: string;
-		name: string;
-		formula: string;
-		descriptionId: string;
-		descriptionEn: string;
-	}
+	import { PRESETS, type PresetLanguage } from './presets.ts';
 
 	interface QuickSymbol {
 		label: string;
@@ -73,79 +66,6 @@
 
 	const defaultAlphabet = 'a, b';
 
-	const PRESETS: PresetLanguage[] = [
-		{
-			id: 'L1',
-			name: 'L1: Konkatenasi Himpunan Hingga',
-			formula: '{bb, aac}{ca, ab}{ab, a, cac}',
-			descriptionId: 'Konkatenasi 3 himpunan kata hingga',
-			descriptionEn: 'Concatenation of 3 finite sets of words'
-		},
-		{
-			id: 'L2',
-			name: 'L2: Konkatenasi Himpunan Hingga',
-			formula: '{bb, aac}{ab, a, cac}{ac, bc}',
-			descriptionId: 'Konkatenasi 3 himpunan kata hingga',
-			descriptionEn: 'Concatenation of 3 finite sets of words'
-		},
-		{
-			id: 'L3',
-			name: 'L3: Konkatenasi Himpunan Hingga',
-			formula: '{cc, ba}{bb, aac}{ab, a, cac}',
-			descriptionId: 'Konkatenasi 3 himpunan kata hingga',
-			descriptionEn: 'Concatenation of 3 finite sets of words'
-		},
-		{
-			id: 'L4',
-			name: 'L4: Kleene Plus & Selisih Star',
-			formula: '{a, abb}+ - {aab}*',
-			descriptionId: 'Himpunan {a, abb}+ dikurangi {aab}*',
-			descriptionEn: 'Set {a, abb}+ minus {aab}*'
-		},
-		{
-			id: 'L5',
-			name: 'L5: Irisan & Gabungan Star',
-			formula: '{ba, ab}+ ∩ ({ab}* ∪ {ba}*)',
-			descriptionId: 'Irisan plus dengan gabungan star',
-			descriptionEn: 'Intersection of plus with union of stars'
-		},
-		{
-			id: 'L6',
-			name: 'L6: Beda Simetris (XOR)',
-			formula: '{b, bab}+ ⊕ {abb}*',
-			descriptionId: 'Beda simetris (hanya ada di satu himpunan)',
-			descriptionEn: 'Symmetric difference (in exactly one set)'
-		},
-		{
-			id: 'L7',
-			name: 'L7: Modulo Hitungan #a(w) mod 3 = 0',
-			formula: '{ w in {a, b}* : #a(w) mod 3 = 0 }',
-			descriptionId: 'Jumlah a adalah kelipatan 3',
-			descriptionEn: 'Number of a is a multiple of 3'
-		},
-		{
-			id: 'L8',
-			name: 'L8: Modulo Hitungan #a(w) mod 4 = 1',
-			formula: '{ w in {a, b}* : #a(w) mod 4 = 1 }',
-			descriptionId: 'Jumlah a bersisa 1 jika dibagi 4',
-			descriptionEn: 'Number of a has remainder 1 modulo 4'
-		},
-		{
-			id: 'L9',
-			name: 'L9: Modulo Hitungan #a(w) mod 5 = 2',
-			formula: '{ w in {a, b}* : #a(w) mod 5 = 2 }',
-			descriptionId: 'Jumlah a bersisa 2 jika dibagi 5',
-			descriptionEn: 'Number of a has remainder 2 modulo 5'
-		},
-		{
-			id: 'L15',
-			name: 'L15: Invarian Awalan ∀v ∈ prefix(w)',
-			formula: '{ w in {a, b}* : ∀v ∈ prefix(w). (#a(v) >= 2#b(v)), |w| >= 3 }',
-			descriptionId: 'Pada setiap awalan v, #a(v) minimal dua kali #b(v)',
-			descriptionEn: 'For every prefix v, #a(v) is at least twice #b(v)'
-		}
-	];
-
 	interface CustomLanguage {
 		id: string;
 		name: string;
@@ -153,11 +73,12 @@
 	}
 
 	const CUSTOM_STORAGE_KEY = 'webtomata.language.custom';
+	const SELECTED_ID_KEY = 'webtomata.language.selected_id';
 	const LIBRARY_WIDTH_KEY = 'webtomata.language.col1_width';
 
 	let customLanguages = $state<CustomLanguage[]>([]);
 	let selectedId = $state<string>('L1');
-	let expression = $state<string>(PRESETS[0]!.formula);
+	let expression = $state<string>(PRESETS[0]?.formula ?? '');
 
 	let libraryWidth = $state<number>(280);
 	let workstationRef = $state<HTMLDivElement | null>(null);
@@ -166,7 +87,6 @@
 	let maxCount = $state<number>(10);
 	let emptySymbol = $state<'^' | 'ε'>('^');
 
-	let isLegendOpen = $state<boolean>(false);
 	let isEvaluating = $state<boolean>(false);
 	let errorMessage = $state<string | null>(null);
 	let results = $state<string[]>([]);
@@ -175,6 +95,10 @@
 	let copyTimer: ReturnType<typeof setTimeout> | undefined;
 
 	let textareaRef = $state<HTMLTextAreaElement | null>(null);
+
+	function cleanTitle(name: string): string {
+		return name.replace(/^[A-Za-z0-9]+:\s*/, '');
+	}
 
 	onMount(() => {
 		try {
@@ -188,8 +112,20 @@
 			const savedWidth = localStorage.getItem(LIBRARY_WIDTH_KEY);
 			if (savedWidth) {
 				const w = Number(savedWidth);
-				if (w >= 220 && w <= 550) {
+				if (w >= 200 && w <= 700) {
 					libraryWidth = w;
+				}
+			}
+			const savedSelected = localStorage.getItem(SELECTED_ID_KEY);
+			if (savedSelected) {
+				const foundCustom = customLanguages.find((c) => c.id === savedSelected);
+				const foundPreset = PRESETS.find((p) => p.id === savedSelected);
+				if (foundCustom) {
+					selectedId = foundCustom.id;
+					expression = foundCustom.formula;
+				} else if (foundPreset) {
+					selectedId = foundPreset.id;
+					expression = foundPreset.formula;
 				}
 			}
 		} catch {
@@ -208,21 +144,20 @@
 	}
 
 	function startLibraryResize(event: PointerEvent) {
-		const target = event.currentTarget as HTMLElement;
-		target.setPointerCapture(event.pointerId);
-
+		event.preventDefault();
 		const onPointerMove = (e: PointerEvent) => {
 			if (!workstationRef) return;
 			const rect = workstationRef.getBoundingClientRect();
-			const newWidth = Math.max(220, Math.min(550, e.clientX - rect.left));
+			const newWidth = Math.max(200, Math.min(700, e.clientX - rect.left));
 			libraryWidth = newWidth;
 		};
 
-		const onPointerUp = (e: PointerEvent) => {
-			target.releasePointerCapture(e.pointerId);
-			target.removeEventListener('pointermove', onPointerMove);
-			target.removeEventListener('pointerup', onPointerUp);
-			target.removeEventListener('pointercancel', onPointerUp);
+		const onPointerUp = () => {
+			window.removeEventListener('pointermove', onPointerMove);
+			window.removeEventListener('pointerup', onPointerUp);
+			window.removeEventListener('pointercancel', onPointerUp);
+			document.body.style.cursor = '';
+			document.body.style.userSelect = '';
 			try {
 				localStorage.setItem(LIBRARY_WIDTH_KEY, String(libraryWidth));
 			} catch {
@@ -230,21 +165,23 @@
 			}
 		};
 
-		target.addEventListener('pointermove', onPointerMove);
-		target.addEventListener('pointerup', onPointerUp);
-		target.addEventListener('pointercancel', onPointerUp);
+		window.addEventListener('pointermove', onPointerMove);
+		window.addEventListener('pointerup', onPointerUp);
+		window.addEventListener('pointercancel', onPointerUp);
+		document.body.style.cursor = 'col-resize';
+		document.body.style.userSelect = 'none';
 	}
 
 	function handleSplitterKeydown(event: KeyboardEvent) {
 		if (event.key === 'ArrowLeft') {
-			libraryWidth = Math.max(220, libraryWidth - 16);
+			libraryWidth = Math.max(200, libraryWidth - 16);
 			try {
 				localStorage.setItem(LIBRARY_WIDTH_KEY, String(libraryWidth));
 			} catch {
 				// ignore
 			}
 		} else if (event.key === 'ArrowRight') {
-			libraryWidth = Math.min(550, libraryWidth + 16);
+			libraryWidth = Math.min(700, libraryWidth + 16);
 			try {
 				localStorage.setItem(LIBRARY_WIDTH_KEY, String(libraryWidth));
 			} catch {
@@ -420,7 +357,7 @@
 						>
 							<div class="item-head">
 								<span class="item-id">{preset.id}</span>
-								<span class="item-name">{preset.name}</span>
+								<span class="item-name">{cleanTitle(preset.name)}</span>
 							</div>
 							<div class="item-formula">{preset.formula}</div>
 							<div class="item-desc">
@@ -448,7 +385,7 @@
 							>
 								<div class="item-head">
 									<span class="item-id">{custom.id}</span>
-									<span class="item-name">{custom.name}</span>
+									<span class="item-name">{cleanTitle(custom.name)}</span>
 									<button
 										type="button"
 										class="btn-delete-custom"
@@ -491,8 +428,8 @@
 		aria-orientation="vertical"
 		aria-label={t('language.resize_library_aria')}
 		aria-valuenow={libraryWidth}
-		aria-valuemin={220}
-		aria-valuemax={550}
+		aria-valuemin={200}
+		aria-valuemax={700}
 		onpointerdown={startLibraryResize}
 		onkeydown={handleSplitterKeydown}
 		ondblclick={() => {
@@ -588,42 +525,31 @@
 				</div>
 			{/if}
 
-			<!-- Collapsible Notation Legend / Definition Map -->
+			<!-- Notation Legend / Definition Map -->
 			<div class="legend-card">
-				<button
-					type="button"
-					class="legend-toggle"
-					onclick={() => (isLegendOpen = !isLegendOpen)}
-					aria-expanded={isLegendOpen}
-				>
+				<div class="legend-header">
 					<span class="legend-title">{t('language.legend_title')}</span>
-					<span class="legend-arrow"
-						>{isLegendOpen ? t('language.legend_hide') : t('language.legend_show')}</span
-					>
-				</button>
-
-				{#if isLegendOpen}
-					<div class="legend-content">
-						<table class="legend-table">
-							<thead>
+				</div>
+				<div class="legend-content">
+					<table class="legend-table">
+						<thead>
+							<tr>
+								<th>{t('language.legend_col_symbol')}</th>
+								<th>{t('language.legend_col_meaning')}</th>
+								<th>{t('language.legend_col_example')}</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each LEGEND_ENTRIES as entry (entry.symbol)}
 								<tr>
-									<th>{t('language.legend_col_symbol')}</th>
-									<th>{t('language.legend_col_meaning')}</th>
-									<th>{t('language.legend_col_example')}</th>
+									<td><code>{entry.symbol}</code></td>
+									<td>{t(entry.meaningKey)}</td>
+									<td><code>{entry.example}</code></td>
 								</tr>
-							</thead>
-							<tbody>
-								{#each LEGEND_ENTRIES as entry (entry.symbol)}
-									<tr>
-										<td><code>{entry.symbol}</code></td>
-										<td>{t(entry.meaningKey)}</td>
-										<td><code>{entry.example}</code></td>
-									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</div>
-				{/if}
+							{/each}
+						</tbody>
+					</table>
+				</div>
 			</div>
 		</div>
 	</section>
@@ -706,9 +632,7 @@
 							<li class="string-row">
 								<span class="row-num">{i + 1}.</span>
 								<code class="word-text">{formatDisplayString(word)}</code>
-								<span class="len-badge"
-									>{t('language.length_badge', { len: String(word.length) })}</span
-								>
+								<span class="len-badge">{word.length}</span>
 							</li>
 						{/each}
 					</ol>
@@ -721,7 +645,7 @@
 <style>
 	.workstation {
 		display: grid;
-		grid-template-columns: var(--library-width, 280px) 6px 1fr 340px;
+		grid-template-columns: var(--library-width, 280px) 8px 1fr 340px;
 		height: calc(100dvh - 56px);
 		background: var(--color-ground);
 		color: var(--color-ink);
@@ -738,7 +662,7 @@
 	}
 
 	.splitter {
-		width: 6px;
+		width: 8px;
 		cursor: col-resize;
 		background: transparent;
 		position: relative;
@@ -1056,29 +980,25 @@
 		overflow: hidden;
 	}
 
-	.legend-toggle {
-		width: 100%;
+	.legend-header {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		padding: var(--space-3);
+		padding: var(--space-2) var(--space-3);
 		background: var(--color-ground);
-		border: none;
-		cursor: pointer;
+		border-bottom: 1px solid var(--color-border);
 		font-size: var(--text-xs);
 		font-weight: var(--weight-strong);
 		color: var(--color-ink);
 	}
 
-	.legend-toggle:hover {
-		background: var(--color-accent-tint);
-		color: var(--color-accent-ink);
+	.legend-title {
+		font-size: var(--text-xs);
+		font-weight: var(--weight-strong);
+		color: var(--color-ink);
 	}
 
 	.legend-content {
 		padding: var(--space-3);
-		max-height: 220px;
-		overflow-y: auto;
 		overflow-x: auto;
 	}
 

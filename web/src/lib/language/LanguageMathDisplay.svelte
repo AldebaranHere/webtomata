@@ -1,90 +1,147 @@
 <script lang="ts">
-	import { formatLanguageMathTokens } from './language-math.ts';
+	import { parseMathNodes } from './language-math.ts';
 
 	let { expression, targetId = '' }: { expression: string; targetId?: string } = $props();
 
-	const tokens = $derived(formatLanguageMathTokens(expression));
+	const nodes = $derived(parseMathNodes(expression));
 	const targetLetter = $derived(targetId.match(/^[A-Za-z]+/)?.[0] ?? '');
 	const targetSub = $derived(targetId.replace(/^[A-Za-z]+_?/, ''));
 </script>
 
-<div class="math-display">
-	{#if targetLetter}
-		<span class="math-target">
-			<em>{targetLetter}</em>{#if targetSub}<sub>{targetSub}</sub>{/if}
-			<span class="math-eq">=</span>
-		</span>
-	{/if}
-	<span class="math-expr">
-		{#each tokens as token, i (i)}
-			{#if token.kind === 'ident'}
-				<em>{token.letter}</em>{#if token.sub}<sub>{token.sub}</sub>{/if}
-			{:else if token.kind === 'sup'}
-				<sup>{token.text}</sup>
-			{:else if token.kind === 'op'}
-				<span class="math-op">{token.text}</span>
-			{:else if token.kind === 'symbol'}
-				<span class="math-sym">{token.text}</span>
+<div class="math-container">
+	<math display="inline" class="latex-math">
+		{#if targetLetter}
+			{#if targetSub}
+				<msub><mi>{targetLetter}</mi><mn>{targetSub}</mn></msub>
 			{:else}
-				<span>{token.text}</span>
+				<mi>{targetLetter}</mi>
+			{/if}
+			<mo>=</mo>
+		{/if}
+
+		{#each nodes as node, i (i)}
+			{#if node.kind === 'var'}
+				{#if node.sub && node.sup}
+					<msubsup><mi>{node.base}</mi><mn>{node.sub}</mn><mo>{node.sup}</mo></msubsup>
+				{:else if node.sub}
+					<msub><mi>{node.base}</mi><mn>{node.sub}</mn></msub>
+				{:else if node.sup}
+					<msup><mi>{node.base}</mi><mo>{node.sup}</mo></msup>
+				{:else}
+					<mi>{node.base}</mi>
+				{/if}
+			{:else if node.kind === 'group'}
+				{#if node.sup}
+					<msup>
+						<mrow>
+							<mo>(</mo>
+							{#each node.inner as innerNode, j (j)}
+								{#if innerNode.kind === 'var'}
+									{#if innerNode.sub && innerNode.sup}
+										<msubsup
+											><mi>{innerNode.base}</mi><mn>{innerNode.sub}</mn><mo>{innerNode.sup}</mo
+											></msubsup
+										>
+									{:else if innerNode.sub}
+										<msub><mi>{innerNode.base}</mi><mn>{innerNode.sub}</mn></msub>
+									{:else if innerNode.sup}
+										<msup><mi>{innerNode.base}</mi><mo>{innerNode.sup}</mo></msup>
+									{:else}
+										<mi>{innerNode.base}</mi>
+									{/if}
+								{:else if innerNode.kind === 'op'}
+									<mo>{innerNode.text}</mo>
+								{:else if innerNode.kind === 'set'}
+									<mrow><mo>&#123;</mo><mtext>{innerNode.text}</mtext><mo>&#125;</mo></mrow>
+								{:else if innerNode.kind === 'symbol'}
+									<mi>{innerNode.text}</mi>
+								{:else if innerNode.kind === 'text'}
+									<mtext>{innerNode.text}</mtext>
+								{/if}
+							{/each}
+							<mo>)</mo>
+						</mrow>
+						<mo>{node.sup}</mo>
+					</msup>
+				{:else}
+					<mrow>
+						<mo>(</mo>
+						{#each node.inner as innerNode, j (j)}
+							{#if innerNode.kind === 'var'}
+								{#if innerNode.sub && innerNode.sup}
+									<msubsup
+										><mi>{innerNode.base}</mi><mn>{innerNode.sub}</mn><mo>{innerNode.sup}</mo
+										></msubsup
+									>
+								{:else if innerNode.sub}
+									<msub><mi>{innerNode.base}</mi><mn>{innerNode.sub}</mn></msub>
+								{:else if innerNode.sup}
+									<msup><mi>{innerNode.base}</mi><mo>{innerNode.sup}</mo></msup>
+								{:else}
+									<mi>{innerNode.base}</mi>
+								{/if}
+							{:else if innerNode.kind === 'op'}
+								<mo>{innerNode.text}</mo>
+							{:else if innerNode.kind === 'set'}
+								<mrow><mo>&#123;</mo><mtext>{innerNode.text}</mtext><mo>&#125;</mo></mrow>
+							{:else if innerNode.kind === 'symbol'}
+								<mi>{innerNode.text}</mi>
+							{:else if innerNode.kind === 'text'}
+								<mtext>{innerNode.text}</mtext>
+							{/if}
+						{/each}
+						<mo>)</mo>
+					</mrow>
+				{/if}
+			{:else if node.kind === 'set'}
+				{#if node.sup}
+					<msup
+						><mrow><mo>&#123;</mo><mtext>{node.text}</mtext><mo>&#125;</mo></mrow><mo>{node.sup}</mo
+						></msup
+					>
+				{:else}
+					<mrow><mo>&#123;</mo><mtext>{node.text}</mtext><mo>&#125;</mo></mrow>
+				{/if}
+			{:else if node.kind === 'op'}
+				<mo>{node.text}</mo>
+			{:else if node.kind === 'symbol'}
+				<mi>{node.text}</mi>
+			{:else}
+				<mtext>{node.text}</mtext>
 			{/if}
 		{/each}
-	</span>
+	</math>
 </div>
 
 <style>
-	.math-display {
+	.math-container {
+		display: block;
+		overflow-x: auto;
+		padding: var(--space-1) 0;
+	}
+
+	.latex-math {
 		font-family: var(--font-math);
-		font-size: var(--text-base);
+		font-size: var(--text-lg);
 		color: var(--color-ink);
-		display: inline-flex;
-		align-items: baseline;
-		flex-wrap: wrap;
 		letter-spacing: 0.02em;
 		user-select: text;
-		line-height: 1.5;
 	}
 
-	.math-target {
-		display: inline-flex;
-		align-items: baseline;
-	}
-
-	.math-eq {
-		margin-left: 0.3em;
-		margin-right: 0.3em;
-	}
-
-	.math-expr {
-		display: inline-flex;
-		align-items: baseline;
-		flex-wrap: wrap;
-	}
-
-	em {
+	.latex-math mi {
 		font-style: italic;
 		font-family: var(--font-math);
 	}
 
-	sub {
-		font-size: 0.72em;
-		vertical-align: sub;
-		line-height: 0;
-		margin-left: 0.05em;
+	.latex-math mo {
+		font-family: var(--font-math);
 	}
 
-	sup {
-		font-size: 0.72em;
-		vertical-align: super;
-		line-height: 0;
-		margin-left: 0.05em;
+	.latex-math mn {
+		font-family: var(--font-math);
 	}
 
-	.math-op {
-		margin: 0 0.28em;
-	}
-
-	.math-sym {
-		margin: 0 0.05em;
+	.latex-math mtext {
+		font-family: var(--font-math);
 	}
 </style>

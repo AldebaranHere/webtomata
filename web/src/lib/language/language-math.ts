@@ -1,119 +1,249 @@
-export interface MathToken {
-	kind: 'ident' | 'sup' | 'op' | 'symbol' | 'text';
-	text: string;
-	letter?: string;
+export type MathNode =
+	| { kind: 'var'; base: string; sub?: string; sup?: string }
+	| { kind: 'group'; inner: MathNode[]; sup?: string }
+	| { kind: 'set'; text: string; sup?: string }
+	| { kind: 'op'; text: string }
+	| { kind: 'symbol'; text: string }
+	| { kind: 'text'; text: string };
+
+/**
+ * Parses a formal language formula into structured mathematical nodes
+ * for native MathML rendering (subscripts, superscripts, stacked sub/sup, sets).
+ */
+export function parseMathNodes(formula: string): MathNode[] {
+	const rawTokens = tokenize(formula);
+	const nodes: MathNode[] = [];
+	let i = 0;
+
+	while (i < rawTokens.length) {
+		const token = rawTokens[i]!;
+
+		// Parenthesized group: ( ... )
+		if (token.type === 'paren_open') {
+			i++;
+			const innerTokens: RawToken[] = [];
+			let depth = 1;
+			while (i < rawTokens.length) {
+				const curr = rawTokens[i]!;
+				if (curr.type === 'paren_open') {
+					depth++;
+					innerTokens.push(curr);
+				} else if (curr.type === 'paren_close') {
+					depth--;
+					if (depth === 0) {
+						i++;
+						break;
+					}
+					innerTokens.push(curr);
+				} else {
+					innerTokens.push(curr);
+				}
+				i++;
+			}
+			const innerNodes = buildNodesFromTokens(innerTokens);
+			// Check if group is followed by a superscript (e.g. (L6)^R, (L1 U L2)*)
+			let sup: string | undefined;
+			if (i < rawTokens.length && rawTokens[i]!.type === 'sup') {
+				sup = rawTokens[i]!.value;
+				i++;
+			}
+			nodes.push({ kind: 'group', inner: innerNodes, sup });
+			continue;
+		}
+
+		// Finite set: { ... }
+		if (token.type === 'set') {
+			let sup: string | undefined;
+			i++;
+			if (i < rawTokens.length && rawTokens[i]!.type === 'sup') {
+				sup = rawTokens[i]!.value;
+				i++;
+			}
+			nodes.push({ kind: 'set', text: token.value, sup });
+			continue;
+		}
+
+		// Language variable: L1, L15, C2, etc.
+		if (token.type === 'var') {
+			let sup: string | undefined;
+			i++;
+			if (i < rawTokens.length && rawTokens[i]!.type === 'sup') {
+				sup = rawTokens[i]!.value;
+				i++;
+			}
+			nodes.push({
+				kind: 'var',
+				base: token.base ?? token.value,
+				sub: token.sub,
+				sup
+			});
+			continue;
+		}
+
+		// Operators: ∪, ∩, -, ⊕, ∈, etc.
+		if (token.type === 'op') {
+			nodes.push({ kind: 'op', text: token.value });
+			i++;
+			continue;
+		}
+
+		// Special symbols: ε, ∅
+		if (token.type === 'symbol') {
+			nodes.push({ kind: 'symbol', text: token.value });
+			i++;
+			continue;
+		}
+
+		// Plain text / punctuation / numbers
+		nodes.push({ kind: 'text', text: token.value });
+		i++;
+	}
+
+	return nodes;
+}
+
+interface RawToken {
+	type: 'var' | 'op' | 'set' | 'paren_open' | 'paren_close' | 'sup' | 'symbol' | 'text';
+	value: string;
+	base?: string;
 	sub?: string;
 }
 
-/**
- * Tokenizes a formal language expression into mathematical presentation tokens.
- * Handles:
- * - Language identifiers with subscripts: L1 -> L_1, L15 -> L_15, C2 -> C_2
- * - Exponents/powers: ^3, ^2, ^R, *, + -> superscripts
- * - Operators: ∪, ∩, -, ⊕ with mathematical spacing
- * - Math replacements: 'in' -> '∈', '-' -> '−'
- */
-export function formatLanguageMathTokens(formula: string): MathToken[] {
-	const tokens: MathToken[] = [];
+function tokenize(formula: string): RawToken[] {
+	const tokens: RawToken[] = [];
 	let i = 0;
 	const len = formula.length;
 
 	while (i < len) {
 		const ch = formula[i]!;
 
-		// Skip whitespace, but keep a single space around tokens if needed
 		if (/\s/u.test(ch)) {
 			i++;
 			continue;
 		}
 
-		// Superscript caret: ^3, ^2, ^R, ^k
+		if (ch === '(') {
+			tokens.push({ type: 'paren_open', value: '(' });
+			i++;
+			continue;
+		}
+
+		if (ch === ')') {
+			tokens.push({ type: 'paren_close', value: ')' });
+			i++;
+			continue;
+		}
+
+		// Finite set: { ... }
+		if (ch === '{') {
+			i++;
+			let content = '';
+			let depth = 1;
+			while (i < len) {
+				const c = formula[i]!;
+				if (c === '{') {
+					depth++;
+					content += c;
+				} else if (c === '}') {
+					depth--;
+					if (depth === 0) {
+						i++;
+						break;
+					}
+					content += c;
+				} else {
+					content += c;
+				}
+				i++;
+			}
+			tokens.push({ type: 'set', value: content.trim() });
+			continue;
+		}
+
+		// Caret superscript: ^3, ^2, ^R, ^k, ^{...}
 		if (ch === '^') {
 			i++;
-			let exp = '';
+			let sup = '';
 			if (i < len && formula[i] === '{') {
-				i++; // skip '{'
+				i++;
 				while (i < len && formula[i] !== '}') {
-					exp += formula[i];
+					sup += formula[i];
 					i++;
 				}
 				if (i < len && formula[i] === '}') i++;
 			} else if (i < len && /[0-9]/u.test(formula[i]!)) {
-				// Consecutive digits: e.g. ^3, ^12
 				while (i < len && /[0-9]/u.test(formula[i]!)) {
-					exp += formula[i];
+					sup += formula[i];
 					i++;
 				}
 			} else if (i < len && /[a-zA-Z]/u.test(formula[i]!)) {
-				// Single letter exponent: e.g. ^R, ^k
-				exp += formula[i];
+				sup += formula[i];
 				i++;
 			}
-			tokens.push({ kind: 'sup', text: exp });
+			tokens.push({ type: 'sup', value: sup });
 			continue;
 		}
 
-		// Kleene star (*) or Plus (+) as postfix superscript
+		// Kleene Star (*) or Plus (+)
 		if (ch === '*' || (ch === '+' && isPostfixPlus(formula, i))) {
-			tokens.push({ kind: 'sup', text: ch });
+			tokens.push({ type: 'sup', value: ch });
 			i++;
 			continue;
 		}
 
 		// Pre-existing unicode superscript R
 		if (ch === 'ᴿ') {
-			tokens.push({ kind: 'sup', text: 'R' });
+			tokens.push({ type: 'sup', value: 'R' });
 			i++;
 			continue;
 		}
 
 		// Set operators: ∪, ∩, ⊕
 		if (ch === '∪' || ch === '∩' || ch === '⊕') {
-			tokens.push({ kind: 'op', text: ch });
+			tokens.push({ type: 'op', value: ch });
 			i++;
 			continue;
 		}
 
 		// Minus operator: -, –, —
 		if (ch === '-' || ch === '–' || ch === '—') {
-			tokens.push({ kind: 'op', text: '−' });
+			tokens.push({ type: 'op', value: '−' });
 			i++;
 			continue;
 		}
 
-		// Check for keyword operators: UNION, INTERSECT, XOR, MINUS
+		// Keyword operators
 		if (formula.slice(i).toUpperCase().startsWith('UNION')) {
-			tokens.push({ kind: 'op', text: '∪' });
+			tokens.push({ type: 'op', value: '∪' });
 			i += 5;
 			continue;
 		}
 		if (formula.slice(i).toUpperCase().startsWith('INTERSECT')) {
-			tokens.push({ kind: 'op', text: '∩' });
+			tokens.push({ type: 'op', value: '∩' });
 			i += 9;
 			continue;
 		}
 		if (formula.slice(i).toUpperCase().startsWith('XOR')) {
-			tokens.push({ kind: 'op', text: '⊕' });
+			tokens.push({ type: 'op', value: '⊕' });
 			i += 3;
 			continue;
 		}
 		if (formula.slice(i).toUpperCase().startsWith('MINUS')) {
-			tokens.push({ kind: 'op', text: '−' });
+			tokens.push({ type: 'op', value: '−' });
 			i += 5;
 			continue;
 		}
 
-		// Check for word 'in' in set-builder: e.g. "w in {a, b}*"
+		// Set-builder element 'in'
 		if (formula.slice(i, i + 2) === 'in' && isWordBoundary(formula, i, 2)) {
-			tokens.push({ kind: 'op', text: '∈' });
+			tokens.push({ type: 'op', value: '∈' });
 			i += 2;
 			continue;
 		}
 
-		// Language identifiers: L1, L15, C1, C2 (Letter optionally followed by underscore and digits)
+		// Variable identifier: e.g. L1, L15, C2, L_1, L
 		if (/[A-Za-z]/u.test(ch)) {
 			let ident = '';
-			const start = i;
 			while (i < len && /[A-Za-z]/u.test(formula[i]!)) {
 				ident += formula[i];
 				i++;
@@ -132,45 +262,79 @@ export function formatLanguageMathTokens(formula: string): MathToken[] {
 				}
 			}
 
-			// If it has digits, it is a subscripted language variable (e.g. L_1, L_15, C_2)
 			if (sub.length > 0) {
 				tokens.push({
-					kind: 'ident',
-					text: ident + sub,
-					letter: ident,
+					type: 'var',
+					value: ident + sub,
+					base: ident,
 					sub
 				});
 				continue;
 			}
 
-			// Single uppercase letter e.g. A, B, L
 			if (ident.length === 1 && ident === ident.toUpperCase()) {
 				tokens.push({
-					kind: 'ident',
-					text: ident,
-					letter: ident
+					type: 'var',
+					value: ident,
+					base: ident
 				});
 				continue;
 			}
 
-			// Otherwise, plain text word (e.g. mod, prefix, suffix, word)
-			tokens.push({ kind: 'text', text: formula.slice(start, i) });
+			// Plain word (mod, prefix, suffix, etc.)
+			tokens.push({ type: 'text', value: ident });
 			continue;
 		}
 
-		// Special symbols: ε, ∅
+		// Special symbols
 		if (ch === 'ε' || ch === '∅') {
-			tokens.push({ kind: 'symbol', text: ch });
+			tokens.push({ type: 'symbol', value: ch });
 			i++;
 			continue;
 		}
 
-		// Everything else (braces, parens, colons, commas, numbers, letters inside sets)
-		tokens.push({ kind: 'text', text: ch });
+		// Fallback char
+		tokens.push({ type: 'text', value: ch });
 		i++;
 	}
 
 	return tokens;
+}
+
+function buildNodesFromTokens(rawTokens: RawToken[]): MathNode[] {
+	const nodes: MathNode[] = [];
+	let i = 0;
+	while (i < rawTokens.length) {
+		const token = rawTokens[i]!;
+		if (token.type === 'var') {
+			let sup: string | undefined;
+			i++;
+			if (i < rawTokens.length && rawTokens[i]!.type === 'sup') {
+				sup = rawTokens[i]!.value;
+				i++;
+			}
+			nodes.push({
+				kind: 'var',
+				base: token.base ?? token.value,
+				sub: token.sub,
+				sup
+			});
+			continue;
+		}
+		if (token.type === 'op') {
+			nodes.push({ kind: 'op', text: token.value });
+			i++;
+			continue;
+		}
+		if (token.type === 'symbol') {
+			nodes.push({ kind: 'symbol', text: token.value });
+			i++;
+			continue;
+		}
+		nodes.push({ kind: 'text', text: token.value });
+		i++;
+	}
+	return nodes;
 }
 
 function isPostfixPlus(formula: string, idx: number): boolean {

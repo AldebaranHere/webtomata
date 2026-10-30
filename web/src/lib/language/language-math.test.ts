@@ -1,38 +1,49 @@
 import { describe, expect, it } from 'vitest';
-import { formatLanguageMathTokens } from './language-math.ts';
+import { parseMathNodes } from './language-math.ts';
 
-describe('formatLanguageMathTokens', () => {
-	it('formats juxtaposition powers and set difference like L1^3L2^2 - L7*', () => {
-		const tokens = formatLanguageMathTokens('L1^3L2^2 - L7*');
-		expect(tokens).toEqual([
-			{ kind: 'ident', text: 'L1', letter: 'L', sub: '1' },
-			{ kind: 'sup', text: '3' },
-			{ kind: 'ident', text: 'L2', letter: 'L', sub: '2' },
-			{ kind: 'sup', text: '2' },
+describe('parseMathNodes', () => {
+	it('parses L1^3L2^2 - L7* into structured sub/sup nodes', () => {
+		const nodes = parseMathNodes('L1^3L2^2 - L7*');
+		expect(nodes).toEqual([
+			{ kind: 'var', base: 'L', sub: '1', sup: '3' },
+			{ kind: 'var', base: 'L', sub: '2', sup: '2' },
 			{ kind: 'op', text: '−' },
-			{ kind: 'ident', text: 'L7', letter: 'L', sub: '7' },
-			{ kind: 'sup', text: '*' }
+			{ kind: 'var', base: 'L', sub: '7', sup: '*' }
 		]);
 	});
 
-	it('formats juxtaposition concatenation L15L1', () => {
-		const tokens = formatLanguageMathTokens('L15L1');
-		expect(tokens).toEqual([
-			{ kind: 'ident', text: 'L15', letter: 'L', sub: '15' },
-			{ kind: 'ident', text: 'L1', letter: 'L', sub: '1' }
+	it('parses parenthesized powers like (L6)^R L1*', () => {
+		const nodes = parseMathNodes('(L6)^R L1*');
+		expect(nodes).toEqual([
+			{
+				kind: 'group',
+				inner: [{ kind: 'var', base: 'L', sub: '6', sup: undefined }],
+				sup: 'R'
+			},
+			{ kind: 'var', base: 'L', sub: '1', sup: '*' }
 		]);
 	});
 
-	it('formats custom language C2', () => {
-		const tokens = formatLanguageMathTokens('C2');
-		expect(tokens).toEqual([{ kind: 'ident', text: 'C2', letter: 'C', sub: '2' }]);
+	it('parses group union stars like L7* - L8(L1 ∪ L2)*', () => {
+		const nodes = parseMathNodes('L7* - L8(L1 ∪ L2)*');
+		expect(nodes).toEqual([
+			{ kind: 'var', base: 'L', sub: '7', sup: '*' },
+			{ kind: 'op', text: '−' },
+			{ kind: 'var', base: 'L', sub: '8', sup: undefined },
+			{
+				kind: 'group',
+				inner: [
+					{ kind: 'var', base: 'L', sub: '1', sup: undefined },
+					{ kind: 'op', text: '∪' },
+					{ kind: 'var', base: 'L', sub: '2', sup: undefined }
+				],
+				sup: '*'
+			}
+		]);
 	});
 
-	it('formats set operations ∪, ∩, ⊕, ^R', () => {
-		const tokens = formatLanguageMathTokens('{a, b} ∪ {c}^R ∩ {d} ⊕ {e}');
-		expect(tokens.some((t) => t.kind === 'op' && t.text === '∪')).toBe(true);
-		expect(tokens.some((t) => t.kind === 'sup' && t.text === 'R')).toBe(true);
-		expect(tokens.some((t) => t.kind === 'op' && t.text === '∩')).toBe(true);
-		expect(tokens.some((t) => t.kind === 'op' && t.text === '⊕')).toBe(true);
+	it('parses finite sets like {ab, aca, b, ccab}', () => {
+		const nodes = parseMathNodes('{ab, aca, b, ccab}');
+		expect(nodes).toEqual([{ kind: 'set', text: 'ab, aca, b, ccab', sup: undefined }]);
 	});
 });
