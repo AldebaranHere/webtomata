@@ -845,6 +845,9 @@ export const id = {
 	'language.formula_label': 'Formula Bahasa Formal',
 	'language.formula_placeholder':
 		'Contoh: {bb, aac}{ca, ab} atau { w in {a, b}* : #a(w) mod 3 = 0 }',
+	'language.math_preview_title': 'Notasi Matematika',
+	'language.resize_library_aria': 'Ubah lebar perpustakaan bahasa',
+	'language.delete_custom': 'Hapus bahasa kustom',
 	'language.legend_title': 'Definisi Simbol & Notasi Matematika',
 	'language.legend_hide': '▲ Sembunyikan',
 	'language.legend_show': '▼ Tampilkan',

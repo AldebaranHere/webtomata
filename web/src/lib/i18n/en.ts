@@ -848,6 +848,9 @@ export const en: Record<MessageKey, string> = {
 	'language.formula_label': 'Formal Language Formula',
 	'language.formula_placeholder':
 		'Example: {bb, aac}{ca, ab} or { w in {a, b}* : #a(w) mod 3 = 0 }',
+	'language.math_preview_title': 'Mathematical Notation',
+	'language.resize_library_aria': 'Resize library panel width',
+	'language.delete_custom': 'Delete custom language',
 	'language.legend_title': 'Symbol Definitions & Mathematical Notation',
 	'language.legend_hide': '▲ Hide',
 	'language.legend_show': '▼ Show',

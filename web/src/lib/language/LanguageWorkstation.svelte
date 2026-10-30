@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { engine } from '#lib/engine/client.ts';
 	import { t, getLocale } from '#lib/i18n/index.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
+	import LanguageMathDisplay from './LanguageMathDisplay.svelte';
 
 	interface PresetLanguage {
 		id: string;
@@ -150,9 +152,15 @@
 		formula: string;
 	}
 
+	const CUSTOM_STORAGE_KEY = 'webtomata.language.custom';
+	const LIBRARY_WIDTH_KEY = 'webtomata.language.col1_width';
+
 	let customLanguages = $state<CustomLanguage[]>([]);
 	let selectedId = $state<string>('L1');
 	let expression = $state<string>(PRESETS[0]!.formula);
+
+	let libraryWidth = $state<number>(280);
+	let workstationRef = $state<HTMLDivElement | null>(null);
 
 	let minLength = $state<number>(0);
 	let maxCount = $state<number>(10);
@@ -167,6 +175,90 @@
 	let copyTimer: ReturnType<typeof setTimeout> | undefined;
 
 	let textareaRef = $state<HTMLTextAreaElement | null>(null);
+
+	onMount(() => {
+		try {
+			const saved = localStorage.getItem(CUSTOM_STORAGE_KEY);
+			if (saved) {
+				const parsed = JSON.parse(saved) as CustomLanguage[];
+				if (Array.isArray(parsed) && parsed.length > 0) {
+					customLanguages = parsed;
+				}
+			}
+			const savedWidth = localStorage.getItem(LIBRARY_WIDTH_KEY);
+			if (savedWidth) {
+				const w = Number(savedWidth);
+				if (w >= 220 && w <= 550) {
+					libraryWidth = w;
+				}
+			}
+		} catch {
+			// ignore local storage errors
+		}
+		void runEnumeration();
+	});
+
+	function saveCustomLanguages(updated: CustomLanguage[]) {
+		customLanguages = updated;
+		try {
+			localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(updated));
+		} catch {
+			// ignore local storage errors
+		}
+	}
+
+	function startLibraryResize(event: PointerEvent) {
+		const target = event.currentTarget as HTMLElement;
+		target.setPointerCapture(event.pointerId);
+
+		const onPointerMove = (e: PointerEvent) => {
+			if (!workstationRef) return;
+			const rect = workstationRef.getBoundingClientRect();
+			const newWidth = Math.max(220, Math.min(550, e.clientX - rect.left));
+			libraryWidth = newWidth;
+		};
+
+		const onPointerUp = (e: PointerEvent) => {
+			target.releasePointerCapture(e.pointerId);
+			target.removeEventListener('pointermove', onPointerMove);
+			target.removeEventListener('pointerup', onPointerUp);
+			target.removeEventListener('pointercancel', onPointerUp);
+			try {
+				localStorage.setItem(LIBRARY_WIDTH_KEY, String(libraryWidth));
+			} catch {
+				// ignore
+			}
+		};
+
+		target.addEventListener('pointermove', onPointerMove);
+		target.addEventListener('pointerup', onPointerUp);
+		target.addEventListener('pointercancel', onPointerUp);
+	}
+
+	function handleSplitterKeydown(event: KeyboardEvent) {
+		if (event.key === 'ArrowLeft') {
+			libraryWidth = Math.max(220, libraryWidth - 16);
+			try {
+				localStorage.setItem(LIBRARY_WIDTH_KEY, String(libraryWidth));
+			} catch {
+				// ignore
+			}
+		} else if (event.key === 'ArrowRight') {
+			libraryWidth = Math.min(550, libraryWidth + 16);
+			try {
+				localStorage.setItem(LIBRARY_WIDTH_KEY, String(libraryWidth));
+			} catch {
+				// ignore
+			}
+		} else if (event.key === 'Home') {
+			libraryWidth = 280;
+			try {
+				localStorage.setItem(LIBRARY_WIDTH_KEY, String(libraryWidth));
+			} catch {
+				// ignore
+			}
+		}
+	}
 
 	const envMap = $derived.by(() => {
 		const env: Record<string, string> = {};
@@ -199,6 +291,18 @@
 		void runEnumeration();
 	}
 
+	function onFormulaChange() {
+		if (selectedId.startsWith('C')) {
+			const idx = customLanguages.findIndex((c) => c.id === selectedId);
+			if (idx !== -1) {
+				const updated = [...customLanguages];
+				updated[idx] = { ...updated[idx]!, formula: expression };
+				saveCustomLanguages(updated);
+			}
+		}
+		void runEnumeration();
+	}
+
 	function addCustomLanguage() {
 		const nextIndex = customLanguages.length + 1;
 		const id = `C${nextIndex}`;
@@ -207,13 +311,24 @@
 			name: `Kustom ${id}`,
 			formula: '{a, b}{a, b}'
 		};
-		customLanguages = [...customLanguages, newCustom];
+		const updated = [...customLanguages, newCustom];
+		saveCustomLanguages(updated);
 		selectCustom(newCustom);
+	}
+
+	function deleteCustomLanguage(id: string, event: MouseEvent) {
+		event.stopPropagation();
+		const updated = customLanguages.filter((c) => c.id !== id);
+		saveCustomLanguages(updated);
+		if (selectedId === id) {
+			selectPreset(PRESETS[0]!);
+		}
 	}
 
 	function insertSymbol(symbol: string) {
 		if (!textareaRef) {
 			expression += symbol;
+			onFormulaChange();
 			return;
 		}
 		const start = textareaRef.selectionStart ?? expression.length;
@@ -221,7 +336,7 @@
 		const before = expression.slice(0, start);
 		const after = expression.slice(end);
 		expression = before + symbol + after;
-		void runEnumeration();
+		onFormulaChange();
 		// Restore focus
 		setTimeout(() => {
 			if (textareaRef) {
@@ -282,7 +397,7 @@
 	});
 </script>
 
-<div class="workstation">
+<div class="workstation" bind:this={workstationRef} style:--library-width="{libraryWidth}px">
 	<!-- Column 1: Library Presets & Custom -->
 	<aside class="col library-col" aria-label={t('language.library_aria')}>
 		<div class="col-header">
@@ -321,24 +436,76 @@
 				<ul class="item-list">
 					{#each customLanguages as custom (custom.id)}
 						<li>
-							<button
-								type="button"
-								class="item-btn"
+							<div
+								class="item-btn custom-item-btn"
 								class:active={selectedId === custom.id}
+								role="button"
+								tabindex="0"
 								onclick={() => selectCustom(custom)}
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') selectCustom(custom);
+								}}
 							>
 								<div class="item-head">
 									<span class="item-id">{custom.id}</span>
 									<span class="item-name">{custom.name}</span>
+									<button
+										type="button"
+										class="btn-delete-custom"
+										onclick={(e) => deleteCustomLanguage(custom.id, e)}
+										aria-label={t('language.delete_custom')}
+										title={t('language.delete_custom')}
+									>
+										<svg
+											width="14"
+											height="14"
+											viewBox="0 0 16 16"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.8"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											aria-hidden="true"
+										>
+											<path d="M3 4.5h10" />
+											<path d="M5.5 4.5v-2a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2" />
+											<path d="M12 4.5v8.5a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 4 13V4.5" />
+										</svg>
+									</button>
 								</div>
 								<div class="item-formula">{custom.formula}</div>
-							</button>
+							</div>
 						</li>
 					{/each}
 				</ul>
 			{/if}
 		</div>
 	</aside>
+
+	<!-- Draggable Resizer Splitter -->
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+	<div
+		class="splitter"
+		role="separator"
+		tabindex="0"
+		aria-orientation="vertical"
+		aria-label={t('language.resize_library_aria')}
+		aria-valuenow={libraryWidth}
+		aria-valuemin={220}
+		aria-valuemax={550}
+		onpointerdown={startLibraryResize}
+		onkeydown={handleSplitterKeydown}
+		ondblclick={() => {
+			libraryWidth = 280;
+			try {
+				localStorage.setItem(LIBRARY_WIDTH_KEY, '280');
+			} catch {
+				// ignore
+			}
+		}}
+	>
+		<div class="splitter-line"></div>
+	</div>
 
 	<!-- Column 2: Formula & Set-Builder Editor -->
 	<section class="col editor-col" aria-label={t('language.editor_aria')}>
@@ -381,7 +548,7 @@
 					id="language-formula-input"
 					bind:this={textareaRef}
 					bind:value={expression}
-					oninput={runEnumeration}
+					oninput={onFormulaChange}
 					placeholder={t('language.formula_placeholder')}
 					rows="4"
 					spellcheck="false"
@@ -389,9 +556,34 @@
 					class:error={errorMessage !== null}></textarea>
 			</div>
 
+			<!-- Mathematical Notation Preview Card -->
+			<div class="math-preview-card">
+				<div class="math-preview-header">
+					<span class="math-preview-title">{t('language.math_preview_title')}</span>
+				</div>
+				<div class="math-preview-content">
+					<LanguageMathDisplay {expression} targetId={selectedId} />
+				</div>
+			</div>
+
 			{#if errorMessage}
 				<div class="error-banner" role="alert">
-					<span class="error-icon">⚠</span>
+					<svg
+						class="error-icon"
+						width="16"
+						height="16"
+						viewBox="0 0 16 16"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<circle cx="8" cy="8" r="6.5" />
+						<path d="M8 5v3.5" />
+						<path d="M8 11.5h.01" />
+					</svg>
 					<span class="error-text">{errorMessage}</span>
 				</div>
 			{/if}
@@ -529,7 +721,7 @@
 <style>
 	.workstation {
 		display: grid;
-		grid-template-columns: 280px 1fr 340px;
+		grid-template-columns: var(--library-width, 280px) 6px 1fr 340px;
 		height: calc(100dvh - 56px);
 		background: var(--color-ground);
 		color: var(--color-ink);
@@ -542,6 +734,43 @@
 			grid-template-columns: 1fr;
 			height: auto;
 			overflow-y: auto;
+		}
+	}
+
+	.splitter {
+		width: 6px;
+		cursor: col-resize;
+		background: transparent;
+		position: relative;
+		user-select: none;
+		touch-action: none;
+		transition: background 0.15s ease;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 2;
+	}
+
+	.splitter:hover,
+	.splitter:focus-visible {
+		background: var(--color-accent-tint);
+	}
+
+	.splitter-line {
+		width: 2px;
+		height: 100%;
+		background: var(--color-border);
+		transition: background 0.15s ease;
+	}
+
+	.splitter:hover .splitter-line,
+	.splitter:focus-visible .splitter-line {
+		background: var(--color-accent);
+	}
+
+	@media (max-width: 1024px) {
+		.splitter {
+			display: none;
 		}
 	}
 
@@ -630,6 +859,29 @@
 		align-items: center;
 		gap: var(--space-2);
 		margin-bottom: 2px;
+	}
+
+	.custom-item-btn {
+		cursor: pointer;
+	}
+
+	.btn-delete-custom {
+		margin-left: auto;
+		background: none;
+		border: none;
+		color: var(--color-muted);
+		padding: 2px;
+		cursor: pointer;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: var(--radius-sm);
+		transition: all 0.15s ease;
+	}
+
+	.btn-delete-custom:hover {
+		color: var(--color-warning-ink);
+		background: var(--color-warning-tint);
 	}
 
 	.item-id {
@@ -756,6 +1008,34 @@
 		border-color: var(--color-warning);
 	}
 
+	.math-preview-card {
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-ground);
+		padding: var(--space-3);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+	}
+
+	.math-preview-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.math-preview-title {
+		font-size: var(--text-2xs);
+		font-weight: var(--weight-strong);
+		color: var(--color-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.math-preview-content {
+		padding: var(--space-1) 0;
+	}
+
 	.error-banner {
 		display: flex;
 		align-items: center;
@@ -797,6 +1077,8 @@
 
 	.legend-content {
 		padding: var(--space-3);
+		max-height: 220px;
+		overflow-y: auto;
 		overflow-x: auto;
 	}
 
@@ -804,6 +1086,13 @@
 		width: 100%;
 		border-collapse: collapse;
 		font-size: var(--text-xs);
+	}
+
+	.legend-table thead th {
+		position: sticky;
+		top: 0;
+		background: var(--color-surface);
+		z-index: 1;
 	}
 
 	.legend-table th,

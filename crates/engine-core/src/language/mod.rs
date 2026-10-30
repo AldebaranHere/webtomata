@@ -455,6 +455,260 @@ impl<'a> LanguageEvaluator<'a> {
         }
     }
 
+    /// Computes the minimum possible word length for an expression.
+    pub fn min_length(&self, expr: &LanguageExpr) -> usize {
+        self.min_length_internal(expr, &mut Vec::new())
+    }
+
+    fn min_length_internal(&self, expr: &LanguageExpr, visited: &mut Vec<String>) -> usize {
+        match expr {
+            LanguageExpr::FiniteSet(words) => {
+                if words.is_empty() {
+                    0
+                } else {
+                    words.iter().map(|w| w.len()).min().unwrap_or(0)
+                }
+            }
+            LanguageExpr::Ref(name) => {
+                if visited.contains(name) {
+                    return 0;
+                }
+                if let Some(target) = self.env.get(name) {
+                    visited.push(name.clone());
+                    let res = self.min_length_internal(target, visited);
+                    visited.pop();
+                    res
+                } else {
+                    0
+                }
+            }
+            LanguageExpr::Union(a, b) => {
+                let la = self.min_length_internal(a, visited);
+                let lb = self.min_length_internal(b, visited);
+                la.min(lb)
+            }
+            LanguageExpr::Intersection(a, b) => {
+                let la = self.min_length_internal(a, visited);
+                let lb = self.min_length_internal(b, visited);
+                la.max(lb)
+            }
+            LanguageExpr::Difference(a, _) => self.min_length_internal(a, visited),
+            LanguageExpr::Concat(a, b) => {
+                let la = self.min_length_internal(a, visited);
+                let lb = self.min_length_internal(b, visited);
+                la.saturating_add(lb)
+            }
+            LanguageExpr::Power(a, k) => {
+                let la = self.min_length_internal(a, visited);
+                la.saturating_mul(*k)
+            }
+            LanguageExpr::Reverse(a) => self.min_length_internal(a, visited),
+            LanguageExpr::Star(_) => 0,
+            LanguageExpr::Plus(a) => self.min_length_internal(a, visited),
+            LanguageExpr::PredicateLanguage { predicate, .. } => {
+                self.min_length_predicate(predicate)
+            }
+        }
+    }
+
+    fn min_length_predicate(&self, pred: &LanguagePredicate) -> usize {
+        match pred {
+            LanguagePredicate::LengthGte(m) | LanguagePredicate::LengthEq(m) => *m,
+            LanguagePredicate::And(a, b) => self
+                .min_length_predicate(a)
+                .max(self.min_length_predicate(b)),
+            LanguagePredicate::Or(a, b) => self
+                .min_length_predicate(a)
+                .min(self.min_length_predicate(b)),
+            _ => 0,
+        }
+    }
+
+    /// Determines if words can be generated constructively rather than brute-forcing candidates.
+    pub fn can_generate(&self, expr: &LanguageExpr) -> bool {
+        self.can_generate_internal(expr, &mut Vec::new())
+    }
+
+    fn can_generate_internal(&self, expr: &LanguageExpr, visited: &mut Vec<String>) -> bool {
+        match expr {
+            LanguageExpr::FiniteSet(_) => true,
+            LanguageExpr::Ref(name) => {
+                if visited.contains(name) {
+                    return false;
+                }
+                if let Some(target) = self.env.get(name) {
+                    visited.push(name.clone());
+                    let res = self.can_generate_internal(target, visited);
+                    visited.pop();
+                    res
+                } else {
+                    false
+                }
+            }
+            LanguageExpr::Reverse(a)
+            | LanguageExpr::Power(a, _)
+            | LanguageExpr::Star(a)
+            | LanguageExpr::Plus(a) => self.can_generate_internal(a, visited),
+            LanguageExpr::Concat(a, b) | LanguageExpr::Union(a, b) => {
+                self.can_generate_internal(a, visited) && self.can_generate_internal(b, visited)
+            }
+            LanguageExpr::Difference(a, _) => self.can_generate_internal(a, visited),
+            LanguageExpr::Intersection(a, b) => {
+                self.can_generate_internal(a, visited) || self.can_generate_internal(b, visited)
+            }
+            LanguageExpr::PredicateLanguage { .. } => false,
+        }
+    }
+
+    /// Generates words of an exact `target_len` constructively.
+    pub fn generate_words_for_length(
+        &self,
+        expr: &LanguageExpr,
+        target_len: usize,
+    ) -> Result<BTreeSet<String>, LanguageError> {
+        let mut visited = Vec::new();
+        self.generate_words_internal(expr, target_len, &mut visited)
+    }
+
+    fn generate_words_internal(
+        &self,
+        expr: &LanguageExpr,
+        target_len: usize,
+        visited: &mut Vec<String>,
+    ) -> Result<BTreeSet<String>, LanguageError> {
+        let mut results = BTreeSet::new();
+        match expr {
+            LanguageExpr::FiniteSet(words) => {
+                for w in words {
+                    if w.len() == target_len {
+                        results.insert(w.clone());
+                    }
+                }
+            }
+            LanguageExpr::Ref(name) => {
+                if visited.contains(name) {
+                    return Err(LanguageError::CyclicReference(name.clone()));
+                }
+                let target = self
+                    .env
+                    .get(name)
+                    .ok_or_else(|| LanguageError::UndefinedReference(name.clone()))?;
+                visited.push(name.clone());
+                let res = self.generate_words_internal(target, target_len, visited);
+                visited.pop();
+                return res;
+            }
+            LanguageExpr::Reverse(a) => {
+                let inner = self.generate_words_internal(a, target_len, visited)?;
+                for w in inner {
+                    results.insert(w.chars().rev().collect());
+                }
+            }
+            LanguageExpr::Union(a, b) => {
+                let set_a = self.generate_words_internal(a, target_len, visited)?;
+                let set_b = self.generate_words_internal(b, target_len, visited)?;
+                results.extend(set_a);
+                results.extend(set_b);
+            }
+            LanguageExpr::Intersection(a, b) => {
+                if self.can_generate_internal(a, visited) {
+                    let set_a = self.generate_words_internal(a, target_len, visited)?;
+                    for w in set_a {
+                        if self.contains_internal(b, &w, visited)? {
+                            results.insert(w);
+                        }
+                    }
+                } else {
+                    let set_b = self.generate_words_internal(b, target_len, visited)?;
+                    for w in set_b {
+                        if self.contains_internal(a, &w, visited)? {
+                            results.insert(w);
+                        }
+                    }
+                }
+            }
+            LanguageExpr::Difference(a, b) => {
+                let set_a = self.generate_words_internal(a, target_len, visited)?;
+                for w in set_a {
+                    if !self.contains_internal(b, &w, visited)? {
+                        results.insert(w);
+                    }
+                }
+            }
+            LanguageExpr::Concat(a, b) => {
+                for i in 0..=target_len {
+                    let set_a = self.generate_words_internal(a, i, visited)?;
+                    if set_a.is_empty() {
+                        continue;
+                    }
+                    let set_b = self.generate_words_internal(b, target_len - i, visited)?;
+                    if set_b.is_empty() {
+                        continue;
+                    }
+                    for u in &set_a {
+                        for v in &set_b {
+                            let mut combined = String::with_capacity(u.len() + v.len());
+                            combined.push_str(u);
+                            combined.push_str(v);
+                            results.insert(combined);
+                        }
+                    }
+                }
+            }
+            LanguageExpr::Power(a, k) => {
+                if *k == 0 {
+                    if target_len == 0 {
+                        results.insert(String::new());
+                    }
+                } else if *k == 1 {
+                    return self.generate_words_internal(a, target_len, visited);
+                } else {
+                    let sub = LanguageExpr::Power(a.clone(), k - 1);
+                    return self.generate_words_internal(
+                        &LanguageExpr::Concat(a.clone(), Box::new(sub)),
+                        target_len,
+                        visited,
+                    );
+                }
+            }
+            LanguageExpr::Star(a) => {
+                if target_len == 0 {
+                    results.insert(String::new());
+                } else {
+                    for i in 1..=target_len {
+                        let set_a = self.generate_words_internal(a, i, visited)?;
+                        if set_a.is_empty() {
+                            continue;
+                        }
+                        let set_star =
+                            self.generate_words_internal(expr, target_len - i, visited)?;
+                        if set_star.is_empty() {
+                            continue;
+                        }
+                        for u in &set_a {
+                            for v in &set_star {
+                                let mut combined = String::with_capacity(u.len() + v.len());
+                                combined.push_str(u);
+                                combined.push_str(v);
+                                results.insert(combined);
+                            }
+                        }
+                    }
+                }
+            }
+            LanguageExpr::Plus(a) => {
+                let star = LanguageExpr::Star(a.clone());
+                return self.generate_words_internal(
+                    &LanguageExpr::Concat(a.clone(), Box::new(star)),
+                    target_len,
+                    visited,
+                );
+            }
+            LanguageExpr::PredicateLanguage { .. } => {}
+        }
+        Ok(results)
+    }
+
     /// Enumerates strings in strict proper order (|w| >= min_length, up to max_count).
     pub fn enumerate(
         &self,
@@ -464,6 +718,35 @@ impl<'a> LanguageEvaluator<'a> {
         let alphabet = self.infer_alphabet(expr);
         let alphabet_vec: Vec<char> = alphabet.into_iter().collect();
 
+        let expr_min = self.min_length(expr);
+        let start_len = options.min_length.max(expr_min);
+
+        let max_bound = self.max_length(expr);
+        let end_len = match max_bound {
+            Some(bound) => {
+                if start_len > bound {
+                    return Ok(Vec::new());
+                }
+                bound.min(start_len.saturating_add(options.max_depth))
+            }
+            None => start_len.saturating_add(options.max_depth),
+        };
+
+        let mut results = Vec::new();
+
+        if self.can_generate(expr) {
+            for len in start_len..=end_len {
+                let words_set = self.generate_words_for_length(expr, len)?;
+                for w in words_set {
+                    results.push(w);
+                    if results.len() >= options.max_count {
+                        return Ok(results);
+                    }
+                }
+            }
+            return Ok(results);
+        }
+
         // If alphabet is empty and expr accepts empty string
         if alphabet_vec.is_empty() {
             if options.min_length == 0 && self.contains(expr, "")? {
@@ -472,21 +755,9 @@ impl<'a> LanguageEvaluator<'a> {
             return Ok(Vec::new());
         }
 
-        let max_bound = self.max_length(expr);
-        let end_len = match max_bound {
-            Some(bound) => {
-                if options.min_length > bound {
-                    return Ok(Vec::new());
-                }
-                bound.min(options.max_depth)
-            }
-            None => options.max_depth,
-        };
-
-        let mut results = Vec::new();
         let mut budget = 50_000usize; // candidate inspection budget
 
-        for len in options.min_length..=end_len {
+        for len in start_len..=end_len {
             let mut current = String::with_capacity(len);
             self.generate_and_test(
                 &alphabet_vec,

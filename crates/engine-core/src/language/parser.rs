@@ -236,8 +236,22 @@ impl<'a> LanguageParser<'a> {
 
     fn parse_identifier(&mut self) -> Result<LanguageExpr, LanguageError> {
         let start = self.pos;
+        let mut seen_digits = false;
         while let Some(ch) = self.peek_char() {
-            if ch.is_alphanumeric() || ch == '_' {
+            if ch.is_ascii_digit() {
+                seen_digits = true;
+                self.pos += ch.len_utf8();
+            } else if ch.is_alphabetic() {
+                // If we already saw digits (e.g. L15), another letter (e.g. L in L15L1)
+                // indicates juxtaposition concatenation of adjacent identifiers.
+                if seen_digits {
+                    break;
+                }
+                self.pos += ch.len_utf8();
+            } else if ch == '_' {
+                if seen_digits {
+                    break;
+                }
                 self.pos += ch.len_utf8();
             } else {
                 break;

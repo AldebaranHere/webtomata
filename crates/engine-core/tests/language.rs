@@ -191,3 +191,95 @@ fn test_environment_references_and_resolution() {
     assert!(evaluator.contains(&combined, "bd").unwrap());
     assert!(!evaluator.contains(&combined, "ab").unwrap());
 }
+
+#[test]
+fn test_juxtaposition_concatenation_parsing() {
+    let expr1 = LanguageParser::parse("L15L1").expect("Failed to parse L15L1");
+    match expr1 {
+        engine_core::language::LanguageExpr::Concat(a, b) => {
+            assert_eq!(
+                *a,
+                engine_core::language::LanguageExpr::Ref("L15".to_string())
+            );
+            assert_eq!(
+                *b,
+                engine_core::language::LanguageExpr::Ref("L1".to_string())
+            );
+        }
+        other => panic!("Expected Concat, got {:?}", other),
+    }
+
+    let expr2 = LanguageParser::parse("L1^3L2^2").expect("Failed to parse L1^3L2^2");
+    match expr2 {
+        engine_core::language::LanguageExpr::Concat(a, b) => match (*a, *b) {
+            (
+                engine_core::language::LanguageExpr::Power(p1, 3),
+                engine_core::language::LanguageExpr::Power(p2, 2),
+            ) => {
+                assert_eq!(
+                    *p1,
+                    engine_core::language::LanguageExpr::Ref("L1".to_string())
+                );
+                assert_eq!(
+                    *p2,
+                    engine_core::language::LanguageExpr::Ref("L2".to_string())
+                );
+            }
+            other => panic!("Expected Power 3 and Power 2, got {:?}", other),
+        },
+        other => panic!("Expected Concat, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_l1_cubed_l2_squared_minus_l7_star() {
+    let mut env = HashMap::new();
+    env.insert(
+        "L1".to_string(),
+        LanguageParser::parse("{bb, aac}{ca, ab}{ab, a, cac}").unwrap(),
+    );
+    env.insert(
+        "L2".to_string(),
+        LanguageParser::parse("{bb, aac}{ab, a, cac}{ac, bc}").unwrap(),
+    );
+    env.insert(
+        "L7".to_string(),
+        LanguageParser::parse("{ w in {a, b}* : #a(w) mod 3 = 0 }").unwrap(),
+    );
+
+    let expr = LanguageParser::parse("L1^3L2^2 - L7*").expect("Failed to parse L1^3L2^2 - L7*");
+    let evaluator = LanguageEvaluator::new(&env);
+
+    assert!(evaluator.can_generate(&expr));
+    assert_eq!(evaluator.min_length(&expr), 25);
+
+    let options = EnumerateOptions {
+        min_length: 0,
+        max_count: 13,
+        max_depth: 30,
+    };
+    let start = std::time::Instant::now();
+    let strings = evaluator
+        .enumerate(&expr, options)
+        .expect("Enumeration should succeed");
+    let elapsed = start.elapsed();
+
+    assert_eq!(strings.len(), 13, "Should return exactly 13 strings");
+    // All 13 strings must have length 25 (minimum length of L1^3 L2^2)
+    for s in &strings {
+        assert_eq!(s.len(), 25);
+    }
+    // Verify proper ordering
+    for i in 1..strings.len() {
+        assert_eq!(
+            compare_proper_order(&strings[i - 1], &strings[i]),
+            std::cmp::Ordering::Less
+        );
+    }
+    // Verify fast execution (< 50ms)
+    assert!(
+        elapsed.as_millis() < 50,
+        "Enumeration took too long: {:?}",
+        elapsed
+    );
+}

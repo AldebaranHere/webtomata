@@ -238,7 +238,6 @@
 			class:active={activeMode === 'fsm'}
 			onclick={() => (activeMode = 'fsm')}
 		>
-			<span class="mode-icon">⚙</span>
 			<span>{t('sandbox.mode_fsm')}</span>
 		</button>
 		<button
@@ -248,7 +247,6 @@
 			class:active={activeMode === 'language'}
 			onclick={() => (activeMode = 'language')}
 		>
-			<span class="mode-icon">🔤</span>
 			<span>{t('sandbox.mode_language')}</span>
 		</button>
 	</div>
