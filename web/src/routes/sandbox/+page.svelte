@@ -229,12 +229,11 @@
 	</p>
 {/if}
 
-<div class="mode-bar">
-	<div class="mode-toggles" role="tablist" aria-label={t('sandbox.mode_aria')}>
+<div class="mode-bar" class:fsm-mode={activeMode === 'fsm'}>
+	<div class="mode-toggles" role="group" aria-label={t('sandbox.mode_aria')}>
 		<button
 			type="button"
-			role="tab"
-			aria-selected={activeMode === 'fsm'}
+			aria-pressed={activeMode === 'fsm'}
 			class="mode-btn"
 			class:active={activeMode === 'fsm'}
 			onclick={() => (activeMode = 'fsm')}
@@ -244,8 +243,7 @@
 		</button>
 		<button
 			type="button"
-			role="tab"
-			aria-selected={activeMode === 'language'}
+			aria-pressed={activeMode === 'language'}
 			class="mode-btn"
 			class:active={activeMode === 'language'}
 			onclick={() => (activeMode = 'language')}
@@ -309,6 +307,11 @@
 		padding: var(--space-2) var(--space-4);
 		background: var(--color-surface);
 		border-bottom: 1px solid var(--color-border);
+	}
+	@media (max-width: 640px) {
+		.mode-bar.fsm-mode {
+			display: none;
+		}
 	}
 	.mode-toggles {
 		display: flex;

@@ -14,6 +14,8 @@
     "format": "pnpm --filter web format",
     "check": "pnpm --filter web check",
     "lint:rust": "cargo fmt --check && cargo clippy --all-targets -- -D warnings",
+    "cov:rust": "cargo llvm-cov -p engine-core",
+    "cov:rust:html": "cargo llvm-cov -p engine-core --html --output-dir target/llvm-cov",
     "test": "cargo test",
     "verify": "pnpm lint:rust && pnpm build:wasm && pnpm lint && pnpm format:check && pnpm check && pnpm test && pnpm test:wasm && pnpm test:web && pnpm test:tools && pnpm check:workflows && pnpm check:contrast && pnpm check:tokens && pnpm check:strings && pnpm check:questions && pnpm build && pnpm size && pnpm smoke && pnpm test:e2e && pnpm lighthouse",
     "build:types": "cargo test -p engine-core --features ts --test ts_export",
