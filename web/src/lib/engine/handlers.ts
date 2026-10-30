@@ -27,6 +27,7 @@ export interface Wasm {
 	xor(first: string, second: string, budget?: string): string;
 	importJff(xml: string): string;
 	exportJff(machine: string, layout: string): string;
+	enumerateLanguage(expr: string, min_length: number, max_count: number, env_json?: string): string;
 }
 
 export type Handlers = {
@@ -90,7 +91,9 @@ export function createHandlers(wasm: Wasm): Handlers {
 			wasm.intersection(text(first), text(second), optional(budget)),
 		xor: (first, second, budget) => wasm.xor(text(first), text(second), optional(budget)),
 		importJff: (xml) => wasm.importJff(xml),
-		exportJff: (machine, layout) => wasm.exportJff(text(machine), text(layout))
+		exportJff: (machine, layout) => wasm.exportJff(text(machine), text(layout)),
+		enumerateLanguage: (expr, minLength = 0, maxCount = 10, env) =>
+			wasm.enumerateLanguage(expr, minLength, maxCount, optional(env))
 	};
 }
 

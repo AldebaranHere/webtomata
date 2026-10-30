@@ -3,6 +3,7 @@
 	import type { Component } from 'svelte';
 	import Editor from '#lib/editor/Editor.svelte';
 	import Toast from '#lib/editor/Toast.svelte';
+	import LanguageWorkstation from '#lib/language/LanguageWorkstation.svelte';
 	import { createDocument } from '#lib/editor/document.ts';
 	import type { MachineDocument } from '#lib/editor/document.ts';
 	import { decodeLink, linkFragment } from '#lib/share/link.ts';
@@ -24,6 +25,7 @@
 	// place when the machine has been read, so that a reload does not show the card for a moment.
 	let editor = $state<Editor | undefined>();
 	let skipped = $state(true);
+	let activeMode = $state<'fsm' | 'language'>('fsm');
 
 	// A link of a shared machine (`#m1=...`) opens as a machine of its own, never over the one of the
 	// student, and the address is cleaned so that a reload does not open it again.
@@ -71,6 +73,10 @@
 	onMount(() => {
 		skipped = false;
 		seen = tourSeen();
+		const urlMode = new URLSearchParams(window.location.search).get('mode');
+		if (urlMode === 'language') {
+			activeMode = 'language';
+		}
 		void library.start(() => ({ doc: createDocument() })).then(openLink);
 		// A link pasted in a tab that already shows the Sandbox only changes the fragment: the page is not
 		// loaded again, so the change itself must open it.
@@ -222,7 +228,37 @@
 		<button type="button" onclick={() => (skipped = true)}>{t('storage.dismiss')}</button>
 	</p>
 {/if}
-{#if library.current}
+
+<div class="mode-bar">
+	<div class="mode-toggles" role="tablist" aria-label={t('sandbox.mode_aria')}>
+		<button
+			type="button"
+			role="tab"
+			aria-selected={activeMode === 'fsm'}
+			class="mode-btn"
+			class:active={activeMode === 'fsm'}
+			onclick={() => (activeMode = 'fsm')}
+		>
+			<span class="mode-icon">⚙</span>
+			<span>{t('sandbox.mode_fsm')}</span>
+		</button>
+		<button
+			type="button"
+			role="tab"
+			aria-selected={activeMode === 'language'}
+			class="mode-btn"
+			class:active={activeMode === 'language'}
+			onclick={() => (activeMode = 'language')}
+		>
+			<span class="mode-icon">🔤</span>
+			<span>{t('sandbox.mode_language')}</span>
+		</button>
+	</div>
+</div>
+
+{#if activeMode === 'language'}
+	<LanguageWorkstation />
+{:else if library.current}
 	{#key library.current.key}
 		<Editor
 			bind:this={editor}
@@ -266,6 +302,45 @@
 		flex: 1;
 		min-height: 0;
 		background: var(--color-ground);
+	}
+	.mode-bar {
+		display: flex;
+		align-items: center;
+		padding: var(--space-2) var(--space-4);
+		background: var(--color-surface);
+		border-bottom: 1px solid var(--color-border);
+	}
+	.mode-toggles {
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
+		background: var(--color-ground);
+		padding: 2px;
+		border-radius: var(--radius-md);
+		border: 1px solid var(--color-border);
+	}
+	.mode-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-1) var(--space-3);
+		border: 1px solid transparent;
+		border-radius: var(--radius-sm);
+		background: transparent;
+		color: var(--color-muted);
+		font-family: var(--font-ui);
+		font-size: var(--text-xs);
+		font-weight: var(--weight-strong);
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+	.mode-btn:hover {
+		color: var(--color-ink);
+	}
+	.mode-btn.active {
+		background: var(--color-surface);
+		color: var(--color-accent-ink);
+		border-color: var(--color-border);
 	}
 	.notice {
 		display: flex;
