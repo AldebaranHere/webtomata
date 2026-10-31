@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 	import { engine } from '#lib/engine/client.ts';
 	import type { CnfTransformationTrace, Grammar } from '#lib/engine/types.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
@@ -12,7 +13,7 @@
 	interface MatrixRow {
 		id: string;
 		lhs: string;
-		rhs: string;
+		alternatives: string[];
 	}
 
 	interface QuickSymbol {
@@ -66,7 +67,11 @@
 	// Matrix State
 	let rows = $state<MatrixRow[]>([]);
 	let focusedRowIndex = $state<number>(0);
+	let focusedAltIndex = $state<number>(0);
 	let focusedField = $state<'lhs' | 'rhs'>('rhs');
+
+	// Map of inputs for programmatically shifting focus between alternative cells
+	let cellInputRefs = new SvelteMap<string, HTMLInputElement>();
 
 	// Context Menu State for deleting rows
 	let contextMenu = $state<{ visible: boolean; x: number; y: number; rowIndex: number }>({
@@ -96,7 +101,7 @@
 			.map((l) => l.trim())
 			.filter((l) => l.length > 0 && !l.startsWith('#') && !l.startsWith('//'));
 		if (lines.length === 0) {
-			return [{ id: crypto.randomUUID(), lhs: 'S', rhs: '' }];
+			return [{ id: crypto.randomUUID(), lhs: 'S', alternatives: [''] }];
 		}
 		const res: MatrixRow[] = [];
 		for (const line of lines) {
@@ -106,9 +111,17 @@
 				const match = line.slice(arrowIdx).match(/^(->|→|::=)/);
 				const sepLen = match ? match[0].length : 2;
 				const rhs = line.slice(arrowIdx + sepLen).trim();
-				res.push({ id: crypto.randomUUID(), lhs, rhs });
+				const alts = rhs
+					.split('|')
+					.map((a) => a.trim())
+					.filter((a) => a.length > 0);
+				res.push({
+					id: crypto.randomUUID(),
+					lhs,
+					alternatives: alts.length > 0 ? alts : ['']
+				});
 			} else {
-				res.push({ id: crypto.randomUUID(), lhs: line, rhs: '' });
+				res.push({ id: crypto.randomUUID(), lhs: line, alternatives: [''] });
 			}
 		}
 		return res;
@@ -120,35 +133,11 @@
 			const head = row.lhs.trim();
 			if (!head) continue;
 
-			// Handle spaces as alternative separators if pipe is not present, or pipe as divider
-			let rawRhs = row.rhs.trim();
-			if (!rawRhs) {
-				// Empty production -> λ
-				outLines.push(`${head} -> λ`);
-				continue;
-			}
-
-			// If the user entered alternatives separated by |
-			let alts: string[];
-			if (rawRhs.includes('|')) {
-				alts = rawRhs
-					.split('|')
-					.map((a) => a.trim())
-					.filter((a) => a.length > 0);
-			} else if (rawRhs.includes(' ')) {
-				// Also support space-separated alternatives: e.g. "AD FBa" -> "AD | FBa"
-				alts = rawRhs
-					.split(/\s+/)
-					.map((a) => a.trim())
-					.filter((a) => a.length > 0);
-			} else {
-				alts = [rawRhs];
-			}
-
-			if (alts.length === 0) {
+			const validAlts = row.alternatives.map((a) => a.trim()).filter((a) => a.length > 0);
+			if (validAlts.length === 0) {
 				outLines.push(`${head} -> λ`);
 			} else {
-				outLines.push(`${head} -> ${alts.join(' | ')}`);
+				outLines.push(`${head} -> ${validAlts.join(' | ')}`);
 			}
 		}
 		return outLines.join('\n');
@@ -344,16 +333,18 @@
 	function addRow() {
 		// Default to start state S if empty, or same as last row's LHS
 		const lastLhs = rows[rows.length - 1]?.lhs.trim() || 'S';
-		rows = [...rows, { id: crypto.randomUUID(), lhs: lastLhs, rhs: '' }];
+		rows = [...rows, { id: crypto.randomUUID(), lhs: lastLhs, alternatives: [''] }];
 		focusedRowIndex = rows.length - 1;
+		focusedAltIndex = 0;
 		focusedField = 'rhs';
 		void onMatrixChange();
+		focusCell(rows.length - 1, 0);
 	}
 
 	function deleteRow(index: number) {
 		if (rows.length <= 1) {
 			// Reset single row to default S -> empty
-			rows = [{ id: crypto.randomUUID(), lhs: 'S', rhs: '' }];
+			rows = [{ id: crypto.randomUUID(), lhs: 'S', alternatives: [''] }];
 		} else {
 			rows = rows.filter((_, i) => i !== index);
 		}
@@ -371,10 +362,91 @@
 		};
 	}
 
+	function registerCellRef(node: HTMLInputElement, key: string) {
+		cellInputRefs.set(key, node);
+		return {
+			destroy() {
+				cellInputRefs.delete(key);
+			}
+		};
+	}
+
+	function focusCell(rowIdx: number, altIdx: number) {
+		requestAnimationFrame(() => {
+			const row = rows[rowIdx];
+			if (!row) return;
+			const key = `${row.id}-${altIdx}`;
+			const el = cellInputRefs.get(key);
+			if (el) {
+				el.focus();
+				el.setSelectionRange(el.value.length, el.value.length);
+			}
+		});
+	}
+
+	function handleAltKeydown(event: KeyboardEvent, rowIdx: number, altIdx: number) {
+		const row = rows[rowIdx];
+		if (!row) return;
+
+		if (event.key === ' ' || event.key === '|') {
+			event.preventDefault();
+			// User pressed space or pipe -> add new alternative cell immediately after
+			row.alternatives.splice(altIdx + 1, 0, '');
+			rows = [...rows];
+			focusedRowIndex = rowIdx;
+			focusedAltIndex = altIdx + 1;
+			void onMatrixChange();
+			focusCell(rowIdx, altIdx + 1);
+		} else if (event.key === 'Backspace') {
+			const target = event.currentTarget as HTMLInputElement;
+			if (target.value === '' && row.alternatives.length > 1) {
+				event.preventDefault();
+				row.alternatives.splice(altIdx, 1);
+				rows = [...rows];
+				const prevAltIdx = Math.max(0, altIdx - 1);
+				focusedRowIndex = rowIdx;
+				focusedAltIndex = prevAltIdx;
+				void onMatrixChange();
+				focusCell(rowIdx, prevAltIdx);
+			}
+		} else if (event.key === 'Enter') {
+			event.preventDefault();
+			addRow();
+		}
+	}
+
+	function handleAltInput(event: Event, rowIdx: number, altIdx: number) {
+		const input = event.currentTarget as HTMLInputElement;
+		const val = input.value;
+		const row = rows[rowIdx];
+		if (!row) return;
+
+		// If pasted text contains pipe or spaces, parse into cells
+		if (val.includes('|') || val.includes(' ')) {
+			const splitted = val
+				.split(/[|\s]+/)
+				.map((s) => s.trim())
+				.filter((s) => s.length > 0);
+			if (splitted.length > 1) {
+				row.alternatives.splice(altIdx, 1, ...splitted);
+				rows = [...rows];
+				focusedRowIndex = rowIdx;
+				focusedAltIndex = altIdx + splitted.length - 1;
+				void onMatrixChange();
+				focusCell(rowIdx, altIdx + splitted.length - 1);
+				return;
+			}
+		}
+
+		row.alternatives[altIdx] = val;
+		void onMatrixChange();
+	}
+
 	function insertSymbol(insertText: string) {
 		if (rows.length === 0) {
-			rows = [{ id: crypto.randomUUID(), lhs: 'S', rhs: '' }];
+			rows = [{ id: crypto.randomUUID(), lhs: 'S', alternatives: [''] }];
 			focusedRowIndex = 0;
+			focusedAltIndex = 0;
 		}
 		const currentRow = rows[focusedRowIndex];
 		if (!currentRow) return;
@@ -382,7 +454,14 @@
 		if (focusedField === 'lhs') {
 			currentRow.lhs += insertText.trim();
 		} else {
-			currentRow.rhs += insertText;
+			if (insertText.trim() === '|' || insertText.trim() === '->') {
+				currentRow.alternatives.splice(focusedAltIndex + 1, 0, '');
+				focusedAltIndex += 1;
+				focusCell(focusedRowIndex, focusedAltIndex);
+			} else {
+				currentRow.alternatives[focusedAltIndex] =
+					(currentRow.alternatives[focusedAltIndex] ?? '') + insertText.trim();
+			}
 		}
 		rows = [...rows];
 		void onMatrixChange();
@@ -584,7 +663,7 @@
 				</div>
 			</div>
 
-			<!-- JFLAP-style Nx3 Grammar Matrix Editor -->
+			<!-- JFLAP-style Nx3 Grammar Matrix Editor with Multi-Cell RHS -->
 			<div class="matrix-card">
 				<table class="matrix-table">
 					<thead>
@@ -617,26 +696,31 @@
 									<span class="arrow-glyph">→</span>
 								</td>
 								<td class="td-rhs">
-									<input
-										type="text"
-										class="matrix-input rhs-input"
-										bind:value={row.rhs}
-										onfocus={() => {
-											focusedRowIndex = idx;
-											focusedField = 'rhs';
-										}}
-										oninput={onMatrixChange}
-										onkeydown={(e) => {
-											if (e.key === 'Enter') {
-												e.preventDefault();
-												addRow();
-											}
-										}}
-										placeholder={idx === 0
-											? t('grammar.matrix_ph_rhs_start')
-											: t('grammar.matrix_ph_rhs_other')}
-										spellcheck="false"
-									/>
+									<div class="alts-cell-container">
+										{#each row.alternatives as alt, altIdx (altIdx)}
+											{#if altIdx > 0}
+												<span class="alt-divider">|</span>
+											{/if}
+											<input
+												type="text"
+												class="alt-cell-input"
+												style:width="{Math.max(45, (alt.length + 1) * 11)}px"
+												value={alt}
+												onfocus={() => {
+													focusedRowIndex = idx;
+													focusedAltIndex = altIdx;
+													focusedField = 'rhs';
+												}}
+												oninput={(e) => handleAltInput(e, idx, altIdx)}
+												onkeydown={(e) => handleAltKeydown(e, idx, altIdx)}
+												placeholder={altIdx === 0 && idx === 0
+													? t('grammar.matrix_ph_rhs_start')
+													: t('grammar.matrix_ph_rhs_other')}
+												spellcheck="false"
+												use:registerCellRef={`${row.id}-${altIdx}`}
+											/>
+										{/each}
+									</div>
 								</td>
 							</tr>
 						{/each}
@@ -1167,6 +1251,44 @@
 	.lhs-input {
 		font-weight: 600;
 		text-align: center;
+	}
+
+	.alts-cell-container {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--space-1);
+		min-height: 36px;
+	}
+
+	.alt-divider {
+		font-family: var(--font-math);
+		font-size: var(--text-sm);
+		color: var(--color-muted);
+		user-select: none;
+		padding: 0 2px;
+	}
+
+	.alt-cell-input {
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		padding: 2px 6px;
+		font-family: var(--font-math);
+		font-size: var(--text-base);
+		color: var(--color-ink);
+		background: var(--color-surface);
+		transition: all 0.15s ease;
+		min-width: 45px;
+	}
+
+	.alt-cell-input:hover {
+		border-color: var(--color-border-strong);
+	}
+
+	.alt-cell-input:focus {
+		outline: none;
+		border-color: var(--color-accent);
+		box-shadow: 0 0 0 1px var(--color-accent);
 	}
 
 	.matrix-footer {

@@ -97,22 +97,26 @@
 	.latex-grammar-math mn,
 	.latex-grammar-math mtext {
 		font-family: var(--font-math);
+		vertical-align: baseline;
 	}
 
 	.math-nt {
 		font-style: normal;
 		font-family: var(--font-math);
 		color: var(--color-ink);
+		vertical-align: baseline;
 	}
 
 	.latex-grammar-math mo {
 		font-family: var(--font-math);
 		color: var(--color-muted);
+		vertical-align: baseline;
 	}
 
 	.alt-sep {
 		margin: 0 var(--space-2);
 		color: var(--color-muted);
+		vertical-align: baseline;
 	}
 
 	.math-term {
@@ -121,24 +125,24 @@
 		font-weight: 400;
 		color: var(--color-ink);
 		padding: 0 0.5px;
+		vertical-align: baseline;
 	}
 
 	.math-epsilon {
 		font-style: normal;
 		font-family: var(--font-math);
 		color: var(--color-muted);
+		vertical-align: baseline;
 	}
 
 	.row-alternatives {
-		display: inline-flex;
-		align-items: center;
-		flex-wrap: wrap;
+		display: inline;
+		vertical-align: baseline;
 		text-align: left;
 	}
 
 	.alt-body {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5px;
+		display: inline;
+		vertical-align: baseline;
 	}
 </style>
