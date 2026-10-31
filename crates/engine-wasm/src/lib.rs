@@ -111,6 +111,21 @@ pub fn enumerate_language(
     api::enumerate_language(expr, min_length, max_count, env_json.as_deref())
 }
 
+#[wasm_bindgen(js_name = parseGrammar)]
+pub fn parse_grammar(grammar: &str) -> String {
+    api::parse_grammar(grammar)
+}
+
+#[wasm_bindgen(js_name = transformToCnf)]
+pub fn transform_to_cnf(grammar: &str) -> String {
+    api::transform_to_cnf(grammar)
+}
+
+#[wasm_bindgen(js_name = cykParse)]
+pub fn cyk_parse(grammar: &str, input_word: &str) -> String {
+    api::cyk_parse(grammar, input_word)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -175,5 +190,31 @@ mod tests {
             answer.contains(r#""strings":["aa","ab","ba","bb"]"#),
             "{answer}"
         );
+    }
+
+    #[wasm_bindgen_test]
+    #[test]
+    fn parse_grammar_answers_in_envelope() {
+        let answer = parse_grammar("S -> a S b | ε");
+        assert!(answer.contains(r#""ok":true"#), "{answer}");
+        assert!(answer.contains(r#""start":"S""#), "{answer}");
+    }
+
+    #[wasm_bindgen_test]
+    #[test]
+    fn transform_to_cnf_answers_in_envelope() {
+        let answer = transform_to_cnf("S -> a S b | a b");
+        assert!(answer.contains(r#""ok":true"#), "{answer}");
+        assert!(answer.contains(r#""steps""#), "{answer}");
+        assert!(answer.contains(r#""finalGrammar""#), "{answer}");
+    }
+
+    #[wasm_bindgen_test]
+    #[test]
+    fn cyk_parse_answers_in_envelope() {
+        let cnf = "S -> A B\nA -> a\nB -> b";
+        let answer = cyk_parse(cnf, "ab");
+        assert!(answer.contains(r#""ok":true"#), "{answer}");
+        assert!(answer.contains(r#""accepted":true"#), "{answer}");
     }
 }

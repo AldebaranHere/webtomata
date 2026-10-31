@@ -24,13 +24,19 @@
 	// place when the machine has been read, so that a reload does not show the card for a moment.
 	let editor = $state<Editor | undefined>();
 	let skipped = $state(true);
-	let activeMode = $state<'fsm' | 'language'>('fsm');
+	let activeMode = $state<'fsm' | 'language' | 'grammar'>('fsm');
 
 	let LanguageWorkstation = $state<Component | null>(null);
+	let GrammarWorkstation = $state<Component | null>(null);
 	$effect(() => {
 		if (activeMode === 'language' && !LanguageWorkstation) {
 			void import('#lib/language/LanguageWorkstation.svelte').then(
 				(module) => (LanguageWorkstation = module.default)
+			);
+		}
+		if (activeMode === 'grammar' && !GrammarWorkstation) {
+			void import('#lib/grammar/GrammarWorkstation.svelte').then(
+				(module) => (GrammarWorkstation = module.default)
 			);
 		}
 	});
@@ -84,6 +90,8 @@
 		const urlMode = new URLSearchParams(window.location.search).get('mode');
 		if (urlMode === 'language') {
 			activeMode = 'language';
+		} else if (urlMode === 'grammar') {
+			activeMode = 'grammar';
 		}
 		void library.start(() => ({ doc: createDocument() })).then(openLink);
 		// A link pasted in a tab that already shows the Sandbox only changes the fragment: the page is not
@@ -257,12 +265,27 @@
 		>
 			<span>{t('sandbox.mode_language')}</span>
 		</button>
+		<button
+			type="button"
+			aria-pressed={activeMode === 'grammar'}
+			class="mode-btn"
+			class:active={activeMode === 'grammar'}
+			onclick={() => (activeMode = 'grammar')}
+		>
+			<span>{t('sandbox.mode_grammar')}</span>
+		</button>
 	</div>
 </div>
 
 {#if activeMode === 'language'}
 	{#if LanguageWorkstation}
 		<LanguageWorkstation />
+	{:else}
+		<div class="frame" aria-busy="true"></div>
+	{/if}
+{:else if activeMode === 'grammar'}
+	{#if GrammarWorkstation}
+		<GrammarWorkstation />
 	{:else}
 		<div class="frame" aria-busy="true"></div>
 	{/if}

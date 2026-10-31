@@ -53,6 +53,12 @@ fn the_types_match_the_json() {
         "EquivalenceReport",
         "RegexOutcome",
         "EnumerateReport",
+        "Symbol",
+        "Production",
+        "Grammar",
+        "CnfStepResult",
+        "CnfTransformationTrace",
+        "CykResult",
     ] {
         assert!(
             text.contains(&format!("export type {name} =")),

@@ -23,6 +23,9 @@ import type {
 	SimulateBudget,
 	SimulationReport,
 	EnumerateReport,
+	Grammar,
+	CnfTransformationTrace,
+	CykResult,
 	StopReason,
 	ViaMachineBudget
 } from './types.ts';
@@ -101,6 +104,9 @@ export interface EngineApi {
 		maxCount?: number,
 		env?: Record<string, string>
 	): EngineResult<EnumerateReport>;
+	parseGrammar(grammar: string): EngineResult<Grammar>;
+	transformToCnf(grammar: string): EngineResult<CnfTransformationTrace>;
+	cykParse(grammar: string, inputWord: string): EngineResult<CykResult>;
 }
 
 export type EngineMethod = keyof EngineApi;
@@ -127,7 +133,10 @@ export const METHODS = [
 	'xor',
 	'importJff',
 	'exportJff',
-	'enumerateLanguage'
+	'enumerateLanguage',
+	'parseGrammar',
+	'transformToCnf',
+	'cykParse'
 ] as const satisfies readonly EngineMethod[];
 
 /** A method that is missing from `METHODS` makes this a type error. */
