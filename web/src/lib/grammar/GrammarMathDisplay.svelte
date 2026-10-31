@@ -34,7 +34,7 @@
 
 {#snippet renderSymbol(sym: MathSymbolItem)}
 	{#if sym.kind === 'terminal'}
-		<mtext class="math-term">{sym.text}</mtext>
+		<mi mathvariant="normal" class="math-term">{sym.text}</mi>
 	{:else if sym.kind === 'nonTerminal'}
 		{@render renderNonTerminal(sym.text)}
 	{:else}
@@ -44,7 +44,7 @@
 
 <div class="math-container">
 	<math display="block" class="latex-grammar-math">
-		<mtable columnalign="right center left" rowspacing="0.35em" columnspacing="0.5em">
+		<mtable columnalign="right center left" rowspacing="0.4em" columnspacing="0.6em">
 			{#each rows as row (row.head)}
 				<mtr>
 					<mtd columnalign="right">
@@ -54,18 +54,16 @@
 						<mo>→</mo>
 					</mtd>
 					<mtd columnalign="left">
-						<mrow class="row-alternatives">
-							{#each row.alternatives as alt, altIdx (altIdx)}
-								{#if altIdx > 0}
-									<mo class="alt-sep">|</mo>
-								{/if}
-								<mrow class="alt-body">
-									{#each alt as sym, symIdx (symIdx)}
-										{@render renderSymbol(sym)}
-									{/each}
-								</mrow>
-							{/each}
-						</mrow>
+						{#each row.alternatives as alt, altIdx (altIdx)}
+							{#if altIdx > 0}
+								<mo class="alt-sep" lspace="0.35em" rspace="0.35em">|</mo>
+							{/if}
+							<mrow>
+								{#each alt as sym, symIdx (symIdx)}
+									{@render renderSymbol(sym)}
+								{/each}
+							</mrow>
+						{/each}
 					</mtd>
 				</mtr>
 			{/each}
@@ -92,57 +90,40 @@
 		user-select: text;
 	}
 
+	.latex-grammar-math mtd {
+		white-space: nowrap;
+	}
+
 	.latex-grammar-math mi,
 	.latex-grammar-math mo,
-	.latex-grammar-math mn,
-	.latex-grammar-math mtext {
+	.latex-grammar-math mn {
 		font-family: var(--font-math);
-		vertical-align: baseline;
 	}
 
 	.math-nt {
 		font-style: normal;
 		font-family: var(--font-math);
 		color: var(--color-ink);
-		vertical-align: baseline;
 	}
 
 	.latex-grammar-math mo {
 		font-family: var(--font-math);
 		color: var(--color-muted);
-		vertical-align: baseline;
 	}
 
 	.alt-sep {
-		margin: 0 var(--space-2);
 		color: var(--color-muted);
-		vertical-align: baseline;
 	}
 
 	.math-term {
 		font-family: var(--font-math);
 		font-style: normal;
-		font-weight: 400;
 		color: var(--color-ink);
-		padding: 0 0.5px;
-		vertical-align: baseline;
 	}
 
 	.math-epsilon {
 		font-style: normal;
 		font-family: var(--font-math);
 		color: var(--color-muted);
-		vertical-align: baseline;
-	}
-
-	.row-alternatives {
-		display: inline;
-		vertical-align: baseline;
-		text-align: left;
-	}
-
-	.alt-body {
-		display: inline;
-		vertical-align: baseline;
 	}
 </style>
