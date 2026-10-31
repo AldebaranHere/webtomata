@@ -720,9 +720,11 @@
 		}
 		.editor > :global(.work) {
 			order: 1;
+			z-index: 2;
 		}
 		.editor > :global(aside) {
 			order: 2;
+			z-index: 1;
 		}
 		.editor > :global(.rail) {
 			order: 3;
