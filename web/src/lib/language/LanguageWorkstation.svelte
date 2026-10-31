@@ -645,8 +645,10 @@
 <style>
 	.workstation {
 		display: grid;
-		grid-template-columns: var(--library-width, 280px) 8px 1fr 340px;
-		height: calc(100dvh - 56px);
+		grid-template-columns: var(--library-width, 280px) 8px minmax(0, 1fr) 340px;
+		height: 100%;
+		flex: 1;
+		min-height: 0;
 		background: var(--color-ground);
 		color: var(--color-ink);
 		font-family: var(--font-ui);
@@ -704,6 +706,8 @@
 		border-right: 1px solid var(--color-border);
 		background: var(--color-surface);
 		overflow: hidden;
+		min-height: 0;
+		height: 100%;
 	}
 
 	.col:last-child {
@@ -844,6 +848,7 @@
 	/* Editor Column */
 	.editor-body {
 		flex: 1;
+		min-height: 0;
 		display: flex;
 		flex-direction: column;
 		padding: var(--space-4);

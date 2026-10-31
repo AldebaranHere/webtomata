@@ -795,9 +795,8 @@ impl<'a> LanguageParser<'a> {
     }
 
     fn starts_with_ci(&self, prefix: &str) -> bool {
-        if self.input.len() < self.pos + prefix.len() {
-            return false;
-        }
-        self.input[self.pos..self.pos + prefix.len()].eq_ignore_ascii_case(prefix)
+        self.input[self.pos..]
+            .get(..prefix.len())
+            .is_some_and(|s| s.eq_ignore_ascii_case(prefix))
     }
 }

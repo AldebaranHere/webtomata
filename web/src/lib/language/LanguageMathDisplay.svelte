@@ -8,11 +8,29 @@
 	const targetSub = $derived(targetId.replace(/^[A-Za-z]+_?/, ''));
 </script>
 
+{#snippet supElement(val: string)}
+	{#if /^\d+$/.test(val)}
+		<mn>{val}</mn>
+	{:else if /^[A-Za-z]+$/.test(val)}
+		<mi>{val}</mi>
+	{:else}
+		<mo>{val}</mo>
+	{/if}
+{/snippet}
+
+{#snippet subElement(val: string)}
+	{#if /^\d+$/.test(val)}
+		<mn>{val}</mn>
+	{:else}
+		<mi>{val}</mi>
+	{/if}
+{/snippet}
+
 <div class="math-container">
 	<math display="inline" class="latex-math">
 		{#if targetLetter}
 			{#if targetSub}
-				<msub><mi>{targetLetter}</mi><mn>{targetSub}</mn></msub>
+				<msub><mi>{targetLetter}</mi>{@render subElement(targetSub)}</msub>
 			{:else}
 				<mi>{targetLetter}</mi>
 			{/if}
@@ -22,11 +40,15 @@
 		{#each nodes as node, i (i)}
 			{#if node.kind === 'var'}
 				{#if node.sub && node.sup}
-					<msubsup><mi>{node.base}</mi><mn>{node.sub}</mn><mo>{node.sup}</mo></msubsup>
+					<msubsup
+						><mi>{node.base}</mi>{@render subElement(node.sub)}{@render supElement(
+							node.sup
+						)}</msubsup
+					>
 				{:else if node.sub}
-					<msub><mi>{node.base}</mi><mn>{node.sub}</mn></msub>
+					<msub><mi>{node.base}</mi>{@render subElement(node.sub)}</msub>
 				{:else if node.sup}
-					<msup><mi>{node.base}</mi><mo>{node.sup}</mo></msup>
+					<msup><mi>{node.base}</mi>{@render supElement(node.sup)}</msup>
 				{:else}
 					<mi>{node.base}</mi>
 				{/if}
@@ -39,13 +61,14 @@
 								{#if innerNode.kind === 'var'}
 									{#if innerNode.sub && innerNode.sup}
 										<msubsup
-											><mi>{innerNode.base}</mi><mn>{innerNode.sub}</mn><mo>{innerNode.sup}</mo
-											></msubsup
+											><mi>{innerNode.base}</mi>{@render subElement(
+												innerNode.sub
+											)}{@render supElement(innerNode.sup)}</msubsup
 										>
 									{:else if innerNode.sub}
-										<msub><mi>{innerNode.base}</mi><mn>{innerNode.sub}</mn></msub>
+										<msub><mi>{innerNode.base}</mi>{@render subElement(innerNode.sub)}</msub>
 									{:else if innerNode.sup}
-										<msup><mi>{innerNode.base}</mi><mo>{innerNode.sup}</mo></msup>
+										<msup><mi>{innerNode.base}</mi>{@render supElement(innerNode.sup)}</msup>
 									{:else}
 										<mi>{innerNode.base}</mi>
 									{/if}
@@ -61,7 +84,7 @@
 							{/each}
 							<mo>)</mo>
 						</mrow>
-						<mo>{node.sup}</mo>
+						{@render supElement(node.sup)}
 					</msup>
 				{:else}
 					<mrow>
@@ -70,13 +93,14 @@
 							{#if innerNode.kind === 'var'}
 								{#if innerNode.sub && innerNode.sup}
 									<msubsup
-										><mi>{innerNode.base}</mi><mn>{innerNode.sub}</mn><mo>{innerNode.sup}</mo
-										></msubsup
+										><mi>{innerNode.base}</mi>{@render subElement(
+											innerNode.sub
+										)}{@render supElement(innerNode.sup)}</msubsup
 									>
 								{:else if innerNode.sub}
-									<msub><mi>{innerNode.base}</mi><mn>{innerNode.sub}</mn></msub>
+									<msub><mi>{innerNode.base}</mi>{@render subElement(innerNode.sub)}</msub>
 								{:else if innerNode.sup}
-									<msup><mi>{innerNode.base}</mi><mo>{innerNode.sup}</mo></msup>
+									<msup><mi>{innerNode.base}</mi>{@render supElement(innerNode.sup)}</msup>
 								{:else}
 									<mi>{innerNode.base}</mi>
 								{/if}
@@ -96,8 +120,8 @@
 			{:else if node.kind === 'set'}
 				{#if node.sup}
 					<msup
-						><mrow><mo>&#123;</mo><mtext>{node.text}</mtext><mo>&#125;</mo></mrow><mo>{node.sup}</mo
-						></msup
+						><mrow><mo>&#123;</mo><mtext>{node.text}</mtext><mo>&#125;</mo></mrow
+						>{@render supElement(node.sup)}</msup
 					>
 				{:else}
 					<mrow><mo>&#123;</mo><mtext>{node.text}</mtext><mo>&#125;</mo></mrow>

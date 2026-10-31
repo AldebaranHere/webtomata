@@ -42,6 +42,20 @@ describe('parseMathNodes', () => {
 		]);
 	});
 
+	it('parses (L1)^3L2^2 - L7*', () => {
+		const nodes = parseMathNodes('(L1)^3L2^2 - L7*');
+		expect(nodes).toEqual([
+			{
+				kind: 'group',
+				inner: [{ kind: 'var', base: 'L', sub: '1', sup: undefined }],
+				sup: '3'
+			},
+			{ kind: 'var', base: 'L', sub: '2', sup: '2' },
+			{ kind: 'op', text: '−' },
+			{ kind: 'var', base: 'L', sub: '7', sup: '*' }
+		]);
+	});
+
 	it('parses finite sets like {ab, aca, b, ccab}', () => {
 		const nodes = parseMathNodes('{ab, aca, b, ccab}');
 		expect(nodes).toEqual([{ kind: 'set', text: 'ab, aca, b, ccab', sup: undefined }]);

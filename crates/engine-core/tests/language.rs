@@ -283,3 +283,46 @@ fn test_l1_cubed_l2_squared_minus_l7_star() {
         elapsed
     );
 }
+
+#[test]
+fn test_parse_and_eval_all_preset_formulas() {
+    let presets = vec![
+        ("L1", "{ab, aca, b, ccab}"),
+        ("L2", "{ac, c, bab, bcaa}"),
+        ("L3", "{bb, bac, a, cbab}"),
+        ("L4", "{ca, aab, b, caac}"),
+        ("L5", "{bc, c, bca, cbac}"),
+        ("L6", "{aa, bba, a, cbac}"),
+        ("L7", "{ab, bc}"),
+        ("L8", "{ba, ac}"),
+        ("L9", "{ab, ca}"),
+        ("L10", "{ac, cb}"),
+        ("L11", "L1^3L2^2 - L7*"),
+        ("L23", "L7* - L8(L1 ∪ L2)*"),
+        ("L35", "(L6)^R L1*"),
+        ("L47", "{ w in {a, b}* : 3#a(w) >= 5#b(w) + 3 }"),
+        ("L55", "{ w in {a, b}* : ∀v ∈ prefix(w). (3#a(v) >= 6#b(v)) }"),
+        ("L59", "{ w in {a, b}* : ∀v ∈ suffix(w). (3#a(v) >= 6#b(v)) }"),
+    ];
+
+    let mut env = HashMap::new();
+    for (id, f) in &presets {
+        let parsed = LanguageParser::parse(f).unwrap_or_else(|e| panic!("Failed to parse {}: {:?}", id, e));
+        env.insert(id.to_string(), parsed);
+    }
+
+    let evaluator = LanguageEvaluator::new(&env);
+    let options = EnumerateOptions {
+        min_length: 0,
+        max_count: 5,
+        max_depth: 10,
+    };
+
+    for (id, _) in &presets {
+        let expr = &env[*id];
+        let res = evaluator.enumerate(expr, options);
+        assert!(res.is_ok(), "Failed to enumerate {}: {:?}", id, res.err());
+        let strings = res.unwrap();
+        println!("{}: {:?}", id, strings);
+    }
+}
