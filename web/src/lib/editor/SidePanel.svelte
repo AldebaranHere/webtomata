@@ -106,7 +106,7 @@
 	let heightPct = $state(DEFAULT_PCT);
 	const phone = () => window.matchMedia('(max-width: 39.99rem)').matches;
 	const editorHeight = () => aside?.parentElement?.clientHeight || window.innerHeight;
-	let press: { startY: number; startPct: number; dragging: boolean } | null = null;
+	let press = $state<{ startY: number; startPct: number; dragging: boolean } | null>(null);
 	// The click that follows a drag must not show or hide the panel.
 	let noClickUntil = 0;
 
@@ -234,6 +234,7 @@
 	<button
 		type="button"
 		class="handle"
+		class:dragging={press?.dragging}
 		aria-expanded={!hidden}
 		aria-label={hidden ? t('panel.show') : t('panel.hide')}
 		onclick={clickBar}
@@ -454,10 +455,16 @@
 			height: 4px;
 			border-radius: var(--radius-pill);
 			background: var(--color-border-strong);
+			pointer-events: none;
 		}
 		.handle .name {
 			font-size: var(--text-sm);
 			color: var(--color-muted);
+			pointer-events: none;
+		}
+		.handle:active .bar,
+		.handle.dragging .bar {
+			pointer-events: auto;
 		}
 		.content {
 			padding-top: var(--space-1);

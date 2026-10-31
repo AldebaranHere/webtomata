@@ -14,6 +14,7 @@
 	import { OG_TYPE_WEBSITE, ogLocale } from '#lib/seo.ts';
 	import { library } from '#lib/storage/library.svelte.ts';
 	import { localizedTitle } from '#lib/storage/titles.ts';
+	import WorkstationSwitcher from '#lib/components/WorkstationSwitcher.svelte';
 
 	const localeTag = $derived(ogLocale(getLocale()));
 	const pageTitle = $derived(`${t('nav.sandbox')} · ${t('app.name')}`);
@@ -24,13 +25,19 @@
 	// place when the machine has been read, so that a reload does not show the card for a moment.
 	let editor = $state<Editor | undefined>();
 	let skipped = $state(true);
-	let activeMode = $state<'fsm' | 'language'>('fsm');
+	let activeMode = $state<'fsm' | 'language' | 'grammar'>('fsm');
 
 	let LanguageWorkstation = $state<Component | null>(null);
+	let GrammarWorkstation = $state<Component | null>(null);
 	$effect(() => {
 		if (activeMode === 'language' && !LanguageWorkstation) {
 			void import('#lib/language/LanguageWorkstation.svelte').then(
 				(module) => (LanguageWorkstation = module.default)
+			);
+		}
+		if (activeMode === 'grammar' && !GrammarWorkstation) {
+			void import('#lib/grammar/GrammarWorkstation.svelte').then(
+				(module) => (GrammarWorkstation = module.default)
 			);
 		}
 	});
@@ -78,12 +85,37 @@
 				};
 	}
 
+	function selectMode(mode: 'fsm' | 'language' | 'grammar') {
+		activeMode = mode;
+		try {
+			localStorage.setItem('webtomata_sandbox_mode', mode);
+			const url = new URL(window.location.href);
+			if (mode === 'fsm') {
+				url.searchParams.delete('mode');
+			} else {
+				url.searchParams.set('mode', mode);
+			}
+			window.history.replaceState(null, '', url.toString());
+		} catch {
+			// ignore in restricted environments
+		}
+	}
+
 	onMount(() => {
 		skipped = false;
 		seen = tourSeen();
 		const urlMode = new URLSearchParams(window.location.search).get('mode');
-		if (urlMode === 'language') {
-			activeMode = 'language';
+		if (urlMode === 'language' || urlMode === 'grammar' || urlMode === 'fsm') {
+			activeMode = urlMode;
+		} else {
+			try {
+				const saved = localStorage.getItem('webtomata_sandbox_mode');
+				if (saved === 'language' || saved === 'grammar' || saved === 'fsm') {
+					activeMode = saved;
+				}
+			} catch {
+				// ignore
+			}
 		}
 		void library.start(() => ({ doc: createDocument() })).then(openLink);
 		// A link pasted in a tab that already shows the Sandbox only changes the fragment: the page is not
@@ -237,32 +269,19 @@
 	</p>
 {/if}
 
-<div class="mode-bar" class:fsm-mode={activeMode === 'fsm'}>
-	<div class="mode-toggles" role="group" aria-label={t('sandbox.mode_aria')}>
-		<button
-			type="button"
-			aria-pressed={activeMode === 'fsm'}
-			class="mode-btn"
-			class:active={activeMode === 'fsm'}
-			onclick={() => (activeMode = 'fsm')}
-		>
-			<span>{t('sandbox.mode_fsm')}</span>
-		</button>
-		<button
-			type="button"
-			aria-pressed={activeMode === 'language'}
-			class="mode-btn"
-			class:active={activeMode === 'language'}
-			onclick={() => (activeMode = 'language')}
-		>
-			<span>{t('sandbox.mode_language')}</span>
-		</button>
-	</div>
+<div class="mode-bar">
+	<WorkstationSwitcher {activeMode} onselect={selectMode} />
 </div>
 
 {#if activeMode === 'language'}
 	{#if LanguageWorkstation}
 		<LanguageWorkstation />
+	{:else}
+		<div class="frame" aria-busy="true"></div>
+	{/if}
+{:else if activeMode === 'grammar'}
+	{#if GrammarWorkstation}
+		<GrammarWorkstation />
 	{:else}
 		<div class="frame" aria-busy="true"></div>
 	{/if}
@@ -319,41 +338,9 @@
 		border-bottom: 1px solid var(--color-border);
 	}
 	@media (max-width: 640px) {
-		.mode-bar.fsm-mode {
-			display: none;
+		.mode-bar {
+			padding: var(--space-1) var(--space-3);
 		}
-	}
-	.mode-toggles {
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-		background: var(--color-ground);
-		padding: 2px;
-		border-radius: var(--radius-md);
-		border: 1px solid var(--color-border);
-	}
-	.mode-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-1) var(--space-3);
-		border: 1px solid transparent;
-		border-radius: var(--radius-sm);
-		background: transparent;
-		color: var(--color-muted);
-		font-family: var(--font-ui);
-		font-size: var(--text-xs);
-		font-weight: var(--weight-strong);
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-	.mode-btn:hover {
-		color: var(--color-ink);
-	}
-	.mode-btn.active {
-		background: var(--color-surface);
-		color: var(--color-accent-ink);
-		border-color: var(--color-border);
 	}
 	.notice {
 		display: flex;

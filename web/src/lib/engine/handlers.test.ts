@@ -168,6 +168,36 @@ describe('every method reaches the engine', () => {
 			}
 		});
 	});
+
+	it('parses context-free grammar and transforms to CNF', () => {
+		const parsed = call('parseGrammar', 'S -> a S b | ε');
+		expect(parsed).toMatchObject({
+			ok: true,
+			value: {
+				start: 'S'
+			}
+		});
+
+		const cnf = call('transformToCnf', 'S -> a S b | a b');
+		expect(cnf).toMatchObject({
+			ok: true,
+			value: {
+				steps: expect.any(Array),
+				finalGrammar: expect.any(Object)
+			}
+		});
+
+		const cyk = call('cykParse', 'S -> A B\nA -> a\nB -> b', 'ab');
+		expect(cyk).toEqual({
+			ok: true,
+			value: {
+				input: 'ab',
+				accepted: true,
+				table: expect.any(Array),
+				isCnf: true
+			}
+		});
+	});
 });
 
 describe('a call that the engine cannot answer', () => {

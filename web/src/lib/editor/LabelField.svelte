@@ -39,6 +39,44 @@
 	let value = $state('');
 	const openedAt = performance.now();
 
+	let targetX = $derived(Math.max(4, x - WIDTH / 2));
+	let targetY = $derived(Math.max(4, y - 22));
+	let clampedX = $state<number | null>(null);
+	let clampedY = $state<number | null>(null);
+	let posX = $derived(clampedX ?? targetX);
+	let posY = $derived(clampedY ?? targetY);
+
+	$effect(() => {
+		// React to changes in ask and problem which dynamically resize the box
+		void ask;
+		void problem;
+		void targetX;
+		void targetY;
+
+		void tick().then(() => {
+			if (!box || !box.parentElement) {
+				clampedX = null;
+				clampedY = null;
+				return;
+			}
+			const parent = box.parentElement;
+			const parentRect = parent.getBoundingClientRect();
+			const boxRect = box.getBoundingClientRect();
+
+			if (targetX + boxRect.width > parentRect.width - 4) {
+				clampedX = Math.max(4, parentRect.width - boxRect.width - 4);
+			} else {
+				clampedX = null;
+			}
+
+			if (targetY + boxRect.height > parentRect.height - 4) {
+				clampedY = Math.max(4, parentRect.height - boxRect.height - 4);
+			} else {
+				clampedY = null;
+			}
+		});
+	});
+
 	onMount(async () => {
 		value = initial;
 		await tick();
@@ -89,13 +127,7 @@
 	const characters = (text: string) => [...text].join(', ');
 </script>
 
-<div
-	class="field"
-	bind:this={box}
-	style:left="{Math.max(4, x - WIDTH / 2)}px"
-	style:top="{Math.max(4, y - 22)}px"
-	{onfocusout}
->
+<div class="field" bind:this={box} style:left="{posX}px" style:top="{posY}px" {onfocusout}>
 	<div class="row">
 		<input
 			bind:this={input}
@@ -132,7 +164,7 @@
 <style>
 	.field {
 		position: absolute;
-		z-index: 1;
+		z-index: 10;
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-1);
