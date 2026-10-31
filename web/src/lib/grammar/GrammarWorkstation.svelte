@@ -334,7 +334,12 @@
 	}
 
 	function addRow() {
-		const lastLhs = rows[rows.length - 1]?.lhs.trim() || 'S';
+		const lastRow = rows[rows.length - 1];
+		if (lastRow && lastRow.alternatives.every((a) => a.trim() === '')) {
+			focusCell(rows.length - 1, 0);
+			return;
+		}
+		const lastLhs = lastRow?.lhs.trim() || 'S';
 		rows = [...rows, { id: crypto.randomUUID(), lhs: lastLhs, alternatives: [''] }];
 		focusedRowIndex = rows.length - 1;
 		focusedAltIndex = 0;
@@ -457,18 +462,44 @@
 		const row = rows[rowIdx];
 		if (!row) return;
 
-		const nonEmpty = row.alternatives.filter((a) => a.trim().length > 0);
-		if (nonEmpty.length > 0) {
-			row.alternatives = nonEmpty;
+		const nonEmpty = row.alternatives.map((a) => a.trim()).filter((a) => a.length > 0);
+		if (nonEmpty.length === 0) {
+			if (rows.length > 1) {
+				// Delete empty row to prevent clutter
+				rows = rows.filter((_, i) => i !== rowIdx);
+			} else {
+				// Preserve single empty starting row
+				row.lhs = 'S';
+				row.alternatives = [''];
+				rows = [...rows];
+			}
 		} else {
-			// Keep exactly 1 empty cell if all were empty
-			row.alternatives = [''];
+			row.alternatives = nonEmpty;
+			rows = [...rows];
 		}
-		rows = [...rows];
+
 		if (focusedRowIndex === rowIdx) {
 			focusedRowIndex = -1;
 		}
 		void onMatrixChange();
+	}
+
+	function addAlternativeCell(rowIdx: number) {
+		const row = rows[rowIdx];
+		if (!row) return;
+
+		const lastAlt = row.alternatives[row.alternatives.length - 1];
+		if (lastAlt !== undefined && lastAlt.trim() === '') {
+			focusCell(rowIdx, row.alternatives.length - 1);
+			return;
+		}
+
+		row.alternatives.push('');
+		rows = [...rows];
+		focusedRowIndex = rowIdx;
+		focusedAltIndex = row.alternatives.length - 1;
+		focusedField = 'rhs';
+		focusCell(rowIdx, row.alternatives.length - 1);
 	}
 
 	function insertSymbol(insertText: string) {
@@ -741,6 +772,16 @@
 													use:registerCellRef={`${row.id}-${altIdx}`}
 												/>
 											{/each}
+											<button
+												type="button"
+												class="btn-add-alt"
+												title={t('grammar.matrix_add_alt')}
+												aria-label={t('grammar.matrix_add_alt')}
+												onpointerdown={(e) => e.preventDefault()}
+												onclick={() => addAlternativeCell(idx)}
+											>
+												+
+											</button>
 										</div>
 
 										<!-- Contextual Special Symbol Bar for Active Row -->
@@ -1305,6 +1346,30 @@
 		outline: none;
 		border-color: var(--color-accent);
 		box-shadow: 0 0 0 1px var(--color-accent);
+	}
+
+	.btn-add-alt {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 24px;
+		height: 24px;
+		padding: 0;
+		font-family: var(--font-math);
+		font-size: var(--text-sm);
+		line-height: 1;
+		color: var(--color-muted);
+		background: transparent;
+		border: 1px dashed var(--color-border);
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.btn-add-alt:hover {
+		color: var(--color-accent);
+		border-color: var(--color-accent);
+		background: var(--color-accent-tint);
 	}
 
 	/* Contextual Special Symbol Bar */

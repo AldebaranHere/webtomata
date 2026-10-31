@@ -945,6 +945,7 @@ export const id = {
 	'grammar.matrix_ph_lhs_other': 'A',
 	'grammar.matrix_ph_rhs_start': 'AB | λ',
 	'grammar.matrix_ph_rhs_other': 'aAb',
+	'grammar.matrix_add_alt': 'Tambah alternatif (|)',
 	'grammar.resize_output_aria': 'Ubah lebar panel hasil pemrosesan'
 } as const;
 

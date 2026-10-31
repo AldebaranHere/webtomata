@@ -946,5 +946,6 @@ export const en: Record<MessageKey, string> = {
 	'grammar.matrix_ph_lhs_other': 'A',
 	'grammar.matrix_ph_rhs_start': 'AB | λ',
 	'grammar.matrix_ph_rhs_other': 'aAb',
+	'grammar.matrix_add_alt': 'Add alternative (|)',
 	'grammar.resize_output_aria': 'Resize results panel'
 };
