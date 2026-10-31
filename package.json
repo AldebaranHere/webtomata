@@ -10,8 +10,8 @@
   "scripts": {
     "build": "pnpm build:wasm && pnpm --filter web build",
     "lint": "pnpm --filter web lint",
-    "format:check": "pnpm --filter web format:check",
-    "format": "pnpm --filter web format",
+    "format:check": "pnpm --filter web format:check && cargo fmt --check",
+    "format": "pnpm --filter web format && cargo fmt",
     "check": "pnpm --filter web check",
     "lint:rust": "cargo fmt --check && cargo clippy --all-targets -- -D warnings",
     "cov:rust": "cargo llvm-cov -p engine-core",

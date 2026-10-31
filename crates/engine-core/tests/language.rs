@@ -301,13 +301,20 @@ fn test_parse_and_eval_all_preset_formulas() {
         ("L23", "L7* - L8(L1 ∪ L2)*"),
         ("L35", "(L6)^R L1*"),
         ("L47", "{ w in {a, b}* : 3#a(w) >= 5#b(w) + 3 }"),
-        ("L55", "{ w in {a, b}* : ∀v ∈ prefix(w). (3#a(v) >= 6#b(v)) }"),
-        ("L59", "{ w in {a, b}* : ∀v ∈ suffix(w). (3#a(v) >= 6#b(v)) }"),
+        (
+            "L55",
+            "{ w in {a, b}* : ∀v ∈ prefix(w). (3#a(v) >= 6#b(v)) }",
+        ),
+        (
+            "L59",
+            "{ w in {a, b}* : ∀v ∈ suffix(w). (3#a(v) >= 6#b(v)) }",
+        ),
     ];
 
     let mut env = HashMap::new();
     for (id, f) in &presets {
-        let parsed = LanguageParser::parse(f).unwrap_or_else(|e| panic!("Failed to parse {}: {:?}", id, e));
+        let parsed =
+            LanguageParser::parse(f).unwrap_or_else(|e| panic!("Failed to parse {}: {:?}", id, e));
         env.insert(id.to_string(), parsed);
     }
 
