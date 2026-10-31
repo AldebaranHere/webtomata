@@ -4,7 +4,7 @@
 //! samples. Only built with the feature `ts` (`pnpm build:types`); the WASM build does not
 //! include it.
 
-use crate::api::{self, EquivalenceReport, RegexOutcome, SimulationReport};
+use crate::api::{self, EnumerateReport, EquivalenceReport, RegexOutcome, SimulationReport};
 use crate::json::{Wire, WireTransition};
 use crate::{
     Budget, Change, Compiled, Conversion, ConversionBudget, ConversionStep, Counterexample,
@@ -111,6 +111,11 @@ fn samples() -> Vec<(&'static str, &'static str, String)> {
         ("sampleXor", "Xor", api::xor(EVEN, A_STAR, None)),
         ("sampleImportJff", "Jff", imported),
         ("sampleExportJff", "string", api::export_jff(EVEN, &layout)),
+        (
+            "sampleEnumerateLanguage",
+            "EnumerateReport",
+            api::enumerate_language("{a,b}", 0, 5, None),
+        ),
     ]
 }
 
@@ -168,6 +173,7 @@ pub fn declarations() -> String {
         SimulationReport,
         EquivalenceReport,
         RegexOutcome,
+        EnumerateReport,
     );
 
     // The envelope of every API function (see `api`).

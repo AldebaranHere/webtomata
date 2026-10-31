@@ -157,6 +157,17 @@ describe('every method reaches the engine', () => {
 		const xml = (exported as { value: string }).value;
 		expect(call('importJff', xml)).toMatchObject({ ok: true, value: { fsm: even } });
 	});
+
+	it('enumerates formal language in proper order', () => {
+		const res = call('enumerateLanguage', '{a, b}{a, b}', 0, 10);
+		expect(res).toEqual({
+			ok: true,
+			value: {
+				strings: ['aa', 'ab', 'ba', 'bb'],
+				alphabet: ['a', 'b']
+			}
+		});
+	});
 });
 
 describe('a call that the engine cannot answer', () => {

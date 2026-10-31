@@ -52,6 +52,7 @@ fn the_types_match_the_json() {
         "SimulationReport",
         "EquivalenceReport",
         "RegexOutcome",
+        "EnumerateReport",
     ] {
         assert!(
             text.contains(&format!("export type {name} =")),

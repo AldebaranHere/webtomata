@@ -2,6 +2,7 @@
 /MD_FILES/
 /REFERENCES/
 /UIUX/
+/.agents/
 
 # Secrets and local config
 .env

@@ -22,6 +22,7 @@ import type {
 	SimplifyBudget,
 	SimulateBudget,
 	SimulationReport,
+	EnumerateReport,
 	StopReason,
 	ViaMachineBudget
 } from './types.ts';
@@ -94,6 +95,12 @@ export interface EngineApi {
 	xor(first: Machine, second: Machine, budget?: Partial<ConversionBudget>): EngineResult<Xor>;
 	importJff(xml: string): EngineResult<Jff>;
 	exportJff(machine: Machine, layout: JffState[]): EngineResult<string>;
+	enumerateLanguage(
+		expr: string,
+		minLength?: number,
+		maxCount?: number,
+		env?: Record<string, string>
+	): EngineResult<EnumerateReport>;
 }
 
 export type EngineMethod = keyof EngineApi;
@@ -119,7 +126,8 @@ export const METHODS = [
 	'intersection',
 	'xor',
 	'importJff',
-	'exportJff'
+	'exportJff',
+	'enumerateLanguage'
 ] as const satisfies readonly EngineMethod[];
 
 /** A method that is missing from `METHODS` makes this a type error. */

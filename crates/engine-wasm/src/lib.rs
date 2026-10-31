@@ -101,6 +101,16 @@ pub fn export_jff(machine: &str, layout: &str) -> String {
     api::export_jff(machine, layout)
 }
 
+#[wasm_bindgen(js_name = enumerateLanguage)]
+pub fn enumerate_language(
+    expr: &str,
+    min_length: usize,
+    max_count: usize,
+    env_json: Option<String>,
+) -> String {
+    api::enumerate_language(expr, min_length, max_count, env_json.as_deref())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -154,5 +164,16 @@ mod tests {
         assert!(regex_to_fsm("a", "not json", None).contains("api.invalid_alphabet"));
         assert!(import_jff("<").contains("jff.xml_invalid"));
         assert!(simulate(EVEN, "ab", Some("[".to_owned())).contains("api.invalid_budget"));
+    }
+
+    #[wasm_bindgen_test]
+    #[test]
+    fn enumerate_language_answers_in_envelope() {
+        let answer = enumerate_language("{a,b}{a,b}", 0, 5, None);
+        assert!(answer.contains(r#""ok":true"#), "{answer}");
+        assert!(
+            answer.contains(r#""strings":["aa","ab","ba","bb"]"#),
+            "{answer}"
+        );
     }
 }

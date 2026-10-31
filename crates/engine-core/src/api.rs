@@ -353,3 +353,57 @@ pub fn export_jff(machine_json: &str, layout_json: &str) -> String {
     };
     finish(run())
 }
+
+/// What `enumerate_language` returns: strings in proper order and inferred alphabet.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct EnumerateReport {
+    pub strings: Vec<String>,
+    pub alphabet: Vec<String>,
+}
+
+/// Enumerates strings for a formal language expression in strict proper order.
+pub fn enumerate_language(
+    expr_text: &str,
+    min_length: usize,
+    max_count: usize,
+    env_json: Option<&str>,
+) -> String {
+    let run = || -> Result<EnumerateReport, Message> {
+        too_long(expr_text, "expression characters", 4096)?;
+
+        let mut env = std::collections::HashMap::new();
+        if let Some(json) = env_json.filter(|j| !j.trim().is_empty()) {
+            too_long(json, "environment bytes", MAX_JSON_BYTES)?;
+            let raw_map: std::collections::HashMap<String, String> =
+                serde_json::from_str(json).map_err(|_| Message::new("api.invalid_environment"))?;
+            for (k, v) in raw_map {
+                let parsed = crate::language::LanguageParser::parse(&v).map_err(|e| {
+                    Message::new("api.invalid_language").with("detail", e.to_string())
+                })?;
+                env.insert(k, parsed);
+            }
+        }
+
+        let expr = crate::language::LanguageParser::parse(expr_text)
+            .map_err(|e| Message::new("api.invalid_language").with("detail", e.to_string()))?;
+
+        let evaluator = crate::language::LanguageEvaluator::new(&env);
+        let alphabet_set = evaluator.infer_alphabet(&expr);
+        let alphabet: Vec<String> = alphabet_set.into_iter().map(|c| c.to_string()).collect();
+
+        let options = crate::language::EnumerateOptions {
+            min_length: min_length.clamp(0, 100),
+            max_count: max_count.clamp(1, 100),
+            max_depth: 30.max(min_length + 20),
+        };
+
+        let strings = evaluator
+            .enumerate(&expr, options)
+            .map_err(|e| Message::new("api.enumeration_failed").with("detail", e.to_string()))?;
+
+        Ok(EnumerateReport { strings, alphabet })
+    };
+    finish(run())
+}
