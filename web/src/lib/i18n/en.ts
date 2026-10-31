@@ -936,5 +936,15 @@ export const en: Record<MessageKey, string> = {
 	'grammar.cyk_accepted_detail': 'w ∈ L(G) — string "{word}" can be derived from {start}',
 	'grammar.cyk_rejected_detail': 'w ∉ L(G) — string "{word}" cannot be derived by this grammar',
 	'grammar.cyk_col_pos': 'j = {pos}',
-	'grammar.cyk_row_len': 'l = {len}'
+	'grammar.cyk_row_len': 'l = {len}',
+	'grammar.matrix_add_row': '+ Add Row',
+	'grammar.matrix_delete_row': 'Delete This Row',
+	'grammar.matrix_col_lhs': 'Variable (LHS)',
+	'grammar.matrix_col_arrow': 'Arrow',
+	'grammar.matrix_col_rhs': 'Right-Hand Side (RHS)',
+	'grammar.matrix_ph_lhs_start': 'S',
+	'grammar.matrix_ph_lhs_other': 'A',
+	'grammar.matrix_ph_rhs_start': 'AB | λ',
+	'grammar.matrix_ph_rhs_other': 'aAb',
+	'grammar.resize_output_aria': 'Resize results panel'
 };

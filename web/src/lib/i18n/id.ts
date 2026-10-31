@@ -935,7 +935,17 @@ export const id = {
 	'grammar.cyk_rejected_detail':
 		'w ∉ L(G) — string "{word}" tidak dapat diturunkan oleh tata bahasa ini',
 	'grammar.cyk_col_pos': 'j = {pos}',
-	'grammar.cyk_row_len': 'l = {len}'
+	'grammar.cyk_row_len': 'l = {len}',
+	'grammar.matrix_add_row': '+ Tambah Baris',
+	'grammar.matrix_delete_row': 'Hapus Baris Ini',
+	'grammar.matrix_col_lhs': 'Variabel (LHS)',
+	'grammar.matrix_col_arrow': 'Panah',
+	'grammar.matrix_col_rhs': 'Ruas Kanan (RHS)',
+	'grammar.matrix_ph_lhs_start': 'S',
+	'grammar.matrix_ph_lhs_other': 'A',
+	'grammar.matrix_ph_rhs_start': 'AB | λ',
+	'grammar.matrix_ph_rhs_other': 'aAb',
+	'grammar.resize_output_aria': 'Ubah lebar panel hasil pemrosesan'
 } as const;
 
 export type MessageKey = keyof typeof id;

@@ -75,12 +75,14 @@
 	const CUSTOM_STORAGE_KEY = 'webtomata.language.custom';
 	const SELECTED_ID_KEY = 'webtomata.language.selected_id';
 	const LIBRARY_WIDTH_KEY = 'webtomata.language.col1_width';
+	const OUTPUT_WIDTH_KEY = 'webtomata.language.col3_width';
 
 	let customLanguages = $state<CustomLanguage[]>([]);
 	let selectedId = $state<string>('L1');
 	let expression = $state<string>(PRESETS[0]?.formula ?? '');
 
 	let libraryWidth = $state<number>(280);
+	let outputWidth = $state<number>(420);
 	let workstationRef = $state<HTMLDivElement | null>(null);
 
 	let minLength = $state<number>(0);
@@ -114,6 +116,13 @@
 				const w = Number(savedWidth);
 				if (w >= 200 && w <= 700) {
 					libraryWidth = w;
+				}
+			}
+			const savedOutWidth = localStorage.getItem(OUTPUT_WIDTH_KEY);
+			if (savedOutWidth) {
+				const ow = Number(savedOutWidth);
+				if (ow >= 280 && ow <= 700) {
+					outputWidth = ow;
 				}
 			}
 			const savedSelected = localStorage.getItem(SELECTED_ID_KEY);
@@ -170,6 +179,60 @@
 		window.addEventListener('pointercancel', onPointerUp);
 		document.body.style.cursor = 'col-resize';
 		document.body.style.userSelect = 'none';
+	}
+
+	function startOutputResize(event: PointerEvent) {
+		event.preventDefault();
+		const onPointerMove = (e: PointerEvent) => {
+			if (!workstationRef) return;
+			const rect = workstationRef.getBoundingClientRect();
+			const newWidth = Math.max(280, Math.min(700, rect.right - e.clientX));
+			outputWidth = newWidth;
+		};
+
+		const onPointerUp = () => {
+			window.removeEventListener('pointermove', onPointerMove);
+			window.removeEventListener('pointerup', onPointerUp);
+			window.removeEventListener('pointercancel', onPointerUp);
+			document.body.style.cursor = '';
+			document.body.style.userSelect = '';
+			try {
+				localStorage.setItem(OUTPUT_WIDTH_KEY, String(outputWidth));
+			} catch {
+				// ignore
+			}
+		};
+
+		window.addEventListener('pointermove', onPointerMove);
+		window.addEventListener('pointerup', onPointerUp);
+		window.addEventListener('pointercancel', onPointerUp);
+		document.body.style.cursor = 'col-resize';
+		document.body.style.userSelect = 'none';
+	}
+
+	function handleOutputSplitterKeydown(event: KeyboardEvent) {
+		if (event.key === 'ArrowLeft') {
+			outputWidth = Math.min(700, outputWidth + 16);
+			try {
+				localStorage.setItem(OUTPUT_WIDTH_KEY, String(outputWidth));
+			} catch {
+				// ignore
+			}
+		} else if (event.key === 'ArrowRight') {
+			outputWidth = Math.max(280, outputWidth - 16);
+			try {
+				localStorage.setItem(OUTPUT_WIDTH_KEY, String(outputWidth));
+			} catch {
+				// ignore
+			}
+		} else if (event.key === 'Home') {
+			outputWidth = 420;
+			try {
+				localStorage.setItem(OUTPUT_WIDTH_KEY, String(outputWidth));
+			} catch {
+				// ignore
+			}
+		}
 	}
 
 	function handleSplitterKeydown(event: KeyboardEvent) {
@@ -334,7 +397,12 @@
 	});
 </script>
 
-<div class="workstation" bind:this={workstationRef} style:--library-width="{libraryWidth}px">
+<div
+	class="workstation"
+	bind:this={workstationRef}
+	style:--library-width="{libraryWidth}px"
+	style:--output-width="{outputWidth}px"
+>
 	<!-- Column 1: Library Presets & Custom -->
 	<aside class="col library-col" aria-label={t('language.library_aria')}>
 		<div class="col-header">
@@ -554,6 +622,31 @@
 		</div>
 	</section>
 
+	<!-- Splitter 2: Middle to Output -->
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+	<div
+		class="splitter"
+		role="separator"
+		tabindex="0"
+		aria-orientation="vertical"
+		aria-label={t('grammar.resize_output_aria')}
+		aria-valuenow={outputWidth}
+		aria-valuemin={280}
+		aria-valuemax={700}
+		onpointerdown={startOutputResize}
+		onkeydown={handleOutputSplitterKeydown}
+		ondblclick={() => {
+			outputWidth = 420;
+			try {
+				localStorage.setItem(OUTPUT_WIDTH_KEY, '420');
+			} catch {
+				// ignore
+			}
+		}}
+	>
+		<div class="splitter-line"></div>
+	</div>
+
 	<!-- Column 3: Output & Enumeration Controls -->
 	<section class="col output-col" aria-label={t('language.output_aria')}>
 		<div class="col-header">
@@ -645,7 +738,10 @@
 <style>
 	.workstation {
 		display: grid;
-		grid-template-columns: var(--library-width, 280px) 8px minmax(0, 1fr) 340px;
+		grid-template-columns: var(--library-width, 280px) 8px minmax(0, 1fr) 8px var(
+				--output-width,
+				420px
+			);
 		height: 100%;
 		flex: 1;
 		min-height: 0;

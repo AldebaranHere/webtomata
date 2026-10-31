@@ -142,11 +142,11 @@
 		justify-content: center;
 		width: 32px;
 		height: 32px;
-		border-radius: var(--radius-full);
+		border-radius: var(--radius-pill);
 		border: 1px solid var(--color-border);
 		background: var(--color-surface);
-		color: var(--color-ink-muted);
-		font-family: var(--font-sans);
+		color: var(--color-muted);
+		font-family: var(--font-ui);
 		font-weight: 600;
 		font-size: var(--text-sm);
 		cursor: pointer;

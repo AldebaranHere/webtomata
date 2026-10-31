@@ -23,10 +23,12 @@
 	{@const { base, sub } = splitSub(name)}
 	{#if sub}
 		<msub
-			><mi>{base}</mi>{#if /^\d+$/.test(sub)}<mn>{sub}</mn>{:else}<mi>{sub}</mi>{/if}</msub
+			><mi class="math-nt">{base}</mi>{#if /^\d+$/.test(sub)}<mn>{sub}</mn>{:else}<mi
+					class="math-nt">{sub}</mi
+				>{/if}</msub
 		>
 	{:else}
-		<mi>{base}</mi>
+		<mi class="math-nt">{base}</mi>
 	{/if}
 {/snippet}
 
@@ -42,17 +44,17 @@
 
 <div class="math-container">
 	<math display="block" class="latex-grammar-math">
-		<mtable columnalign="right center left" rowspacing="0.4em" columnspacing="0.5em">
+		<mtable columnalign="right center left" rowspacing="0.35em" columnspacing="0.5em">
 			{#each rows as row (row.head)}
 				<mtr>
-					<mtd>
+					<mtd columnalign="right">
 						{@render renderNonTerminal(row.head)}
 					</mtd>
-					<mtd>
+					<mtd columnalign="center">
 						<mo>→</mo>
 					</mtd>
-					<mtd>
-						<mrow>
+					<mtd columnalign="left">
+						<mrow class="row-alternatives">
 							{#each row.alternatives as alt, altIdx (altIdx)}
 								{#if altIdx > 0}
 									<mo class="alt-sep">|</mo>
@@ -90,36 +92,53 @@
 		user-select: text;
 	}
 
-	.latex-grammar-math mi {
-		font-style: italic;
+	.latex-grammar-math mi,
+	.latex-grammar-math mo,
+	.latex-grammar-math mn,
+	.latex-grammar-math mtext {
 		font-family: var(--font-math);
+	}
+
+	.math-nt {
+		font-style: normal;
+		font-family: var(--font-math);
+		color: var(--color-ink);
 	}
 
 	.latex-grammar-math mo {
 		font-family: var(--font-math);
-		color: var(--color-ink-muted);
+		color: var(--color-muted);
 	}
 
 	.alt-sep {
 		margin: 0 var(--space-2);
-		color: var(--color-ink-muted);
+		color: var(--color-muted);
 	}
 
 	.math-term {
-		font-family: var(--font-mono);
-		font-weight: 600;
+		font-family: var(--font-math);
+		font-style: normal;
+		font-weight: 400;
 		color: var(--color-ink);
-		padding: 0 1px;
+		padding: 0 0.5px;
 	}
 
 	.math-epsilon {
-		font-style: italic;
-		color: var(--color-ink-muted);
+		font-style: normal;
+		font-family: var(--font-math);
+		color: var(--color-muted);
+	}
+
+	.row-alternatives {
+		display: inline-flex;
+		align-items: center;
+		flex-wrap: wrap;
+		text-align: left;
 	}
 
 	.alt-body {
 		display: inline-flex;
 		align-items: center;
-		gap: 2px;
+		gap: 0.5px;
 	}
 </style>
