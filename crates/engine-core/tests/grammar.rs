@@ -198,3 +198,63 @@ fn test_full_pipeline_cfg_to_cnf_to_cyk() {
         );
     }
 }
+
+#[test]
+fn test_cnf_variable_deduplication_step6() {
+    let input = r#"
+        S -> a A B | A a | b D
+        A -> a B | B S | ε
+        B -> a | A b | ε
+        C -> a A | b B
+        D -> b D
+    "#;
+    let grammar = GrammarParser::parse(input).expect("Should parse grammar");
+    let trace = CnfTransformer::transform(&grammar).expect("CNF transformation should succeed");
+
+    assert!(
+        CykParser::is_cnf(&trace.final_grammar),
+        "Final grammar must be CNF:\n{}",
+        trace.final_grammar.to_display_string()
+    );
+
+    // Verify deduplication: exactly one rule for X -> A B exists, and S0, A, S all point to X
+    let rules_with_ab: Vec<_> = trace
+        .final_grammar
+        .rules
+        .iter()
+        .filter(|r| {
+            r.body
+                == vec![
+                    Symbol::NonTerminal("A".into()),
+                    Symbol::NonTerminal("B".into()),
+                ]
+        })
+        .collect();
+
+    assert_eq!(
+        rules_with_ab.len(),
+        1,
+        "Expected exactly 1 rule deriving AB, found: {:?}",
+        rules_with_ab
+    );
+    let helper_var = &rules_with_ab[0].head;
+    assert_eq!(helper_var, "X");
+
+    // Check S0, A, S all have rule with [T_a, X]
+    for head in &["S0", "A", "S"] {
+        let has_rule = trace.final_grammar.rules.iter().any(|r| {
+            &r.head == head
+                && r.body
+                    == vec![
+                        Symbol::NonTerminal("T_a".into()),
+                        Symbol::NonTerminal("X".into()),
+                    ]
+        });
+        assert!(
+            has_rule,
+            "Expected {} -> T_a X in final grammar:\n{}",
+            head,
+            trace.final_grammar.to_display_string()
+        );
+    }
+}

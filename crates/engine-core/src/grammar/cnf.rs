@@ -476,12 +476,13 @@ impl CnfTransformer {
         )
     }
 
-    /// Phase 6: Binarize long rules (length >= 3)
+    /// Phase 6: Binarize long rules (length >= 3) with pair caching
     fn phase6_binarize_long(grammar: &Grammar) -> (Grammar, Vec<Production>, Vec<Production>) {
         let mut existing_vars = grammar.variables();
+        let mut pair_map: BTreeMap<(String, String), String> = BTreeMap::new();
         let mut final_rules = Vec::new();
+        let mut helper_rules = Vec::new();
         let mut removed_rules = Vec::new();
-        let mut helper_counter = 1;
 
         for rule in &grammar.rules {
             if rule.body.len() <= 2 {
@@ -490,28 +491,37 @@ impl CnfTransformer {
             }
 
             removed_rules.push(rule.clone());
-            let mut current_head = rule.head.clone();
-            let k = rule.body.len();
+            let mut current_body = rule.body.clone();
 
-            for i in 0..(k - 2) {
-                let fresh =
-                    Self::fresh_variable_name(&existing_vars, &format!("X_{}", helper_counter));
-                helper_counter += 1;
-                existing_vars.insert(fresh.clone());
+            // Right-to-left reduction with caching of variable pairs
+            while current_body.len() > 2 {
+                let n = current_body.len();
+                let sym1 = current_body[n - 2].to_string();
+                let sym2 = current_body[n - 1].to_string();
+                let pair_key = (sym1, sym2);
 
-                final_rules.push(Production::new(
-                    current_head,
-                    vec![rule.body[i].clone(), Symbol::NonTerminal(fresh.clone())],
-                ));
-                current_head = fresh;
+                let helper_var = match pair_map.get(&pair_key) {
+                    Some(existing_var) => existing_var.clone(),
+                    None => {
+                        let fresh = Self::fresh_variable_name(&existing_vars, "X");
+                        existing_vars.insert(fresh.clone());
+                        pair_map.insert(pair_key, fresh.clone());
+                        helper_rules.push(Production::new(
+                            fresh.clone(),
+                            vec![current_body[n - 2].clone(), current_body[n - 1].clone()],
+                        ));
+                        fresh
+                    }
+                };
+
+                current_body.truncate(n - 2);
+                current_body.push(Symbol::NonTerminal(helper_var));
             }
 
-            final_rules.push(Production::new(
-                current_head,
-                vec![rule.body[k - 2].clone(), rule.body[k - 1].clone()],
-            ));
+            final_rules.push(Production::new(rule.head.clone(), current_body));
         }
 
+        final_rules.extend(helper_rules);
         Self::sort_productions(&mut final_rules, &grammar.start);
 
         let added_rules: Vec<Production> = final_rules
