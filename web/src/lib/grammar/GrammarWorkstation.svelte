@@ -23,10 +23,10 @@
 	}
 
 	const QUICK_SYMBOLS: QuickSymbol[] = [
+		{ label: 'λ', insertText: 'λ', title: 'String kosong (lambda)' },
+		{ label: 'ε', insertText: 'ε', title: 'String kosong (epsilon)' },
 		{ label: '→', insertText: ' -> ', title: 'Panah produksi (->)' },
 		{ label: '|', insertText: ' | ', title: 'Alternatif (|)' },
-		{ label: 'ε', insertText: 'ε', title: 'String kosong (epsilon)' },
-		{ label: 'λ', insertText: 'λ', title: 'String kosong (lambda)' },
 		{ label: 'S', insertText: 'S', title: 'Simbol S' },
 		{ label: 'A', insertText: 'A', title: 'Simbol A' },
 		{ label: 'B', insertText: 'B', title: 'Simbol B' },
@@ -66,7 +66,7 @@
 
 	// Matrix State
 	let rows = $state<MatrixRow[]>([]);
-	let focusedRowIndex = $state<number>(0);
+	let focusedRowIndex = $state<number>(-1);
 	let focusedAltIndex = $state<number>(0);
 	let focusedField = $state<'lhs' | 'rhs'>('rhs');
 
@@ -133,12 +133,13 @@
 			const head = row.lhs.trim();
 			if (!head) continue;
 
+			// Strictly filter non-empty alternatives
 			const validAlts = row.alternatives.map((a) => a.trim()).filter((a) => a.length > 0);
 			if (validAlts.length === 0) {
-				outLines.push(`${head} -> λ`);
-			} else {
-				outLines.push(`${head} -> ${validAlts.join(' | ')}`);
+				// Do not produce a rule for an empty / incomplete row!
+				continue;
 			}
+			outLines.push(`${head} -> ${validAlts.join(' | ')}`);
 		}
 		return outLines.join('\n');
 	}
@@ -288,6 +289,7 @@
 	function selectPreset(preset: PresetGrammar) {
 		selectedId = preset.id;
 		rows = textToMatrixRows(preset.grammar);
+		focusedRowIndex = -1;
 		try {
 			localStorage.setItem(SELECTED_ID_KEY, preset.id);
 		} catch {
@@ -299,6 +301,7 @@
 	function selectCustom(custom: CustomGrammar) {
 		selectedId = custom.id;
 		rows = textToMatrixRows(custom.grammar);
+		focusedRowIndex = -1;
 		try {
 			localStorage.setItem(SELECTED_ID_KEY, custom.id);
 		} catch {
@@ -331,7 +334,6 @@
 	}
 
 	function addRow() {
-		// Default to start state S if empty, or same as last row's LHS
 		const lastLhs = rows[rows.length - 1]?.lhs.trim() || 'S';
 		rows = [...rows, { id: crypto.randomUUID(), lhs: lastLhs, alternatives: [''] }];
 		focusedRowIndex = rows.length - 1;
@@ -343,12 +345,12 @@
 
 	function deleteRow(index: number) {
 		if (rows.length <= 1) {
-			// Reset single row to default S -> empty
 			rows = [{ id: crypto.randomUUID(), lhs: 'S', alternatives: [''] }];
 		} else {
 			rows = rows.filter((_, i) => i !== index);
 		}
 		contextMenu.visible = false;
+		focusedRowIndex = -1;
 		void onMatrixChange();
 	}
 
@@ -442,10 +444,39 @@
 		void onMatrixChange();
 	}
 
+	function handleRowFocusOut(event: FocusEvent, rowIdx: number) {
+		const rowEl = event.currentTarget as HTMLElement;
+		// Check if the newly focused element is still inside this row or its toolbar
+		const relatedTarget = event.relatedTarget as Node | null;
+		if (relatedTarget && rowEl.contains(relatedTarget)) {
+			// Still inside row, do not prune
+			return;
+		}
+
+		// Leaving the row entirely: prune trailing or empty alternative cells
+		const row = rows[rowIdx];
+		if (!row) return;
+
+		const nonEmpty = row.alternatives.filter((a) => a.trim().length > 0);
+		if (nonEmpty.length > 0) {
+			row.alternatives = nonEmpty;
+		} else {
+			// Keep exactly 1 empty cell if all were empty
+			row.alternatives = [''];
+		}
+		rows = [...rows];
+		if (focusedRowIndex === rowIdx) {
+			focusedRowIndex = -1;
+		}
+		void onMatrixChange();
+	}
+
 	function insertSymbol(insertText: string) {
-		if (rows.length === 0) {
-			rows = [{ id: crypto.randomUUID(), lhs: 'S', alternatives: [''] }];
-			focusedRowIndex = 0;
+		if (focusedRowIndex === -1 || rows.length === 0) {
+			if (rows.length === 0) {
+				rows = [{ id: crypto.randomUUID(), lhs: 'S', alternatives: [''] }];
+			}
+			focusedRowIndex = rows.length - 1;
 			focusedAltIndex = 0;
 		}
 		const currentRow = rows[focusedRowIndex];
@@ -461,6 +492,7 @@
 			} else {
 				currentRow.alternatives[focusedAltIndex] =
 					(currentRow.alternatives[focusedAltIndex] ?? '') + insertText.trim();
+				focusCell(focusedRowIndex, focusedAltIndex);
 			}
 		}
 		rows = [...rows];
@@ -646,24 +678,7 @@
 		</div>
 
 		<div class="editor-body">
-			<!-- Toolbar -->
-			<div class="symbol-toolbar" role="toolbar" aria-label={t('grammar.symbol_toolbar')}>
-				<span class="toolbar-label">{t('grammar.insert_label')}</span>
-				<div class="toolbar-group">
-					{#each QUICK_SYMBOLS as sym (sym.label)}
-						<button
-							type="button"
-							class="sym-btn"
-							title={sym.title}
-							onclick={() => insertSymbol(sym.insertText)}
-						>
-							{sym.label}
-						</button>
-					{/each}
-				</div>
-			</div>
-
-			<!-- JFLAP-style Nx3 Grammar Matrix Editor with Multi-Cell RHS -->
+			<!-- JFLAP-style Nx3 Grammar Matrix Editor with Multi-Cell RHS & Inline Active Toolbar -->
 			<div class="matrix-card">
 				<table class="matrix-table">
 					<thead>
@@ -675,7 +690,12 @@
 					</thead>
 					<tbody>
 						{#each rows as row, idx (row.id)}
-							<tr class="matrix-row" oncontextmenu={(e) => handleContextMenu(e, idx)}>
+							<tr
+								class="matrix-row"
+								class:row-active={focusedRowIndex === idx}
+								oncontextmenu={(e) => handleContextMenu(e, idx)}
+								onfocusout={(e) => handleRowFocusOut(e, idx)}
+							>
 								<td class="td-lhs">
 									<input
 										type="text"
@@ -696,30 +716,58 @@
 									<span class="arrow-glyph">→</span>
 								</td>
 								<td class="td-rhs">
-									<div class="alts-cell-container">
-										{#each row.alternatives as alt, altIdx (altIdx)}
-											{#if altIdx > 0}
-												<span class="alt-divider">|</span>
-											{/if}
-											<input
-												type="text"
-												class="alt-cell-input"
-												style:width="{Math.max(45, (alt.length + 1) * 11)}px"
-												value={alt}
-												onfocus={() => {
-													focusedRowIndex = idx;
-													focusedAltIndex = altIdx;
-													focusedField = 'rhs';
-												}}
-												oninput={(e) => handleAltInput(e, idx, altIdx)}
-												onkeydown={(e) => handleAltKeydown(e, idx, altIdx)}
-												placeholder={altIdx === 0 && idx === 0
-													? t('grammar.matrix_ph_rhs_start')
-													: t('grammar.matrix_ph_rhs_other')}
-												spellcheck="false"
-												use:registerCellRef={`${row.id}-${altIdx}`}
-											/>
-										{/each}
+									<div class="rhs-wrapper">
+										<div class="alts-cell-container">
+											{#each row.alternatives as alt, altIdx (altIdx)}
+												{#if altIdx > 0}
+													<span class="alt-divider">|</span>
+												{/if}
+												<input
+													type="text"
+													class="alt-cell-input"
+													style:width="{Math.max(45, (alt.length + 1) * 11)}px"
+													value={alt}
+													onfocus={() => {
+														focusedRowIndex = idx;
+														focusedAltIndex = altIdx;
+														focusedField = 'rhs';
+													}}
+													oninput={(e) => handleAltInput(e, idx, altIdx)}
+													onkeydown={(e) => handleAltKeydown(e, idx, altIdx)}
+													placeholder={altIdx === 0 && idx === 0
+														? t('grammar.matrix_ph_rhs_start')
+														: t('grammar.matrix_ph_rhs_other')}
+													spellcheck="false"
+													use:registerCellRef={`${row.id}-${altIdx}`}
+												/>
+											{/each}
+										</div>
+
+										<!-- Contextual Special Symbol Bar for Active Row -->
+										{#if focusedRowIndex === idx}
+											<div
+												class="inline-symbol-bar"
+												role="toolbar"
+												aria-label={t('grammar.symbol_toolbar')}
+											>
+												<span class="inline-toolbar-label">{t('grammar.insert_label')}</span>
+												<div class="inline-toolbar-group">
+													{#each QUICK_SYMBOLS as sym (sym.label)}
+														<button
+															type="button"
+															class="inline-sym-btn"
+															title={sym.title}
+															onpointerdown={(e) => {
+																e.preventDefault();
+																insertSymbol(sym.insertText);
+															}}
+														>
+															{sym.label}
+														</button>
+													{/each}
+												</div>
+											</div>
+										{/if}
 									</div>
 								</td>
 							</tr>
@@ -1109,47 +1157,6 @@
 		color: var(--color-accent);
 	}
 
-	.symbol-toolbar {
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: var(--space-2);
-		padding: var(--space-2);
-		background: var(--color-ground);
-		border-radius: var(--radius-md);
-		border: 1px solid var(--color-border);
-	}
-
-	.toolbar-label {
-		font-size: var(--text-xs);
-		font-weight: 600;
-		color: var(--color-muted);
-	}
-
-	.toolbar-group {
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: var(--space-1);
-	}
-
-	.sym-btn {
-		font-family: var(--font-math);
-		font-size: var(--text-sm);
-		padding: 2px 8px;
-		border-radius: var(--radius-sm);
-		border: 1px solid var(--color-border);
-		background: var(--color-surface);
-		color: var(--color-ink);
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.sym-btn:hover {
-		border-color: var(--color-accent);
-		color: var(--color-accent);
-	}
-
 	/* JFLAP Nx3 Matrix Card */
 	.matrix-card {
 		width: 100%;
@@ -1203,19 +1210,21 @@
 		border-bottom: none;
 	}
 
-	.matrix-row:hover {
+	.matrix-row:hover,
+	.matrix-row.row-active {
 		background: var(--color-ground);
 	}
 
 	.td-lhs,
 	.td-arrow,
 	.td-rhs {
-		padding: var(--space-1) var(--space-2);
-		vertical-align: middle;
+		padding: var(--space-2) var(--space-2);
+		vertical-align: top;
 	}
 
 	.td-arrow {
 		text-align: center;
+		padding-top: var(--space-3);
 	}
 
 	.arrow-glyph {
@@ -1251,6 +1260,13 @@
 	.lhs-input {
 		font-weight: 600;
 		text-align: center;
+		margin-top: 2px;
+	}
+
+	.rhs-wrapper {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
 	}
 
 	.alts-cell-container {
@@ -1289,6 +1305,49 @@
 		outline: none;
 		border-color: var(--color-accent);
 		box-shadow: 0 0 0 1px var(--color-accent);
+	}
+
+	/* Contextual Special Symbol Bar */
+	.inline-symbol-bar {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-1) var(--space-2);
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		width: fit-content;
+		box-shadow: var(--shadow-popover);
+	}
+
+	.inline-toolbar-label {
+		font-size: var(--text-2xs);
+		font-weight: 600;
+		color: var(--color-muted);
+	}
+
+	.inline-toolbar-group {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+	}
+
+	.inline-sym-btn {
+		font-family: var(--font-math);
+		font-size: var(--text-xs);
+		padding: 1px 6px;
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--color-border);
+		background: var(--color-surface);
+		color: var(--color-ink);
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.inline-sym-btn:hover {
+		border-color: var(--color-accent);
+		color: var(--color-accent);
+		background: var(--color-accent-tint);
 	}
 
 	.matrix-footer {
