@@ -734,6 +734,7 @@
 	/* Library Column */
 	.library-scroll {
 		flex: 1;
+		min-height: 0;
 		overflow-y: auto;
 		padding: var(--space-3);
 	}
@@ -854,6 +855,12 @@
 		padding: var(--space-4);
 		overflow-y: auto;
 		gap: var(--space-4);
+		scrollbar-color: var(--color-border-strong) transparent;
+		scrollbar-width: thin;
+	}
+
+	.editor-body > * {
+		flex-shrink: 0;
 	}
 
 	.alphabet-badge {
@@ -1043,9 +1050,43 @@
 	/* Output Column */
 	.output-body {
 		flex: 1;
+		min-height: 0;
 		display: flex;
 		flex-direction: column;
 		overflow-y: auto;
+	}
+
+	/* Elegant, consistent grey scrollbar styling across all workstation columns */
+	.library-scroll,
+	.editor-body,
+	.output-body {
+		scrollbar-color: var(--color-border-strong) transparent;
+		scrollbar-width: thin;
+	}
+
+	.library-scroll::-webkit-scrollbar,
+	.editor-body::-webkit-scrollbar,
+	.output-body::-webkit-scrollbar {
+		width: 6px;
+	}
+
+	.library-scroll::-webkit-scrollbar-track,
+	.editor-body::-webkit-scrollbar-track,
+	.output-body::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	.library-scroll::-webkit-scrollbar-thumb,
+	.editor-body::-webkit-scrollbar-thumb,
+	.output-body::-webkit-scrollbar-thumb {
+		background: var(--color-border-strong);
+		border-radius: var(--radius-sm);
+	}
+
+	.library-scroll::-webkit-scrollbar-thumb:hover,
+	.editor-body::-webkit-scrollbar-thumb:hover,
+	.output-body::-webkit-scrollbar-thumb:hover {
+		background: var(--color-muted);
 	}
 
 	.controls-panel {
