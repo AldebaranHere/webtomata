@@ -142,7 +142,7 @@ jobs:
   # The browser is downloaded by Playwright, at the exact version of the lockfile.
   cross-browser:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -187,9 +187,9 @@ jobs:
       # Sometimes that mirror is so slow, without hanging, that `playwright install-deps` takes 6
       # minutes or more (8 to 36 minutes in some runs, against 30 seconds normally), and it has no
       # time limit. tools/install-browser-deps.sh runs apt itself under a hard limit, up to three
-      # tries of 75 seconds each (a normal install takes 25 to 40), and uses the main archive from the second try on.
+      # tries of 300 seconds each, and uses the main archive from the second try on.
       - name: Install the system libraries of the browser
-        timeout-minutes: 10
+        timeout-minutes: 15
         run: bash tools/install-browser-deps.sh ${{ matrix.browser }}
       - run: pnpm --filter web exec playwright test --project=${{ matrix.project }}
 
