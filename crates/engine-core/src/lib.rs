@@ -6,6 +6,7 @@ mod determinize;
 mod equivalence;
 mod fsm;
 mod fsm_regex;
+pub mod grammar;
 mod jff;
 mod json;
 pub mod language;

@@ -28,6 +28,9 @@ export interface Wasm {
 	importJff(xml: string): string;
 	exportJff(machine: string, layout: string): string;
 	enumerateLanguage(expr: string, min_length: number, max_count: number, env_json?: string): string;
+	parseGrammar(grammar: string): string;
+	transformToCnf(grammar: string): string;
+	cykParse(grammar: string, input_word: string): string;
 }
 
 export type Handlers = {
@@ -93,7 +96,10 @@ export function createHandlers(wasm: Wasm): Handlers {
 		importJff: (xml) => wasm.importJff(xml),
 		exportJff: (machine, layout) => wasm.exportJff(text(machine), text(layout)),
 		enumerateLanguage: (expr, minLength = 0, maxCount = 10, env) =>
-			wasm.enumerateLanguage(expr, minLength, maxCount, optional(env))
+			wasm.enumerateLanguage(expr, minLength, maxCount, optional(env)),
+		parseGrammar: (grammar) => wasm.parseGrammar(grammar),
+		transformToCnf: (grammar) => wasm.transformToCnf(grammar),
+		cykParse: (grammar, inputWord) => wasm.cykParse(grammar, inputWord)
 	};
 }
 

@@ -407,3 +407,39 @@ pub fn enumerate_language(
     };
     finish(run())
 }
+
+/// Parses a context-free grammar string into its AST.
+pub fn parse_grammar(grammar_text: &str) -> String {
+    let run = || -> Result<crate::grammar::Grammar, Message> {
+        too_long(grammar_text, "grammar characters", 8192)?;
+        crate::grammar::GrammarParser::parse(grammar_text)
+            .map_err(|e| Message::new("api.invalid_grammar").with("detail", e.to_string()))
+    };
+    finish(run())
+}
+
+/// Transforms a context-free grammar to Chomsky Normal Form (CNF) with a step-by-step trace.
+pub fn transform_to_cnf(grammar_text: &str) -> String {
+    let run = || -> Result<crate::grammar::CnfTransformationTrace, Message> {
+        too_long(grammar_text, "grammar characters", 8192)?;
+        let grammar = crate::grammar::GrammarParser::parse(grammar_text)
+            .map_err(|e| Message::new("api.invalid_grammar").with("detail", e.to_string()))?;
+        crate::grammar::CnfTransformer::transform(&grammar).map_err(|e| {
+            Message::new("api.cnf_transformation_failed").with("detail", e.to_string())
+        })
+    };
+    finish(run())
+}
+
+/// Tests whether an input string is accepted by a CNF grammar using the CYK algorithm.
+pub fn cyk_parse(grammar_text: &str, input_word: &str) -> String {
+    let run = || -> Result<crate::grammar::CykResult, Message> {
+        too_long(grammar_text, "grammar characters", 8192)?;
+        too_long(input_word, "input characters", 256)?;
+        let grammar = crate::grammar::GrammarParser::parse(grammar_text)
+            .map_err(|e| Message::new("api.invalid_grammar").with("detail", e.to_string()))?;
+        crate::grammar::CykParser::parse(&grammar, input_word)
+            .map_err(|e| Message::new("api.cyk_failed").with("detail", e.to_string()))
+    };
+    finish(run())
+}

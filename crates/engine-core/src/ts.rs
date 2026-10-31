@@ -5,6 +5,9 @@
 //! include it.
 
 use crate::api::{self, EnumerateReport, EquivalenceReport, RegexOutcome, SimulationReport};
+use crate::grammar::{
+    CnfStepResult, CnfTransformationTrace, CykResult, Grammar, Production, Symbol,
+};
 use crate::json::{Wire, WireTransition};
 use crate::{
     Budget, Change, Compiled, Conversion, ConversionBudget, ConversionStep, Counterexample,
@@ -116,6 +119,21 @@ fn samples() -> Vec<(&'static str, &'static str, String)> {
             "EnumerateReport",
             api::enumerate_language("{a,b}", 0, 5, None),
         ),
+        (
+            "sampleParseGrammar",
+            "Grammar",
+            api::parse_grammar("S -> a S b | ε"),
+        ),
+        (
+            "sampleTransformToCnf",
+            "CnfTransformationTrace",
+            api::transform_to_cnf("S -> a S b | a b"),
+        ),
+        (
+            "sampleCykParse",
+            "CykResult",
+            api::cyk_parse("S -> A B\nA -> a\nB -> b", "ab"),
+        ),
     ]
 }
 
@@ -174,6 +192,12 @@ pub fn declarations() -> String {
         EquivalenceReport,
         RegexOutcome,
         EnumerateReport,
+        Symbol,
+        Production,
+        Grammar,
+        CnfStepResult,
+        CnfTransformationTrace,
+        CykResult,
     );
 
     // The envelope of every API function (see `api`).
