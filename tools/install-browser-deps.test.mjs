@@ -1,7 +1,7 @@
 // Run with `node --test "tools/*.test.mjs"`. These tests run tools/install-browser-deps.sh with fake
-// `pnpm`, `sudo` and `apt-get` programs (a slow or stuck mirror cannot be made to order), and check
-// the three things that matter: it installs what Playwright says is missing, it gives up on a slow
-// try and goes on with the main Ubuntu archive, and it can stop an apt that ignores a polite stop.
+// `pnpm`, `sudo`, `dpkg`, `pkill` and `apt-get` programs (a slow or stuck mirror cannot be made to order), and check
+// that it installs what Playwright says is missing, repairs dpkg on retries, gives up on a slow
+// try to use the main Ubuntu archive, and stops an apt that ignores a polite stop.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chmodSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -30,6 +30,9 @@ function setup({ missing = ['libfoo', 'libbar'], fastFrom = 1, stubborn = false 
 	writeFileSync(sources, 'Types: deb\nURIs: mirror+file:/etc/apt/apt-mirrors.txt\nSuites: noble\n');
 	writeFileSync(count, '0');
 	write('sudo', 'exec "$@"');
+	write('pkill', `echo "pkill $*" >> '${log}'`);
+	write('dpkg', `echo "dpkg $*" >> '${log}'`);
+	write('fuser', 'exit 1');
 	write(
 		'pnpm',
 		missing.length
@@ -39,11 +42,11 @@ function setup({ missing = ['libfoo', 'libbar'], fastFrom = 1, stubborn = false 
 	write(
 		'apt-get',
 		`echo "apt-get $*" >> '${log}'
-if [ "$1" = install ]; then
+if [ "$1" = "-o" ] && [ "$3" = "install" ] || [ "$1" = "install" ]; then
   n=$(( $(cat '${count}') + 1 )); echo $n > '${count}'
   if [ "$n" -lt ${fastFrom} ]; then
     ${stubborn ? "trap '' TERM" : ''}
-    sleep 20
+    ${stubborn ? 'exec sleep 20' : 'sleep 20'}
   fi
 fi
 exit 0`
@@ -73,7 +76,8 @@ function run(env, browser = 'firefox') {
 
 const calls = (env) =>
 	existsSync(env.log) ? readFileSync(env.log, 'utf8').trim().split('\n') : [];
-const installs = (env) => calls(env).filter((c) => c.startsWith('apt-get install'));
+const installs = (env) =>
+	calls(env).filter((c) => c.includes('install -y --no-install-recommends'));
 
 // The bash script targets apt-get on Ubuntu CI runners; skip on non-Linux developer machines.
 const it = (name, fn) => test(name, { skip: process.platform !== 'linux' }, fn);
@@ -89,7 +93,9 @@ it('what is missing is installed, once, without the recommended packages', () =>
 	const env = setup({ fastFrom: 1 });
 	const result = run(env);
 	assert.equal(result.status, 0, result.stdout + result.stderr);
-	assert.deepEqual(installs(env), ['apt-get install -y --no-install-recommends libfoo libbar']);
+	assert.deepEqual(installs(env), [
+		'apt-get -o DPkg::Lock::Timeout=120 install -y --no-install-recommends libfoo libbar'
+	]);
 	// The mirror of the runner is kept when the first try works.
 	assert.match(readFileSync(env.sources, 'utf8'), /mirror\+file:/);
 });
@@ -108,7 +114,7 @@ it('a slow try is given up, and the next one uses the main Ubuntu archive', () =
 it('the index of the packages is updated before each try', () => {
 	const env = setup({ fastFrom: 2 });
 	run(env);
-	assert.equal(calls(env).filter((c) => c.startsWith('apt-get update')).length >= 2, true);
+	assert.equal(calls(env).filter((c) => c.includes('update -qq')).length >= 2, true);
 });
 
 it('when every try is slow it fails, after three tries, and does not hang', () => {
@@ -126,4 +132,14 @@ it('an apt that ignores the polite stop is killed after a short wait', () => {
 	assert.equal(result.status, 0, result.stdout + result.stderr);
 	// The stubborn apt sleeps for 20 seconds: only a kill ends the try sooner.
 	assert.ok(result.seconds < 12, `it took ${result.seconds} seconds`);
+});
+
+it('repairs dpkg before retrying when a try fails', () => {
+	const env = setup({ fastFrom: 2 });
+	const result = run(env);
+	assert.equal(result.status, 0, result.stdout + result.stderr);
+	const dpkgCalls = calls(env).filter((c) => c.startsWith('dpkg '));
+	assert.deepEqual(dpkgCalls, ['dpkg --configure -a']);
+	const pkillCalls = calls(env).filter((c) => c.startsWith('pkill '));
+	assert.deepEqual(pkillCalls, ['pkill -9 apt-get', 'pkill -9 dpkg']);
 });
