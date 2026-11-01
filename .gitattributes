@@ -1,5 +1,2 @@
-* text=auto eol=lf
-*.png binary
-*.pdf binary
-*.wasm binary
-*.woff2 binary
+﻿* text=auto eol=lf
+*.ps1 text eol=crlf
