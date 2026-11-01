@@ -16,6 +16,7 @@
 .agents/skills/tba-homework-solver/cheatsheet.md
 .agents/skills/tba-homework-solver/patterns.md
 .agents/skills/tba-homework-solver/SKILL.md
+.antigravity/rules.md
 .cargo/audit.toml
 .claude/settings.local.json
 .editorconfig
@@ -48,6 +49,7 @@
 .venv-fixtures/Scripts/pip3.exe
 .venv-fixtures/Scripts/python.exe
 .venv-fixtures/Scripts/pythonw.exe
+AGENTS.md
 Cargo.lock
 Cargo.toml
 CLAUDE.md
@@ -115,7 +117,19 @@ crates/engine-core/tests/validate.rs
 crates/engine-core/tests/xor.rs
 crates/engine-wasm/Cargo.toml
 crates/engine-wasm/src/lib.rs
+design/components.md
+design/tokens.md
+docs/agent/DECISIONS.md
+docs/agent/HANDOFF.md
 docs/agent/HANDOFF-SNAPSHOT/01-git.md
+docs/agent/HANDOFF-SNAPSHOT/02-tree.md
+docs/agent/HANDOFF-SNAPSHOT/03-manifests.md
+docs/agent/HANDOFF-SNAPSHOT/04-markers.md
+docs/agent/HANDOFF-SNAPSHOT/05-verify.md
+docs/agent/HANDOFF-SNAPSHOT/06-diff.md
+docs/agent/HANDOFF-SNAPSHOT/07-design.md
+docs/agent/PLAN.md
+docs/agent/REPORT.md
 docs/ARCHITECTURE.md
 docs/decisions/0001-stack.md
 docs/decisions/0002-deploy-cloudflare-workers.md

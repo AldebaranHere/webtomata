@@ -35,10 +35,31 @@ function Append-Cmd {
     [void]$Sb.AppendLine("")
     [void]$Sb.AppendLine("## $Title")
     [void]$Sb.AppendLine($f)
-    $output = (& ([ScriptBlock]::Create($Cmd)) 2>&1 | Out-String)
-    $lines = $output -split "`r?`n"
+
+    $oldPref = $ErrorActionPreference
+    $oldConsoleEnc = [Console]::OutputEncoding
+    $ErrorActionPreference = 'Continue'
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    $env:NO_COLOR = '1'
+    $env:FORCE_COLOR = '0'
+    $env:CI = '1'
+
+    $raw = ""
+    try {
+        $raw = (& cmd.exe /c "chcp 65001 >nul && $Cmd 2>&1" 2>&1) -join "`n"
+    } catch {
+        $raw = "EXCEPTION: $_"
+    } finally {
+        $ErrorActionPreference = $oldPref
+        [Console]::OutputEncoding = $oldConsoleEnc
+    }
+
+    $raw = [regex]::Replace($raw, [char]27 + '\[[0-9;]*[A-Za-z]', '')
+
+    $lines = $raw -split "`r?`n"
     if ($lines.Count -gt 400) { $lines = $lines[-400..-1] }
     foreach ($l in $lines) { [void]$Sb.AppendLine($l) }
+
     [void]$Sb.AppendLine($f)
 }
 
@@ -91,11 +112,18 @@ Set-Content -Path "$out/04-markers.md" -Value $sb.ToString() -Encoding utf8
 
 $sb = [System.Text.StringBuilder]::new()
 [void]$sb.AppendLine("# Verification output")
-Append-Cmd $sb "Format"     "pnpm format:check"
-Append-Cmd $sb "Typecheck"  "pnpm --filter web typecheck"
-Append-Cmd $sb "Lint"       "pnpm --filter web lint"
-Append-Cmd $sb "Unit tests" "pnpm --filter web test"
-Append-Cmd $sb "Build"      "pnpm --filter web build"
+Append-Cmd $sb "Format"                "pnpm format:check"
+Append-Cmd $sb "Svelte check"          "pnpm --filter web check"
+Append-Cmd $sb "Lint"                  "pnpm --filter web lint"
+Append-Cmd $sb "Unit tests"            "pnpm --filter web test"
+Append-Cmd $sb "Node tests (tools/)"   "node --test tools/*.test.mjs"
+Append-Cmd $sb "Workflow guard rails"  "node tools/check-workflows.mjs"
+Append-Cmd $sb "Contrast guard rails"  "node tools/check-contrast.mjs"
+Append-Cmd $sb "Token usage"           "node tools/check-tokens-usage.mjs"
+Append-Cmd $sb "Strings"               "node tools/check-strings.mjs"
+Append-Cmd $sb "Questions"             "node tools/check-questions.mjs"
+Append-Cmd $sb "Rust engine tests"     "cargo test -p engine-core"
+Append-Cmd $sb "Build"                 "pnpm --filter web build"
 Set-Content -Path "$out/05-verify.md" -Value $sb.ToString() -Encoding utf8
 
 $diff = git diff "$Baseline..HEAD"

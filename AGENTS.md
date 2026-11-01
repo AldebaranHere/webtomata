@@ -35,7 +35,7 @@ Update this section as the project evolves.
 - Install: `pnpm install`
 - Dev: `pnpm --filter web dev`
 - Format check: `pnpm format:check`
-- Typecheck: `pnpm --filter web typecheck`
+- Svelte check: `pnpm --filter web check`
 - Lint: `pnpm --filter web lint`
 - Unit tests: `pnpm --filter web test`
 - E2E (desktop + phone): `pnpm --filter web test:e2e`

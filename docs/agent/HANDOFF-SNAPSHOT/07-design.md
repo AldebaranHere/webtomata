@@ -1,5 +1,6 @@
 ﻿# Design artifacts currently in the repo
 ```
-(none)
+design/components.md
+design/tokens.md
 ```
 
