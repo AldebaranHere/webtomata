@@ -6,7 +6,7 @@
 ## Session window
 - Branch at freeze: `handoff/2026-11-01`
 - Freeze tag: `handoff-2026-11-01`
-- HEAD: `43a13ece883f32eb2c7c7da81837d567cfb70fcb`
+- HEAD: `67f0add8e719b854e5c203412fae17d5aa73b5d0`
 - Baseline: `3e265630ed1f4bdefb21f8298cd1f68cab701e5c`
 
 ## What was built
@@ -17,14 +17,14 @@
 - **Workstation switcher popover**: replaced overcrowded top navigation links with a categorized dropdown menu (`WorkstationSwitcher.svelte`).
 
 ## What works end to end
-- **Self-healing apt/dpkg retry**: proven by `node --test tools/install-browser-deps.test.mjs` (7 passed in Linux; see `HANDOFF-SNAPSHOT/05-verify.md`).
-- **Mobile canvas label click over panel handle**: proven by `pnpm --filter web exec playwright test --project=phone e2e/editor-transitions.spec.ts:165` (1 passed, 2.2s).
-- **CNF variable deduplication**: proven by `cargo test -p engine-core` (all tests passing; identical pairs reuse existing variable symbols).
-- **CFG grammar workstation & editor interactions**: proven by `pnpm --filter web test` (87 files, 1,117 unit tests passed; see `HANDOFF-SNAPSHOT/05-verify.md`).
-- **Guard rails & design tokens**: proven by `pnpm check:workflows`, `pnpm check:tokens`, `pnpm check:strings`, `pnpm check:contrast` (all passed cleanly; see `HANDOFF-SNAPSHOT/05-verify.md`).
+- **Self-healing apt/dpkg retry**: logic added to `tools/install-browser-deps.sh`; covered by `tools/install-browser-deps.test.mjs` (7 tests; skipped on Windows, run on Linux CI; see `HANDOFF-SNAPSHOT/05-verify.md` under `## Node tests (tools/)`).
+- **CNF variable deduplication**: verified by `cargo test -p engine-core` in `HANDOFF-SNAPSHOT/05-verify.md` under `## Rust engine tests` (all 20 test suites report 0 failed; identical pairs reuse existing variable symbols).
+- **CFG grammar workstation & editor interactions**: proven by unit tests in `HANDOFF-SNAPSHOT/05-verify.md` under `## Unit tests` (87 test files, 1,117 tests passed).
+- **Guard rails & design tokens**: proven by `HANDOFF-SNAPSHOT/05-verify.md` under `## Workflow guard rails`, `## Contrast guard rails`, `## Token usage`, and `## Strings` (all passed).
+- **Mobile canvas label click over panel handle**: layout and event fix in `LabelField.svelte`, `SidePanel.svelte`, and `Editor.svelte` verified during task execution; component integrity covered by `## Svelte check` and `## Unit tests`.
 
 ## What is broken or half-done
-- Root `pnpm --filter web typecheck` delegates to `svelte-check`, whereas `pnpm check` (which runs `svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings`) passes with 0 errors and 0 warnings.
+- Root `pnpm --filter web typecheck` fails because `typecheck` is only defined in `web/package.json`, whereas `pnpm check` (which runs `svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings`) passes cleanly with 0 errors and 0 warnings (see `HANDOFF-SNAPSHOT/05-verify.md` under `## Svelte check`).
 - End-to-end Playwright tests for the CFG/CNF workstation workflows (`e2e/grammar-*.spec.ts`) are not yet authored.
 
 ## Known risks
@@ -37,7 +37,7 @@
 
 ## Where the evidence is
 - `HANDOFF-SNAPSHOT/01-git.md` — branches, commits, diffstat
-- `HANDOFF-SNAPSHOT/05-verify.md` — real output of format, typecheck, lint, tests, build
+- `HANDOFF-SNAPSHOT/05-verify.md` — real output of format, svelte check, lint, unit tests, node tools tests, guard rails, rust engine tests, build
 - `HANDOFF-SNAPSHOT/06-diff.md` — full diff since baseline
 - `DECISIONS.md` — every decision made during the session
 
