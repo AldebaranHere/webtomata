@@ -78,7 +78,3 @@ __pycache__/
 
 # Specific files
 /content/questions/contoh-saya.yaml
-
-# agent tooling
-docs/agent/HANDOFF-SNAPSHOT/
-.agent-baseline-sha
