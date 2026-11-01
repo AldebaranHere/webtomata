@@ -1,35 +1,47 @@
-﻿# Handoff — <YYYY-MM-DD>
+# Handoff — 2026-11-01
 
 > Written by the previous worker before handing control back to the planner.
 > Keep this under one page. Put evidence in `HANDOFF-SNAPSHOT/`; do not paraphrase what the snapshot already says.
 
 ## Session window
-- Branch at freeze: `handoff/<date>`
-- Freeze tag: `handoff-<date>`
-- HEAD: `<sha>`
-- Baseline: `<sha>`
+- Branch at freeze: `handoff/2026-11-01`
+- Freeze tag: `handoff-2026-11-01`
+- HEAD: `43a13ece883f32eb2c7c7da81837d567cfb70fcb`
+- Baseline: `3e265630ed1f4bdefb21f8298cd1f68cab701e5c`
 
 ## What was built
-- Bullet 1
-- Bullet 2
+- **CFG/CNF workstation UX polish**: discrete alternative RHS chips (`RuleAlternativeCell.svelte`), contextual active-row symbol toolbar, automatic pruning of empty cells and rows on blur, and explicit ε insertion.
+- **CNF binarization variable pair deduplication**: implemented pair cache `(String, String) -> String` in `crates/engine-core/src/grammar/cnf.rs` to reuse generated non-terminals across rules during Step 6 ("Remove Long RHS Rules").
+- **Mobile canvas pointer event layering fix**: pass-through pointer events (`pointer-events: none`) on resting panel drag handles, canvas `z-index: 2` over mobile panel `z-index: 1`, and viewport boundary clamping for `LabelField.svelte`.
+- **Self-healing browser library CI install**: added `repair_dpkg` (`pkill -9`, `fuser` wait, `dpkg --configure -a`) before retries, configured `-o DPkg::Lock::Timeout=120`, and increased attempt timeout to 300s in `tools/install-browser-deps.sh`.
+- **Workstation switcher popover**: replaced overcrowded top navigation links with a categorized dropdown menu (`WorkstationSwitcher.svelte`).
 
 ## What works end to end
-- Bullet 1 (with the test/command that proves it)
+- **Self-healing apt/dpkg retry**: proven by `node --test tools/install-browser-deps.test.mjs` (7 passed in Linux; see `HANDOFF-SNAPSHOT/05-verify.md`).
+- **Mobile canvas label click over panel handle**: proven by `pnpm --filter web exec playwright test --project=phone e2e/editor-transitions.spec.ts:165` (1 passed, 2.2s).
+- **CNF variable deduplication**: proven by `cargo test -p engine-core` (all tests passing; identical pairs reuse existing variable symbols).
+- **CFG grammar workstation & editor interactions**: proven by `pnpm --filter web test` (87 files, 1,117 unit tests passed; see `HANDOFF-SNAPSHOT/05-verify.md`).
+- **Guard rails & design tokens**: proven by `pnpm check:workflows`, `pnpm check:tokens`, `pnpm check:strings`, `pnpm check:contrast` (all passed cleanly; see `HANDOFF-SNAPSHOT/05-verify.md`).
 
 ## What is broken or half-done
-- Bullet 1 — with the failing test name or the reproduction command
+- Root `pnpm --filter web typecheck` delegates to `svelte-check`, whereas `pnpm check` (which runs `svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings`) passes with 0 errors and 0 warnings.
+- End-to-end Playwright tests for the CFG/CNF workstation workflows (`e2e/grammar-*.spec.ts`) are not yet authored.
 
 ## Known risks
-- Bullet 1
+- WebKit system library installation pulls 181 apt packages on Ubuntu runners; while `install-browser-deps.sh` self-heals, cold runs still require 90–120 seconds.
+- Deeply nested or cyclical CFG rules may generate large step sequences in full CNF transformation visualizers.
 
 ## Open questions for the planner
-- Bullet 1
+- Should the next milestone prioritize CYK parse table generation and step visualizer trees in the CFG workstation, or authoring E2E test coverage for existing grammar features?
+- Should `package.json` define a top-level `typecheck` script aliasing `pnpm --filter web check` to maintain uniform command ergonomics across agents?
 
 ## Where the evidence is
 - `HANDOFF-SNAPSHOT/01-git.md` — branches, commits, diffstat
 - `HANDOFF-SNAPSHOT/05-verify.md` — real output of format, typecheck, lint, tests, build
-- `HANDOFF-SNAPSHOT/06-diff.md` — full diff since baseline (may be truncated)
+- `HANDOFF-SNAPSHOT/06-diff.md` — full diff since baseline
 - `DECISIONS.md` — every decision made during the session
 
 ## Anything the planner should NOT re-litigate
-- Bullet 1 (with the reason)
+- The `repair_dpkg` self-healing retry logic in `install-browser-deps.sh`: it addresses a verified root-cause interruption and was proven under real Linux simulation.
+- Explicit ε insertion over empty-cell inference in the CFG editor: empty cells automatically defaulting to ε led to accidental silent epsilon production insertions.
+- Mobile canvas overlay stacking (`z-index: 2` over panel `z-index: 1`): prevents touch/pointer event masking on small mobile viewports.
