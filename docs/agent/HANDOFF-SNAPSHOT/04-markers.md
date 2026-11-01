@@ -1,0 +1,57 @@
+﻿# TODOs, FIXMEs, HACKs, XXXs
+```
+CLAUDE.md:114:- **Do not invent Indonesian terminology.** Use `docs/glossary.md`. If a term is missing, add it with the marker `TODO(review)` and tell the human.
+docs/decisions/0025-examples-and-first-run.md:24:- The texts of the card and the tour (`first.*`, `tour.*`) are a draft with `TODO(review)` until the feedback guide (U4); the owner approves them in the pull request.
+docs/glossary.md:5:**The rule.** The slides mix English and Indonesian, even for one idea. So the UI uses the English word where the slides use English for a technical noun (state, start state, accepting state, dead state, string, configuration). It uses Indonesian for sentences, verbs and words that have a settled Indonesian term (alfabet, simbol, bahasa, transisi, komplemen, irisan, ekuivalen). An entry marked `TODO(review)` is not shown in M1 and still needs a decision.
+docs/glossary.md:33:| engine                       | engine                   | The part that does the calculations (the WASM module). Kept in English because "mesin" already means the machine that the student draws. TODO(review)            |
+docs/glossary.md:45:| minimization                 | minimalisasi             | Buttons use the verb: "Minimalkan DFSM". The slides spell the noun three ways (minimalisasi, minimisasi, "minimalization"). TODO(review): ask the lecturer (C2). |
+docs/glossary.md:50:| distinguishable strings      | distinguishable          | TODO(review): not shown before M2. Keep the English word, as in the slides.                                                                                      |
+docs/glossary.md:58:Added in S4d-1, with no source yet (`TODO(review)`: the owner or the lecturer may change them): Pas (fit the machine in the view; from the wireframes), Perbesar and Perkecil (zoom in and out), Perbesaran (zoom), Atur ke 100% (reset the zoom).
+docs/glossary.md:60:Added in S6-2, with no source yet (`TODO(review)`: the owner or the lecturer may change them): Jalankan (run), Jeda (pause), Langkah berikutnya / Langkah sebelumnya (next / previous step), Kembali ke awal (back to the start), String masukan (input string), Diterima / Ditolak (accepted / rejected).
+docs/glossary.md:62:Added in S6-3, with no source yet (`TODO(review)`): Uji banyak string (test many strings), Tambah string (add a string), Tidak bisa dijalankan (cannot run), Dihentikan (stopped).
+docs/glossary.md:64:Added in X1, with no source yet (`TODO(review)`): Coba contoh (try an example), Mulai dari kanvas kosong (start from an empty canvas), Tur 1 menit (one-minute tour), Berikutnya / Kembali / Lewati / Selesai (next / back / skip / done), Buka Panduan (open the guides), Tanpa judul (untitled).
+docs/glossary.md:66:Added in S5-1, with no source yet (`TODO(review)`): Panel, Tab panel, Jenis mesin (machine type), Definisi formal (formal definition), himpunan state (the set of states), himpunan accepting state, fungsi transisi (the transition function), relasi transisi (the transition relation), Salin / Tersalin (copy / copied).
+docs/glossary.md:68:Added in S5-2, with no source yet (`TODO(review)`): Ubah lebar panel (resize the panel), Tabel transisi (transition table), Terima (the column of accepting states in the table; "accept" in English), belum ada (none yet), lebih dari satu tujuan (more than one target), + State, Tambah simbol (add a symbol), Simbol baru (new symbol), TambahÔÇª (addÔÇª).
+docs/glossary.md:70:Added in S9, with no source yet (`TODO(review)`): Tata letak otomatis (auto layout; the name is from the wireframes).
+docs/glossary.md:72:Added in S7-1, with no source yet (`TODO(review)`): Konversi (conversion), Mulai (start), Tambah dead state (add a dead state; "dead state" follows the rule above, not "jebakan"), Langkah n dari N (step n of N), Ke awal / Mundur / Putar / Maju / Ke hasil (to the start / back / play / forward / to the result), Hasil / Sumber (result / source), Buka sebagai mesin baru (open as a new machine), Tutup (close), Kelas saat ini (the classes now).
+docs/glossary.md:74:Added in S7-2a, with no source yet (`TODO(review)`): Komplemen (complement; the glossary has "komplemen"), Gabungan (union), Gabungkan dengan (join with), Pilih mesin lain (choose another machine), alfabetnya beda (different alphabet).
+docs/glossary.md:75:Added in S7-2b, with no source yet (`TODO(review)`): Irisan (intersection; the glossary has "irisan"), Tahap n dari 7 (stage n of 7), dilewati (skipped), Irisan dengan (intersect with).
+docs/glossary.md:77:Added in S7-2c, with no source yet (`TODO(review)`): XOR (the symmetric difference; the row says "XOR" and the hint "Selisih simetris"; Rich says "symmetric difference"), mesin produk (the product machine; Rich: cross-product machine), pasangan state (a pair of states), kedua mesin ekuivalen (the two machines are equivalent).
+docs/glossary.md:79:Added in S7-3 (`TODO(review)`): "Mesin ÔåÆ regex" (FSM ÔåÆ regex; Rich: `fsmtoregex`), label (the expression on the path between two states), "Naikkan batas" (raise the limit), "Salin" (copy), "Notasi Rich" (Rich notation).
+docs/glossary.md:81:Also in S7-3b (`TODO(review)`): "Regex ÔåÆ NDFSM" (Rich: `regextofsm`), "Alfabet: ..." (the alphabet that the page reads from the expression), "Sisipkan" (insert, for the buttons of the operators), the sentences of the steps (they use the glossary terms union, konkatenasi and Kleene star), and the messages about a mistake in an expression ("tidak punya pasangan", "belum lengkap").
+docs/glossary.md:83:Also in S7-3c (`TODO(review)`): "Sederhanakan" (simplify; Rich section 6.4), "identitas" (identity), "Pakai di Sederhanakan" (use in Simplify), "Sekarang" (the expression now), and the sentences of the 17 rules (`simplify.*`). The sentences write each identity in Rich's notation and then say it in words.
+docs/glossary.md:85:Also in S7-4a (`TODO(review)`): the sentences of `concat_star_plus` and `union_plus_absorb` (they say "bintangnya digabung menjadi plus" and "plus menjadi bintang").
+docs/glossary.md:87:Also in S7-4b (`TODO(review)`): "Sederhanakan lewat mesin" (simplify through the machine), "mesin minimal" (the minimal DFSM), "bagian" (a part of an expression: a symbol or an operator, the unit of its size), and the four sentences `via_machine.*`.
+docs/glossary.md:89:Also in S7-5 (`TODO(review)`): "Salin LaTeX" (copy LaTeX) and "Pratinjau" (preview).
+docs/glossary.md:91:Added in S10b-1 (`TODO(review)`): "Bagikan" (share), "tautan" (link), "Salin tautan" (copy link), "dimampatkan" (compressed) and the sentences of `share.*`.
+docs/glossary.md:93:Also in S10b-2 (`TODO(review)`): "Unduh" (download), "simpan sebagai file" (save as a file), "alfabet" in the note about the `.jff`, and the sentences of `share.*` about files.
+docs/glossary.md:95:Also in S10b-3 (`TODO(review)`): "Buka file" (open a file), "rangkaian state" (a chain of states, in the note about a label of several symbols), "bertipe" (of the type) and the sentences of `import.*` and `jff.*`.
+docs/glossary.md:97:Also in S8 (`TODO(review)`): "Bandingkan" (compare), "ekuivalen" (equivalent), "Belum sama" (not the same yet) and the sentences of `compare.*`.
+docs/glossary.md:99:Also in S11 (`TODO(review)`): "gambar" (picture) in "simpan sebagai gambar" and the sentences of `image.*`.
+docs/glossary.md:105:Added in Q3b (`TODO(review)`): "Lihat soal" (show the question) and "Sembunyikan soal" (hide the question), "Harus DFSM", "Harus NDFSM", "Harus minimal", "Tanpa transisi ╬Á", "Boleh tidak lengkap", "Maks. n state" and the sentences of `soal.*` for the page of a question.
+docs/glossary.md:111:Added in Q5 (`TODO(review)`): "Progres" (progress), "Selesai" (solved), "Sudah dicoba" (tried), "Atur ulang progres" (reset progress) and the sentences of `soal.reset_*`. The owner approved the wording "Selesai", "Sudah dicoba" and "Atur ulang progres" in the plan.
+docs/notation.md:23:The slides draw union as `Ôê¬` and the empty string as `╬Á` (checked by the owner on 2026-10-24; the text extraction of the PDFs loses these glyphs). TODO(review): confirm the Rich transition notation (╬ö, yields) against the book.
+docs/ux/editor-interactions.md:334:- **The texts** (`check.*`) are a draft with `TODO(review)` until the feedback guide (U4). A test reads the keys from the Rust source, so a new check cannot be added without a text.
+docs/ux/editor-interactions.md:369:- **The texts** (`run.*`, `sim.*`, `input.unknown_symbol`) are a draft with `TODO(review)` until the feedback guide (U4). A test reads the engine's keys from the Rust source, so a new key cannot be added without a text.
+docs/ux/editor-interactions.md:378:- **The texts** (`test.*`) are a draft with `TODO(review)` until the feedback guide (U4).
+docs/ux/feedback-copy.md:36:| Case | Indonesian (draft, `TODO(review)`) | English |
+docs/ux/feedback-copy.md:101:5. Is every term in the glossary? If not, add it with `TODO(review)` and tell the owner.
+Binary file docs/ux/wireframes/first-run-laptop.png matches
+Binary file docs/ux/wireframes/soal-laptop.png matches
+web/src/lib/i18n/en.ts:122:	// TODO(review): the wording of sharing is a draft until the feedback guide (U4).
+web/src/lib/i18n/en.ts:643:	// TODO(review): the wording of the regex conversions is a draft until the feedback guide (U4).
+web/src/lib/i18n/en.ts:762:	// TODO(review): the wording of "lewat mesin" is a draft.
+web/src/lib/i18n/id.ts:122:	// TODO(review): the wording of sharing is a draft until the feedback guide (U4).
+web/src/lib/i18n/id.ts:208:	// TODO(review): the wording of the checks is a draft until the feedback guide (U4).
+web/src/lib/i18n/id.ts:210:	// TODO(review): the wording of the tabs, the machine type and the definition is a draft until the feedback guide (U4).
+web/src/lib/i18n/id.ts:225:	// TODO(review): the wording of the table is a draft until the feedback guide (U4).
+web/src/lib/i18n/id.ts:243:	// TODO(review): the wording of the auto layout is a draft until the feedback guide (U4).
+web/src/lib/i18n/id.ts:292:	// TODO(review): the wording of the run is a draft until the feedback guide (U4).
+web/src/lib/i18n/id.ts:321:	// TODO(review): the wording of the test strings is a draft until the feedback guide (U4).
+web/src/lib/i18n/id.ts:335:	// TODO(review): the wording of the first run and of the tour is a draft until the feedback guide (U4).
+web/src/lib/i18n/id.ts:496:	// TODO(review): the wording of the conversions is a draft until the feedback guide (U4).
+web/src/lib/i18n/id.ts:623:	// TODO(review): "XOR" and "selisih simetris" have no source in the slides yet.
+web/src/lib/i18n/id.ts:642:	// TODO(review): the wording of the regex conversions is a draft until the feedback guide (U4).
+web/src/lib/i18n/id.ts:759:	// TODO(review): the wording of "lewat mesin" is a draft.
+```
+
