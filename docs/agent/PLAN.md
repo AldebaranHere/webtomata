@@ -322,7 +322,7 @@ Expected: all pass. Paste the real output.
 
 ## Task T-018 — Start state marker: a large hollow triangle, like JFLAP
 
-**Status:** proposed (promote after T-004 is accepted)
+**Status:** todo (promoted on 2026-11-03, after T-004 was accepted; the Playwright browsers must be installed in WSL first)
 **Owner:** worker
 **Branch:** `task/T-018-start-marker-triangle`
 
@@ -469,7 +469,7 @@ Write `design/screens/grammar-workstation.md`, `design/screens/language-workstat
 **Status:** proposed (after P-001)
 **Owner:** planner
 
-The owner's idea (2026-11-02): the CNF conversion shows a verbose version that follows the course (no sharing) and a minimized version, with a toggle. The planner draws it and the owner approves it before T-015. Open points for the owner at that time: is "minimized" only shared helper variables, or also reuse of an existing `A → a` rule for a terminal (the slide mentions it)? Are the two versions shown one at a time, or side by side?
+The owner's idea (2026-11-02): the CNF conversion shows a verbose version that follows the course (no sharing) and a minimized version, with a toggle. The planner draws it and the owner approves it before T-015. Open points for the owner at that time: is "minimized" only shared helper variables, or also reuse of an existing `A → a` rule for a terminal (the slide mentions it)? Are the two versions shown one at a time, or side by side? **Found by the report of T-004:** phase 5 always reuses one `T_c` variable for each terminal across the whole grammar, even when `share_helpers` is false. That is the idea of the slide's note ("Ta can take A instead") only in part, so it matters for what "minimized" means.
 
 ---
 
@@ -482,6 +482,7 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-016** The phone layout of the grammar and the language workstations: specified in its own task block above, `proposed` until the owner approves the design.
 - **T-015** The UI switch between the course version and the minimized version of the CNF conversion (needs P-002 approved, and T-014 done).
 - **T-013** Check whether preset titles and descriptions of the grammar and language workstations belong in the i18n files (they are plain Indonesian text in `presets.ts`), and move them if so. Also make the rule chips readable (`S → T_aST_b` has no spaces).
+- **T-019** CYK input limits: the parser stops at 100 characters (`CykParser::MAX_INPUT_LEN`) but the API accepts up to 256 (`api.rs`), so a string of 101 to 256 characters reaches the parser and fails with a different message. Use one constant and one message (found by the report of T-004).
 - **T-017** Make the two local-reference tests (`web/src/lib/share/files.wasm.test.ts` and `open-file.wasm.test.ts`) tolerate other machine types. They read the top level of `REFERENCES/JFF-FILES` and assume every `.jff` there is a finite automaton, so one Turing machine file at the top level made the pre-push hook fail on 2026-11-02 (0 finite automata found). They should keep only files whose type is `fa`, and skip when there are none.
 
 **B. Grammar additions** (a wireframe the owner approves comes first for T-020)
