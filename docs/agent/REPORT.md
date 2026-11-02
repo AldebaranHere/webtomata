@@ -8,7 +8,7 @@
 - branch: `task/T-018-start-marker-triangle`
 - commit: `987b2e8`
 - pull request: https://github.com/AldebaranHere/webtomata/pull/120
-- CI run: https://github.com/AldebaranHere/webtomata/actions/runs/41473404284
+- CI run: https://github.com/AldebaranHere/webtomata/actions/runs/41473672552
 
 ## What changed
 - `web/src/lib/editor/diagram/geometry.ts`:
