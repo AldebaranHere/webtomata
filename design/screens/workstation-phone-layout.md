@@ -22,7 +22,7 @@ On a phone, the library, the editor and the output are stacked as three small bo
 
 ### 3. Grammar, tab by tab
 - **Pustaka:** the button "+ Tata Bahasa Baru", the label "Preset Soal & Referensi", then the cards (id badge, title, description), then the custom grammars. A card is at least 44 px high.
-- **Editor:** the rule matrix as on the laptop; the symbol toolbar of the active row wraps into rows, every symbol button at least 44 px; the notation card; the legend (collapsed). There is no shortcut button to the CNF tab for now (the owner's decision); the student uses the tab.
+- **Editor:** the rule matrix as on the laptop; the symbol toolbar of the active row wraps into rows, every symbol button at least 44 px; the notation card; the legend (collapsed). At the end, a button **"Ubah ke CNF"** (English: "Convert to CNF"), a shortcut to the CNF tab: full width, at least 44 px high, in the primary style. Tapping it shows the CNF tab. The button exists only in the phone layout (on the laptop the CNF output is already next to the editor).
 - **CNF:** the stepper header (the six round buttons and "Sebelumnya", "n / 6", "Selanjutnya") is **sticky** under the tab strip, so the student can step without scrolling back. Each round button has a 44 px tap area. The step card (the phase title, the description, the removed and added rules, the grammar after the phase) scrolls under it. On a 360 px screen the title of the phase and the first chips are visible without scrolling.
 - **CYK:** the field and the button "Uji String" stack to the full width (the button 44 px high); the example chips wrap; the verdict card; the CYK table in a box that scrolls sideways.
 
@@ -32,7 +32,7 @@ On a phone, the library, the editor and the output are stacked as three small bo
 - **Hasil:** the header "Hasil Enumerasi (Proper Order)" with "Salin Semua" (44 px); the three settings in **one compact row** (a three-column grid, labels may wrap to two lines); then the **results at once**, below that row.
 
 ### 5. Common rules
-- Tokens only; no new color. Touch targets 44 px. Every new text in `id` and `en` (the tab names).
+- Tokens only; no new color. Touch targets 44 px. Every new text in `id` and `en` (the tab names and "Ubah ke CNF").
 - Keyboard: arrow keys move between tabs, Enter or Space activates. Focus ring as everywhere.
 - The selected tab is not saved between visits.
 
@@ -43,4 +43,4 @@ The laptop layout, the splitters, the engine calls, the saved data, the switcher
 1. The layout is approved as drawn.
 2. The tab names are right: `Pustaka`, `Editor`, `CNF`, `CYK`, `Hasil`.
 3. The tab strip is at the **top**.
-4. "Stay in editor for now": the student ends in the **Editor** tab after tapping a preset, and the shortcut button "Ubah ke CNF" is **not** built for now. (The planner's reading of the answer. The owner can change it later with a small task.)
+4. Tapping a preset **jumps to the Editor tab**, and the shortcut button **"Ubah ke CNF"** is built. (The owner first wrote "Stay in editor for now", then corrected it the same day: the jump and the button are both wanted.)

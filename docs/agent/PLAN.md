@@ -397,7 +397,8 @@ Expected: all pass. Run the new e2e test 5 times. Paste the real output into `RE
 - Choosing or creating an item in `Pustaka` selects it and moves to `Editor`; the Editor header shows its name.
 - Grammar CNF tab: the stepper header (six round buttons, previous, counter, next) is sticky under the tab strip; 44 px tap areas. Grammar CYK tab: the field and the button stack to the full width.
 - Language Editor tab: the formula box first, then the toolbar (wrapping, 44 px buttons). Language Hasil tab: the three settings in one compact row (a three-column grid), then the results at once.
-- New texts in `id` and `en` (the tab names only). There is no "Ubah ke CNF" shortcut button for now (the owner's decision).
+- The shortcut button "Ubah ke CNF" (English: "Convert to CNF") at the end of the grammar Editor tab, in the phone layout only: full width, at least 44 px high, primary style; it shows the CNF tab (the owner wants it, 2026-11-02).
+- New texts in `id` and `en`: the tab names and the shortcut.
 
 **Non-goals (out):**
 - No change to the laptop layout, the splitters, the engine, the saved data, the switcher, or the CNF and enumeration logic.
@@ -427,6 +428,7 @@ Expected: all pass. Run the new e2e test 5 times. Paste the real output into `RE
 - AC9: The laptop layout is unchanged: at 1280×800 the three columns and the splitters are there, and the existing grammar and language tests pass.
 - AC10: New texts exist in `id` and `en`, and `pnpm check:strings`, `check:tokens` and `check:contrast` pass without a change of their data.
 - AC11: A deliberate break is shown: remove the sticky position of the stepper header, AC3 fails; then restore it.
+- AC12: In the grammar Editor tab of the phone layout, the button "Ubah ke CNF" is at the end of the content, full width and at least 44 px high. Tapping it shows the CNF tab. The button is not in the laptop layout.
 
 **Verification (Mode B form shown; in Mode A drop the bridge):**
 ```
