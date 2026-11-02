@@ -14,6 +14,14 @@ Format:
 
 ---
 
+## 2026-11-02 — The worker runs in a WSL-native clone, after the owner's setup is tested
+- Decider: owner (planner proposed)
+- Context: Windows blocks `wasm-pack` (Device Guard), and the owner often saw the worker fail on the WASM build. The report of task T-014 shows that the worker already ran `wasm-pack` through WSL, on the Windows folder mounted at `/mnt/d`, and that it worked (28 s). That mix (Windows for `cargo` and Node, WSL for `wasm-pack`, one shared `node_modules` and `target`) works, but it is not the same as the CI, which is Linux only. The WSL clone `~/webtomata` was old, pointed at the Windows folder, and had no Git login, no pre-push hook and no Playwright browsers.
+- Decision: The worker runs every command in WSL Ubuntu, in the clone `~/webtomata`, never on Windows (`AGENTS.md`, "Where the worker runs"). The rule takes effect only after the owner has done the one-time setup and the worker has passed the test in the private setup note, because with the rule on and the setup missing, the worker must stop. The rules PR is merged after that test.
+- Alternatives considered: Keep the mix and write it down as the rule (works today with no setup, but the two systems share `node_modules` and `target`, and a pass on Windows says less about the Linux CI).
+- Reversible? yes
+- Affects: `AGENTS.md`, `.antigravity/rules.md`, `docs/agent/WORKFLOW.md`
+
 ## 2026-11-02 — Publish a clean docs branch, not the scaffolding branch
 - Decider: planner (approved by the owner, who asked for a security audit first)
 - Context: The repository is public. The audit of the scaffolding branch found no secrets, account ids or personal data, but found: (1) `design/tokens.md` held invented token values (a blue `#2563eb`, `space.1 = 4px`) that do not match `web/src/lib/styles/tokens.css`, and `AGENTS.md` tells the worker to follow `design/`; (2) commit 23d2a7a cut most rules from `.editorconfig` and removed the binary markers from `.gitattributes`, and put a byte-order mark before the first rule of both files, which can stop the first rule from working; (3) the snapshot files `02-tree.md`, `03-manifests.md` and `06-diff.md` list the names of the owner's private files (`REFERENCES/`, `MD_FILES/`) and 2,000 build-output paths; (4) several new files had a byte-order mark or CRLF line endings; (5) there is no `CODEOWNERS` for the agent instruction files. (An earlier draft of this entry said that `staging` had no protection. That was wrong: the ruleset named `main` also covers `staging`, with a required pull request, no force-push, no deletion, and the checks `rust` and `web`. The owner is the only collaborator. Corrected before this entry was merged.)
