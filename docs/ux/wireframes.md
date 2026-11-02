@@ -140,3 +140,7 @@ The `/tentang` page and the site footer (`SiteFooter.svelte`) provide project id
   - Academic integrity (original pattern-based problems, never copied from active course homework/exams).
   - Bug reporting (links to GitHub repository, issues, and contributing guide).
 - **The site footer (`SiteFooter.svelte`).** Rendered on all document/prose routes (`/`, `/soal`, `/panduan`, `/panduan/[id]`, `/tentang`). Displays WebTomata branding, tagline, links to `/tentang` and GitHub, and license/privacy notices. Full-screen canvas apps (`/sandbox` and `/soal/[id]`) omit the footer to preserve full-height `100dvh` workspace, with `/tentang` linked in the `<SiteHeader>` navigation and phone drawer menu.
+
+## Sandbox modes: grammar, language and the switcher (P-001, 2026-11-02)
+
+The grammar workstation, the language workstation and the mode switcher were built before their screens were written down. Their as-built specs are in `design/screens/`: `grammar-workstation.md`, `language-workstation.md` and `workstation-switcher.md`. They describe what exists and list the problems found. The proposed phone layout of the two workstations (one area at a time, with a tab strip) is in `design/screens/workstation-phone-layout.md` and `.svg`; it becomes task T-016 when the owner approves it. The start state marker is in `design/screens/start-state-marker.md`.
