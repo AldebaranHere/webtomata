@@ -117,6 +117,7 @@ Expected: version 1.54.1 or newer; `cargo audit` exits 0; all tests pass.
 
 **Status:** done
 **Commit:** `d938e2a`
+**PR:** #110
 **Owner:** worker
 **Branch:** `task/T-003-original-cnf-presets`
 

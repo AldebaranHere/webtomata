@@ -7,7 +7,8 @@
 - title: Replace the four HW05 CNF presets with five original ones
 - branch: `task/T-003-original-cnf-presets`
 - commits: `d938e2a..4a32a3d`
-- pull request: (to be created by worker/planner to staging)
+- pull request: https://github.com/AldebaranHere/webtomata/pull/110
+- CI run: https://github.com/AldebaranHere/webtomata/actions/runs/41413215417
 
 ## What changed
 - `web/src/lib/grammar/presets.ts`: Replaced four presets (`CNF01`, `CNF03`, `CNF04`, `CNF05` referencing HW05 Fasilkom UI) with five original grammars (`CNF_ORDER`, `CNF_NULLABLE`, `CNF_START_LONG`, `CNF_UNIT_CHAIN`, `CNF_SHARED_TAIL`) with Indonesian titles and descriptions without any course/homework mentions.
