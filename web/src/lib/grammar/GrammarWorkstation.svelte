@@ -62,7 +62,7 @@
 	const OUTPUT_WIDTH_KEY = 'webtomata.grammar.col3_width';
 
 	let customGrammars = $state<CustomGrammar[]>([]);
-	let selectedId = $state<string>('CNF01');
+	let selectedId = $state<string>('CNF_ORDER');
 
 	// Matrix State
 	let rows = $state<MatrixRow[]>([]);
