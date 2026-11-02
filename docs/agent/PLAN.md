@@ -18,13 +18,13 @@ Rules for every task (from `CLAUDE.md` and `AGENTS.md`): tests first, with a del
 
 ---
 
-## Task T-001 — Add a `typecheck` script (and get the first Linux CI run)
+## Task T-001 — Add a `typecheck` script
 
 **Status:** todo
 **Owner:** worker
 **Branch:** `task/T-001-typecheck-alias`
 
-**Goal:** `pnpm --filter web typecheck` must work from a clean checkout. It does not exist today: `web/package.json` has only `check`, which already runs `svelte-kit sync` first. The handoff and the old plan template named a script that was never there. This is also the first PR to `staging` since the handoff, so its CI run is the first proof that the Linux-only tests in `tools/install-browser-deps.test.mjs` pass (they are skipped on Windows).
+**Goal:** `pnpm --filter web typecheck` must work from a clean checkout. It does not exist today: `web/package.json` has only `check`, which already runs `svelte-kit sync` first. The handoff and the old plan template named a script that was never there. (The Linux-only tests in `tools/install-browser-deps.test.mjs`, which are skipped on Windows, were already proven by the CI run of PR 107: 105 tool tests passed, 0 skipped.)
 
 **Scope (in):**
 - Add `"typecheck": "pnpm run check"` to `web/package.json`.
@@ -33,7 +33,7 @@ Rules for every task (from `CLAUDE.md` and `AGENTS.md`): tests first, with a del
 **Non-goals (out):**
 - No change to the `check` script (it works and CI uses it).
 - No change to workflows, `AGENTS.md`, or any `.svelte`/`.ts` file. The planner edits `AGENTS.md`.
-- If the dpkg tests fail or are skipped in CI, do not fix them here (see AC5).
+- No change to `tools/install-browser-deps.*`.
 
 **Files expected to touch:**
 - `web/package.json`
@@ -46,7 +46,7 @@ Rules for every task (from `CLAUDE.md` and `AGENTS.md`): tests first, with a del
 - AC2: `pnpm typecheck` at the repository root does the same.
 - AC3: `pnpm check` still passes, unchanged.
 - AC4: The PR is opened to `staging` from `task/T-001-typecheck-alias`. Title: `chore(web): add a typecheck script`. The description follows Google's CL style (problem, why, what is left out, checks) and the repository's PR template, with no attribution lines. The worker does not merge.
-- AC5: In the CI log of the job that runs `pnpm test:tools`, the seven tests of `install-browser-deps` are listed as passed, not skipped. Paste those lines into `REPORT.md`. If they are skipped or fail, set the task to `blocked`, paste the log, and hand back. Do not change the tests in this PR.
+- AC5: Every required check of the PR is green (`rust` and `web`), and `REPORT.md` names the CI run.
 
 **Verification:**
 ```
@@ -362,7 +362,7 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-043** TM editor (one tape), with the same patterns as the FSM editor. A wireframe the owner approves comes first.
 - **T-044** TM with k tapes: model, simulation, `.jff`. The owner has two two-tape samples in `REFERENCES/JFF-FILES/`. In them the file has a `<tapes>` element, and every `<read>`, `<write>` and `<move>` carries a `tape="n"` attribute, so one transition lists all tapes. The worker writes its own small fixtures (`REFERENCES/` stays out of git).
 - **T-045** k-tape TM editor. A wireframe the owner approves comes first.
-- **T-046** Macro notation: the model, and the expansion of a macro diagram to a standard TM (the exercise of homework 9, part C). The target is the course notation (the owner's figures show a start arrow, `L` and `R` blocks, scanning blocks with a set of symbols, write blocks, `H`, and arrows labeled with a symbol or a set). **JFLAP has a "Turing Machine with Building Blocks" mode (the owner's screenshot shows extra tools), but none of the owner's sample files uses a block, so the planner does not yet know how JFLAP saves blocks, and its blocks (sub-machines) may differ from the course notation.** Before this task: the owner saves one `.jff` made with building blocks; the planner writes the model and an ADR; the owner approves them. The result opens as a new machine, like a minimized machine, with an option to save it. Examples in the repository must be original.
+- **T-046** Macro notation: the model, and the expansion of a macro diagram to a standard TM (the exercise of homework 9, part C). The target is the course notation (the owner's figures show a start arrow, `L` and `R` blocks, scanning blocks with a set of symbols, write blocks, `H`, and arrows labeled with a symbol or a set). **JFLAP has a "Turing Machine with Building Blocks" mode (the owner's screenshot shows extra tools).** The owner's sample made in that mode shows the file format: `<type>turingbb</type>`, every state is a `<block>` with a `<tag>` (here `Machine0` to `Machine8`), and the transitions are written as in a plain TM. In that sample each block is only a tagged placeholder, so it does not show where the inner machine of a block is stored, and JFLAP's blocks (sub-machines) may differ from the course notation. Before this task: the owner saves one more `.jff` in which a block holds a real small machine (if JFLAP allows it); the planner writes the model and an ADR; the owner approves them. The result opens as a new machine, like a minimized machine, with an option to save it. Examples in the repository must be original.
 - **T-047** Macro editor, with a "Macro to TM" button (scenario 2 of the owner, 2026-11-02): the editor shows the TM version of the macro and offers to save it. A wireframe the owner approves comes first.
 - **T-048** TM to macro, "folding" (scenario 1 of the owner, 2026-11-02; JFLAP has no such feature): a button in the TM editor shows the TM in macro form and offers to save it. The idea is to recognize the building blocks of the course notation (move, write, scan to a symbol of a set) inside a TM and replace each by a block; what cannot be recognized stays as a plain sub-machine. Needs an ADR for the method. **Correctness test:** the expansion of the folded macro accepts and rejects the same strings as the original TM, for every string up to a given length, and gives the same tape result in function mode. A research task: it starts only after T-046 and T-047, with the owner's examples of the blocks of the course.
 

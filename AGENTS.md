@@ -5,7 +5,7 @@ This repository is developed by a **two-agent team**:
 - **PLANNER** — Claude / Sonnet. Owns architecture, design, and review. Does not implement features except trivial fixes.
 - **WORKER** — Gemini / Antigravity. Executes exactly one task at a time from `docs/agent/PLAN.md`.
 
-The human is the plan approver and the merge gate.
+The human is the plan approver and the merge gate. How the loop works, step by step, with the prompts: `docs/agent/WORKFLOW.md`.
 
 ## Read order at the start of every session
 
