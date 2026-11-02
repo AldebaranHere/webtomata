@@ -180,7 +180,9 @@ Expected: all pass; the new tests are listed by name in the `cargo test` output;
 
 ## Task T-004 — Glossary entries and ADRs for the language and grammar engines
 
-**Status:** todo (promoted on 2026-11-02, after T-014 was accepted; it is a documentation task, so it is a good first task for the WSL setup)
+**Status:** done
+**Commit:** `9d46f2f`
+**PR:** #116
 **Owner:** worker
 **Branch:** `task/T-004-adr-glossary-grammar-language`
 
