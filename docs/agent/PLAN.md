@@ -20,7 +20,9 @@ Rules for every task (from `CLAUDE.md` and `AGENTS.md`): tests first, with a del
 
 ## Task T-001 — Add a `typecheck` script
 
-**Status:** todo
+**Status:** done
+**Commit:** `1d5690e`
+**PR:** #108
 **Owner:** worker
 **Branch:** `task/T-001-typecheck-alias`
 
