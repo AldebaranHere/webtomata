@@ -328,6 +328,7 @@ Expected: all pass. Paste the real output.
 
 **Status:** done
 **Commit:** `987b2e8`
+**PR:** #120
 **Owner:** worker
 **Branch:** `task/T-018-start-marker-triangle`
 
