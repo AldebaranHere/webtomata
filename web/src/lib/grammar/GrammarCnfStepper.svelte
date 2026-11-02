@@ -68,7 +68,7 @@
 		<div class="step-card">
 			<div class="step-title-row">
 				<div class="step-badge">{t('grammar.step_phase')} {step.phase}</div>
-				<h3 class="step-title">{step.phaseName}</h3>
+				<h2 class="step-title">{step.phaseName}</h2>
 			</div>
 
 			<p class="step-desc">{step.description}</p>
@@ -309,5 +309,41 @@
 		font-size: var(--text-xs);
 		font-family: var(--font-mono);
 		color: var(--color-ink-muted);
+	}
+
+	@media (max-width: 900px) {
+		.stepper-container {
+			height: auto;
+			overflow: visible;
+		}
+
+		.stepper-header {
+			position: sticky;
+			top: 52px;
+			z-index: 5;
+			background: var(--color-surface);
+			padding: var(--space-2) 0;
+			border-bottom: 1px solid var(--color-border);
+		}
+
+		.step-card {
+			overflow-y: visible;
+			height: auto;
+		}
+
+		.step-pill {
+			width: var(--target-min);
+			height: var(--target-min);
+			min-width: var(--target-min);
+			min-height: var(--target-min);
+		}
+
+		.nav-btn {
+			min-height: var(--target-min);
+			min-width: var(--target-min);
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
 	}
 </style>
