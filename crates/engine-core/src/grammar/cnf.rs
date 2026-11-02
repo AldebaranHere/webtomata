@@ -35,6 +35,13 @@ pub struct CnfTransformer;
 
 impl CnfTransformer {
     pub fn transform(grammar: &Grammar) -> Result<CnfTransformationTrace, GrammarError> {
+        Self::transform_with_options(grammar, false)
+    }
+
+    pub fn transform_with_options(
+        grammar: &Grammar,
+        share_helpers: bool,
+    ) -> Result<CnfTransformationTrace, GrammarError> {
         let mut steps = Vec::new();
         let mut current = grammar.clone();
 
@@ -104,7 +111,8 @@ impl CnfTransformer {
         current = p5_grammar;
 
         // Phase 6: Binarize Long RHS Productions (length >= 3)
-        let (p6_grammar, p6_added, p6_removed) = Self::phase6_binarize_long(&current);
+        let (p6_grammar, p6_added, p6_removed) =
+            Self::phase6_binarize_long(&current, share_helpers);
         steps.push(CnfStepResult {
             phase: 6,
             phase_name: "Binarisasi Aturan Panjang (Panjang ≥ 3)".into(),
@@ -476,8 +484,11 @@ impl CnfTransformer {
         )
     }
 
-    /// Phase 6: Binarize long rules (length >= 3) with pair caching
-    fn phase6_binarize_long(grammar: &Grammar) -> (Grammar, Vec<Production>, Vec<Production>) {
+    /// Phase 6: Binarize long rules (length >= 3)
+    fn phase6_binarize_long(
+        grammar: &Grammar,
+        share_helpers: bool,
+    ) -> (Grammar, Vec<Production>, Vec<Production>) {
         let mut existing_vars = grammar.variables();
         let mut pair_map: BTreeMap<(String, String), String> = BTreeMap::new();
         let mut final_rules = Vec::new();
@@ -493,25 +504,35 @@ impl CnfTransformer {
             removed_rules.push(rule.clone());
             let mut current_body = rule.body.clone();
 
-            // Right-to-left reduction with caching of variable pairs
+            // Right-to-left reduction with caching of variable pairs (if share_helpers is enabled)
             while current_body.len() > 2 {
                 let n = current_body.len();
                 let sym1 = current_body[n - 2].to_string();
                 let sym2 = current_body[n - 1].to_string();
                 let pair_key = (sym1, sym2);
 
-                let helper_var = match pair_map.get(&pair_key) {
-                    Some(existing_var) => existing_var.clone(),
-                    None => {
-                        let fresh = Self::fresh_variable_name(&existing_vars, "X");
-                        existing_vars.insert(fresh.clone());
-                        pair_map.insert(pair_key, fresh.clone());
-                        helper_rules.push(Production::new(
-                            fresh.clone(),
-                            vec![current_body[n - 2].clone(), current_body[n - 1].clone()],
-                        ));
-                        fresh
+                let helper_var = if share_helpers {
+                    match pair_map.get(&pair_key) {
+                        Some(existing_var) => existing_var.clone(),
+                        None => {
+                            let fresh = Self::fresh_variable_name(&existing_vars, "X");
+                            existing_vars.insert(fresh.clone());
+                            pair_map.insert(pair_key, fresh.clone());
+                            helper_rules.push(Production::new(
+                                fresh.clone(),
+                                vec![current_body[n - 2].clone(), current_body[n - 1].clone()],
+                            ));
+                            fresh
+                        }
                     }
+                } else {
+                    let fresh = Self::fresh_variable_name(&existing_vars, "X");
+                    existing_vars.insert(fresh.clone());
+                    helper_rules.push(Production::new(
+                        fresh.clone(),
+                        vec![current_body[n - 2].clone(), current_body[n - 1].clone()],
+                    ));
+                    fresh
                 };
 
                 current_body.truncate(n - 2);

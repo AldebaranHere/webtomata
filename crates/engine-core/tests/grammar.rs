@@ -176,6 +176,49 @@ fn test_cnf_preset_start_long() {
     let trace = CnfTransformer::transform(&grammar).expect("CNF transformation should succeed");
     assert_valid_cnf(&trace.final_grammar);
 
+    // AC1: With the default, CNF_START_LONG makes separate helper variables for S0 and S
+    let s0_binary: Vec<_> = trace
+        .final_grammar
+        .rules
+        .iter()
+        .filter(|r| r.head == "S0" && r.body.len() == 2)
+        .collect();
+    let s_binary: Vec<_> = trace
+        .final_grammar
+        .rules
+        .iter()
+        .filter(|r| r.head == "S" && r.body.len() == 2)
+        .collect();
+    assert_eq!(s0_binary.len(), 1, "S0 should have 1 binary rule");
+    assert_eq!(s_binary.len(), 1, "S should have 1 binary rule");
+    assert_ne!(
+        s0_binary[0].body[1], s_binary[0].body[1],
+        "Default course method must not share helper variables between S0 and S"
+    );
+
+    // AC1: With share_helpers: true, they share them (the behavior of today)
+    let trace_shared = CnfTransformer::transform_with_options(&grammar, true)
+        .expect("CNF transformation with share_helpers should succeed");
+    assert_valid_cnf(&trace_shared.final_grammar);
+    let s0_binary_shared: Vec<_> = trace_shared
+        .final_grammar
+        .rules
+        .iter()
+        .filter(|r| r.head == "S0" && r.body.len() == 2)
+        .collect();
+    let s_binary_shared: Vec<_> = trace_shared
+        .final_grammar
+        .rules
+        .iter()
+        .filter(|r| r.head == "S" && r.body.len() == 2)
+        .collect();
+    assert_eq!(s0_binary_shared.len(), 1);
+    assert_eq!(s_binary_shared.len(), 1);
+    assert_eq!(
+        s0_binary_shared[0].body[1], s_binary_shared[0].body[1],
+        "With share_helpers: true, S0 and S must share helper variables"
+    );
+
     // AC2: Language oracle for x^n z y^{2n}, n >= 0
     check_exhaustive_cyk(&trace.final_grammar, &['x', 'y', 'z'], 8, |w| {
         let n_x = w.chars().take_while(|&c| c == 'x').count();
@@ -305,10 +348,116 @@ fn test_cnf_preset_shared_tail() {
     let trace = CnfTransformer::transform(&grammar).expect("CNF transformation should succeed");
     assert_valid_cnf(&trace.final_grammar);
 
+    // AC2: Default has two separate helper chains:
+    let s_binary: Vec<_> = trace
+        .final_grammar
+        .rules
+        .iter()
+        .filter(|r| r.head == "S" && r.body.len() == 2)
+        .collect();
+    assert_eq!(s_binary.len(), 2, "S should have 2 binary rules");
+    assert_ne!(
+        s_binary[0].body[1], s_binary[1].body[1],
+        "Default course method must not share helper chains for S -> a B C D | b B C D"
+    );
+
     // AC2: Language oracle for {axyz, bxyz}
     check_exhaustive_cyk(&trace.final_grammar, &['a', 'b', 'x', 'y', 'z'], 8, |w| {
         w == "axyz" || w == "bxyz"
     });
+
+    // AC2: With true, the tail is shared:
+    let trace_shared = CnfTransformer::transform_with_options(&grammar, true)
+        .expect("CNF transformation with share_helpers should succeed");
+    assert_valid_cnf(&trace_shared.final_grammar);
+    let s_binary_shared: Vec<_> = trace_shared
+        .final_grammar
+        .rules
+        .iter()
+        .filter(|r| r.head == "S" && r.body.len() == 2)
+        .collect();
+    assert_eq!(
+        s_binary_shared.len(),
+        2,
+        "S should have 2 binary rules in shared mode"
+    );
+    assert_eq!(
+        s_binary_shared[0].body[1], s_binary_shared[1].body[1],
+        "With share_helpers: true, the tail helper variable must be shared"
+    );
+
+    // Both versions accept the same language {axyz, bxyz}
+    check_exhaustive_cyk(
+        &trace_shared.final_grammar,
+        &['a', 'b', 'x', 'y', 'z'],
+        8,
+        |w| w == "axyz" || w == "bxyz",
+    );
+}
+
+#[test]
+fn test_cnf_slide_example_eliminating_long_rhs() {
+    // AC3: A test written from the slide example A -> B C D E gives exactly
+    // A -> B M1, M1 -> C M2, M2 -> D E (names of helpers may differ; compare structure)
+    let input = r#"
+        A -> B C D E
+        B -> b
+        C -> c
+        D -> d
+        E -> e
+    "#;
+    let grammar = GrammarParser::parse(input).expect("Should parse grammar");
+    let trace = CnfTransformer::transform(&grammar).expect("CNF transformation should succeed");
+    assert_valid_cnf(&trace.final_grammar);
+
+    // Find the rule for A: A -> B M1
+    let a_rules: Vec<_> = trace
+        .final_grammar
+        .rules
+        .iter()
+        .filter(|r| r.head == "A")
+        .collect();
+    assert_eq!(a_rules.len(), 1, "A should have 1 rule");
+    assert_eq!(a_rules[0].body.len(), 2, "A rule should be binary");
+    assert_eq!(a_rules[0].body[0], Symbol::NonTerminal("B".into()));
+    let m1 = match &a_rules[0].body[1] {
+        Symbol::NonTerminal(name) => name.clone(),
+        _ => panic!("Expected NonTerminal for M1"),
+    };
+
+    // Find rule for M1: M1 -> C M2
+    let m1_rules: Vec<_> = trace
+        .final_grammar
+        .rules
+        .iter()
+        .filter(|r| r.head == m1)
+        .collect();
+    assert_eq!(m1_rules.len(), 1, "M1 should have exactly 1 rule");
+    assert_eq!(m1_rules[0].body.len(), 2, "M1 rule should be binary");
+    assert_eq!(m1_rules[0].body[0], Symbol::NonTerminal("C".into()));
+    let m2 = match &m1_rules[0].body[1] {
+        Symbol::NonTerminal(name) => name.clone(),
+        _ => panic!("Expected NonTerminal for M2"),
+    };
+
+    // Find rule for M2: M2 -> D E
+    let m2_rules: Vec<_> = trace
+        .final_grammar
+        .rules
+        .iter()
+        .filter(|r| r.head == m2)
+        .collect();
+    assert_eq!(m2_rules.len(), 1, "M2 should have exactly 1 rule");
+    assert_eq!(
+        m2_rules[0].body,
+        vec![
+            Symbol::NonTerminal("D".into()),
+            Symbol::NonTerminal("E".into())
+        ],
+        "M2 must expand to D E"
+    );
+
+    assert_ne!(m1, m2, "M1 and M2 must be distinct helper variables");
 }
 
 #[test]
@@ -397,7 +546,37 @@ fn test_cnf_variable_deduplication_step6() {
         D -> b D
     "#;
     let grammar = GrammarParser::parse(input).expect("Should parse grammar");
-    let trace = CnfTransformer::transform(&grammar).expect("CNF transformation should succeed");
+
+    // Course method default: no sharing between rules
+    let trace_default =
+        CnfTransformer::transform(&grammar).expect("CNF transformation should succeed");
+    assert!(
+        CykParser::is_cnf(&trace_default.final_grammar),
+        "Final grammar must be CNF:\n{}",
+        trace_default.final_grammar.to_display_string()
+    );
+    let default_rules_with_ab: Vec<_> = trace_default
+        .final_grammar
+        .rules
+        .iter()
+        .filter(|r| {
+            r.body
+                == vec![
+                    Symbol::NonTerminal("A".into()),
+                    Symbol::NonTerminal("B".into()),
+                ]
+        })
+        .collect();
+    // In course default, each rule gets its own helper variable (3 rules for S0, A, S)
+    assert_eq!(
+        default_rules_with_ab.len(),
+        3,
+        "Course default must produce separate helper rules"
+    );
+
+    // Option share_helpers: true enables deduplication (behavior of commit a82bf0e)
+    let trace = CnfTransformer::transform_with_options(&grammar, true)
+        .expect("CNF transformation with share_helpers should succeed");
 
     assert!(
         CykParser::is_cnf(&trace.final_grammar),
@@ -422,7 +601,7 @@ fn test_cnf_variable_deduplication_step6() {
     assert_eq!(
         rules_with_ab.len(),
         1,
-        "Expected exactly 1 rule deriving AB, found: {:?}",
+        "Expected exactly 1 rule deriving AB with share_helpers: true, found: {:?}",
         rules_with_ab
     );
     let helper_var = &rules_with_ab[0].head;
@@ -440,7 +619,7 @@ fn test_cnf_variable_deduplication_step6() {
         });
         assert!(
             has_rule,
-            "Expected {} -> T_a X in final grammar:\n{}",
+            "Expected {} -> T_a X in final grammar with share_helpers: true:\n{}",
             head,
             trace.final_grammar.to_display_string()
         );

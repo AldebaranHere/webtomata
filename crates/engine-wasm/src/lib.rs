@@ -117,8 +117,8 @@ pub fn parse_grammar(grammar: &str) -> String {
 }
 
 #[wasm_bindgen(js_name = transformToCnf)]
-pub fn transform_to_cnf(grammar: &str) -> String {
-    api::transform_to_cnf(grammar)
+pub fn transform_to_cnf(grammar: &str, share_helpers: Option<bool>) -> String {
+    api::transform_to_cnf(grammar, share_helpers.unwrap_or(false))
 }
 
 #[wasm_bindgen(js_name = cykParse)]
@@ -203,10 +203,13 @@ mod tests {
     #[wasm_bindgen_test]
     #[test]
     fn transform_to_cnf_answers_in_envelope() {
-        let answer = transform_to_cnf("S -> a S b | a b");
+        let answer = transform_to_cnf("S -> a S b | a b", None);
         assert!(answer.contains(r#""ok":true"#), "{answer}");
         assert!(answer.contains(r#""steps""#), "{answer}");
         assert!(answer.contains(r#""finalGrammar""#), "{answer}");
+
+        let answer_shared = transform_to_cnf("S -> a S b | a b", Some(true));
+        assert!(answer_shared.contains(r#""ok":true"#), "{answer_shared}");
     }
 
     #[wasm_bindgen_test]

@@ -419,14 +419,14 @@ pub fn parse_grammar(grammar_text: &str) -> String {
 }
 
 /// Transforms a context-free grammar to Chomsky Normal Form (CNF) with a step-by-step trace.
-pub fn transform_to_cnf(grammar_text: &str) -> String {
+pub fn transform_to_cnf(grammar_text: &str, share_helpers: bool) -> String {
     let run = || -> Result<crate::grammar::CnfTransformationTrace, Message> {
         too_long(grammar_text, "grammar characters", 8192)?;
         let grammar = crate::grammar::GrammarParser::parse(grammar_text)
             .map_err(|e| Message::new("api.invalid_grammar").with("detail", e.to_string()))?;
-        crate::grammar::CnfTransformer::transform(&grammar).map_err(|e| {
-            Message::new("api.cnf_transformation_failed").with("detail", e.to_string())
-        })
+        crate::grammar::CnfTransformer::transform_with_options(&grammar, share_helpers).map_err(
+            |e| Message::new("api.cnf_transformation_failed").with("detail", e.to_string()),
+        )
     };
     finish(run())
 }
