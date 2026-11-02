@@ -4,7 +4,7 @@
 > `todo` means ready: every field is written and the human approved it. Several tasks can be `todo` at the same time. The worker does one task at a time: the one that the human names in the start prompt ("Do task T-xxx"). The worker sets it to `in-progress` in the first commit of its own PR and to `done` in the last. The planner does not open a pull request only to change a status.
 > The blank task template is in `PLAN-TEMPLATE.md`.
 
-**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL.
+**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL.
 
 Status legend: `proposed` | `todo` | `in-progress` | `blocked` | `done` | `rejected`
 
@@ -461,6 +461,73 @@ Expected: all pass. Paste the real output into `REPORT.md`.
 
 ---
 
+## Task T-023 — Open the CNF result as a new grammar
+
+**Status:** todo (the owner asked for this on 2026-11-03 and approved the design: the button is on the last step only, and it jumps to the Editor; start it after T-016 is merged)
+**Owner:** worker
+**Branch:** `task/T-023-open-cnf-as-grammar`
+
+**Goal:** The FSM panels end with "Buka sebagai mesin baru" (`convert.open_result`, in `ConversionPanel.svelte` and `CompilePlayer.svelte`). The grammar workstation has nothing like it: a student can read the six CNF phases but cannot keep the result. Add the same idea: on the last step (the CNF result) a button "Buka sebagai tata bahasa baru" adds the result to the library as a new custom grammar and shows it in the Editor. The original grammar does not change.
+
+**Scope (in):**
+- `web/src/lib/grammar/grammar-text.ts` (new): `grammarToText(grammar: Grammar): string`. One line per head, in the order of first appearance, the start symbol first: `A -> X Y | a`. **Write one space between every two symbols**, so that a variable followed by a digit terminal (`A 1`) and a variable named `A1` stay different when the editor reads the text back. Write an empty body the way `matrixRowsToGrammarText` and the legend of the editor do (`λ`; check both before you choose). Write variable names as they are (`S_0`, `T_a`, `X1`).
+- `web/src/lib/grammar/GrammarCnfStepper.svelte`: a new optional prop `onopen`. When it is given and the current step is the last one, show a primary button under the step card (the place of the `end` row in the FSM panel). Text key `grammar.open_cnf_as_new`. On a phone it is full width and at least 44 px high.
+- `web/src/lib/grammar/GrammarWorkstation.svelte`: the handler. Title `<name of the open grammar> (CNF)`; if that title exists, `(CNF 2)`, `(CNF 3)`, and so on. Save it as a custom grammar (`saveCustomGrammars`), select it (`selectCustom`; on a phone this shows the Editor tab). The feedback is the new entry in the library and its name in the Editor header; **add no new message element** (if you think one is needed, stop and ask).
+- A small helper `nextCustomId(existing)` that returns the first `G<n>` that is not used, and use it in `createNewCustomGrammar` too. Today that function uses `customGrammars.length + 1`, so after you delete `G1` and keep `G2` the next new grammar gets the id `G2` again (two entries with one id). This task adds more custom entries, so fix it here, with a test.
+- Strings in `id` and `en`: `grammar.open_cnf_as_new` = "Buka sebagai tata bahasa baru" / "Open as a new grammar".
+
+**Non-goals (out):**
+- No change to the engine, to the CNF phases, to the CYK tab, or to the original grammar.
+- No button on steps 1 to 5 (the owner may ask for it later).
+- No file export (that is T-021) and no change to the stored format of custom grammars.
+- When P-002 and T-015 add a second version of the CNF, this button will open the version on screen. That is not part of this task.
+
+**Files expected to touch:**
+- `web/src/lib/grammar/grammar-text.ts`, `grammar-text.test.ts`, `grammar-text.wasm.test.ts` (follow the pattern of the other `*.wasm.test.ts` files)
+- `web/src/lib/grammar/GrammarCnfStepper.svelte`, `GrammarWorkstation.svelte`
+- `web/src/lib/i18n/id.ts`, `en.ts`
+- `web/e2e/grammar-phone.spec.ts` or a new `web/e2e/grammar-open-cnf.spec.ts` (laptop and phone), and `web/e2e/cross/workstation-phone.spec.ts` for WebKit
+
+**Design reference:**
+- The FSM panel: `web/src/lib/editor/ConversionPanel.svelte` (the `end` row with `convert.open_result` and "Tutup") and `design/screens/workstation-phone-layout.md` (the CNF tab).
+
+**Acceptance criteria:**
+- AC1: `grammarToText` gives the exact expected text for three grammars written by hand: one with an empty rule, one with a start symbol `S_0` and helpers `T_a`, `X1`, and one with a two-digit helper `X10` next to a digit terminal. A unit test compares the strings.
+- AC2: Round trip. For every preset in `GRAMMAR_PRESETS`, and for the CNF result of each (both with and without shared helpers), `parseGrammar(grammarToText(g))` has the same start symbol and the same set of (head, body) rules as `g`. The test also runs at least 200 small grammars from a seeded generator. Use the test tools that the repo already has; add no dependency.
+- AC3: The button shows on step 6 of the CNF trace and on no other step (e2e, laptop and phone).
+- AC4: Tapping it adds the entry "`<name>` (CNF)" to the custom list of the library, selects it, shows its rules in the Editor, and shows its name in the Editor header. On a phone the Editor tab is active. The original entry still has its old text. Tapping again on the same result makes "(CNF 2)".
+- AC5: The new entry is already in CNF: running the CNF pipeline on it gives a final grammar equal (as a set of rules) to itself. If this does not hold, do not hide it: report it in `REPORT.md` as an engine finding.
+- AC6: After a reload the new entry is still in the library (it uses the existing storage).
+- AC7: `nextCustomId` never returns an id in use (a unit test with `G1` deleted and `G2` kept).
+- AC8: The button is at least 44 px high on a phone and full width. Axe reports no violation in the CNF tab at step 6, on the laptop and the phone projects and on the WebKit phone project.
+- AC9: `pnpm check:strings`, `check:tokens` and `check:contrast` pass without a change of their data. The two new strings exist in `id` and `en`.
+- AC10: A deliberate break is shown: join the symbols without spaces in `grammarToText`; AC1 and AC2 fail; then restore it.
+
+**Verification (Mode B form shown; in Mode A drop the bridge):**
+```
+pnpm --filter web exec vitest run src/lib/grammar
+pnpm check
+pnpm lint
+pnpm format:check
+pnpm check:strings
+pnpm check:tokens
+pnpm check:contrast
+pnpm build
+pnpm size
+pnpm --filter web exec playwright test --project=desktop --project=phone <the new or changed e2e spec> --repeat-each=10
+pnpm test:e2e
+pnpm test:e2e:cross
+```
+Expected: all pass. Run the new e2e tests 10 times (they use local storage). Paste the real output into `REPORT.md`.
+
+**Rollback:** `git revert <sha>`. Custom grammars that were already saved stay valid: they are plain text.
+
+**Depends on:** T-016 done and merged (it changes the same two components).
+
+**Notes for worker:** Look at how the FSM panel places "Buka sebagai mesin baru" and copy the pattern, not the code. The sticky stepper header of T-016 must keep working. Do not touch the CNF engine: this task reads `cnfTrace.finalGrammar` only.
+
+---
+
 ## Task T-050 — A fast path in CI for pull requests that change only documents
 
 **Status:** todo (the owner approves this spec by merging the PR that adds it; this changes workflows, so stop and ask if anything is unclear)
@@ -555,6 +622,8 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-016** The phone layout of the grammar and the language workstations: specified in its own task block above, `proposed` until the owner approves the design.
 - **T-015** The UI switch between the course version and the minimized version of the CNF conversion (needs P-002 approved, and T-014 done).
 - **T-013** Check whether preset titles and descriptions of the grammar and language workstations belong in the i18n files (they are plain Indonesian text in `presets.ts`), and move them if so. Also make the rule chips readable (`S → T_aST_b` has no spaces).
+- **T-024** Bigger touch areas for the rule boxes of the grammar Editor on a phone. The left-hand box is 64 × 26 px and each alternative box is 45 × 22 px (measured in the review of T-016). The design needs the owner's approval first, because the matrix row layout may change.
+- **T-025** Landmarks of the two workstations on a laptop. T-016 turned the three columns (`aside` and `section` with a label) into `div role="tabpanel"` on every screen size, so on a laptop a screen reader finds tab panels without tabs. Use the landmark elements above 900 px and the tab panel roles below it (for example with one `matchMedia` state), and test both.
 - **T-019** CYK input limits: the parser stops at 100 characters (`CykParser::MAX_INPUT_LEN`) but the API accepts up to 256 (`api.rs`), so a string of 101 to 256 characters reaches the parser and fails with a different message. Use one constant and one message (found by the report of T-004).
 - **T-017** Make the two local-reference tests (`web/src/lib/share/files.wasm.test.ts` and `open-file.wasm.test.ts`) tolerate other machine types. They read the top level of `REFERENCES/JFF-FILES` and assume every `.jff` there is a finite automaton, so one Turing machine file at the top level made the pre-push hook fail on 2026-11-02 (0 finite automata found). They should keep only files whose type is `fa`, and skip when there are none.
 
