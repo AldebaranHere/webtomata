@@ -954,5 +954,13 @@ export const en: Record<MessageKey, string> = {
 	'grammar.matrix_ph_rhs_start': 'AB | λ',
 	'grammar.matrix_ph_rhs_other': 'aAb',
 	'grammar.matrix_add_alt': 'Add alternative (|)',
-	'grammar.resize_output_aria': 'Resize results panel'
+	'grammar.resize_output_aria': 'Resize results panel',
+	'grammar.btn_convert_to_cnf': 'Convert to CNF',
+	'workstation.tab_library': 'Library',
+	'workstation.tab_editor': 'Editor',
+	'workstation.tab_cnf': 'CNF',
+	'workstation.tab_cyk': 'CYK',
+	'workstation.tab_results': 'Results',
+	'workstation.tabs_grammar_aria': 'Grammar workstation areas',
+	'workstation.tabs_language_aria': 'Language workstation areas'
 };

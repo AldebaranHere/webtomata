@@ -953,7 +953,15 @@ export const id = {
 	'grammar.matrix_ph_rhs_start': 'AB | λ',
 	'grammar.matrix_ph_rhs_other': 'aAb',
 	'grammar.matrix_add_alt': 'Tambah alternatif (|)',
-	'grammar.resize_output_aria': 'Ubah lebar panel hasil pemrosesan'
+	'grammar.resize_output_aria': 'Ubah lebar panel hasil pemrosesan',
+	'grammar.btn_convert_to_cnf': 'Ubah ke CNF',
+	'workstation.tab_library': 'Pustaka',
+	'workstation.tab_editor': 'Editor',
+	'workstation.tab_cnf': 'CNF',
+	'workstation.tab_cyk': 'CYK',
+	'workstation.tab_results': 'Hasil',
+	'workstation.tabs_grammar_aria': 'Navigasi area tata bahasa',
+	'workstation.tabs_language_aria': 'Navigasi area bahasa formal'
 } as const;
 
 export type MessageKey = keyof typeof id;

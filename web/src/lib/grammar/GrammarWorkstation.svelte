@@ -8,6 +8,9 @@
 	import GrammarMathDisplay from './GrammarMathDisplay.svelte';
 	import GrammarCnfStepper from './GrammarCnfStepper.svelte';
 	import GrammarCykTester from './GrammarCykTester.svelte';
+	import WorkstationPhoneTabs, {
+		type PhoneTabItem
+	} from '#lib/components/WorkstationPhoneTabs.svelte';
 	import { GRAMMAR_PRESETS, type PresetGrammar } from './presets.ts';
 
 	interface MatrixRow {
@@ -86,6 +89,7 @@
 	let workstationRef = $state<HTMLDivElement | null>(null);
 
 	let activeTab = $state<'cnf' | 'cyk'>('cnf');
+	let phoneTab = $state<'pustaka' | 'editor' | 'cnf' | 'cyk'>('editor');
 	let isTransforming = $state<boolean>(false);
 	let errorMessage = $state<string | null>(null);
 
@@ -94,6 +98,16 @@
 	let isLegendOpen = $state<boolean>(false);
 
 	const activePreset = $derived(GRAMMAR_PRESETS.find((p) => p.id === selectedId));
+	const activeTitle = $derived(
+		activePreset?.title ?? customGrammars.find((c) => c.id === selectedId)?.title ?? ''
+	);
+
+	const GRAMMAR_PHONE_TABS: PhoneTabItem[] = [
+		{ id: 'pustaka', labelKey: 'workstation.tab_library' },
+		{ id: 'editor', labelKey: 'workstation.tab_editor' },
+		{ id: 'cnf', labelKey: 'workstation.tab_cnf' },
+		{ id: 'cyk', labelKey: 'workstation.tab_cyk' }
+	];
 
 	function textToMatrixRows(text: string): MatrixRow[] {
 		const lines = text
@@ -290,6 +304,7 @@
 		selectedId = preset.id;
 		rows = textToMatrixRows(preset.grammar);
 		focusedRowIndex = -1;
+		phoneTab = 'editor';
 		try {
 			localStorage.setItem(SELECTED_ID_KEY, preset.id);
 		} catch {
@@ -302,6 +317,7 @@
 		selectedId = custom.id;
 		rows = textToMatrixRows(custom.grammar);
 		focusedRowIndex = -1;
+		phoneTab = 'editor';
 		try {
 			localStorage.setItem(SELECTED_ID_KEY, custom.id);
 		} catch {
@@ -597,8 +613,27 @@
 	style:--library-width="{libraryWidth}px"
 	style:--output-width="{outputWidth}px"
 >
+	<WorkstationPhoneTabs
+		tabs={GRAMMAR_PHONE_TABS}
+		activeTab={phoneTab}
+		onselect={(tab) => {
+			phoneTab = tab as 'pustaka' | 'editor' | 'cnf' | 'cyk';
+			if (tab === 'cnf') activeTab = 'cnf';
+			if (tab === 'cyk') activeTab = 'cyk';
+		}}
+		ariaLabelKey="workstation.tabs_grammar_aria"
+		idPrefix="grammar"
+	/>
+
 	<!-- Column 1: Grammar Library (Presets + Custom) -->
-	<aside class="col library-col" aria-label={t('grammar.library_aria')}>
+	<div
+		class="col library-col"
+		id="grammar-pane-pustaka"
+		role="tabpanel"
+		aria-labelledby="grammar-tab-pustaka"
+		aria-label={t('grammar.library_aria')}
+		hidden={phoneTab !== 'pustaka'}
+	>
 		<div class="col-header">
 			<h2 class="col-title">{t('grammar.library_title')}</h2>
 			<button type="button" class="btn-new" onclick={createNewCustomGrammar}>
@@ -666,7 +701,7 @@
 				</div>
 			{/if}
 		</div>
-	</aside>
+	</div>
 
 	<!-- Splitter 1: Library to Editor -->
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
@@ -694,9 +729,19 @@
 	</div>
 
 	<!-- Column 2: Grammar Editor & Mathematical Notation -->
-	<section class="col editor-col" aria-label={t('grammar.editor_aria')}>
+	<div
+		class="col editor-col"
+		id="grammar-pane-editor"
+		role="tabpanel"
+		aria-labelledby="grammar-tab-editor"
+		aria-label={t('grammar.editor_aria')}
+		hidden={phoneTab !== 'editor'}
+	>
 		<div class="col-header">
 			<h2 class="col-title">{t('grammar.editor_title')}</h2>
+			{#if activeTitle}
+				<span class="active-item-title">{activeTitle}</span>
+			{/if}
 			{#if isTransforming}
 				<div class="grammar-summary">
 					<span>{t('grammar.cyk_testing')}</span>
@@ -875,8 +920,22 @@
 					</div>
 				{/if}
 			</div>
+
+			<!-- Shortcut button to CNF tab (phone layout only) -->
+			<div class="phone-cnf-shortcut">
+				<button
+					type="button"
+					class="btn-convert-cnf"
+					onclick={() => {
+						phoneTab = 'cnf';
+						activeTab = 'cnf';
+					}}
+				>
+					{t('grammar.btn_convert_to_cnf')}
+				</button>
+			</div>
 		</div>
-	</section>
+	</div>
 
 	<!-- Splitter 2: Editor to Output -->
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
@@ -904,13 +963,20 @@
 	</div>
 
 	<!-- Column 3: Processing & Transformation Tabs (CNF / CYK) -->
-	<section class="col output-col" aria-label={t('grammar.output_aria')}>
+	<div
+		class="col output-col"
+		aria-label={t('grammar.output_aria')}
+		hidden={phoneTab !== 'cnf' && phoneTab !== 'cyk'}
+	>
 		<div class="tabs-header">
 			<button
 				type="button"
 				class="tab-btn"
 				class:active={activeTab === 'cnf'}
-				onclick={() => (activeTab = 'cnf')}
+				onclick={() => {
+					activeTab = 'cnf';
+					phoneTab = 'cnf';
+				}}
 			>
 				{t('grammar.tab_cnf')}
 			</button>
@@ -918,14 +984,23 @@
 				type="button"
 				class="tab-btn"
 				class:active={activeTab === 'cyk'}
-				onclick={() => (activeTab = 'cyk')}
+				onclick={() => {
+					activeTab = 'cyk';
+					phoneTab = 'cyk';
+				}}
 			>
 				{t('grammar.tab_cyk')}
 			</button>
 		</div>
 
 		<div class="tab-panel">
-			{#if activeTab === 'cnf'}
+			<div
+				role="tabpanel"
+				id="grammar-pane-cnf"
+				aria-labelledby="grammar-tab-cnf"
+				class="pane-cnf"
+				hidden={phoneTab !== 'cnf' && activeTab !== 'cnf'}
+			>
 				{#if cnfTrace}
 					<GrammarCnfStepper trace={cnfTrace} />
 				{:else if errorMessage}
@@ -937,7 +1012,15 @@
 						<p>{t('grammar.empty_cnf')}</p>
 					</div>
 				{/if}
-			{:else if activeTab === 'cyk'}
+			</div>
+
+			<div
+				role="tabpanel"
+				id="grammar-pane-cyk"
+				aria-labelledby="grammar-tab-cyk"
+				class="pane-cyk"
+				hidden={phoneTab !== 'cyk' && activeTab !== 'cyk'}
+			>
 				{#if cnfTrace}
 					<GrammarCykTester
 						grammar={cnfTrace.finalGrammar}
@@ -948,9 +1031,9 @@
 						<p>{t('grammar.empty_cyk')}</p>
 					</div>
 				{/if}
-			{/if}
+			</div>
 		</div>
-	</section>
+	</div>
 </div>
 
 <!-- Custom Right-Click Row Context Menu -->
@@ -1647,16 +1730,40 @@
 		padding: var(--space-4);
 	}
 
+	.active-item-title {
+		font-size: var(--text-xs);
+		font-weight: var(--weight-strong);
+		padding: 2px 8px;
+		border-radius: var(--radius-sm);
+		background: var(--color-neutral-tint);
+		color: var(--color-ink);
+	}
+
+	.phone-cnf-shortcut {
+		display: none;
+	}
+
+	@media (min-width: 900.02px) {
+		.col[hidden] {
+			display: flex !important;
+		}
+	}
+
 	@media (max-width: 900px) {
 		.workstation {
-			grid-template-columns: 1fr;
+			display: flex;
+			flex-direction: column;
 			height: auto;
-			overflow-y: auto;
+			min-height: 100%;
+			overflow: visible;
 		}
 
 		.library-col {
 			border-right: none;
-			border-bottom: 1px solid var(--color-border);
+			border-bottom: none;
+			height: auto;
+			min-height: 0;
+			overflow: visible;
 		}
 
 		.splitter {
@@ -1665,7 +1772,116 @@
 
 		.editor-col {
 			border-right: none;
-			border-bottom: 1px solid var(--color-border);
+			border-bottom: none;
+			height: auto;
+			min-height: 0;
+			overflow: visible;
+		}
+
+		.output-col {
+			border-right: none;
+			height: auto;
+			min-height: 0;
+			overflow: visible;
+		}
+
+		.col[hidden] {
+			display: none !important;
+		}
+
+		.library-scroll {
+			overflow-y: visible;
+			height: auto;
+		}
+
+		.editor-body {
+			overflow-y: visible;
+			height: auto;
+		}
+
+		.tab-panel {
+			overflow-y: visible;
+			height: auto;
+		}
+
+		.pane-cnf[hidden],
+		.pane-cyk[hidden] {
+			display: none !important;
+		}
+
+		.tabs-header {
+			display: none;
+		}
+
+		.phone-cnf-shortcut {
+			display: block;
+			margin-top: var(--space-4);
+			padding-bottom: var(--space-4);
+		}
+
+		.btn-convert-cnf {
+			display: block;
+			width: 100%;
+			min-height: var(--target-min);
+			padding: var(--space-3) var(--space-4);
+			background: var(--color-accent);
+			color: var(--color-on-accent);
+			border: 0;
+			border-radius: var(--radius-md);
+			font: inherit;
+			font-size: var(--text-sm);
+			font-weight: var(--weight-strong);
+			text-align: center;
+			cursor: pointer;
+			transition: background 0.15s ease;
+		}
+
+		.btn-convert-cnf:hover {
+			background: var(--color-accent-ink);
+		}
+
+		.btn-convert-cnf:focus-visible {
+			outline: var(--focus-ring-width) solid var(--focus-ring-color);
+			outline-offset: var(--focus-ring-offset);
+		}
+
+		.btn-new {
+			min-height: var(--target-min);
+		}
+
+		.preset-card {
+			min-height: var(--target-min);
+		}
+
+		.btn-delete {
+			min-width: var(--target-min);
+			min-height: var(--target-min);
+		}
+
+		.btn-add-alt {
+			min-width: var(--target-min);
+			min-height: var(--target-min);
+		}
+
+		.inline-symbol-bar {
+			flex-wrap: wrap;
+		}
+
+		.inline-toolbar-group {
+			flex-wrap: wrap;
+		}
+
+		.inline-sym-btn {
+			min-width: var(--target-min);
+			min-height: var(--target-min);
+		}
+
+		.btn-add-row {
+			min-height: var(--target-min);
+		}
+
+		.legend-header {
+			min-height: var(--target-min);
 		}
 	}
 </style>

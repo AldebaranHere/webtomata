@@ -4,6 +4,9 @@
 	import { t, getLocale } from '#lib/i18n/index.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
 	import LanguageMathDisplay from './LanguageMathDisplay.svelte';
+	import WorkstationPhoneTabs, {
+		type PhoneTabItem
+	} from '#lib/components/WorkstationPhoneTabs.svelte';
 	import { PRESETS, type PresetLanguage } from './presets.ts';
 
 	interface QuickSymbol {
@@ -80,6 +83,19 @@
 	let customLanguages = $state<CustomLanguage[]>([]);
 	let selectedId = $state<string>('L1');
 	let expression = $state<string>(PRESETS[0]?.formula ?? '');
+	let phoneTab = $state<'pustaka' | 'editor' | 'hasil'>('editor');
+
+	const LANGUAGE_PHONE_TABS: PhoneTabItem[] = [
+		{ id: 'pustaka', labelKey: 'workstation.tab_library' },
+		{ id: 'editor', labelKey: 'workstation.tab_editor' },
+		{ id: 'hasil', labelKey: 'workstation.tab_results' }
+	];
+
+	const activeTitle = $derived(
+		PRESETS.find((p) => p.id === selectedId)?.name ??
+			customLanguages.find((c) => c.id === selectedId)?.name ??
+			''
+	);
 
 	let libraryWidth = $state<number>(280);
 	let outputWidth = $state<number>(420);
@@ -280,6 +296,7 @@
 	function selectPreset(preset: PresetLanguage) {
 		selectedId = preset.id;
 		expression = preset.formula;
+		phoneTab = 'editor';
 		errorMessage = null;
 		void runEnumeration();
 	}
@@ -287,6 +304,7 @@
 	function selectCustom(custom: CustomLanguage) {
 		selectedId = custom.id;
 		expression = custom.formula;
+		phoneTab = 'editor';
 		errorMessage = null;
 		void runEnumeration();
 	}
@@ -403,8 +421,25 @@
 	style:--library-width="{libraryWidth}px"
 	style:--output-width="{outputWidth}px"
 >
+	<WorkstationPhoneTabs
+		tabs={LANGUAGE_PHONE_TABS}
+		activeTab={phoneTab}
+		onselect={(tab) => {
+			phoneTab = tab as 'pustaka' | 'editor' | 'hasil';
+		}}
+		ariaLabelKey="workstation.tabs_language_aria"
+		idPrefix="language"
+	/>
+
 	<!-- Column 1: Library Presets & Custom -->
-	<aside class="col library-col" aria-label={t('language.library_aria')}>
+	<div
+		class="col library-col"
+		id="language-pane-pustaka"
+		role="tabpanel"
+		aria-labelledby="language-tab-pustaka"
+		aria-label={t('language.library_aria')}
+		hidden={phoneTab !== 'pustaka'}
+	>
 		<div class="col-header">
 			<h2 class="col-title">{t('language.library_title')}</h2>
 			<button type="button" class="btn-sm btn-ghost" onclick={addCustomLanguage}>
@@ -485,7 +520,7 @@
 				</ul>
 			{/if}
 		</div>
-	</aside>
+	</div>
 
 	<!-- Draggable Resizer Splitter -->
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
@@ -513,9 +548,19 @@
 	</div>
 
 	<!-- Column 2: Formula & Set-Builder Editor -->
-	<section class="col editor-col" aria-label={t('language.editor_aria')}>
+	<div
+		class="col editor-col"
+		id="language-pane-editor"
+		role="tabpanel"
+		aria-labelledby="language-tab-editor"
+		aria-label={t('language.editor_aria')}
+		hidden={phoneTab !== 'editor'}
+	>
 		<div class="col-header">
 			<h2 class="col-title">{t('language.editor_title')}</h2>
+			{#if activeTitle}
+				<span class="active-item-title">{cleanTitle(activeTitle)}</span>
+			{/if}
 			<div class="alphabet-badge">
 				Σ = &#123;{alphabetDisplay}&#125;
 			</div>
@@ -620,7 +665,7 @@
 				</div>
 			</div>
 		</div>
-	</section>
+	</div>
 
 	<!-- Splitter 2: Middle to Output -->
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
@@ -648,7 +693,14 @@
 	</div>
 
 	<!-- Column 3: Output & Enumeration Controls -->
-	<section class="col output-col" aria-label={t('language.output_aria')}>
+	<div
+		class="col output-col"
+		id="language-pane-hasil"
+		role="tabpanel"
+		aria-labelledby="language-tab-hasil"
+		aria-label={t('language.output_aria')}
+		hidden={phoneTab !== 'hasil'}
+	>
 		<div class="col-header">
 			<h2 class="col-title">{t('language.output_title')}</h2>
 			<button
@@ -732,7 +784,7 @@
 				{/if}
 			</div>
 		</div>
-	</section>
+	</div>
 </div>
 
 <style>
@@ -751,11 +803,140 @@
 		overflow: hidden;
 	}
 
-	@media (max-width: 1024px) {
+	.active-item-title {
+		font-size: var(--text-xs);
+		font-weight: var(--weight-strong);
+		padding: 2px 8px;
+		border-radius: var(--radius-sm);
+		background: var(--color-neutral-tint);
+		color: var(--color-ink);
+	}
+
+	@media (min-width: 900.02px) {
+		.col[hidden] {
+			display: flex !important;
+		}
+	}
+
+	@media (max-width: 900px) {
 		.workstation {
-			grid-template-columns: 1fr;
+			display: flex;
+			flex-direction: column;
 			height: auto;
-			overflow-y: auto;
+			min-height: 100%;
+			overflow: visible;
+		}
+
+		.splitter {
+			display: none;
+		}
+
+		.col {
+			border-right: none;
+			height: auto;
+			min-height: 0;
+			overflow: visible;
+		}
+
+		.col[hidden] {
+			display: none !important;
+		}
+
+		.library-scroll {
+			overflow-y: visible;
+			height: auto;
+		}
+
+		.editor-body {
+			display: flex;
+			flex-direction: column;
+			overflow-y: visible;
+			height: auto;
+		}
+
+		.textarea-wrapper {
+			order: 1;
+		}
+
+		.symbol-toolbar {
+			order: 2;
+			flex-wrap: wrap;
+		}
+
+		.math-preview-card {
+			order: 3;
+		}
+
+		.error-banner {
+			order: 4;
+		}
+
+		.legend-card {
+			order: 5;
+		}
+
+		.symbol-group {
+			flex-wrap: wrap;
+		}
+
+		.sym-btn {
+			min-width: var(--target-min);
+			min-height: var(--target-min);
+		}
+
+		.output-body {
+			overflow-y: visible;
+			height: auto;
+		}
+
+		.results-container {
+			overflow-y: visible;
+			height: auto;
+		}
+
+		.control-row {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: var(--space-2);
+		}
+
+		.control-field {
+			min-width: 0;
+		}
+
+		.control-field label {
+			font-size: var(--text-2xs);
+			white-space: normal;
+		}
+
+		.num-input,
+		.select-input {
+			width: 100%;
+			min-height: var(--target-min);
+		}
+
+		.btn-sm {
+			min-height: var(--target-min);
+			min-width: var(--target-min);
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.item-btn {
+			min-height: var(--target-min);
+		}
+
+		.btn-delete-custom {
+			min-width: var(--target-min);
+			min-height: var(--target-min);
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.btn-primary {
+			min-height: var(--target-min);
 		}
 	}
 
@@ -788,12 +969,6 @@
 	.splitter:hover .splitter-line,
 	.splitter:focus-visible .splitter-line {
 		background: var(--color-accent);
-	}
-
-	@media (max-width: 1024px) {
-		.splitter {
-			display: none;
-		}
 	}
 
 	.col {

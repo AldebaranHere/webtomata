@@ -437,4 +437,38 @@
 	.top-accepting .cell-vars {
 		color: var(--color-success);
 	}
+
+	@media (max-width: 900px) {
+		.cyk-container {
+			overflow-y: visible;
+			height: auto;
+		}
+
+		.input-row {
+			flex-direction: column;
+		}
+
+		.cyk-input {
+			width: 100%;
+			min-height: var(--target-min);
+		}
+
+		.test-btn {
+			width: 100%;
+			min-height: var(--target-min);
+		}
+
+		.sample-pill {
+			min-height: var(--target-min);
+			min-width: var(--target-min);
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.table-scroll {
+			overflow-x: auto;
+			overflow-y: visible;
+		}
+	}
 </style>
