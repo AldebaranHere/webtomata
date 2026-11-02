@@ -8,7 +8,7 @@
 - branch: `task/T-004-adr-glossary-grammar-language`
 - commit: `9d46f2f`
 - pull request: https://github.com/AldebaranHere/webtomata/pull/116
-- CI run: https://github.com/AldebaranHere/webtomata/actions/runs/41441069292
+- CI run: https://github.com/AldebaranHere/webtomata/actions/runs/41441863310
 
 ## What changed
 - `docs/decisions/0031-language-enumeration.md`:
