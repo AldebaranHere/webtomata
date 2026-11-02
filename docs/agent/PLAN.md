@@ -341,6 +341,7 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-016** The phone layout of the grammar and the language workstations (after P-001 is approved). It also covers the phone checks of G4 for these screens. Tests on the phone project and WebKit phone.
 - **T-015** The UI switch between the course version and the minimized version of the CNF conversion (needs P-002 approved, and T-014 done).
 - **T-013** Check whether preset titles and descriptions of the grammar and language workstations belong in the i18n files (they are plain Indonesian text in `presets.ts`), and move them if so. Also make the rule chips readable (`S → T_aST_b` has no spaces).
+- **T-017** Make the two local-reference tests (`web/src/lib/share/files.wasm.test.ts` and `open-file.wasm.test.ts`) tolerate other machine types. They read the top level of `REFERENCES/JFF-FILES` and assume every `.jff` there is a finite automaton, so one Turing machine file at the top level made the pre-push hook fail on 2026-11-02 (0 finite automata found). They should keep only files whose type is `fa`, and skip when there are none.
 
 **B. Grammar additions** (a wireframe the owner approves comes first for T-020)
 - **T-020** Multi-string test for grammars, like the FSM test list, using the CYK parser.
