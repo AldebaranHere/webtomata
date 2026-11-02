@@ -57,7 +57,11 @@ export function diagramSvg(doc: MachineDocument, startLabel: string): Result<Dia
 	const line = (kind: string, path: string) =>
 		`<path class="${kind}" d="${path}" fill="none" stroke="${LINE}" stroke-width="1.5" marker-end="url(#arrow)"/>`;
 	for (const edge of shapes.edges) out.push(line('edge', edge.path));
-	if (shapes.start) out.push(line('start', shapes.start.path));
+	if (shapes.start) {
+		out.push(
+			`<path class="start" d="${shapes.start.path}" fill="${WHITE}" stroke="${LINE}" stroke-width="1.5" stroke-linejoin="round"/>`
+		);
+	}
 	for (const state of shapes.states) {
 		out.push(
 			`<circle class="state" cx="${state.x}" cy="${state.y}" r="${RADIUS}" fill="${WHITE}" stroke="${LINE}" stroke-width="1.5"/>`

@@ -246,15 +246,102 @@ describe('a self-loop', () => {
 	});
 });
 
-describe('the start arrow', () => {
-	it('comes from the left, 40 long, with "mulai" at its tail', () => {
+function triangleVertices(path: string): [Point, Point, Point] {
+	const match = /^M ([\d.-]+) ([\d.-]+) L ([\d.-]+) ([\d.-]+) L ([\d.-]+) ([\d.-]+) Z$/.exec(path);
+	if (!match) throw new Error(`invalid triangle path: ${path}`);
+	return [
+		{ x: parseFloat(match[1]!), y: parseFloat(match[2]!) },
+		{ x: parseFloat(match[3]!), y: parseFloat(match[4]!) },
+		{ x: parseFloat(match[5]!), y: parseFloat(match[6]!) }
+	];
+}
+
+/** Minimum distance between a segment [a, b] and an axis-aligned box. */
+function distanceSegmentToBox(a: Point, b: Point, box: Box): number {
+	const corners: Point[] = [
+		{ x: box.x, y: box.y },
+		{ x: box.x + box.width, y: box.y },
+		{ x: box.x + box.width, y: box.y + box.height },
+		{ x: box.x, y: box.y + box.height }
+	];
+	const boxEdges: [Point, Point][] = [
+		[corners[0]!, corners[1]!],
+		[corners[1]!, corners[2]!],
+		[corners[2]!, corners[3]!],
+		[corners[3]!, corners[0]!]
+	];
+	const min = Math.min(
+		...corners.map((c) => distanceToSegment(c, a, b)),
+		...boxEdges.flatMap(([p, q]) => [distanceToSegment(a, p, q), distanceToSegment(b, p, q)])
+	);
+	return min;
+}
+
+describe('the start marker triangle', () => {
+	it('AC1: tip on rim at 180°, base 28 further out, 36 wide, perpendicular to axis', () => {
 		const doc = build({ states: [[200, 200]], start: 0 });
 		const start = edgeGeometry(doc).start!;
 		expect(start.angle).toBe(180);
-		near(start.tail.x, 200 - RADIUS - 40);
-		near(start.head.x, 200 - RADIUS);
-		near(start.label.box.x + start.label.box.width, start.tail.x - LABEL_GAP);
+		expect(start.head).toEqual({ x: 168, y: 200 });
+		expect(start.tail).toEqual({ x: 140, y: 200 });
+		expect(start.path).toMatch(/^M 168 200 L 140 (182|218) L 140 (218|182) Z$/);
 		expect(start.label.text).toBe('mulai');
+		near(start.label.box.x + start.label.box.width, start.tail.x - LABEL_GAP);
+		near(start.label.center.y, 200);
+	});
+
+	it('AC2: loops over the 24 candidate angles', () => {
+		const center = { x: 500, y: 500 };
+		const candidates = Array.from({ length: 24 }, (_, i) => -165 + 15 * i);
+
+		for (const targetAngle of candidates) {
+			// Place neighbor states at the other 23 angles to force pickAngle to select targetAngle.
+			const neighborStates: [number, number][] = candidates
+				.filter((a) => a !== targetAngle)
+				.map((a) => {
+					const rad = (a * Math.PI) / 180;
+					return [
+						Math.round(center.x + 100 * Math.cos(rad)),
+						Math.round(center.y + 100 * Math.sin(rad))
+					];
+				});
+
+			const doc = build({
+				states: [[center.x, center.y], ...neighborStates],
+				start: 0
+			});
+
+			const start = edgeGeometry(doc).start!;
+			expect(start.angle).toBe(targetAngle);
+
+			const [tip, c1, c2] = triangleVertices(start.path);
+
+			// 1. Tip on rim: distance from center is RADIUS (32)
+			near(Math.hypot(tip.x - center.x, tip.y - center.y), RADIUS, 1);
+			near(start.head.x, tip.x, 1);
+			near(start.head.y, tip.y, 1);
+
+			// 2. Base center at RADIUS + 28 (60)
+			near(Math.hypot(start.tail.x - center.x, start.tail.y - center.y), RADIUS + 28, 1);
+			near((c1.x + c2.x) / 2, start.tail.x, 1);
+			near((c1.y + c2.y) / 2, start.tail.y, 1);
+
+			// 3. Base width is 36, corners symmetric about axis
+			near(Math.hypot(c1.x - c2.x, c1.y - c2.y), 36, 1);
+			near(Math.hypot(c1.x - tip.x, c1.y - tip.y), Math.hypot(c2.x - tip.x, c2.y - tip.y), 1);
+
+			// 4. Label box touches neither triangle (grown by 2) nor state circle
+			expect(circleTouches(center, start.label.box)).toBe(false);
+
+			const triangleEdges: [Point, Point][] = [
+				[tip, c1],
+				[c1, c2],
+				[c2, tip]
+			];
+			for (const [p, q] of triangleEdges) {
+				expect(distanceSegmentToBox(p, q, start.label.box)).toBeGreaterThan(2);
+			}
+		}
 	});
 
 	it('moves to the nearest side that has room when an edge arrives from the left', () => {
@@ -393,7 +480,7 @@ describe('the whole drawing', () => {
 		expect(shapes.states.map((s) => s.accepting)).toEqual([false, false, true]);
 	});
 
-	it('has bounds that hold every circle, every label and the start arrow', () => {
+	it('has bounds that hold every circle, every label and the start marker triangle', () => {
 		const shapes = edgeGeometry(endsWith01());
 		const { bounds } = shapes;
 		const inside = (box: Box) =>
@@ -408,6 +495,9 @@ describe('the whole drawing', () => {
 		}
 		for (const e of shapes.edges) expect(inside(e.label.box)).toBe(true);
 		expect(inside(shapes.start!.label.box)).toBe(true);
+		for (const v of triangleVertices(shapes.start!.path)) {
+			expect(inside({ x: v.x, y: v.y, width: 0, height: 0 })).toBe(true);
+		}
 		for (const e of shapes.edges)
 			for (const p of e.points) expect(inside({ x: p.x, y: p.y, width: 0, height: 0 })).toBe(true);
 	});

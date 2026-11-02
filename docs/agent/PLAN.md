@@ -326,7 +326,9 @@ Expected: all pass. Paste the real output.
 
 ## Task T-018 — Start state marker: a large hollow triangle, like JFLAP
 
-**Status:** todo (promoted on 2026-11-03, after T-004 was accepted; the Playwright browsers must be installed in WSL first)
+**Status:** done
+**Commit:** `987b2e8`
+**PR:** #120
 **Owner:** worker
 **Branch:** `task/T-018-start-marker-triangle`
 

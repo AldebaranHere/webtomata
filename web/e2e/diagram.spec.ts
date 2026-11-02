@@ -17,7 +17,8 @@ test('the Sandbox draws the sample machine', async ({ page }) => {
 	await expect(diagram.locator('text.start-label')).toHaveText('mulai');
 
 	// Six edges in the order of (from, to), each with its label.
-	await expect(diagram.locator('path.line')).toHaveCount(7); // six edges and the start arrow
+	await expect(diagram.locator('path.line')).toHaveCount(6);
+	await expect(diagram.locator('path.start')).toHaveCount(1);
 	await expect(diagram.locator('text.label')).toHaveText(['1', '0', '0', '1', '1', '0']);
 	await expectNoAxeViolations(page);
 });

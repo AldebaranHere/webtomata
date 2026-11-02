@@ -32,6 +32,10 @@ describe('diagramSvg', () => {
 		expect(count(svg, 'class="inner"')).toBe(accepting);
 		expect(count(svg, 'class="edge"')).toBe(shapes.edges.length);
 		expect(count(svg, 'class="start"')).toBe(1);
+		expect(svg).toMatch(
+			/<path class="start" d="M [^"]+ Z" fill="#ffffff" stroke="#3b414c" stroke-width="1.5" stroke-linejoin="round"\/>/
+		);
+		expect(svg).not.toMatch(/<path class="start"[^>]*marker-end/);
 		for (const edge of shapes.edges) expect(svg).toContain(`d="${edge.path}"`);
 		for (const state of doc.states) expect(svg).toContain(`>${state.name}</text>`);
 		expect(svg).toContain(`>${START}</text>`);
