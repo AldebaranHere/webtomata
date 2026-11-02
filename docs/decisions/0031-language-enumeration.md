@@ -4,7 +4,7 @@ Status: accepted (implemented in PR 104 on 2026-10-31).
 
 ## Context
 
-In Theory of Computation (Rich Chapter 2; Fasilkom UI Week 1–2), formal languages are introduced as sets of strings over an alphabet $\Sigma$, defined either by set-builder predicates or algebraic operations over languages (finite sets, union, intersection, difference, symmetric difference, concatenation, concatenation powers, Kleene star, Kleene plus, and string reversal).
+In Theory of Computation (Rich Chapter 2, and the enumeration exercises of the course), formal languages are introduced as sets of strings over an alphabet $\Sigma$, defined either by set-builder predicates or algebraic operations over languages (finite sets, union, intersection, difference, symmetric difference, concatenation, concatenation powers, Kleene star, Kleene plus, and string reversal).
 
 Students need to verify language definitions by listing strings in length-lexicographical proper order (shorter strings first, then alphabetical). Infinite languages cannot be listed entirely, and predicate-based definitions can cause infinite loops or excessive memory usage without strict computational bounds. Furthermore, the workstation must operate entirely client-side without degrading initial page load performance.
 
