@@ -13,6 +13,7 @@
     "format:check": "pnpm --filter web format:check && cargo fmt --check",
     "format": "pnpm --filter web format && cargo fmt",
     "check": "pnpm --filter web check",
+    "typecheck": "pnpm --filter web typecheck",
     "lint:rust": "cargo fmt --check && cargo clippy --all-targets -- -D warnings",
     "cov:rust": "cargo llvm-cov -p engine-core",
     "cov:rust:html": "cargo llvm-cov -p engine-core --html --output-dir target/llvm-cov",
