@@ -320,6 +320,69 @@ Expected: all pass. Paste the real output.
 
 ---
 
+## Task T-018 — Start state marker: a large hollow triangle, like JFLAP
+
+**Status:** proposed (promote after T-004 is accepted)
+**Owner:** worker
+**Branch:** `task/T-018-start-marker-triangle`
+
+**Goal:** The owner wants the start state to look as in JFLAP: a large hollow triangle that touches the state, with the label "mulai" kept beside it (approved on 2026-11-02, "triangle with label"). Today the marker is a short arrow (40 long, with an arrowhead). The marker is drawn by one geometry function, so the editor, the guide embeds, the comparison player and the SVG and PNG export change together.
+
+**Scope (in):**
+- `web/src/lib/editor/diagram/geometry.ts`: replace the arrow by a triangle. Constants: length 28, width 36. `StartShape.path` becomes the closed triangle (`M tip L corner L corner Z`). `head` is the tip, on the rim (distance `RADIUS` from the center). `tail` is the middle of the base, at distance `RADIUS + 28`. The label is placed beyond `tail` by the same label rule as today. `bounds` includes the three vertices and the label box.
+- `web/src/lib/editor/diagram/DiagramDrawing.svelte`: draw the marker as a closed shape with fill `--color-surface`, stroke 1.5 `--color-neutral-ink`, round joins, and **no arrowhead**.
+- `web/src/lib/share/image.ts`: the SVG and PNG export draw the same triangle, with the same fill and stroke as the exported state circles.
+- Unit tests (`geometry.test.ts`, `image.test.ts`) and one e2e check (see AC7).
+
+**Non-goals (out):**
+- No change to the angle rules (the marker still keeps to the left, and moves only when the left is busy), to the label text (`diagram.start`), to the state circle, to the accepting circle, to the edges, or to any token.
+- No new color, no new message, no new interaction (the marker is not selectable and has no hit area today; keep it so).
+- If a message or a guide says "arrow" for the start marker (search `id.ts`, `en.ts`, the tour and `content/`), **report it** in `REPORT.md`. Do not change the text.
+
+**Files expected to touch:**
+- `web/src/lib/editor/diagram/geometry.ts`, `geometry.test.ts`
+- `web/src/lib/editor/diagram/DiagramDrawing.svelte`
+- `web/src/lib/share/image.ts`, `image.test.ts`
+- one e2e spec that already draws a machine with a start state (find it with `grep -rl "start" web/e2e`)
+
+**Design reference:**
+- `design/screens/start-state-marker.md` and `design/screens/start-state-marker.svg` (the approved picture and the numbers)
+- `docs/ux/editor-interactions.md`: the "Start" row and "Angle of the start arrow and of self-loops"
+
+**Acceptance criteria:**
+- AC1: With one state and no other busy angle, the tip is at distance 32 from the center on the left (180°). The base is 28 further out, perpendicular to the axis, and 36 wide (18 on each side). A unit test checks the exact coordinates.
+- AC2: For every angle that the rule can pick (the 24 multiples of 15°), the tip is on the rim, the base center is at `RADIUS + 28`, the vertices are symmetric about the axis, and the label box touches neither the triangle (grown by 2) nor the state circle. A unit test loops over the 24 angles.
+- AC3: The marker is a closed shape in the page with fill `--color-surface`, stroke 1.5 `--color-neutral-ink`, and no `marker-end`. The circle of an accepting start state does not change.
+- AC4: `bounds` contains the three vertices and the label box. The existing tests of the camera, the first view and "no edge to the canvas" still pass without a change of their expected values, or the change is explained in `REPORT.md`.
+- AC5: The SVG export holds a closed filled path for the start marker, with no arrowhead marker on it, and the PNG export (which renders that SVG) shows it. `image.test.ts` checks the SVG text.
+- AC6: `pnpm check:tokens`, `pnpm check:contrast` and `pnpm check:strings` pass without a change of their data (no new color, no new text).
+- AC7: One e2e test draws a machine with a start state, finds the marker, and runs axe with no violation, on the laptop and the phone project.
+- AC8: A deliberate break is shown: move the tip 8 off the rim and AC1 fails; then restore it.
+
+**Verification (Mode B form shown; in Mode A drop the bridge):**
+```
+pnpm --filter web exec vitest run src/lib/editor/diagram/geometry.test.ts src/lib/share/image.test.ts
+pnpm check
+pnpm lint
+pnpm format:check
+pnpm check:tokens
+pnpm check:contrast
+pnpm check:strings
+pnpm build
+pnpm size
+pnpm --filter web exec playwright test --project=desktop --project=phone <the spec of AC7>
+pnpm test:e2e
+```
+Expected: all pass. Run the new e2e test 5 times. Paste the real output into `REPORT.md`.
+
+**Rollback:** `git revert <sha>`; no saved data holds the marker.
+
+**Depends on:** T-004 accepted. The Playwright browsers must be installed in WSL (`ls ~/.cache/ms-playwright` is not empty; the owner does step 7 of the setup). If they are not, set the task to `blocked` and say so.
+
+**Notes for worker:** Read the picture and the numbers first. The geometry function is the only place that draws the marker, so do not add a second drawing path. Look at the existing start-arrow assertions in `geometry.test.ts` and change them from the arrow to the triangle in the same commit as the code.
+
+---
+
 ## Planner task P-001 — As-built spec of the grammar workstation, the language workstation and the switcher
 
 **Status:** todo (planner)
