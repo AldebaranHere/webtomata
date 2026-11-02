@@ -92,7 +92,7 @@
 		{/if}
 	{/each}
 	{#if shapes.start}
-		<path class="line" d={shapes.start.path} marker-end="url(#{arrow})" />
+		<path class="start" d={shapes.start.path} />
 	{/if}
 </g>
 
@@ -188,6 +188,12 @@
 		fill: none;
 		stroke: var(--color-neutral-ink);
 		stroke-width: 1.5;
+	}
+	.start {
+		fill: var(--color-surface);
+		stroke: var(--color-neutral-ink);
+		stroke-width: 1.5;
+		stroke-linejoin: round;
 	}
 	.arrowhead {
 		fill: var(--color-neutral-ink);

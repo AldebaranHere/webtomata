@@ -11,7 +11,8 @@ export const INNER_RADIUS = 26;
 /** The distance between a label and its line, and between a label and the end of the arrow. */
 export const LABEL_GAP = 4;
 
-const START_LENGTH = 40;
+const START_LENGTH = 28;
+const START_WIDTH = 36;
 const LOOP_REACH = 40;
 /** The top of a curve of an opposite pair is this far from the straight line. */
 const FIRST_PEAK = 24;
@@ -469,20 +470,23 @@ export function edgeGeometry(doc: MachineDocument, options: DiagramOptions = {})
 		}
 	}
 
-	// 3. The start arrow.
+	// 3. The start marker triangle.
 	let start: StartShape | undefined;
 	const startState = doc.start === null ? undefined : byId.get(doc.start);
 	if (startState) {
 		const angle = pickAngle(busy.get(startState.id) ?? [], 180, START_FREE_GAP);
 		const along = direction(angle);
+		const normal = { x: -along.y, y: along.x };
 		const head = add(startState, along, RADIUS);
 		const tail = add(startState, along, RADIUS + START_LENGTH);
+		const c1 = add(tail, normal, START_WIDTH / 2);
+		const c2 = add(tail, normal, -START_WIDTH / 2);
 		start = {
 			state: startState.id,
 			angle,
 			tail: rounded(tail),
 			head: rounded(head),
-			path: `${path('M', tail)} ${path('L', head)}`,
+			path: `${path('M', head)} ${path('L', c1)} ${path('L', c2)} Z`,
 			label: placeLabel(startLabel, UI_CHAR, tail, along)
 		};
 		makeBusy(startState.id, angle);
@@ -551,7 +555,16 @@ export function edgeGeometry(doc: MachineDocument, options: DiagramOptions = {})
 		])
 	];
 	if (start) {
-		boxes.push(start.label.box, { x: start.tail.x, y: start.tail.y, width: 0, height: 0 });
+		const along = direction(start.angle);
+		const normal = { x: -along.y, y: along.x };
+		const c1 = add(start.tail, normal, START_WIDTH / 2);
+		const c2 = add(start.tail, normal, -START_WIDTH / 2);
+		boxes.push(
+			start.label.box,
+			{ x: start.head.x, y: start.head.y, width: 0, height: 0 },
+			{ x: round(c1.x), y: round(c1.y), width: 0, height: 0 },
+			{ x: round(c2.x), y: round(c2.y), width: 0, height: 0 }
+		);
 	}
 	return { states: stateShapes, edges, start, bounds: boundsOf(boxes) };
 }
