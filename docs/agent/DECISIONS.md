@@ -14,6 +14,14 @@ Format:
 
 ---
 
+## 2026-11-03 — Open the CNF result as a new grammar (task T-023)
+- Decider: owner (planner proposed)
+- Context: After the phone test the owner noticed that the FSM panels end with "Buka sebagai mesin baru" but the grammar workstation has no way to keep the CNF result.
+- Decision: The last step (step 6) of the CNF tab gets a primary button "Buka sebagai tata bahasa baru". It adds "<name> (CNF)" to the custom grammars, selects it and shows it in the Editor; the original grammar does not change. No button on steps 1 to 5, and no new message element. The engine result is turned into text with one space between all symbols, and a round-trip test through the real parser guards it. The worker also fixes the custom id `G<length+1>` that can repeat after a delete.
+- Alternatives considered: a button on every phase (more copies, more scope, the owner chose the last step only); staying on the CNF tab after the tap (the owner chose the jump to the Editor).
+- Reversible? yes
+- Affects: `web/src/lib/grammar/*`, `web/src/lib/i18n/*`, `docs/agent/PLAN.md` (T-023; backlog T-024 and T-025 come from the review of T-016)
+
 ## 2026-11-03 — A fast path in CI for documents-only changes (task T-050)
 - Decider: owner (planner proposed)
 - Context: Every pull request runs the whole CI (about 6 to 7 minutes, plus CodeQL, audit, fuzz and a preview deploy), even a change of one document. The owner asked for a faster way and asked whether it is a security risk. The post-mortem had left this undecided.
