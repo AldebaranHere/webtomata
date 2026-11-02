@@ -6,9 +6,9 @@
 - id: T-001
 - title: Add a `typecheck` script
 - branch: `task/T-001-typecheck-alias`
-- commits: `1d5690e`
+- commits: `1d5690e..4b4e0b1`
 - pull request: https://github.com/AldebaranHere/webtomata/pull/108
-- CI run: https://github.com/AldebaranHere/webtomata/actions/runs/41405918168
+- CI run: https://github.com/AldebaranHere/webtomata/actions/runs/41406269701
 
 ## What changed
 - `package.json` — added root script `"typecheck": "pnpm --filter web typecheck"`
