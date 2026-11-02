@@ -50,11 +50,31 @@ Update this section as the project evolves.
 - E2E (desktop only): `pnpm --filter web exec playwright test --project=desktop`
 - Build: `pnpm build`; then `pnpm size`, `pnpm smoke`, `pnpm lighthouse`
 - Everything the CI runs: `pnpm verify`
-- Snapshot: `powershell -ExecutionPolicy Bypass -File tools/agent-snapshot.ps1`
+- Snapshot (a Windows PowerShell script for the owner and the planner, not for the worker): `powershell -ExecutionPolicy Bypass -File tools/agent-snapshot.ps1`
 
-The WASM build needs Rust and `wasm-pack`. The owner's Windows laptop builds it in WSL (see `MD_FILES/AGENT-HANDOFF.md`). Firefox does not start on that laptop; the Firefox tests run only in CI.
+The WASM build needs Rust and `wasm-pack`, so the worker runs these commands in WSL (see the next section). Firefox does not start on the owner's laptop; the Firefox tests run only in CI.
 
 Adjust this list when commands change. Never reference commands that do not exist.
+
+## Where the worker runs: WSL Ubuntu, never Windows
+
+The worker runs **every command** in **WSL Ubuntu**, in the clone `~/webtomata` (`/home/Aldebaran64/webtomata`). It never runs commands on Windows.
+
+Why: Windows blocks `wasm-pack` (Device Guard), so the WASM build and the WASM tests fail there. The CI runs on Linux, and WSL is Linux, so a local pass is a better sign of a CI pass.
+
+1. **Where.** Work only in `~/webtomata`, on the WSL disk. Never in `/mnt/c` or `/mnt/d` (slow, and file locks break builds). Never in the Windows folder `D:\dev\webtomata`: it belongs to the owner and the planner. The two clones meet only through GitHub.
+2. **Check first, in every session.** Run `uname -s`. It must print `Linux`. If the command is not found, the shell is a Windows shell: **stop** and tell the owner "I am not in WSL". Do not continue on Windows.
+3. **Environment.** In every new shell, run these two lines (the default `node` is v22 and `cargo` is not on the PATH):
+   ```
+   . "$HOME/.cargo/env"
+   export PATH="$HOME/tools/node/bin:$PATH"
+   ```
+   Then check: `node --version` prints `v24.21.0` (the project needs 24.x), and `cargo --version` and `wasm-pack --version` print versions. If a check fails, stop and tell the owner. Do not install tools. Do not use `sudo`.
+4. **Start of a task.** `cd ~/webtomata && git fetch origin && git switch staging && git pull --ff-only && pnpm install --frozen-lockfile`. Before a web test that loads the engine, run `pnpm build:wasm`.
+5. **Git.** Commit and push from WSL. `git remote -v` must show `https://github.com/AldebaranHere/webtomata.git`. If a push asks for a password or a token, stop. Never type a secret, and never ask the owner to paste one. The pre-push hook `.git/hooks/pre-push` must exist in the WSL clone. If it is missing, stop and tell the owner. Never push without it, and never use `--no-verify`.
+6. **Pull request.** `gh` is not installed in WSL. Use the Windows `gh.exe`, which is already signed in: `cat body.md | gh.exe pr create --repo AldebaranHere/webtomata --base staging --head <branch> --title "<title>" --body-file -`. Keep temporary files (PR text, scripts) in `~/tmp`, not in the repository.
+7. **E2E tests** need the Playwright browsers in WSL. Check `ls ~/.cache/ms-playwright`. If it is empty and the task needs e2e, stop and tell the owner. Do not run `playwright install --with-deps` yourself. Engine, documentation and unit-test tasks do not need e2e.
+8. **What you cannot run** (a phone, the live site) is the owner's. Say in `REPORT.md` what you did not run and why.
 
 ## Coding standards
 
