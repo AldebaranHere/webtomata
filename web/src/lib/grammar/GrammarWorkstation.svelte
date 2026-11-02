@@ -643,7 +643,7 @@
 
 		<div class="library-scroll">
 			<div class="section-label">{t('grammar.preset_section')}</div>
-			<div class="preset-list" role="list">
+			<div class="preset-list">
 				{#each GRAMMAR_PRESETS as preset (preset.id)}
 					<div
 						class="preset-card"
@@ -669,7 +669,7 @@
 
 			{#if customGrammars.length > 0}
 				<div class="section-label custom-label">{t('grammar.custom_section')}</div>
-				<div class="preset-list" role="list">
+				<div class="preset-list">
 					{#each customGrammars as custom (custom.id)}
 						<div
 							class="preset-card custom-card"
@@ -1817,6 +1817,13 @@
 			display: block;
 			margin-top: var(--space-4);
 			padding-bottom: var(--space-4);
+		}
+
+		.editor-col .col-header {
+			flex-wrap: wrap;
+			gap: var(--space-2);
+			height: auto;
+			min-height: 48px;
 		}
 
 		.btn-convert-cnf {

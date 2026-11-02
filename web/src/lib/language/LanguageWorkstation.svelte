@@ -812,134 +812,6 @@
 		color: var(--color-ink);
 	}
 
-	@media (min-width: 900.02px) {
-		.col[hidden] {
-			display: flex !important;
-		}
-	}
-
-	@media (max-width: 900px) {
-		.workstation {
-			display: flex;
-			flex-direction: column;
-			height: auto;
-			min-height: 100%;
-			overflow: visible;
-		}
-
-		.splitter {
-			display: none;
-		}
-
-		.col {
-			border-right: none;
-			height: auto;
-			min-height: 0;
-			overflow: visible;
-		}
-
-		.col[hidden] {
-			display: none !important;
-		}
-
-		.library-scroll {
-			overflow-y: visible;
-			height: auto;
-		}
-
-		.editor-body {
-			display: flex;
-			flex-direction: column;
-			overflow-y: visible;
-			height: auto;
-		}
-
-		.textarea-wrapper {
-			order: 1;
-		}
-
-		.symbol-toolbar {
-			order: 2;
-			flex-wrap: wrap;
-		}
-
-		.math-preview-card {
-			order: 3;
-		}
-
-		.error-banner {
-			order: 4;
-		}
-
-		.legend-card {
-			order: 5;
-		}
-
-		.symbol-group {
-			flex-wrap: wrap;
-		}
-
-		.sym-btn {
-			min-width: var(--target-min);
-			min-height: var(--target-min);
-		}
-
-		.output-body {
-			overflow-y: visible;
-			height: auto;
-		}
-
-		.results-container {
-			overflow-y: visible;
-			height: auto;
-		}
-
-		.control-row {
-			display: grid;
-			grid-template-columns: repeat(3, 1fr);
-			gap: var(--space-2);
-		}
-
-		.control-field {
-			min-width: 0;
-		}
-
-		.control-field label {
-			font-size: var(--text-2xs);
-			white-space: normal;
-		}
-
-		.num-input,
-		.select-input {
-			width: 100%;
-			min-height: var(--target-min);
-		}
-
-		.btn-sm {
-			min-height: var(--target-min);
-			min-width: var(--target-min);
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-		}
-
-		.item-btn {
-			min-height: var(--target-min);
-		}
-
-		.btn-delete-custom {
-			min-width: var(--target-min);
-			min-height: var(--target-min);
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-		}
-
-		.btn-primary {
-			min-height: var(--target-min);
-		}
-	}
-
 	.splitter {
 		width: 8px;
 		cursor: col-resize;
@@ -1511,5 +1383,138 @@
 	.btn-ghost:hover {
 		border-color: var(--color-accent);
 		color: var(--color-accent);
+	}
+
+	@media (min-width: 900.02px) {
+		.col[hidden] {
+			display: flex !important;
+		}
+	}
+
+	@media (max-width: 900px) {
+		.workstation {
+			display: flex;
+			flex-direction: column;
+			height: auto;
+			min-height: 100%;
+			overflow: visible;
+		}
+
+		.splitter {
+			display: none;
+		}
+
+		.col {
+			border-right: none;
+			height: auto;
+			min-height: 0;
+			overflow: visible;
+		}
+
+		.col[hidden] {
+			display: none !important;
+		}
+
+		.library-scroll {
+			overflow-y: visible;
+			height: auto;
+		}
+
+		.editor-body {
+			display: flex;
+			flex-direction: column;
+			overflow-y: visible;
+			height: auto;
+		}
+
+		.textarea-wrapper {
+			order: 1;
+		}
+
+		.symbol-toolbar {
+			order: 2;
+			flex-wrap: wrap;
+		}
+
+		.math-preview-card {
+			order: 3;
+		}
+
+		.error-banner {
+			order: 4;
+		}
+
+		.legend-card {
+			order: 5;
+		}
+
+		.symbol-group {
+			flex-wrap: wrap;
+		}
+
+		.sym-btn {
+			min-width: var(--target-min);
+			min-height: var(--target-min);
+		}
+
+		.output-body {
+			overflow-y: visible;
+			height: auto;
+		}
+
+		.results-container {
+			overflow-y: visible;
+			height: auto;
+		}
+
+		.control-row {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: var(--space-2);
+		}
+
+		.control-field {
+			display: flex;
+			flex-direction: column;
+			align-items: flex-start;
+			gap: var(--space-1);
+			min-width: 0;
+		}
+
+		.control-field label {
+			font-size: var(--text-2xs);
+			white-space: normal;
+		}
+
+		.num-input,
+		.select-input {
+			width: 100%;
+			box-sizing: border-box;
+			min-height: var(--target-min);
+		}
+
+		.btn-sm {
+			min-height: var(--target-min);
+			min-width: var(--target-min);
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.item-btn {
+			min-height: var(--target-min);
+		}
+
+		.btn-delete-custom {
+			min-width: var(--target-min);
+			min-height: var(--target-min);
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.btn-primary {
+			min-height: var(--target-min);
+		}
 	}
 </style>

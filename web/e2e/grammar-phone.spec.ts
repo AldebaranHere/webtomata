@@ -1,8 +1,12 @@
 import { expect, expectNoAxeViolations, test } from './fixtures.ts';
 import type { Page } from '@playwright/test';
 
-test.beforeEach(({ isMobile }) => {
-	test.skip(!isMobile, 'a phone only');
+test.beforeEach(({ isMobile }, testInfo) => {
+	if (testInfo.title.includes('desktop project')) {
+		test.skip(isMobile, 'desktop only');
+	} else {
+		test.skip(!isMobile, 'a phone only');
+	}
 });
 
 async function openGrammar(page: Page) {
@@ -57,9 +61,6 @@ for (const viewport of [
 		const cnfPane = page.locator('#grammar-pane-cnf');
 		await expect(cnfPane).toBeVisible();
 		await expect(pustakaPane).toBeHidden();
-
-		const cnfHtml = await cnfPane.innerHTML();
-		console.log('CNF Pane text length:', cnfHtml.length, 'preview:', cnfHtml.slice(0, 200));
 
 		// AC3: In CNF tab, title of phase and first chips are visible without scrolling
 		const phaseTitle = cnfPane.locator('.step-title');
@@ -169,4 +170,83 @@ test('grammar phone layout: preset selection jumps to editor, shortcut button, a
 
 	// Axe check on tab
 	await expectNoAxeViolations(page);
+});
+
+test('grammar phone layout at 390x480: CNF stepper header remains sticky at 52px when scrolled to bottom', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 390, height: 480 });
+	await openGrammar(page);
+
+	const tablist = page.locator('.workstation [role="tablist"]');
+	const tabs = tablist.locator('[role="tab"]');
+
+	// Select a preset whose CNF transformation has rich diffs and rules so the card overflows and scrolls
+	await tabs.nth(0).click();
+	await page.locator('.preset-card').nth(1).click();
+
+	await tabs.nth(2).click();
+	const cnfPane = page.locator('#grammar-pane-cnf');
+	await expect(cnfPane).toBeVisible();
+
+	// Go to step 2 which has nullable eliminations and extensive diffs
+	await cnfPane.locator('.step-pill').nth(1).click();
+
+	const stepperHeader = cnfPane.locator('.stepper-header');
+	await expect(stepperHeader).toBeVisible();
+
+	await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+
+	const tablistStrip = page.locator('.workstation-phone-tabs');
+	const tabBox = (await tablistStrip.boundingBox())!;
+	const headerBox = (await stepperHeader.boundingBox())!;
+
+	expect(Math.abs(headerBox.y - 52)).toBeLessThanOrEqual(1);
+	expect(headerBox.y).toBeGreaterThanOrEqual(tabBox.y + tabBox.height - 1);
+});
+
+test('grammar phone layout: axe has no violation in every tab', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await openGrammar(page);
+
+	const tablist = page.locator('.workstation [role="tablist"]');
+	const tabs = tablist.locator('[role="tab"]');
+
+	// Tab 1: Editor (default)
+	await expectNoAxeViolations(page);
+
+	// Tab 0: Pustaka
+	await tabs.nth(0).click();
+	await expect(page.locator('#grammar-pane-pustaka')).toBeVisible();
+	await expectNoAxeViolations(page);
+
+	// Tab 2: CNF
+	await tabs.nth(2).click();
+	await expect(page.locator('#grammar-pane-cnf')).toBeVisible();
+	await expectNoAxeViolations(page);
+
+	// Tab 3: CYK
+	await tabs.nth(3).click();
+	await expect(page.locator('#grammar-pane-cyk')).toBeVisible();
+	await expectNoAxeViolations(page);
+});
+
+test('at 1280x800 on the desktop project, grammar workstation shows splitters, no tab strip and no Ubah ke CNF button', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await openGrammar(page);
+
+	// AC9: Splitters visible on desktop
+	const splitters = page.locator('.workstation .splitter');
+	await expect(splitters).toHaveCount(2);
+	await expect(splitters.first()).toBeVisible();
+
+	// AC9: Tab strip hidden on desktop
+	const tabStrip = page.locator('.workstation-phone-tabs');
+	await expect(tabStrip).toBeHidden();
+
+	// AC12: "Ubah ke CNF" button hidden on desktop
+	const shortcutBtn = page.locator('.btn-convert-cnf');
+	await expect(shortcutBtn).toBeHidden();
 });

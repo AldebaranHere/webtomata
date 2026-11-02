@@ -1,8 +1,12 @@
 import { expect, expectNoAxeViolations, test } from './fixtures.ts';
 import type { Page } from '@playwright/test';
 
-test.beforeEach(({ isMobile }) => {
-	test.skip(!isMobile, 'a phone only');
+test.beforeEach(({ isMobile }, testInfo) => {
+	if (testInfo.title.includes('desktop project')) {
+		test.skip(isMobile, 'desktop only');
+	} else {
+		test.skip(!isMobile, 'a phone only');
+	}
 });
 
 async function openLanguage(page: Page) {
@@ -64,6 +68,15 @@ for (const viewport of [
 		const hasilPane = page.locator('#language-pane-hasil');
 		await expect(hasilPane).toBeVisible();
 		await expect(pustakaPane).toBeHidden();
+
+		// Control row is one compact row of three columns sharing the same y
+		const controlFields = hasilPane.locator('.control-row .control-field');
+		await expect(controlFields).toHaveCount(3);
+		const field0Box = (await controlFields.nth(0).boundingBox())!;
+		const field1Box = (await controlFields.nth(1).boundingBox())!;
+		const field2Box = (await controlFields.nth(2).boundingBox())!;
+		expect(Math.abs(field0Box.y - field1Box.y)).toBeLessThanOrEqual(1);
+		expect(Math.abs(field0Box.y - field2Box.y)).toBeLessThanOrEqual(1);
 
 		// AC4: Language, Hasil tab: first result row is visible without scrolling
 		const firstResult = hasilPane.locator('.string-row').first();
@@ -140,4 +153,41 @@ test('language phone layout: preset selection jumps to editor, arrow keys, and a
 
 	// Axe check on tab
 	await expectNoAxeViolations(page);
+});
+
+test('language phone layout: axe has no violation in every tab', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await openLanguage(page);
+
+	const tablist = page.locator('.workstation [role="tablist"]');
+	const tabs = tablist.locator('[role="tab"]');
+
+	// Tab 1: Editor (default)
+	await expectNoAxeViolations(page);
+
+	// Tab 0: Pustaka
+	await tabs.nth(0).click();
+	await expect(page.locator('#language-pane-pustaka')).toBeVisible();
+	await expectNoAxeViolations(page);
+
+	// Tab 2: Hasil
+	await tabs.nth(2).click();
+	await expect(page.locator('#language-pane-hasil')).toBeVisible();
+	await expectNoAxeViolations(page);
+});
+
+test('at 1280x800 on the desktop project, language workstation shows splitters and no tab strip', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await openLanguage(page);
+
+	// AC9: Splitters visible on desktop
+	const splitters = page.locator('.workstation .splitter');
+	await expect(splitters).toHaveCount(2);
+	await expect(splitters.first()).toBeVisible();
+
+	// AC9: Tab strip hidden on desktop
+	const tabStrip = page.locator('.workstation-phone-tabs');
+	await expect(tabStrip).toBeHidden();
 });

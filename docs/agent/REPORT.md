@@ -14,8 +14,8 @@
 - `web/src/lib/components/WorkstationPhoneTabs.svelte` (new):
   - Created reusable ARIA tab strip component for phone viewports (`role="tablist"` with `aria-label`).
   - Supports tabs with `role="tab"`, `aria-selected`, `aria-controls`, `id`, and keyboard arrow navigation (Left/Right, Home/End) with auto-activation and wrapping.
-  - Sticky at top (`position: sticky; top: 0; z-index: 10;`) with horizontal touch scrolling and hidden scrollbar.
-  - Sized at least 44px min-height/min-width for all tabs with accessible focus rings and active highlight line.
+  - Sticky at top (`position: sticky; top: 0; z-index: 10;`).
+  - Sized at least 44px min-height/min-width for all tabs with accessible focus rings; the tab strip wraps and uses a dark selected pill (it does not scroll sideways and has no highlight line).
   - Automatically hidden at viewports `>= 900.02px`.
 - `web/src/lib/i18n/id.ts` & `web/src/lib/i18n/en.ts`:
   - Added translation keys:
@@ -31,6 +31,8 @@
   - Added `WorkstationPhoneTabs` under the mode bar.
   - Added responsive layout below 900px: columns convert from 3-column split grid to full-width tab panels (`role="tabpanel"` on `div` columns).
   - Selected tab state (`phoneTab`) controls visibility; selecting a preset or custom item automatically switches to `editor` tab and displays selection name in header.
+  - Allowed title, name chip, and "Simbol Awal" in `.editor-col .col-header` to wrap so they are not squeezed on one line on phones.
+  - Fixed accessibility in library column by removing `role="list"` on `.preset-list` container so buttons/cards inside do not violate `aria-required-children`.
   - Added primary shortcut button "Ubah ke CNF" at end of Editor tab content on phone layout, hidden on laptop (`>= 900px`).
 - `web/src/lib/grammar/GrammarCnfStepper.svelte`:
   - Stepper header (`.stepper-header`) styled as sticky under phone tab strip (`top: 52px; z-index: 5; background: var(--color-surface)`).
@@ -41,14 +43,14 @@
   - Example chips wrap with min 44px tap targets.
   - CYK table scrolls horizontally within its own box (`.table-scroll`).
 - `web/src/lib/language/LanguageWorkstation.svelte`:
-  - Replaced 1024px media query with unified 900px breakpoint.
+  - Replaced 1024px media query with unified 900px breakpoint at the bottom of the style block.
   - Added `WorkstationPhoneTabs` (`Pustaka`, `Editor`, `Hasil`).
   - Selection of preset or custom item jumps to `editor` tab with active title displayed.
   - Reordered Editor elements via flex `order`: formula textarea (4 rows) placed above the symbol toolbar (`order: 1` vs `order: 2`), symbol toolbar wraps with min 44px touch buttons.
-  - Hasil tab: settings organized in a compact 3-column grid (`Panjang Min`, `Jumlah String`, `Format String Kosong`), followed immediately by results.
+  - Hasil tab: settings organized in a compact 1-row, 3-column grid (`Panjang Min`, `Jumlah String`, `Format String Kosong`) sharing the same y coordinate, with phone media-query placed at the end of the `<style>` block to eliminate CSS cascade overrides from base rules.
 - Tests:
-  - `web/e2e/grammar-phone.spec.ts`: E2E suite covering phone viewports (360x780 and 390x844), tab navigation, touch target dimensions (>= 44px), sticky stepper header, scroll checks, preset jump, shortcut button, arrow keys, and axe accessibility.
-  - `web/e2e/language-phone.spec.ts`: E2E suite covering language phone layout, formula ordering above toolbar, compact settings, results visibility, touch targets, arrow keys, preset jump, and axe accessibility.
+  - `web/e2e/grammar-phone.spec.ts`: E2E suite covering phone viewports (360x780 and 390x844), tab navigation, touch target dimensions (>= 44px), sticky stepper header on 390x480 short viewport pinned at 52px, scroll checks, preset jump, shortcut button, arrow keys, axe accessibility across every tab (Pustaka, Editor, CNF, CYK), and desktop 1280x800 verification (splitters visible, no tab strip, no shortcut button).
+  - `web/e2e/language-phone.spec.ts`: E2E suite covering language phone layout, formula ordering above toolbar, compact 3-column settings sharing the same y, results visibility, touch targets, arrow keys, preset jump, axe accessibility across every tab (Pustaka, Editor, Hasil), and desktop 1280x800 verification (splitters visible, no tab strip).
   - `web/e2e/cross/workstation-phone.spec.ts`: WebKit phone cross-browser test covering both workstations.
 
 ---
@@ -72,25 +74,25 @@
 
 ## Deliberate Break Demonstration (AC11)
 
-When `position: sticky` was removed from `.stepper-header` in `GrammarCnfStepper.svelte`:
+When `position: sticky` was removed from `.stepper-header` in `GrammarCnfStepper.svelte`, the short-viewport test (`390x480`) failed because scrolling to the bottom moved the header away from 52px:
 ```
-  1) [phone] › e2e/grammar-phone.spec.ts:23:2 › grammar phone layout at 360x780: tabs, panels, touch targets, and scrolling 
+  1) [phone] › e2e/grammar-phone.spec.ts:175:1 › grammar phone layout at 390x480: CNF stepper header remains sticky at 52px when scrolled to bottom 
 
     Error: expect(received).toBeLessThanOrEqual(expected)
 
-    Expected: <= 70
-    Received:    178
+    Expected: <= 1
+    Received:    81
 
-      78 | 		// With position: sticky and top: 52px, scrolledHeaderBox.y stays near 52px (within tolerance).
-      79 | 		expect(scrolledHeaderBox!.y).toBeGreaterThanOrEqual(40);
-    > 80 | 		expect(scrolledHeaderBox!.y).toBeLessThanOrEqual(70);
-         | 		                             ^
-
-  2 failed
-    [phone] › e2e/grammar-phone.spec.ts:23:2 › grammar phone layout at 360x780: tabs, panels, touch targets, and scrolling 
-    [phone] › e2e/grammar-phone.spec.ts:23:2 › grammar phone layout at 390x844: tabs, panels, touch targets, and scrolling 
+      202 | 	const headerBox = (await stepperHeader.boundingBox())!;
+      203 |
+    > 204 | 	expect(Math.abs(headerBox.y - 52)).toBeLessThanOrEqual(1);
+          | 	                                   ^
+      205 | 	expect(headerBox.y).toBeGreaterThanOrEqual(tabBox.y + tabBox.height - 1);
+      206 | });
+      207 |
+        at /home/Aldebaran64/webtomata/web/e2e/grammar-phone.spec.ts:204:37
 ```
-Upon restoring `position: sticky` and `top: 52px`, tests passed immediately.
+Upon restoring `position: sticky`, the test passed immediately (1.0s).
 
 ---
 
@@ -264,22 +266,29 @@ ok   initial js 101.1 kB gzip (budget 170 kB, 59% used)
 ok   wasm 193.3 kB gzip (budget 250 kB, 77% used)
 ```
 
-### 10. Repeated phone specs (30 runs across viewports)
+### 10. Repeated phone specs (45 runs across 5 repetitions)
 ```
 $ pnpm --filter web exec playwright test --project=phone grammar-phone.spec.ts language-phone.spec.ts --repeat-each=5
 
-Running 30 tests using 3 workers
-  30 passed (32.6s)
+Running 55 tests using 6 workers
+  10 skipped
+  45 passed (59.6s)
 ```
 
-### 11. `webkit-phone` cross-browser tests
+### 11. Desktop specs at 1280x800 (10 runs across 5 repetitions)
 ```
-$ pnpm --filter web exec playwright test --project=webkit-phone workstation-phone.spec.ts
+$ pnpm --filter web exec playwright test --project=desktop grammar-phone.spec.ts language-phone.spec.ts --repeat-each=5
 
-Running 2 tests using 2 workers
+Running 55 tests using 6 workers
+  45 skipped
+  10 passed (21.0s)
+```
 
-  ✓  1 [webkit-phone] › e2e/cross/workstation-phone.spec.ts:30:1 › grammar phone layout on WebKit phone: tab navigation, shortcut, and axe (3.5s)
-  ✓  2 [webkit-phone] › e2e/cross/workstation-phone.spec.ts:56:1 › language phone layout on WebKit phone: tab navigation and axe (3.8s)
+### 12. `webkit-phone` cross-browser tests
+```
+$ pnpm --filter web exec playwright test --project=webkit-phone
 
-  2 passed (4.8s)
+Running 133 tests using 6 workers
+  14 skipped
+  119 passed (2.2m)
 ```
