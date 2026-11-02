@@ -385,7 +385,7 @@ Expected: all pass. Run the new e2e test 5 times. Paste the real output into `RE
 
 ## Task T-016 — Phone layout of the grammar and the language workstations
 
-**Status:** proposed (needs the owner's approval of `design/screens/workstation-phone-layout.md`; then promote it after T-018, or earlier if the owner says so)
+**Status:** proposed (the design was approved by the owner on 2026-11-02; promote it after T-004 and T-018 are accepted, or earlier if the owner says so)
 **Owner:** worker
 **Branch:** `task/T-016-workstation-phone-layout`
 
@@ -397,8 +397,7 @@ Expected: all pass. Run the new e2e test 5 times. Paste the real output into `RE
 - Choosing or creating an item in `Pustaka` selects it and moves to `Editor`; the Editor header shows its name.
 - Grammar CNF tab: the stepper header (six round buttons, previous, counter, next) is sticky under the tab strip; 44 px tap areas. Grammar CYK tab: the field and the button stack to the full width.
 - Language Editor tab: the formula box first, then the toolbar (wrapping, 44 px buttons). Language Hasil tab: the three settings in one compact row (a three-column grid), then the results at once.
-- The shortcut button "Ubah ke CNF" at the end of the grammar Editor tab, if the owner approves it (see the design file).
-- New texts in `id` and `en` (the tab names and the shortcut).
+- New texts in `id` and `en` (the tab names only). There is no "Ubah ke CNF" shortcut button for now (the owner's decision).
 
 **Non-goals (out):**
 - No change to the laptop layout, the splitters, the engine, the saved data, the switcher, or the CNF and enumeration logic.
@@ -456,7 +455,7 @@ Expected: all pass. Paste the real output into `REPORT.md`.
 
 ## Planner task P-001 — As-built spec of the grammar workstation, the language workstation and the switcher
 
-**Status:** in review (the as-built specs and the phone proposal are in one PR; the owner approves the specs by merging it and the phone layout by saying so)
+**Status:** in review (the as-built specs and the phone layout are in one PR; the owner approved the phone layout on 2026-11-02 and approves the specs by merging the PR)
 **Owner:** planner
 
 Write `design/screens/grammar-workstation.md`, `design/screens/language-workstation.md` and `design/screens/workstation-switcher.md` from the screenshots and the code, and add them to `docs/ux/wireframes.md`. No redesign of the laptop layouts. The owner approves each. T-010 to T-012 wait for this.
