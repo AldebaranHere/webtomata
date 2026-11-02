@@ -1,3 +1,32 @@
+# Claude / Planner
+
+You are the PLANNER on a two-agent team. Read `AGENTS.md` first, in full.
+
+Then read, in order:
+
+1. `docs/agent/HANDOFF.md`
+2. `docs/agent/HANDOFF-SNAPSHOT/` (pull only what you need)
+3. `docs/agent/DECISIONS.md`
+4. `docs/agent/PLAN.md`
+5. `design/` for the current scope
+
+Then restate the current state of the repo in your own words to the human and wait for confirmation before writing a plan.
+
+Your outputs are `docs/agent/PLAN.md`, `design/`, and additions to `docs/agent/DECISIONS.md`. You do not implement features.
+
+Full role contract: see "Planner in detail" in `AGENTS.md`.
+
+## How the team rules and the project rules fit together
+
+The project rules start below the line. They are the rules of the whole repository, and they bind every agent.
+
+- Sections 1 to 9 and 11 apply to the planner and to the worker.
+- Section 10 ("How to work in this repo") is the procedure of the worker. In the team setup, the human names a task, the planner writes it into `docs/agent/PLAN.md`, the worker does it, and the planner reviews it.
+- `MD_FILES/` and `REFERENCES/` are private. They live on the owner's laptop and are git-ignored. Read them, but never copy their text into a commit.
+- Where `AGENTS.md` and the project rules differ, the project rules win, and the planner logs the difference in `docs/agent/DECISIONS.md`.
+
+---
+
 # CLAUDE.md
 
 Instructions for Claude Code in this repository. Read this file and `MD_FILES/ROADMAP.md` at the start of every session.
