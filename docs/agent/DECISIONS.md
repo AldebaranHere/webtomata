@@ -14,6 +14,30 @@ Format:
 
 ---
 
+## 2026-11-03 — T-004 accepted after the planner removed unsupported statements from the ADRs
+- Decider: planner
+- Context: The ADRs of the language and grammar engines (T-004) quoted many numbers and line references, and all of them matched the code. But they also said that the grammar editor has a text mode (it does not), gave weeks of the course with no source, and said that the six CNF phases strictly follow the lecture order and match the course slides (the slides teach four of the six steps).
+- Decision: The planner corrected those sentences on the worker's branch before merge (a documentation fix of three lines, so no fix task) and accepted the task. The ADRs now say what the code does and what the sources support.
+- Alternatives considered: A fix task for the worker (a round trip of several minutes for three sentences); merging as it was (a false statement in an ADR).
+- Reversible? yes
+- Affects: `docs/decisions/0031-language-enumeration.md`, `docs/decisions/0032-grammar-cnf-cyk.md`
+
+## 2026-11-02 — The phone layout of the grammar and language workstations
+- Decider: owner (planner proposed)
+- Context: On a phone, the two workstations stack three areas as small boxes with their own scroll bars (the owner's phone test).
+- Decision: Below 900 px, one area at a time with a tab strip at the top (`Pustaka`, `Editor`, `CNF`, `CYK` for the grammar; `Pustaka`, `Editor`, `Hasil` for the language), the same tab pattern as the FSM panel tabs. The page scrolls as a whole. A tap on a preset jumps to the Editor tab. The grammar Editor tab ends with a shortcut button "Ubah ke CNF". Task T-016.
+- Alternatives considered: Tabs at the bottom (the FSM editor has its tabs at the top); no shortcut button (the owner wants it).
+- Reversible? yes
+- Affects: `design/screens/workstation-phone-layout.md`, `docs/agent/PLAN.md` (T-016)
+
+## 2026-11-02 — The start state is drawn as a large hollow triangle, like JFLAP
+- Decider: owner (planner proposed)
+- Context: The start marker was a short arrow with the label "mulai". The students know JFLAP from the course, where the start state has a large triangle.
+- Decision: A hollow triangle (28 long, 36 wide, tip on the rim of the state) with the label "mulai" kept beside it, drawn from the existing tokens. One geometry function draws it, so the editor, the guide embeds, the comparison player and the SVG and PNG export all change. Task T-018.
+- Alternatives considered: The old arrow; the triangle alone with no label.
+- Reversible? yes
+- Affects: `design/screens/start-state-marker.md`, `docs/ux/editor-interactions.md`, `docs/agent/PLAN.md` (T-018)
+
 ## 2026-11-02 — The worker runs in a WSL-native clone, after the owner's setup is tested
 - Decider: owner (planner proposed)
 - Context: Windows blocks `wasm-pack` (Device Guard), and the owner often saw the worker fail on the WASM build. The report of task T-014 shows that the worker already ran `wasm-pack` through WSL, on the Windows folder mounted at `/mnt/d`, and that it worked (28 s). That mix (Windows for `cargo` and Node, WSL for `wasm-pack`, one shared `node_modules` and `target`) works, but it is not the same as the CI, which is Linux only. The WSL clone `~/webtomata` was old, pointed at the Windows folder, and had no Git login, no pre-push hook and no Playwright browsers.
