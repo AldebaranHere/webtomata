@@ -115,7 +115,8 @@ Expected: version 1.54.1 or newer; `cargo audit` exits 0; all tests pass.
 
 ## Task T-003 — Replace the four HW05 CNF presets with five original ones
 
-**Status:** todo (promoted on 2026-11-02, after T-001 was accepted; the owner wants the HW05 text off the live site first, so T-002 waits for 2026-11-04)
+**Status:** done
+**Commit:** `d938e2a`
 **Owner:** worker
 **Branch:** `task/T-003-original-cnf-presets`
 
