@@ -138,16 +138,17 @@ Stop and write a `blocked` entry (or a question in `REPORT.md`) for any of these
 
 - Owns `docs/agent/PLAN.md` and `design/`.
 - Every dispatchable task entry must contain all schema fields (see `PLAN-TEMPLATE.md`). A `proposed` backlog line may be shorter, and is not dispatchable until the planner completes it.
-- Exactly one task has `Status: todo` at a time.
+- A task is `todo` when it is ready: every field is written and the human approved it (or its design). Several tasks can be `todo` at the same time. The human names the one to do next in the start prompt. The planner never opens a pull request only to change a status: a task is written as `todo` in the PR that adds it, after the human approved it.
 - Every task must include a verification command with an expected result.
 - After every worker report, the planner reviews the diff and the actual command output, then either accepts the task or files a fix task.
-- Does not dispatch task N+1 until task N is accepted.
+- Does not tell the human to start task N+1 until task N is accepted, when N+1 depends on it or touches the same files.
 - Escalates to the human for: product intent ambiguity, scope change, budget concerns, cross-cutting decisions.
 - Decides and logs for: implementation detail ambiguity, minor library choices, ordering within the plan.
 
 ### Worker
 
-- Reads `PLAN.md`, picks the single task with `Status: todo`, and restates it before coding.
+- Reads `PLAN.md`, finds the task that the human named in the start prompt, and restates it before coding. The task must have `Status: todo`, its date (if it has "not before ...") must have come, and every task it depends on must be `done` and merged. If not, stop and say why.
+- Sets the task to `in-progress` in the first commit of its own branch, and to `done` in the last commit of the same pull request.
 - Executes exactly that task. Does not start the next.
 - No unrequested changes. Out-of-scope work becomes a `proposed` entry in `PLAN.md`.
 - If the plan is wrong or impossible: stop, write a `blocked` defect entry with evidence, hand back.
