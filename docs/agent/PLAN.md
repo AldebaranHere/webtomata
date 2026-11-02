@@ -383,14 +383,85 @@ Expected: all pass. Run the new e2e test 5 times. Paste the real output into `RE
 
 ---
 
+## Task T-016 — Phone layout of the grammar and the language workstations
+
+**Status:** proposed (needs the owner's approval of `design/screens/workstation-phone-layout.md`; then promote it after T-018, or earlier if the owner says so)
+**Owner:** worker
+**Branch:** `task/T-016-workstation-phone-layout`
+
+**Goal:** On a phone, both workstations stack three areas as small boxes with their own scroll bars (owner's phone test, 2026-11-02). Make them usable: below 900 px, show **one area at a time** with a tab strip, and let the page scroll as a whole. The laptop layout does not change.
+
+**Scope (in):**
+- `GrammarWorkstation.svelte` and `LanguageWorkstation.svelte`: a phone mode below **900 px for both** (the language workstation uses 1024 px today). A tab strip under the mode bar: grammar has `Pustaka`, `Editor`, `CNF`, `CYK`; language has `Pustaka`, `Editor`, `Hasil`. Use the tab pattern of the FSM panel tabs (`role="tablist"`, `role="tab"`, `aria-selected`, `aria-controls`, arrow keys), and a shared small component if both screens need it. The strip is sticky.
+- In phone mode: no inner scroll boxes, `height: auto`, the page scrolls. Only the CYK table scrolls sideways in its own box.
+- Choosing or creating an item in `Pustaka` selects it and moves to `Editor`; the Editor header shows its name.
+- Grammar CNF tab: the stepper header (six round buttons, previous, counter, next) is sticky under the tab strip; 44 px tap areas. Grammar CYK tab: the field and the button stack to the full width.
+- Language Editor tab: the formula box first, then the toolbar (wrapping, 44 px buttons). Language Hasil tab: the three settings in one compact row (a three-column grid), then the results at once.
+- The shortcut button "Ubah ke CNF" at the end of the grammar Editor tab, if the owner approves it (see the design file).
+- New texts in `id` and `en` (the tab names and the shortcut).
+
+**Non-goals (out):**
+- No change to the laptop layout, the splitters, the engine, the saved data, the switcher, or the CNF and enumeration logic.
+- No new color or token. No change to the preset texts or the rule chips (task T-013).
+- No saving of the chosen tab between visits.
+
+**Files expected to touch:**
+- `web/src/lib/grammar/GrammarWorkstation.svelte`, `GrammarCnfStepper.svelte`, `GrammarCykTester.svelte`
+- `web/src/lib/language/LanguageWorkstation.svelte`
+- a shared tab-strip component under `web/src/lib/components/` (only if both screens use it)
+- `web/src/lib/i18n/id.ts`, `en.ts`
+- new e2e specs for the phone layouts (for example `web/e2e/grammar-phone.spec.ts` and `web/e2e/language-phone.spec.ts`) and, for WebKit, a spec under `web/e2e/cross/`
+
+**Design reference:**
+- `design/screens/workstation-phone-layout.md` and `.svg` (the proposal and the picture)
+- `design/screens/grammar-workstation.md` and `language-workstation.md` (what exists)
+
+**Acceptance criteria** (tests use the phone project at 360×780 and 390×844):
+- AC1: Each workstation shows a tab strip with the right tabs, and exactly one area is visible. Tapping a tab shows its area and hides the others (`aria-selected` and `hidden` follow).
+- AC2: In phone mode no element other than the CYK table box has a vertical scroll of its own (`overflow-y` auto or scroll with `scrollHeight` greater than `clientHeight`). The page itself scrolls when the content is long.
+- AC3: Grammar, CNF tab: the title of the current phase and the first chips are visible without scrolling. After scrolling down the step card, the stepper header is still visible (a bounding-box test).
+- AC4: Language, Hasil tab: the first result row is visible without scrolling.
+- AC5: Language, Editor tab: the formula box (4 rows) is above the toolbar and fully visible.
+- AC6: Every tab, button, chip and round button in phone mode is at least 44×44 CSS px (a test measures them).
+- AC7: Tapping a preset selects it, moves to `Editor`, and the header shows its name.
+- AC8: The arrow keys move between tabs. Axe reports no violation in each tab. The same flows pass in the WebKit phone project.
+- AC9: The laptop layout is unchanged: at 1280×800 the three columns and the splitters are there, and the existing grammar and language tests pass.
+- AC10: New texts exist in `id` and `en`, and `pnpm check:strings`, `check:tokens` and `check:contrast` pass without a change of their data.
+- AC11: A deliberate break is shown: remove the sticky position of the stepper header, AC3 fails; then restore it.
+
+**Verification (Mode B form shown; in Mode A drop the bridge):**
+```
+pnpm check
+pnpm lint
+pnpm format:check
+pnpm check:strings
+pnpm check:tokens
+pnpm check:contrast
+pnpm --filter web exec vitest run
+pnpm build
+pnpm size
+pnpm --filter web exec playwright test --project=phone <the two new specs> --repeat-each=5
+pnpm test:e2e
+pnpm test:e2e:cross
+```
+Expected: all pass. Paste the real output into `REPORT.md`.
+
+**Rollback:** `git revert <sha>`; no saved data changes.
+
+**Depends on:** the owner's approval of the design file. The Playwright browsers (Chromium and WebKit) must be installed in WSL; if not, set the task to `blocked`.
+
+**Notes for worker:** Build the phone mode with CSS and one `$state` for the active tab, so that the laptop layout keeps working unchanged. Keep both workstations on the same breakpoint. The owner tests on a real phone before the PR is merged (task G4 of the roadmap): say in `REPORT.md` where to find the preview.
+
+---
+
 ## Planner task P-001 — As-built spec of the grammar workstation, the language workstation and the switcher
 
-**Status:** todo (planner)
+**Status:** in review (the as-built specs and the phone proposal are in one PR; the owner approves the specs by merging it and the phone layout by saying so)
 **Owner:** planner
 
 Write `design/screens/grammar-workstation.md`, `design/screens/language-workstation.md` and `design/screens/workstation-switcher.md` from the screenshots and the code, and add them to `docs/ux/wireframes.md`. No redesign of the laptop layouts. The owner approves each. T-010 to T-012 wait for this.
 
-**Added on 2026-11-02, after the owner's phone test:** the two workstations are not usable on a phone. Both stack their three areas as small boxes with their own scroll bars, so a student sees about one item of the library, one row of the grammar, or only the heading of the CNF phase; in the language workstation the results are below the settings and off the screen. P-001 therefore also proposes a phone layout for both (my proposal: one area at a time with a bottom tab bar, like the panel tabs of the FSM editor: Perpustakaan, Editor, Hasil or Transformasi and Uji). The owner approves it before T-016.
+**Added on 2026-11-02, after the owner's phone test:** the two workstations are not usable on a phone. Both stack their three areas as small boxes with their own scroll bars, so a student sees about one item of the library, one row of the grammar, or only the heading of the CNF phase; in the language workstation the results are below the settings and off the screen. P-001 therefore also proposes a phone layout for both (the proposal is in `design/screens/workstation-phone-layout.md`: one area at a time with a tab strip at the top, like the panel tabs of the FSM editor). The owner approves it before T-016.
 
 ## Planner task P-002 — Wireframe of the CNF "versi kuliah / versi ringkas" switch
 
@@ -407,7 +478,7 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-010** e2e and axe tests for the grammar workstation (build a grammar, run the six phases, test a string with CYK; laptop and phone).
 - **T-011** e2e and axe tests for the language workstation and the workstation switcher (keyboard, 44 px targets).
 - **T-012** A test and, if needed, a fix for the panel drag handle on a phone (the `pointer-events` change in PR 105 has no test).
-- **T-016** The phone layout of the grammar and the language workstations (after P-001 is approved). It also covers the phone checks of G4 for these screens. Tests on the phone project and WebKit phone.
+- **T-016** The phone layout of the grammar and the language workstations: specified in its own task block above, `proposed` until the owner approves the design.
 - **T-015** The UI switch between the course version and the minimized version of the CNF conversion (needs P-002 approved, and T-014 done).
 - **T-013** Check whether preset titles and descriptions of the grammar and language workstations belong in the i18n files (they are plain Indonesian text in `presets.ts`), and move them if so. Also make the rule chips readable (`S → T_aST_b` has no spaces).
 - **T-017** Make the two local-reference tests (`web/src/lib/share/files.wasm.test.ts` and `open-file.wasm.test.ts`) tolerate other machine types. They read the top level of `REFERENCES/JFF-FILES` and assume every `.jff` there is a finite automaton, so one Turing machine file at the top level made the pre-push hook fail on 2026-11-02 (0 finite automata found). They should keep only files whose type is `fa`, and skip when there are none.
