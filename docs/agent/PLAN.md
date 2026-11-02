@@ -265,7 +265,9 @@ Expected: all exit 0. Paste the real output into `REPORT.md`, and name the CI jo
 
 ## Task T-014 — CNF phase 6 follows the course method (no shared helper variables by default)
 
-**Status:** todo (promoted on 2026-11-02, after T-003 was accepted)
+**Status:** done
+**Commit:** `d4aec74`
+**PR:** #112
 **Owner:** worker
 **Branch:** `task/T-014-cnf-course-method`
 
