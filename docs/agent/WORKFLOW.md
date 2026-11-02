@@ -27,7 +27,7 @@ Three roles:
 
 ## Start prompt for the worker
 
-> You are the WORKER. Run `uname -s`: it must print `Linux` (you must be in WSL; if not, stop and tell me). Read `AGENTS.md` and `.antigravity/rules.md` in full. Then find the single task with `Status: todo` in `docs/agent/PLAN.md`. Restate its id, goal, scope, non-goals and the exact verification commands. Do not edit anything until I answer "Confirmed. Go."
+> You are the WORKER. First, run the WSL check from `AGENTS.md` ("Where the worker runs", rule 3): it must print `Linux` and `v24.21.0`; if not, stop and tell me. Read `AGENTS.md` and `.antigravity/rules.md` in full. Then find the single task with `Status: todo` in `docs/agent/PLAN.md`. Restate its id, goal, scope, non-goals and the exact verification commands. Do not edit anything until I answer "Confirmed. Go."
 
 If Antigravity already loads `.antigravity/rules.md` on its own, the first two sentences are repeated work, which is harmless.
 

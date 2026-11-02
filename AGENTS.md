@@ -58,23 +58,31 @@ Adjust this list when commands change. Never reference commands that do not exis
 
 ## Where the worker runs: WSL Ubuntu, never Windows
 
-The worker runs **every command** in **WSL Ubuntu**, in the clone `~/webtomata` (`/home/Aldebaran64/webtomata`). It never runs commands on Windows.
+The worker runs **every command** in **WSL Ubuntu**, in the clone `~/webtomata` (`/home/Aldebaran64/webtomata`). It never runs commands with Windows tools (Windows `node`, `pnpm`, `cargo`, `git`).
 
 Why: Windows blocks `wasm-pack` (Device Guard), so the WASM build and the WASM tests fail there. The CI runs on Linux, and WSL is Linux, so a local pass is a better sign of a CI pass.
 
 1. **Where.** Work only in `~/webtomata`, on the WSL disk. Never in `/mnt/c` or `/mnt/d` (slow, and file locks break builds). Never in the Windows folder `D:\dev\webtomata`: it belongs to the owner and the planner. The two clones meet only through GitHub.
-2. **Check first, in every session.** Run `uname -s`. It must print `Linux`. If the command is not found, the shell is a Windows shell: **stop** and tell the owner "I am not in WSL". Do not continue on Windows.
-3. **Environment.** In every new shell, run these two lines (the default `node` is v22 and `cargo` is not on the PATH):
+2. **Two ways to run.**
+   - **Mode A (best):** your shell is Linux. Run the commands below as written.
+   - **Mode B (the owner's setup today):** your shell is Windows PowerShell and the folder is open as `\\wsl.localhost\Ubuntu\home\Aldebaran64\webtomata`. Then **every command that is not a file edit** goes through the bridge. Never run `node`, `pnpm`, `cargo`, `wasm-pack` or `git` directly in PowerShell.
+     ```
+     wsl.exe -d Ubuntu --cd ~/webtomata -e bash -lc '<command>'
+     ```
+     Rules for the bridge: (a) use `-e`, never `--` (the outer shell would expand `$VARIABLES` first and break the command); (b) put the whole command in single quotes and use no double quotes inside it (PowerShell breaks them); (c) for anything with quotes, `awk`, `sed`, a loop or several lines, write a script file `~/tmp/<name>.sh` and run `wsl.exe -d Ubuntu --cd ~/webtomata -e bash ~/tmp/<name>.sh`; (d) the `-l` makes bash read `~/.profile`, which puts Node 24 and Rust on the PATH. The commands below are written for Mode A: in Mode B, wrap each one in the bridge.
+3. **Check first, in every session.** Mode A: run `uname -s; node --version`. Mode B: run `wsl.exe -d Ubuntu --cd ~/webtomata -e bash -lc 'uname -s; node --version'`. It must print `Linux` and `v24.21.0`. If WSL does not answer, or prints something else, **stop** and tell the owner "I am not in WSL". Never continue with Windows tools.
+4. **Environment (Mode A).** In every new shell, run these two lines (the default `node` is v22 and `cargo` is not on the PATH; in Mode B the login shell does it for you):
    ```
    . "$HOME/.cargo/env"
    export PATH="$HOME/tools/node/bin:$PATH"
    ```
    Then check: `node --version` prints `v24.21.0` (the project needs 24.x), and `cargo --version` and `wasm-pack --version` print versions. If a check fails, stop and tell the owner. Do not install tools. Do not use `sudo`.
-4. **Start of a task.** `cd ~/webtomata && git fetch origin && git switch staging && git pull --ff-only && pnpm install --frozen-lockfile`. Before a web test that loads the engine, run `pnpm build:wasm`.
-5. **Git.** Commit and push from WSL. `git remote -v` must show `https://github.com/AldebaranHere/webtomata.git`. If a push asks for a password or a token, stop. Never type a secret, and never ask the owner to paste one. The pre-push hook `.git/hooks/pre-push` must exist in the WSL clone. If it is missing, stop and tell the owner. Never push without it, and never use `--no-verify`.
-6. **Pull request.** `gh` is not installed in WSL. Use the Windows `gh.exe`, which is already signed in: `cat body.md | gh.exe pr create --repo AldebaranHere/webtomata --base staging --head <branch> --title "<title>" --body-file -`. Keep temporary files (PR text, scripts) in `~/tmp`, not in the repository.
-7. **E2E tests** need the Playwright browsers in WSL. Check `ls ~/.cache/ms-playwright`. If it is empty and the task needs e2e, stop and tell the owner. Do not run `playwright install --with-deps` yourself. Engine, documentation and unit-test tasks do not need e2e.
-8. **What you cannot run** (a phone, the live site) is the owner's. Say in `REPORT.md` what you did not run and why.
+5. **Start of a task.** `cd ~/webtomata && git fetch origin && git switch staging && git pull --ff-only && pnpm install --frozen-lockfile`. Before a web test that loads the engine, run `pnpm build:wasm`.
+6. **Git.** Commit and push from WSL (in Mode B, through the bridge). `git remote -v` must show `https://github.com/AldebaranHere/webtomata.git`. If a push asks for a password or a token, stop. Never type a secret, and never ask the owner to paste one. The pre-push hook `.git/hooks/pre-push` must exist in the WSL clone. If it is missing, stop and tell the owner. Never push without it, and never use `--no-verify`.
+7. **Pull request.** `gh` is not installed in WSL. Use the Windows `gh.exe`, which is already signed in. Mode A: `cat body.md | gh.exe pr create --repo AldebaranHere/webtomata --base staging --head <branch> --title "<title>" --body-file -`. Mode B: run `gh` directly in PowerShell, with `--repo AldebaranHere/webtomata --base staging --head <branch> --title '<title>' --body-file \\wsl.localhost\Ubuntu\home\Aldebaran64\tmp\body.md`. Keep temporary files (PR text, scripts) in `~/tmp`, not in the repository.
+8. **E2E tests** need the Playwright browsers in WSL. Check `ls ~/.cache/ms-playwright`. If it is empty and the task needs e2e, stop and tell the owner. Do not run `playwright install --with-deps` yourself. Engine, documentation and unit-test tasks do not need e2e.
+9. **What you cannot run** (a phone, the live site) is the owner's. Say in `REPORT.md` what you did not run and why.
+10. **Line endings.** Files must have LF line endings and no byte-order mark. In Mode B your editor writes through a Windows path, so run `pnpm format` before the checks, and look at `git diff --stat` for files that you did not mean to change.
 
 ## Coding standards
 
