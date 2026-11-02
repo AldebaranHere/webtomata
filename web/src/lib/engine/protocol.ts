@@ -105,7 +105,7 @@ export interface EngineApi {
 		env?: Record<string, string>
 	): EngineResult<EnumerateReport>;
 	parseGrammar(grammar: string): EngineResult<Grammar>;
-	transformToCnf(grammar: string): EngineResult<CnfTransformationTrace>;
+	transformToCnf(grammar: string, shareHelpers?: boolean): EngineResult<CnfTransformationTrace>;
 	cykParse(grammar: string, inputWord: string): EngineResult<CykResult>;
 }
 

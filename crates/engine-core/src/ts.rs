@@ -127,7 +127,7 @@ fn samples() -> Vec<(&'static str, &'static str, String)> {
         (
             "sampleTransformToCnf",
             "CnfTransformationTrace",
-            api::transform_to_cnf("S -> a S b | a b"),
+            api::transform_to_cnf("S -> a S b | a b", false),
         ),
         (
             "sampleCykParse",

@@ -187,6 +187,15 @@ describe('every method reaches the engine', () => {
 			}
 		});
 
+		const cnfShared = call('transformToCnf', 'S -> a S b | a b', true);
+		expect(cnfShared).toMatchObject({
+			ok: true,
+			value: {
+				steps: expect.any(Array),
+				finalGrammar: expect.any(Object)
+			}
+		});
+
 		const cyk = call('cykParse', 'S -> A B\nA -> a\nB -> b', 'ab');
 		expect(cyk).toEqual({
 			ok: true,
