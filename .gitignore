@@ -78,3 +78,8 @@ __pycache__/
 
 # Specific files
 /content/questions/contoh-saya.yaml
+
+# Snapshot files that list private file names or build output; tools/agent-snapshot.ps1 regenerates them
+/docs/agent/HANDOFF-SNAPSHOT/02-tree.md
+/docs/agent/HANDOFF-SNAPSHOT/03-manifests.md
+/docs/agent/HANDOFF-SNAPSHOT/06-diff.md

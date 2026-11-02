@@ -1,0 +1,21 @@
+# The owner reviews every change to these paths.
+# The "Require review from Code Owners" rule stays off while the owner is the only maintainer,
+# because the author of a pull request cannot approve it. Turn it on when a second person
+# gets write access.
+
+# Agent instruction files: a change here can steer an agent.
+/AGENTS.md @AldebaranHere
+/CLAUDE.md @AldebaranHere
+/.antigravity/ @AldebaranHere
+/docs/agent/ @AldebaranHere
+/design/ @AldebaranHere
+
+# CI, deploy, headers and dependency rules.
+/.github/ @AldebaranHere
+/tools/ @AldebaranHere
+/web/static/_headers @AldebaranHere
+/pnpm-workspace.yaml @AldebaranHere
+/package.json @AldebaranHere
+/web/package.json @AldebaranHere
+/Cargo.toml @AldebaranHere
+/.cargo/ @AldebaranHere
