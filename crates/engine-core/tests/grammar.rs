@@ -1,4 +1,4 @@
-use engine_core::grammar::{CnfTransformer, CykParser, GrammarParser, Symbol};
+use engine_core::grammar::{CnfTransformer, CykParser, Grammar, GrammarParser, Symbol};
 
 #[test]
 fn test_parse_simple_grammar() {
@@ -53,74 +53,262 @@ fn test_cnf_transformation_trace_6_phases() {
     assert!(CykParser::is_cnf(&trace.final_grammar));
 }
 
-#[test]
-fn test_cnf01_from_fasilkom_hw05() {
-    let input = r#"
-        S -> A D | F B a
-        A -> a A d | a D | a
-        D -> a D | B | \lambda
-        B -> b B c c c | b B c c c c | b B c c c c c | \lambda
-        E -> a F b A
-        F -> b E
-        C -> B S b b
-    "#;
-    let grammar = GrammarParser::parse(input).expect("Should parse CNF01");
-    let trace = CnfTransformer::transform(&grammar).expect("CNF transformation should succeed");
-
-    // Must be valid CNF
+fn assert_valid_cnf(grammar: &Grammar) {
     assert!(
-        CykParser::is_cnf(&trace.final_grammar),
+        CykParser::is_cnf(grammar),
         "Final grammar must be CNF:\n{}",
-        trace.final_grammar.to_display_string()
+        grammar.to_display_string()
+    );
+    let has_empty = grammar
+        .rules
+        .iter()
+        .any(|r| r.head == grammar.start && r.body.is_empty());
+    if has_empty {
+        let appears_on_right = grammar.rules.iter().any(|r| {
+            r.body.iter().any(|sym| match sym {
+                Symbol::NonTerminal(nt) => nt == &grammar.start,
+                _ => false,
+            })
+        });
+        assert!(
+            !appears_on_right,
+            "Start symbol {} must not appear on RHS when S -> ε exists",
+            grammar.start
+        );
+    }
+}
+
+fn check_exhaustive_cyk<F>(grammar: &Grammar, alphabet: &[char], max_len: usize, mut oracle: F)
+where
+    F: FnMut(&str) -> bool,
+{
+    fn dfs(
+        grammar: &Grammar,
+        current: &mut String,
+        max_len: usize,
+        alphabet: &[char],
+        oracle: &mut impl FnMut(&str) -> bool,
+    ) {
+        let expected = oracle(current);
+        let result = CykParser::parse(grammar, current).expect("CYK parse should succeed");
+        assert_eq!(
+            result.accepted, expected,
+            "CYK acceptance mismatch for word '{}' (expected {})",
+            current, expected
+        );
+        if current.len() < max_len {
+            for &c in alphabet {
+                current.push(c);
+                dfs(grammar, current, max_len, alphabet, oracle);
+                current.pop();
+            }
+        }
+    }
+
+    let mut current = String::with_capacity(max_len);
+    dfs(grammar, &mut current, max_len, alphabet, &mut oracle);
+}
+
+#[test]
+fn test_cnf_preset_order() {
+    let input = r#"
+        S -> a | A B
+        A -> a
+        B -> B b
+    "#;
+    let grammar = GrammarParser::parse(input).expect("Should parse CNF_ORDER");
+    let trace = CnfTransformer::transform(&grammar).expect("CNF transformation should succeed");
+    assert_valid_cnf(&trace.final_grammar);
+
+    // AC3: CNF_ORDER ends as exactly S -> a
+    assert_eq!(
+        trace.final_grammar.rules.len(),
+        1,
+        "CNF_ORDER should end with exactly 1 rule"
+    );
+    assert_eq!(trace.final_grammar.rules[0].head, "S");
+    assert_eq!(
+        trace.final_grammar.rules[0].body,
+        vec![Symbol::Terminal('a')]
     );
 
-    // Check that unproductive / unreachable symbols E, F are cleaned up
+    // AC2: Exhaustive CYK check for all strings over {a, b} up to length 8
+    check_exhaustive_cyk(&trace.final_grammar, &['a', 'b'], 8, |w| w == "a");
+}
+
+#[test]
+fn test_cnf_preset_nullable() {
+    let input = r#"
+        S -> A B C
+        A -> a A | ε
+        B -> b B | A
+        C -> c | ε
+    "#;
+    let grammar = GrammarParser::parse(input).expect("Should parse CNF_NULLABLE");
+    let trace = CnfTransformer::transform(&grammar).expect("CNF transformation should succeed");
+    assert_valid_cnf(&trace.final_grammar);
+
+    // AC2: Language oracle for a* b* a* (c or empty)
+    check_exhaustive_cyk(&trace.final_grammar, &['a', 'b', 'c'], 8, |w| {
+        let mut chars = w.chars().peekable();
+        while chars.peek() == Some(&'a') {
+            chars.next();
+        }
+        while chars.peek() == Some(&'b') {
+            chars.next();
+        }
+        while chars.peek() == Some(&'a') {
+            chars.next();
+        }
+        if chars.peek() == Some(&'c') {
+            chars.next();
+        }
+        chars.next().is_none()
+    });
+}
+
+#[test]
+fn test_cnf_preset_start_long() {
+    let input = r#"
+        S -> x S y y | z
+    "#;
+    let grammar = GrammarParser::parse(input).expect("Should parse CNF_START_LONG");
+    let trace = CnfTransformer::transform(&grammar).expect("CNF transformation should succeed");
+    assert_valid_cnf(&trace.final_grammar);
+
+    // AC2: Language oracle for x^n z y^{2n}, n >= 0
+    check_exhaustive_cyk(&trace.final_grammar, &['x', 'y', 'z'], 8, |w| {
+        let n_x = w.chars().take_while(|&c| c == 'x').count();
+        let rem = &w[n_x..];
+        if !rem.starts_with('z') {
+            return false;
+        }
+        let y_part = &rem[1..];
+        if y_part.len() != 2 * n_x {
+            return false;
+        }
+        y_part.chars().all(|c| c == 'y')
+    });
+}
+
+#[test]
+fn test_cnf_preset_unit_chain() {
+    let input = r#"
+        S -> A
+        A -> B
+        B -> C | b b
+        C -> c C | c
+    "#;
+    let grammar = GrammarParser::parse(input).expect("Should parse CNF_UNIT_CHAIN");
+    let trace = CnfTransformer::transform(&grammar).expect("CNF transformation should succeed");
+    assert_valid_cnf(&trace.final_grammar);
+
+    // AC3: CNF_UNIT_CHAIN ends with no A or B and with the rules shown (compare structure, not names)
+    // Expected structure: S -> T_b T_b | T_c C | c, C -> T_c C | c, T_b -> b, T_c -> c
     let final_vars = trace.final_grammar.variables();
-    assert!(!final_vars.contains("E"), "E should be eliminated");
-    assert!(!final_vars.contains("F"), "F should be eliminated");
-    assert!(!final_vars.contains("C"), "C should be eliminated");
+    assert!(!final_vars.contains("A"), "A should be eliminated");
+    assert!(!final_vars.contains("B"), "B should be eliminated");
+
+    // S must have 3 rules: [T_b, T_b], [T_c, C], [c]
+    // C must have 2 rules: [T_c, C], [c]
+    // T_b must have 1 rule: [b]
+    // T_c must have 1 rule: [c]
+    let s_rules: Vec<_> = trace
+        .final_grammar
+        .rules
+        .iter()
+        .filter(|r| r.head == "S")
+        .collect();
+    let c_rules: Vec<_> = trace
+        .final_grammar
+        .rules
+        .iter()
+        .filter(|r| r.head == "C")
+        .collect();
+    assert_eq!(s_rules.len(), 3, "S should have exactly 3 rules");
+    assert_eq!(c_rules.len(), 2, "C should have exactly 2 rules");
+
+    // Find helper variable for 'c' (distinct from C and S) and 'b'
+    let t_c_rule = trace
+        .final_grammar
+        .rules
+        .iter()
+        .find(|r| r.head != "C" && r.head != "S" && r.body == vec![Symbol::Terminal('c')]);
+    assert!(
+        t_c_rule.is_some(),
+        "Helper variable for terminal 'c' must exist in final grammar:\n{}",
+        trace.final_grammar.to_display_string()
+    );
+    let t_c = t_c_rule.unwrap().head.clone();
+
+    let t_b_rule = trace
+        .final_grammar
+        .rules
+        .iter()
+        .find(|r| r.body == vec![Symbol::Terminal('b')]);
+    assert!(
+        t_b_rule.is_some(),
+        "Helper variable for terminal 'b' must exist"
+    );
+    let t_b = t_b_rule.unwrap().head.clone();
+
+    // Verify S rules
+    assert!(
+        s_rules
+            .iter()
+            .any(|r| r.body == vec![Symbol::Terminal('c')])
+    );
+    assert!(s_rules.iter().any(|r| {
+        r.body
+            == vec![
+                Symbol::NonTerminal(t_b.clone()),
+                Symbol::NonTerminal(t_b.clone()),
+            ]
+    }));
+    assert!(s_rules.iter().any(|r| {
+        r.body
+            == vec![
+                Symbol::NonTerminal(t_c.clone()),
+                Symbol::NonTerminal("C".into()),
+            ]
+    }));
+
+    // Verify C rules
+    assert!(
+        c_rules
+            .iter()
+            .any(|r| r.body == vec![Symbol::Terminal('c')])
+    );
+    assert!(c_rules.iter().any(|r| {
+        r.body
+            == vec![
+                Symbol::NonTerminal(t_c.clone()),
+                Symbol::NonTerminal("C".into()),
+            ]
+    }));
+
+    // AC2: Language oracle for {bb} U c+
+    check_exhaustive_cyk(&trace.final_grammar, &['b', 'c'], 8, |w| {
+        w == "bb" || (!w.is_empty() && w.chars().all(|c| c == 'c'))
+    });
 }
 
 #[test]
-fn test_cnf04_from_fasilkom_hw05() {
+fn test_cnf_preset_shared_tail() {
     let input = r#"
-        S -> A B C F | S a D a
-        A -> a A a | a | \lambda
-        B -> b B | \lambda
-        C -> c C c | c | \lambda
-        D -> d D a | b D
-        E -> d F a | S a B
-        F -> d F | \lambda
+        S -> a B C D | b B C D
+        B -> x
+        C -> y
+        D -> z
     "#;
-    let grammar = GrammarParser::parse(input).expect("Should parse CNF04");
+    let grammar = GrammarParser::parse(input).expect("Should parse CNF_SHARED_TAIL");
     let trace = CnfTransformer::transform(&grammar).expect("CNF transformation should succeed");
+    assert_valid_cnf(&trace.final_grammar);
 
-    assert!(
-        CykParser::is_cnf(&trace.final_grammar),
-        "Final grammar must be CNF:\n{}",
-        trace.final_grammar.to_display_string()
-    );
-}
-
-#[test]
-fn test_cnf05_from_fasilkom_hw05() {
-    let input = r#"
-        S -> A B E F | S D a
-        A -> a A | \lambda
-        B -> b B b | b | \lambda
-        C -> a B a A | S c
-        D -> D c A | b D a
-        E -> c E | \lambda
-        F -> d F d | d | \lambda
-    "#;
-    let grammar = GrammarParser::parse(input).expect("Should parse CNF05");
-    let trace = CnfTransformer::transform(&grammar).expect("CNF transformation should succeed");
-
-    assert!(
-        CykParser::is_cnf(&trace.final_grammar),
-        "Final grammar must be CNF:\n{}",
-        trace.final_grammar.to_display_string()
-    );
+    // AC2: Language oracle for {axyz, bxyz}
+    check_exhaustive_cyk(&trace.final_grammar, &['a', 'b', 'x', 'y', 'z'], 8, |w| {
+        w == "axyz" || w == "bxyz"
+    });
 }
 
 #[test]

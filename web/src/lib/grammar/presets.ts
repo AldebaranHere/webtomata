@@ -8,56 +8,54 @@ export interface PresetGrammar {
 
 export const GRAMMAR_PRESETS: PresetGrammar[] = [
 	{
-		id: 'CNF01',
-		title: 'CNF 01 (HW05 Fasilkom UI)',
-		description: 'Eliminasi simbol unproductive (E, F) dan pembersihan aturan kosong/unit.',
-		grammar: `S -> AD | FBa
-A -> aAd | aD | a
-D -> aD | B | λ
-B -> bBccc | bBcccc | bBccccc | λ
-E -> aFbA
-F -> bE
-C -> BSbb`,
-		testStrings: ['a', 'ad', 'aad', 'bccc']
+		id: 'CNF_ORDER',
+		title: 'Urutan Eliminasi Simbol (Fase 4)',
+		description:
+			'Eliminasi simbol non-produktif B dan S -> A B terlebih dahulu, sehingga A menjadi tidak terjangkau.',
+		grammar: `S -> a | A B
+A -> a
+B -> B b`,
+		testStrings: ['a', 'b', 'ab', 'bb']
 	},
 	{
-		id: 'CNF03',
-		title: 'CNF 03 (HW05 Fasilkom UI)',
-		description: 'Banyak variabel nullable (A, B, C, D) dan eliminasi simbol tak terjangkau.',
-		grammar: `S -> ABCD | DaAE
-A -> aAa | a | λ
-B -> bB | λ
-C -> cC | λ
-D -> dDd | d | λ
-E -> bCaaA
-F -> bAa | ba`,
-		testStrings: ['a', 'b', 'c', 'd', 'ad', 'dada']
+		id: 'CNF_NULLABLE',
+		title: 'Variabel Nullable Majemuk (Fase 2)',
+		description:
+			'Banyak variabel nullable (A, B, C), simbol awal nullable, dan aturan unit B -> A.',
+		grammar: `S -> A B C
+A -> a A | ε
+B -> b B | A
+C -> c | ε`,
+		testStrings: ['', 'a', 'b', 'c', 'aba', 'abac', 'bc']
 	},
 	{
-		id: 'CNF04',
-		title: 'CNF 04 (HW05 Fasilkom UI)',
-		description: 'Kombinasi aturan panjang S -> A B C F dan simbol awal rekursif di RHS.',
-		grammar: `S -> ABCF | SaDa
-A -> aAa | a | λ
-B -> bB | λ
-C -> cCc | c | λ
-D -> dDa | bD
-E -> dFa | SaB
-F -> dF | λ`,
-		testStrings: ['a', 'b', 'c', 'd', 'abc', 'adada']
+		id: 'CNF_START_LONG',
+		title: 'Simbol Awal Rekursif & Aturan Panjang',
+		description:
+			'Simbol awal di ruas kanan (Fase 1), isolasi terminal (Fase 5), dan binarisasi aturan panjang (Fase 6).',
+		grammar: `S -> x S y y | z`,
+		testStrings: ['z', 'xzyy', 'xxzyyyy', 'xy', 'xz', 'xzy']
 	},
 	{
-		id: 'CNF05',
-		title: 'CNF 05 (HW05 Fasilkom UI)',
-		description: 'Simbol rekursif, variabel nullable, dan binarisasi aturan panjang.',
-		grammar: `S -> ABEF | SDa
-A -> aA | λ
-B -> bBb | b | λ
-C -> aBaA | Sc
-D -> DcA | bDa
-E -> cE | λ
-F -> dFd | d | λ`,
-		testStrings: ['a', 'b', 'c', 'd', 'abcd', 'bb']
+		id: 'CNF_UNIT_CHAIN',
+		title: 'Rantai Aturan Unit (Fase 3)',
+		description:
+			'Rantai unit A -> B -> C dengan pembersihan variabel A dan B yang menjadi tak terjangkau.',
+		grammar: `S -> A
+A -> B
+B -> C | b b
+C -> c C | c`,
+		testStrings: ['bb', 'c', 'cc', 'ccc', 'b', 'bc']
+	},
+	{
+		id: 'CNF_SHARED_TAIL',
+		title: 'Binarisasi Berbagi Ekor (Fase 6)',
+		description: 'Aturan panjang dengan ekor bersama B C D untuk binarisasi pada Fase 6.',
+		grammar: `S -> a B C D | b B C D
+B -> x
+C -> y
+D -> z`,
+		testStrings: ['axyz', 'bxyz', 'xyz', 'abxyz', 'ax', 'by']
 	},
 	{
 		id: 'CFG_PAL',
