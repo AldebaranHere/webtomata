@@ -10,7 +10,7 @@ Three roles:
 
 1. **The owner names a goal** in a chat with the planner.
 2. **The planner writes the task** in `PLAN.md` with every field (goal, scope, non-goals, files, design reference, acceptance criteria, exact verification commands, rollback). For a new screen, the planner first draws a wireframe, and the owner approves it. The planner sets exactly one task to `Status: todo` and says: "T-xxx is ready to dispatch."
-3. **The owner starts the worker.** Open a new Gemini chat for each task, in `D:\dev\webtomata`. Run `git switch staging` and `git pull`. Then paste the start prompt (below).
+3. **The owner starts the worker.** Open a new Gemini chat for each task. The worker runs in **WSL Ubuntu**, in the clone `~/webtomata`, not on Windows (see "Where the worker runs" in `AGENTS.md`). The worker updates `staging` itself at the start of the task. Then paste the start prompt (below).
 4. **Before it codes**, the worker reads `AGENTS.md`, the task in `PLAN.md`, the design reference, the files it will touch, and `DECISIONS.md`. Then it **restates** the task id, goal, scope, non-goals and the exact commands it will run, and **waits**. The owner checks the restatement against the task and answers "Confirmed. Go." If it does not match, the owner corrects it before any code is written.
 5. **While it codes**, the worker:
    - makes the branch `task/T-xxx-<slug>` from `staging`;
@@ -27,7 +27,7 @@ Three roles:
 
 ## Start prompt for the worker
 
-> You are the WORKER. Read `AGENTS.md` and `.antigravity/rules.md` in full. Then find the single task with `Status: todo` in `docs/agent/PLAN.md`. Restate its id, goal, scope, non-goals and the exact verification commands. Do not edit anything until I answer "Confirmed. Go."
+> You are the WORKER. First, run the WSL check from `AGENTS.md` ("Where the worker runs", rule 3): it must print `Linux` and `v24.21.0`; if not, stop and tell me. Read `AGENTS.md` and `.antigravity/rules.md` in full. Then find the single task with `Status: todo` in `docs/agent/PLAN.md`. Restate its id, goal, scope, non-goals and the exact verification commands. Do not edit anything until I answer "Confirmed. Go."
 
 If Antigravity already loads `.antigravity/rules.md` on its own, the first two sentences are repeated work, which is harmless.
 
