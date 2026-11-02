@@ -391,7 +391,7 @@ Expected: all pass. Run the new e2e test 5 times. Paste the real output into `RE
 
 ## Task T-016 — Phone layout of the grammar and the language workstations
 
-**Status:** todo (the design was approved by the owner on 2026-11-02; start it after T-018 is accepted; the Playwright browsers must be installed in WSL first)
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-016-workstation-phone-layout`
 
