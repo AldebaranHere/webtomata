@@ -3,7 +3,7 @@
 You are the WORKER on a two-agent team. Read `AGENTS.md` first, in full.
 
 Then read, in order:
-1. `docs/agent/PLAN.md` — find the single task with `Status: todo`
+1. `docs/agent/PLAN.md` — find the task that the human named in the start prompt. It must have `Status: todo`, its date must have come, and the tasks it depends on must be done and merged. If not, stop and say why.
 2. The design reference for that task under `design/`
 3. The files the task says to touch
 4. `docs/agent/DECISIONS.md`

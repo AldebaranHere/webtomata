@@ -14,6 +14,22 @@ Format:
 
 ---
 
+## 2026-11-03 — A fast path in CI for documents-only changes (task T-050)
+- Decider: owner (planner proposed)
+- Context: Every pull request runs the whole CI (about 6 to 7 minutes, plus CodeQL, audit, fuzz and a preview deploy), even a change of one document. The owner asked for a faster way and asked whether it is a security risk. The post-mortem had left this undecided.
+- Decision: The decision is made inside `ci.yml` by a `scope` job and a small script with a short exact allowlist (`docs/`, `design/`, `.antigravity/` and six root files), deny by default. The heavy jobs skip, and the gate `web` and the check `rust` still report, so the pull request stays mergeable. A change of `content/`, `.github/`, `tools/`, `web/` or `crates/` is never documents-only, a push to `main` always runs everything, and any error means "run everything". The workflows that are not required checks use `paths-ignore` with the same list, and a guard rail keeps the lists equal. Task T-050; ADR 0033 is written by the worker.
+- Alternatives considered: `paths-ignore` on `ci.yml` (the required checks would never report and the PR would wait for ever); a third-party path-filter action (a new dependency in the supply chain); doing nothing.
+- Reversible? yes
+- Affects: `.github/workflows/*`, `tools/`, `docs/decisions/0033-docs-only-fast-path-in-ci.md`, `docs/agent/PLAN.md` (T-050)
+
+## 2026-11-03 — The owner names the task in the start prompt; no promotion pull requests
+- Decider: owner (planner proposed)
+- Context: The planner opened a pull request only to change the status of the next task from `proposed` to `todo`, and each such pull request ran the whole CI.
+- Decision: `todo` means ready (all fields written and approved by the owner) and several tasks can be `todo` at once. The owner names the task in the start prompt ("Do task T-xxx"). The worker checks that the task is `todo`, that its date has come and that its dependencies are merged, and sets it to `in-progress` in its first commit and to `done` in its last. The planner batches its own document changes and suggests an order in `PLAN.md`.
+- Alternatives considered: Keep exactly one `todo` task (a promotion pull request for each task); let the worker pick any `todo` task (the owner loses control of the order).
+- Reversible? yes
+- Affects: `AGENTS.md`, `.antigravity/rules.md`, `docs/agent/WORKFLOW.md`, `docs/agent/PLAN.md`
+
 ## 2026-11-03 — T-004 accepted after the planner removed unsupported statements from the ADRs
 - Decider: planner
 - Context: The ADRs of the language and grammar engines (T-004) quoted many numbers and line references, and all of them matched the code. But they also said that the grammar editor has a text mode (it does not), gave weeks of the course with no source, and said that the six CNF phases strictly follow the lecture order and match the course slides (the slides teach four of the six steps).

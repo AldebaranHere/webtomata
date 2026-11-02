@@ -9,11 +9,11 @@ Three roles:
 ## The loop
 
 1. **The owner names a goal** in a chat with the planner.
-2. **The planner writes the task** in `PLAN.md` with every field (goal, scope, non-goals, files, design reference, acceptance criteria, exact verification commands, rollback). For a new screen, the planner first draws a wireframe, and the owner approves it. The planner sets exactly one task to `Status: todo` and says: "T-xxx is ready to dispatch."
-3. **The owner starts the worker.** Open a new Gemini chat for each task. The worker runs in **WSL Ubuntu**, in the clone `~/webtomata`, not on Windows (see "Where the worker runs" in `AGENTS.md`). The worker updates `staging` itself at the start of the task. Then paste the start prompt (below).
+2. **The planner writes the task** in `PLAN.md` with every field (goal, scope, non-goals, files, design reference, acceptance criteria, exact verification commands, rollback). For a new screen, the planner first draws a wireframe, and the owner approves it. When the owner has approved the task (or its design), the task is `Status: todo`, in the same PR that adds it. There is no separate pull request to promote it. Several tasks can be `todo`; the planner says: "T-xxx is ready to dispatch" and suggests an order.
+3. **The owner starts the worker.** Open a new Gemini chat for each task. The worker runs in **WSL Ubuntu**, in the clone `~/webtomata`, not on Windows (see "Where the worker runs" in `AGENTS.md`). The worker updates `staging` itself at the start of the task. Then paste the start prompt (below) with the id of the task that you choose.
 4. **Before it codes**, the worker reads `AGENTS.md`, the task in `PLAN.md`, the design reference, the files it will touch, and `DECISIONS.md`. Then it **restates** the task id, goal, scope, non-goals and the exact commands it will run, and **waits**. The owner checks the restatement against the task and answers "Confirmed. Go." If it does not match, the owner corrects it before any code is written.
 5. **While it codes**, the worker:
-   - makes the branch `task/T-xxx-<slug>` from `staging`;
+   - makes the branch `task/T-xxx-<slug>` from `staging`, and sets the task to `in-progress` in its first commit;
    - writes the tests first and shows a deliberate break of each new rule;
    - runs the checks of the task (the pre-push hook also runs the fast CI checks);
    - stops and writes a `blocked` entry in `PLAN.md` if the plan is wrong or a decision is needed. It never improvises. The owner takes a `blocked` task back to the planner.
@@ -23,11 +23,11 @@ Three roles:
    - **Accepted.** The owner merges the PR and says "NN merged".
    - **Fix task.** The planner writes a fix task (`T-xxx-fix`, `todo`). Go back to step 3 with it.
    - **Planner is wrong.** The planner corrects the plan and logs it.
-9. **The planner is done** when the next task is `todo` and a start prompt is given, or when a design is ready for the owner to approve. Then the owner moves to the worker. The loop repeats from step 3.
+9. **The planner is done** when the next task is `todo` and the planner has said which one to start, or when a design is ready for the owner to approve. Then the owner moves to the worker. The loop repeats from step 3.
 
 ## Start prompt for the worker
 
-> You are the WORKER. First, run the WSL check from `AGENTS.md` ("Where the worker runs", rule 3): it must print `Linux` and `v24.21.0`; if not, stop and tell me. Read `AGENTS.md` and `.antigravity/rules.md` in full. Then find the single task with `Status: todo` in `docs/agent/PLAN.md`. Restate its id, goal, scope, non-goals and the exact verification commands. Do not edit anything until I answer "Confirmed. Go."
+> You are the WORKER. First, run the WSL check from `AGENTS.md` ("Where the worker runs", rule 3): it must print `Linux` and `v24.21.0`; if not, stop and tell me. Read `AGENTS.md` and `.antigravity/rules.md` in full. Then do task T-xxx from `docs/agent/PLAN.md` (replace T-xxx by the id): it must have `Status: todo`, its date must have come, and the tasks it depends on must be done and merged; if not, stop and tell me why. Restate its id, goal, scope, non-goals and the exact verification commands. Do not edit anything until I answer "Confirmed. Go."
 
 If Antigravity already loads `.antigravity/rules.md` on its own, the first two sentences are repeated work, which is harmless.
 
@@ -46,7 +46,7 @@ or, to start a new task:
 | Is the worker done? | PR open, required checks green, `REPORT.md` filled with real output, `PLAN.md` status updated. |
 | Is the task accepted? | Only when the planner says "Accepted". The worker's word is not enough. |
 | Can the PR be merged? | After "Accepted" and green CI. Only the owner merges. |
-| Can the next task start? | After the previous PR is merged and the planner sets the next task to `todo`. |
+| Can the next task start? | When the owner names it in the start prompt. It must be `todo`, and the tasks it depends on must be merged. |
 | Who decides about a dependency, a security setting, a license, course material, a new screen, a design token? | The owner. The worker never decides these alone (see `AGENTS.md`). |
 
 ## If something goes wrong

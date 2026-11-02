@@ -1,8 +1,10 @@
 # Plan — Milestone 0: clean up, then grammar additions, then the PDA
 
-> Owner: planner. Approved by the human on 2026-11-01 (outline A to D). Each task is approved again by the human when it is promoted to `todo`.
-> The worker does one task at a time. Only one task has `Status: todo`. The planner promotes the next task after it accepts the previous one.
+> Owner: planner. Approved by the human on 2026-11-01 (outline A to D). The human approves each task, or its design, before it becomes `todo`.
+> `todo` means ready: every field is written and the human approved it. Several tasks can be `todo` at the same time. The worker does one task at a time: the one that the human names in the start prompt ("Do task T-xxx"). The worker sets it to `in-progress` in the first commit of its own PR and to `done` in the last. The planner does not open a pull request only to change a status.
 > The blank task template is in `PLAN-TEMPLATE.md`.
+
+**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL.
 
 Status legend: `proposed` | `todo` | `in-progress` | `blocked` | `done` | `rejected`
 
@@ -72,7 +74,7 @@ Expected: the two typecheck commands and `pnpm check` end with `svelte-check fou
 
 ## Task T-002 — Remove the stale `tokio` audit ignore
 
-**Status:** proposed (earliest start 2026-11-04; promote after T-001 is accepted)
+**Status:** todo (not before 2026-11-04)
 **Owner:** worker
 **Branch:** `task/T-002-tokio-audit`
 
@@ -225,7 +227,7 @@ Expected: both pass. Paste the output into `REPORT.md`.
 
 ## Task T-005 — Remove the `wrangler` and `miniflare` age-rule exclusions
 
-**Status:** proposed (earliest start 2026-11-12; the owner decided on 2026-11-02 to keep `wrangler` 4.155.0 until then)
+**Status:** todo (not before 2026-11-12; the owner decided on 2026-11-02 to keep `wrangler` 4.155.0 until then)
 **Owner:** worker
 **Branch:** `task/T-005-remove-age-exclusions`
 
@@ -387,7 +389,7 @@ Expected: all pass. Run the new e2e test 5 times. Paste the real output into `RE
 
 ## Task T-016 — Phone layout of the grammar and the language workstations
 
-**Status:** proposed (the design was approved by the owner on 2026-11-02; promote it after T-004 and T-018 are accepted, or earlier if the owner says so)
+**Status:** todo (the design was approved by the owner on 2026-11-02; start it after T-018 is accepted; the Playwright browsers must be installed in WSL first)
 **Owner:** worker
 **Branch:** `task/T-016-workstation-phone-layout`
 
@@ -457,9 +459,76 @@ Expected: all pass. Paste the real output into `REPORT.md`.
 
 ---
 
+## Task T-050 — A fast path in CI for pull requests that change only documents
+
+**Status:** todo (the owner approves this spec by merging the PR that adds it; this changes workflows, so stop and ask if anything is unclear)
+**Owner:** worker
+**Branch:** `task/T-050-ci-docs-only-fast-path`
+
+**Goal:** Every pull request runs the whole CI (about 6 to 7 minutes, plus CodeQL, audit, fuzz and a preview deploy), even when it changes only documents. Make a documents-only change pass the **required** checks (`rust` and `web`) in about a minute, without weakening any guard and without a way to hide a code change as a document. The decision is made **inside the workflow**, not at its trigger: a workflow that is stopped by `paths-ignore` never reports the required checks, and the pull request then waits for ever.
+
+**Scope (in):**
+1. `tools/docs-only.mjs` (new): reads a list of changed paths separated by NUL bytes from standard input and prints `true` only if the list is not empty and **every** path is in the allowlist below. Anything else, any error and any odd path print `false`. It is a small pure function with unit tests.
+   - **Allowlist, exactly:** a path under `docs/`, `design/` or `.antigravity/`; or one of these files in the root: `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `AGENTS.md`, `CLAUDE.md`, `LICENSE`.
+   - **Never in the allowlist:** `content/` (the guides and questions are compiled into the site), `.github/`, `tools/`, `web/`, `crates/`, `.cargo/`, lock files, any config file, and any nested Markdown file such as `web/src/README.md`.
+2. `tools/ci-gate.mjs` (new): decides the result of the gate from the results of the jobs. It takes the `needs` results and the value of `docs_only` and exits with 0 or 1:
+   - the result of the `scope` job is not `success` → fail;
+   - any job failed or was cancelled → fail;
+   - `docs_only` is `true` → the heavy jobs may be `skipped`;
+   - `docs_only` is not `true` → every heavy job must be `success` (a `skipped` heavy job is a **failure**).
+3. `.github/workflows/ci.yml`:
+   - a new first job `scope` (with `timeout-minutes`, read-only permissions, the runner pinned like the others, and the actions pinned to a full commit as the guard rails require). It checks out with the history it needs and runs `git diff --name-only -z <base> <head>` into `tools/docs-only.mjs`. For a `pull_request` the range is the base commit to the head commit of the event; for a `push` it is `before` to `sha` of the event. If the range cannot be built (no `before`, a new branch, a failed diff, a shallow clone) the output is `false`. For a push to `main` the output is always `false`: production always gets the full CI. File names are untrusted: never put them into a shell command line; read them as data.
+   - the heavy jobs (`rust`, `checks`, `e2e`, `lighthouse`, `cross-browser`) get `needs: scope` (kept together with their existing `needs`) and `if: needs.scope.outputs.docs_only != 'true'`.
+   - the gate job `web` keeps `if: always()`, gets `scope` in its `needs`, and calls `tools/ci-gate.mjs`. The gate must still run even when jobs are skipped. Keep `rust` as a required check by itself: a job that is skipped by its own `if` counts as passed for a required check.
+4. The workflows that are **not** required checks (`audit.yml`, `codeql.yml`, `fuzz.yml`, and the preview part of `deploy.yml` on a pull request) get `paths-ignore` on `pull_request` with the **same list** as the allowlist (a workflow with `paths-ignore` still runs when any changed file is outside the list). Do not change the `push` trigger of `deploy.yml`.
+5. `tools/check-workflows.mjs` and its test: new rules, so the guard rails keep the fast path honest: the `scope` job exists and has a timeout; every heavy job needs `scope` and has the `if`; the gate has `if: always()` and needs `scope`; the `paths-ignore` lists of the other workflows are **equal** to the allowlist in `tools/docs-only.mjs` (one list, checked in two places); no workflow uses `pull_request_target`.
+6. `docs/decisions/0033-docs-only-fast-path-in-ci.md`: the decision, why it is inside the workflow and not at the trigger, the allowlist and why each entry is safe, the fail-safe rules, the threat model (a code change dressed as a document; a crafted file name; a skipped gate), and what is never skipped (`main`, `.github/`, `content/`, `web/`, `crates/`, `tools/`).
+
+**Non-goals (out):**
+- No change to the list of required checks in the repository settings, to permissions, to secrets, to caches, or to the deploy job that holds the Cloudflare token.
+- No `paths-ignore` on `ci.yml`. No third-party action for path filters (no new action: use git and our own script). No merge queue.
+- No change of what a full CI run does.
+
+**Files expected to touch:**
+- `tools/docs-only.mjs`, `tools/docs-only.test.mjs`, `tools/ci-gate.mjs`, `tools/ci-gate.test.mjs` (new)
+- `tools/check-workflows.mjs`, `tools/check-workflows.test.mjs`
+- `.github/workflows/ci.yml`, `audit.yml`, `codeql.yml`, `fuzz.yml`, `deploy.yml`
+- `docs/decisions/0033-docs-only-fast-path-in-ci.md` (new)
+
+**Design reference:** none (no UI). Read `MD_FILES`-free facts only: `docs/decisions/0027-ci-time-limits-and-faster-ci.md` and the existing guard rails in `tools/check-workflows.mjs`.
+
+**Acceptance criteria:**
+- AC1: `docs-only` tests: a list of only allowed paths gives `true`; one path outside the list gives `false`; an empty list gives `false`; and each of these gives `false`: `content/guides/x.md`, `web/src/README.md`, `.github/ISSUE_TEMPLATE/x.md`, `tools/x.mjs`, `docsx/a.md`, `docs/../web/src/a.ts`, `./docs/a.md`, `README.md.js`, a path with a newline or a space in it, and a path that is empty.
+- AC2: `ci-gate` tests cover every row of the table in scope item 2, and a missing or odd input gives a failure.
+- AC3: `check-workflows` tests fail when a heavy job loses `needs: scope` or its `if`, when the gate loses `if: always()`, when the lists of the other workflows differ from the allowlist, and when `pull_request_target` appears.
+- AC4: Two deliberate breaks are shown and restored: put `content/` into the allowlist (AC1 fails), and make the gate accept a skipped heavy job when `docs_only` is not `true` (AC2 fails).
+- AC5: In the CI of this PR (it changes `.github/**`, so it is **not** docs-only) every job runs and `rust` and `web` pass. Say so in `REPORT.md`.
+- AC6: `pnpm test:tools` and `pnpm check:workflows` pass, and `pnpm check:workflows` also passes on the old workflows when the new rules are turned off (the rules are new; nothing else changed).
+
+**Verification (Mode B form shown; in Mode A drop the bridge):**
+```
+pnpm test:tools
+pnpm check:workflows
+pnpm format:check
+pnpm lint
+printf 'docs/a.md\0README.md\0' | node tools/docs-only.mjs
+printf 'docs/a.md\0web/src/a.ts\0' | node tools/docs-only.mjs
+```
+Expected: the tests pass; the two last commands print `true` and `false`. Paste the real output.
+
+**Proof after the merge (the planner does this, not the worker):** the next documents-only pull request must show the `scope` job with `docs_only` true, the heavy jobs skipped, `rust` and `web` reported, the PR mergeable, and a total time under two minutes. A pull request that changes one document and one file in `web/` must run everything. If either fails, the planner reverts.
+
+**Rollback:** `git revert <sha>` restores the CI that always runs everything.
+
+**Depends on:** none.
+
+**Notes for worker:** This is a security-relevant change. The danger is a code change that is treated as a document, and a file name that is treated as a command. Keep the allowlist short and exact, deny by default, and read the changed paths only as data. If GitHub does not treat a job skipped by `if` as a passed required check, stop and write a `blocked` entry with the evidence; do not add a workaround.
+
+---
+
 ## Planner task P-001 — As-built spec of the grammar workstation, the language workstation and the switcher
 
-**Status:** in review (the as-built specs and the phone layout are in one PR; the owner approved the phone layout on 2026-11-02 and approves the specs by merging the PR)
+**Status:** done (PR 117, merged on 2026-11-02; the phone layout became task T-016)
 **Owner:** planner
 
 Write `design/screens/grammar-workstation.md`, `design/screens/language-workstation.md` and `design/screens/workstation-switcher.md` from the screenshots and the code, and add them to `docs/ux/wireframes.md`. No redesign of the laptop layouts. The owner approves each. T-010 to T-012 wait for this.
