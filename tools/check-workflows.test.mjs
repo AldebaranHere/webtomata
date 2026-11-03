@@ -196,6 +196,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: ${PIN}
+      - run: git diff --no-renames --name-only -z
   rust:
     needs: scope
     if: needs.scope.outputs.docs_only != 'true'
@@ -275,6 +276,12 @@ test('a ci.yml without the scope job is a problem', () => {
 	const bad = ci.replace(/ {2}scope:[\s\S]*? {2}rust:/, '  rust:');
 	const problems = checkCi(bad);
 	assert.ok(problems.some((p) => /scope.*missing/.test(p)));
+});
+
+test('a scope job without --no-renames is a problem', () => {
+	const bad = ci.replace('--no-renames ', '');
+	const problems = checkCi(bad);
+	assert.ok(problems.some((p) => /--no-renames/.test(p)));
 });
 
 test('a heavy job without needs: scope is a problem', () => {

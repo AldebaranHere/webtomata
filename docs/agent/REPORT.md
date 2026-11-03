@@ -150,6 +150,44 @@ test at tools/ci-gate.test.mjs:52:1
 
 Code was restored, and all tests passed.
 
+### Deliberate Break 3: Remove `--no-renames` from the `scope` job diff command in `ci.yml`
+
+Removed `--no-renames` from line 77 in `.github/workflows/ci.yml`, then ran `pnpm check:workflows`:
+
+```
+$ node tools/check-workflows.mjs
+FAIL ci.yml (job scope), line 26: the scope diff command must include --no-renames
+[ELIFECYCLE] Command failed with exit code 1.
+```
+
+And ran `node --test tools/check-workflows.test.mjs`:
+```
+✖ a scope job without --no-renames is a problem (0.579891ms)
+  AssertionError [ERR_ASSERTION]: Expected false to be truthy
+```
+
+Code was restored, and all tests passed.
+
+---
+
+## Review Additions (PR #129 Review)
+
+1. **Rename Detection Bypass & Prevention (`--no-renames`):**
+   - In git, default rename detection (`git diff --name-only`) reports only the target destination path when a file is moved/renamed. If a code file (`web/src/a.ts`) is renamed into documentation (`docs/a.md`), default git diff reports only `docs/a.md`, which previously bypassed the allowlist.
+   - Added `--no-renames` to the `scope` job diff command in `.github/workflows/ci.yml`: `git diff --no-renames --name-only -z "$BASE" "$HEAD"`.
+   - Added a real git integration test in `tools/docs-only.test.mjs` using a temporary repository that commits `web/src/a.ts`, renames it to `docs/a.md`, proves that default diff produces `true` (reproducing the bypass), and proves that `--no-renames` produces `false`.
+   - Added a guard rail check in `tools/check-workflows.mjs` verifying that the `scope` job diff command includes `--no-renames`, tested in `tools/check-workflows.test.mjs`.
+
+2. **Strict Character Allowlist:**
+   - In `tools/docs-only.mjs`, restricted paths to match `^[A-Za-z0-9._/-]+$`.
+   - Denies non-ASCII characters, percent characters (`%`), zero-width characters (such as `\u200B`), whitespace, and control characters.
+   - Added tests in `tools/docs-only.test.mjs` for zero-width space, non-ASCII letters, and `%` in names.
+
+3. **ADR 0033 Updates:**
+   - Documented the rename bypass and `--no-renames` fix in the threat model.
+   - Documented the character allowlist `^[A-Za-z0-9._/-]+$`.
+   - Stated the accepted risk: `scope` and `web` execute scripts from the PR's checkout; PRs editing `tools/` or `.github/` are never docs-only and always require owner review and full CI.
+
 ---
 
 ## AC5 Note on this Pull Request's CI Run
@@ -170,14 +208,14 @@ ok   6 workflows follow the guard rails
 ```
 $ node --test "tools/*.test.mjs"
 ...
-ℹ tests 130
+ℹ tests 132
 ℹ suites 3
-ℹ pass 130
+ℹ pass 132
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 11448.873417
+ℹ duration_ms 11682.826168
 ```
 
 ### 3. `pnpm format:check`

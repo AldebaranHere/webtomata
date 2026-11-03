@@ -23,14 +23,16 @@ export const WORKFLOW_PATHS_IGNORE = [
 
 /**
  * Checks if a single path is strictly within the allowed documentation scope.
- * Denies by default: whitespace, traversal, prefixes, backslashes, and anything outside the allowlist.
+ * Denies by default: allows only [A-Za-z0-9._/-], rejecting whitespace, non-ASCII, %,
+ * zero-width characters, directory traversal, leading slashes, and duplicate slashes.
  */
 export function isAllowedPath(path) {
 	if (typeof path !== 'string' || path.length === 0) {
 		return false;
 	}
-	// Untrusted input: disallow whitespace, newlines, carriage returns, or backslashes.
-	if (/[\s\r\n\\]/.test(path)) {
+	// Only allow A-Z, a-z, 0-9, dot, underscore, dash, and forward slash.
+	// Rejects %, non-ASCII, zero-width characters, backslashes, whitespace, etc.
+	if (!/^[A-Za-z0-9._/-]+$/.test(path)) {
 		return false;
 	}
 	// Disallow directory traversal, root paths, or explicit current-directory prefixes.

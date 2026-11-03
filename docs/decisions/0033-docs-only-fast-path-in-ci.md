@@ -70,15 +70,19 @@ The guard rail enforces:
    - Nested READMEs (e.g., `web/src/README.md`) are rejected because directory prefixes must match `docs/`, `design/`, or `.antigravity/` exactly.
    - Suffix attacks (e.g., `README.md.js`) fail exact root filename matching.
    - Directory prefix attacks (e.g., `docsx/`) fail the trailing slash check.
+   - **Git rename detection bypass:** By default, git rename detection (`git diff --name-only`) reports only the destination path. If a code file (e.g., `web/src/a.ts`) is renamed to a docs path (e.g., `docs/a.md`), default rename detection lists only `docs/a.md`, which would allow code changes to bypass full CI. Passing `--no-renames` forces git diff to list both the deletion of `web/src/a.ts` and the creation of `docs/a.md`, ensuring the pull request is rejected by the allowlist. `tools/check-workflows.mjs` enforces that `--no-renames` is present in the `scope` job diff command.
 
 2. **Crafted file names and injection:**
    - File paths from `git diff -z` are NUL-delimited and streamed directly into standard input of `tools/docs-only.mjs`.
    - File paths are never expanded or interpolated into a shell command line.
-   - Any path containing whitespace, newlines (`\n`), carriage returns (`\r`), backslashes (`\`), directory traversal (`..`), or duplicate slashes (`//`) is rejected immediately.
+   - Character allowlist: only characters `[A-Za-z0-9._/-]` are allowed. Any path containing percent characters (`%`), non-ASCII letters, zero-width characters (e.g., zero-width spaces), whitespace, newlines (`\n`), carriage returns (`\r`), backslashes (`\`), directory traversal (`..`), or duplicate slashes (`//`) is rejected immediately.
 
 3. **Skipped or tampered gate:**
    - The gate job `web` has `if: always()`. If a heavy job fails or is cancelled, `web` still runs and fails the build.
    - `tools/ci-gate.mjs` verifies that heavy jobs are only permitted to be `skipped` when `docs_only` is genuinely `'true'`. If `docs_only` is `'false'`, any skipped heavy job results in an immediate gate failure (exit 1).
+
+4. **Accepted risk: scripts execute from PR checkout:**
+   - Both the `scope` job and the `web` gate checkout the pull request commit and run scripts from the tree (`tools/docs-only.mjs` and `tools/ci-gate.mjs`). A malicious pull request could theoretically tamper with these scripts in its branch. However, any pull request modifying `tools/` or `.github/` is not in the documentation allowlist, so the diff against base will contain paths in `tools/` or `.github/`. Furthermore, changes to workflow files or guard rails always trigger full CI and must be reviewed and approved by the repository owner before merge.
 
 ## Consequences
 
@@ -86,3 +90,4 @@ The guard rail enforces:
 - Code pull requests continue to run the full verification suite without changes.
 - CI compute minutes on GitHub Actions runners are conserved.
 - Guard rails prevent accidental drift or silent weakening of the fast-path policy.
+

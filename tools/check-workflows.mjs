@@ -140,7 +140,10 @@ export function checkWorkflows(files) {
 						needs: null,
 						ifCondition: null,
 						always: false,
+						hasNoRenames: false,
 					});
+				} else if (/--no-renames/.test(line)) {
+					jobs[jobs.length - 1].hasNoRenames = true;
 				} else if (/^ {4}timeout-minutes:/.test(line)) {
 					jobs[jobs.length - 1].timeout = line.replace(/^ {4}timeout-minutes:\s*/, '').trim();
 				} else if (/^ {4}needs:\s*(.+)$/.test(line)) {
@@ -205,6 +208,10 @@ export function checkWorkflows(files) {
 			const scope = jobs.find((j) => j.name === SCOPE_JOB);
 			if (!scope) {
 				problems.push(`${CI_FILE}: the scope job "${SCOPE_JOB}" is missing`);
+			} else if (!scope.hasNoRenames) {
+				problems.push(
+					`${CI_FILE} (job ${SCOPE_JOB}), line ${scope.line}: the scope diff command must include --no-renames`
+				);
 			}
 			const gate = jobs.find((j) => j.name === GATE_JOB);
 			if (!gate) {

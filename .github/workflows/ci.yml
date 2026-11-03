@@ -74,7 +74,7 @@ jobs:
           echo "Diffing $BASE ... $HEAD"
           DOCS_ONLY="false"
           if git cat-file -e "$BASE" 2>/dev/null && git cat-file -e "$HEAD" 2>/dev/null; then
-            if RESULT=$(git diff --name-only -z "$BASE" "$HEAD" | node tools/docs-only.mjs 2>/dev/null); then
+            if RESULT=$(git diff --no-renames --name-only -z "$BASE" "$HEAD" | node tools/docs-only.mjs 2>/dev/null); then
               if [ "$RESULT" = "true" ]; then
                 DOCS_ONLY="true"
               fi
