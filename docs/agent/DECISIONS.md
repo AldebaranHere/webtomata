@@ -14,6 +14,14 @@ Format:
 
 ---
 
+## 2026-11-04 — Lessons from the review of T-050 (the CI fast path)
+- Decider: planner
+- Context: The first spec of T-050 had two gaps that the worker and the review found. The spec said that `audit.yml` and `fuzz.yml` get `paths-ignore`, but both already have a positive `paths` filter (GitHub forbids both on one event), so they never run for a documents-only change. And the spec did not say how to list the changed files: `git diff --name-only` detects renames, so a code file moved into `docs/` listed only the new path and would have been classed as documents-only.
+- Decision: `audit.yml` and `fuzz.yml` stay as they are, and the guard rail checks that their `paths` contain no allowlisted entry. The `scope` job uses `git diff --no-renames --name-only -z`, a guard rail requires the flag, and paths may use only `A-Z a-z 0-9 . _ - /`. The proof after the merge also tries a rename into `docs/`.
+- Alternatives considered: `paths-ignore` on all four (widens `audit` and `fuzz` to every code pull request); a rename-aware check of both sides (more code, same result).
+- Reversible? yes
+- Note: the planner's spec was wrong in the first point and silent on the second; a spec for a security-relevant change must name the exact git flags.
+
 ## 2026-11-03 — Readable CNF helper names and `λ` as empty (tasks T-026, T-027)
 - Decider: owner (planner proposed)
 - Context: The review of T-023 showed that the grammar the button stores can differ from the CNF result on screen: the parser reads the helper name `T_(` as `T_` plus `(`, and reads `λ` as a terminal, although the Editor legend says it means the empty string.
