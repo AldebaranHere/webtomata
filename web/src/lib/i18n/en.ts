@@ -956,6 +956,7 @@ export const en: Record<MessageKey, string> = {
 	'grammar.matrix_add_alt': 'Add alternative (|)',
 	'grammar.resize_output_aria': 'Resize results panel',
 	'grammar.btn_convert_to_cnf': 'Convert to CNF',
+	'grammar.open_cnf_as_new': 'Open as a new grammar',
 	'workstation.tab_library': 'Library',
 	'workstation.tab_editor': 'Editor',
 	'workstation.tab_cnf': 'CNF',

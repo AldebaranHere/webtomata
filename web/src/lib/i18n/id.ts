@@ -955,6 +955,7 @@ export const id = {
 	'grammar.matrix_add_alt': 'Tambah alternatif (|)',
 	'grammar.resize_output_aria': 'Ubah lebar panel hasil pemrosesan',
 	'grammar.btn_convert_to_cnf': 'Ubah ke CNF',
+	'grammar.open_cnf_as_new': 'Buka sebagai tata bahasa baru',
 	'workstation.tab_library': 'Pustaka',
 	'workstation.tab_editor': 'Editor',
 	'workstation.tab_cnf': 'CNF',

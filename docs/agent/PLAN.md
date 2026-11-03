@@ -465,7 +465,7 @@ Expected: all pass. Paste the real output into `REPORT.md`.
 
 ## Task T-023 — Open the CNF result as a new grammar
 
-**Status:** todo (the owner asked for this on 2026-11-03 and approved the design: the button is on the last step only, and it jumps to the Editor; start it after T-016 is merged)
+**Status:** done (branch `task/T-023-open-cnf-as-grammar`)
 **Owner:** worker
 **Branch:** `task/T-023-open-cnf-as-grammar`
 

@@ -1,106 +1,118 @@
-# Report — T-016
+# Report — T-023
 
 > Written by the worker at the end of the session. One file per task; overwrite each session.
 
 ## Task
-- id: T-016
-- title: Phone layout of the grammar and the language workstations
-- branch: `task/T-016-workstation-phone-layout`
-- commit: `b0ec336`
-- pull request: https://github.com/AldebaranHere/webtomata/pull/121
-- CI run: https://github.com/AldebaranHere/webtomata/actions/runs/41488442216
+- id: T-023
+- title: Open the CNF result as a new grammar
+- branch: `task/T-023-open-cnf-as-grammar`
+- pull request: https://github.com/AldebaranHere/webtomata/pull/124
 
 ## What changed
-- `web/src/lib/components/WorkstationPhoneTabs.svelte` (new):
-  - Created reusable ARIA tab strip component for phone viewports (`role="tablist"` with `aria-label`).
-  - Supports tabs with `role="tab"`, `aria-selected`, `aria-controls`, `id`, and keyboard arrow navigation (Left/Right, Home/End) with auto-activation and wrapping.
-  - Sticky at top (`position: sticky; top: 0; z-index: 10;`).
-  - Sized at least 44px min-height/min-width for all tabs with accessible focus rings; the tab strip wraps and uses a dark selected pill (it does not scroll sideways and has no highlight line).
-  - Automatically hidden at viewports `>= 900.02px`.
-- `web/src/lib/i18n/id.ts` & `web/src/lib/i18n/en.ts`:
-  - Added translation keys:
-    - `workstation.tab_library`: "Pustaka" / "Library"
-    - `workstation.tab_editor`: "Editor" / "Editor"
-    - `workstation.tab_cnf`: "CNF" / "CNF"
-    - `workstation.tab_cyk`: "CYK" / "CYK"
-    - `workstation.tab_results`: "Hasil" / "Results"
-    - `workstation.tabs_grammar_aria`: "Navigasi area tata bahasa" / "Grammar workstation areas"
-    - `workstation.tabs_language_aria`: "Navigasi area bahasa" / "Language workstation areas"
-    - `grammar.btn_convert_to_cnf`: "Ubah ke CNF" / "Convert to CNF"
-- `web/src/lib/grammar/GrammarWorkstation.svelte`:
-  - Added `WorkstationPhoneTabs` under the mode bar.
-  - Added responsive layout below 900px: columns convert from 3-column split grid to full-width tab panels (`role="tabpanel"` on `div` columns).
-  - Selected tab state (`phoneTab`) controls visibility; selecting a preset or custom item automatically switches to `editor` tab and displays selection name in header.
-  - Allowed title, name chip, and "Simbol Awal" in `.editor-col .col-header` to wrap so they are not squeezed on one line on phones.
-  - Fixed accessibility in library column by removing `role="list"` on `.preset-list` container so buttons/cards inside do not violate `aria-required-children`.
-  - Added primary shortcut button "Ubah ke CNF" at end of Editor tab content on phone layout, hidden on laptop (`>= 900px`).
+- `web/src/lib/grammar/grammar-text.ts`:
+  - `grammarToText(grammar: Grammar, emptySymbol = 'ε'): string`:
+    - Outputs one line per non-terminal head in order of appearance (start symbol first): `Head -> body1 | body2`.
+    - Single space between RHS symbols (`A 1` vs `A1`).
+    - Uses `'ε'` by default for empty bodies so that the output matches the engine parser's empty-word symbol.
+    - Does not invent `S -> ε` when a start symbol has no rules in `grammar.rules`.
+  - `nextCustomId(existing: Array<{ id: string }>): string`:
+    - Calculates first unused `G<n>` (`G1`, `G2`, etc.) to prevent duplicate ID collisions after deletions.
 - `web/src/lib/grammar/GrammarCnfStepper.svelte`:
-  - Stepper header (`.stepper-header`) styled as sticky under phone tab strip (`top: 52px; z-index: 5; background: var(--color-surface)`).
-  - Step pills and navigation buttons enlarged to min 44x44px touch targets.
-  - Heading level adjusted from `h3` to `h2` to maintain proper heading hierarchy under `h1` in phone view when other columns are hidden.
-- `web/src/lib/grammar/GrammarCykTester.svelte`:
-  - Stacked input field and "Uji String" button to full width below 900px with min 44px touch targets.
-  - Example chips wrap with min 44px tap targets.
-  - CYK table scrolls horizontally within its own box (`.table-scroll`).
-- `web/src/lib/language/LanguageWorkstation.svelte`:
-  - Replaced 1024px media query with unified 900px breakpoint at the bottom of the style block.
-  - Added `WorkstationPhoneTabs` (`Pustaka`, `Editor`, `Hasil`).
-  - Selection of preset or custom item jumps to `editor` tab with active title displayed.
-  - Reordered Editor elements via flex `order`: formula textarea (4 rows) placed above the symbol toolbar (`order: 1` vs `order: 2`), symbol toolbar wraps with min 44px touch buttons.
-  - Hasil tab: settings organized in a compact 1-row, 3-column grid (`Panjang Min`, `Jumlah String`, `Format String Kosong`) sharing the same y coordinate, with phone media-query placed at the end of the `<style>` block to eliminate CSS cascade overrides from base rules.
+  - Added optional `onopen?: () => void` prop.
+  - Rendered `.btn-open-result` button (`grammar.open_cnf_as_new`) conditionally on step 6.
+  - Styled with min 44px height and responsive full-width display on phone screens (`@media (max-width: 900px)`).
+- `web/src/lib/grammar/GrammarWorkstation.svelte`:
+  - Uses `nextCustomId` in `createNewCustomGrammar`.
+  - Added `computeCnfTitle` helper producing `<title> (CNF)`, `<title> (CNF 2)`, etc.
+  - Implemented `handleOpenCnfAsNewGrammar`: converts `cnfTrace.finalGrammar` with `grammarToText`, saves to custom grammars in `localStorage`, selects it, switches to `editor` tab, and persists state without adding any message or toast elements.
+  - Passed `onopen={handleOpenCnfAsNewGrammar}` to `<GrammarCnfStepper>`.
+- `web/src/lib/i18n/id.ts` & `web/src/lib/i18n/en.ts`:
+  - Added `grammar.open_cnf_as_new` (`"Buka sebagai tata bahasa baru"` / `"Open as a new grammar"`).
+- `web/eslint.config.js`:
+  - Added `src/lib/grammar/grammar-text.wasm.test.ts` to `no-restricted-imports` exceptions.
 - Tests:
-  - `web/e2e/grammar-phone.spec.ts`: E2E suite covering phone viewports (360x780 and 390x844), tab navigation, touch target dimensions (>= 44px), sticky stepper header on 390x480 short viewport pinned at 52px, scroll checks, preset jump, shortcut button, arrow keys, axe accessibility across every tab (Pustaka, Editor, CNF, CYK), and desktop 1280x800 verification (splitters visible, no tab strip, no shortcut button).
-  - `web/e2e/language-phone.spec.ts`: E2E suite covering language phone layout, formula ordering above toolbar, compact 3-column settings sharing the same y, results visibility, touch targets, arrow keys, preset jump, axe accessibility across every tab (Pustaka, Editor, Hasil), and desktop 1280x800 verification (splitters visible, no tab strip).
-  - `web/e2e/cross/workstation-phone.spec.ts`: WebKit phone cross-browser test covering both workstations.
+  - `web/src/lib/grammar/grammar-text.test.ts`:
+    - AC1: handwritten grammars with empty rule defaulting to `ε`, custom empty symbol `λ`, no rule invention for empty start symbol, `S_0` with `T_a`/`X1`, and `X10` next to digit terminal.
+    - AC7: `nextCustomId` collision tests.
+  - `web/src/lib/grammar/grammar-text.wasm.test.ts`:
+    - AC2: production default path (`grammarToText(g)`) round-trips every preset and CNF result directly, including `CNF_NULLABLE`.
+    - AC5: CNF idempotence verified for all presets, including `CNF_NULLABLE`.
+    - `CFG_PAREN`: CNF round-trip and AC5 idempotence marked `it.fails` with comment `"known until T-026"`.
+    - Seeded generator: 200 random grammars round-trip with default `grammarToText`.
+  - `web/e2e/grammar-open-cnf.spec.ts`:
+    - AC3, AC4, AC6, AC8 on desktop and phone.
+    - Added test opening `CNF_NULLABLE` ('Variabel Nullable Majemuk (Fase 2)'), tapping the button, and verifying the new grammar's CNF tab shows the exact same rules as the original CNF result.
+  - `web/e2e/cross/workstation-phone.spec.ts`: Step 6 button visibility and axe scan for `webkit-phone`.
 
 ---
 
-## Acceptance Criteria Verification
+## Engine Findings & Known Issues
 
-- **AC1 (Tab strip & area visibility)**: Tested in `grammar-phone.spec.ts` and `language-phone.spec.ts`. Each workstation shows tab strip with correct tab items (`Pustaka`, `Editor`, `CNF`, `CYK` for Grammar; `Pustaka`, `Editor`, `Hasil` for Language). Exactly one area visible at a time; tapping changes `aria-selected` and `hidden`.
-- **AC2 (Page scrolling as a whole)**: Verified in tests. No element except `.table-scroll` (CYK table) has vertical overflow scroll (`scrollHeight > clientHeight`). Page scrolls as a whole.
-- **AC3 (Grammar CNF tab sticky stepper & visibility)**: Title of phase and chips visible without scroll. Stepper header stays visible after scrolling down step card.
-- **AC4 (Language Hasil tab first result row visible)**: Verified without scrolling on 360x780 and 390x844 viewports.
-- **AC5 (Language Editor formula box above toolbar)**: Formula box appears before symbol toolbar in DOM order/visual flow and is fully visible.
-- **AC6 (44x44px touch targets)**: Measured programmatically in tests: all tabs, preset cards, buttons, symbol buttons, step pills, and nav buttons have `width >= 44` and `height >= 44`.
-- **AC7 (Preset jump to editor with name)**: Tapping preset selects it, switches active tab to Editor, and active name displays in header badge.
-- **AC8 (Arrow keys, axe zero violations, WebKit phone)**: Arrow Left/Right/Home/End navigate tabs. Axe reports 0 violations across all tabs. `workstation-phone.spec.ts` passes on `webkit-phone`.
-- **AC9 (Laptop layout unchanged)**: At 1280x800 and 1440x900, splitters, 3 columns, and desktop workstation flows pass without regressions.
-- **AC10 (i18n & guard rails)**: All strings in `id.ts` and `en.ts`. `check:strings`, `check:tokens`, `check:contrast` pass with 0 errors.
-- **AC11 (Deliberate break demonstrated)**: Removing `position: sticky` on `.stepper-header` caused AC3 bounding-box sticky test to fail (`Received: 178`, `Expected: <= 70`). Restoring it brought tests back to green.
-- **AC12 ("Ubah ke CNF" shortcut button)**: Primary full-width button (>= 44px height) at bottom of grammar Editor tab opens CNF tab. Hidden on laptop screens.
+1. **CFG_PAREN Phase 5 Helper Variable Names (`crates/engine-core/src/grammar/parser.rs` lines 124–127):**
+   - For preset `CFG_PAREN`, CNF Phase 5 creates helper variables `T_(` and `T_)`.
+   - The engine parser accepts only ASCII alphanumeric characters after an underscore (`_`), so `T_(` is parsed as non-terminal `T_` followed by terminal `(`.
+   - Per reviewer direction, the two tests asserting this issue (`round-trips CNF result of CFG_PAREN` and `is idempotent on preset CFG_PAREN`) are marked `it.fails` with comment `"known until T-026"`.
+
+2. **CNF_NULLABLE & Default `'ε'`:**
+   - With `grammarToText` writing `'ε'` by default for empty bodies, `CNF_NULLABLE` and its CNF output (`S0 -> ε`) round-trip cleanly in the engine parser, and AC5 CNF idempotence passes completely for `CNF_NULLABLE`.
 
 ---
 
-## Deliberate Break Demonstration (AC11)
+## What was not run and why
+- **Firefox E2E tests (`pnpm test:e2e:cross` with `firefox`)**: Not run locally because Firefox does not start in this WSL environment (per `AGENTS.md`: "Firefox does not start on the owner's laptop; the Firefox tests run only in CI"). The WebKit phone tests (`webkit-phone`) were run locally and passed.
+- **Physical mobile devices**: Not run directly; simulated via Playwright's mobile emulation profiles (`phone` = Pixel 7, `webkit-phone` = iPhone 13).
 
-When `position: sticky` was removed from `.stepper-header` in `GrammarCnfStepper.svelte`, the short-viewport test (`390x480`) failed because scrolling to the bottom moved the header away from 52px:
+---
+
+## Deliberate Break Demonstration (AC10)
+
+Symbols in `grammarToText` were joined without spaces (`body.map((s) => s.value).join('')`):
+
 ```
-  1) [phone] › e2e/grammar-phone.spec.ts:175:1 › grammar phone layout at 390x480: CNF stepper header remains sticky at 52px when scrolled to bottom 
+$ pnpm --filter web exec vitest run src/lib/grammar
+...
+ FAIL  src/lib/grammar/grammar-text.test.ts > grammarToText (AC1) > serializes grammar with two-digit helper X10 next to a digit terminal
+AssertionError: expected 'S -> X10 0\nX10 -> 1' to deeply equal 'S -> X100\nX10 -> 1'
 
-    Error: expect(received).toBeLessThanOrEqual(expected)
+- Expected:
+S -> X100
+X10 -> 1
 
-    Expected: <= 1
-    Received:    81
++ Received:
+S -> X10 0
+X10 -> 1
 
-      202 | 	const headerBox = (await stepperHeader.boundingBox())!;
-      203 |
-    > 204 | 	expect(Math.abs(headerBox.y - 52)).toBeLessThanOrEqual(1);
-          | 	                                   ^
-      205 | 	expect(headerBox.y).toBeGreaterThanOrEqual(tabBox.y + tabBox.height - 1);
-      206 | });
-      207 |
-        at /home/Aldebaran64/webtomata/web/e2e/grammar-phone.spec.ts:204:37
+ ❯ src/lib/grammar/grammar-text.test.ts:114:44
+...
+ Test Files  2 failed | 1 passed (3)
+      Tests  17 failed | 2 expected fail | 22 passed (41)
 ```
-Upon restoring `position: sticky`, the test passed immediately (1.0s).
+
+Upon restoring the single-space separator between RHS symbols, all tests in `src/lib/grammar` passed cleanly.
 
 ---
 
 ## Verification Outputs
 
-### 1. `pnpm check`
+### 1. Unit Tests (`src/lib/grammar`)
 ```
-$ pnpm --filter web check
+$ pnpm --filter web exec vitest run src/lib/grammar
+
+ RUN  v5.0.3 /home/Aldebaran64/webtomata/web
+
+ ✓ src/lib/grammar/grammar-text.test.ts (10 tests) 8ms
+ ✓ src/lib/grammar/presets.test.ts (3 tests) 12ms
+ ✓ src/lib/grammar/grammar-text.wasm.test.ts (28 tests) 119ms
+
+ Test Files  3 passed (3)
+      Tests  39 passed | 2 expected fail (41)
+   Start at  21:34:28
+   Duration  468ms (transform 51%, tests 29%, import 14%, worker 5%)
+```
+
+### 2. Svelte Check
+```
+$ pnpm check
 $ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
 Loading svelte-check in workspace: /home/Aldebaran64/webtomata/web
 Getting Svelte diagnostics...
@@ -108,187 +120,110 @@ Getting Svelte diagnostics...
 svelte-check found 0 errors and 0 warnings
 ```
 
-### 2. `pnpm lint`
+### 3. Lint
 ```
-$ pnpm --filter web lint
+$ pnpm lint
 $ eslint .
 ```
 
-### 3. `pnpm format:check`
+### 4. Format Check
 ```
-$ pnpm --filter web format:check && cargo fmt --check
+$ pnpm format:check
 $ prettier --check .
 Checking formatting...
 All matched files use Prettier code style!
 ```
 
-### 4. `pnpm check:strings`
+### 5. Guard Rails (Strings, Tokens, Contrast)
 ```
-$ node tools/check-strings.mjs
+$ pnpm check:strings
 ok   63 components have no hard-coded text
-```
 
-### 5. `pnpm check:tokens`
-```
-$ node tools/check-tokens-usage.mjs
+$ pnpm check:tokens
 ok   65 files use no raw colors
+
+$ pnpm check:contrast
+Contrast check passed: all 13 text/background token pairs meet WCAG AA (4.5:1).
 ```
 
-### 6. `pnpm check:contrast`
+### 6. Bundle Size Check
 ```
-$ node tools/check-contrast.mjs
-ok   16.57 (need 4.5)  Ink on ground
-ok   17.76 (need 4.5)  Ink on surface
-ok   15.55 (need 4.5)  Ink on neutral tint
-ok   6.13 (need 4.5)  Muted on surface
-ok   5.72 (need 4.5)  Muted on ground
-ok   5.37 (need 4.5)  Muted on neutral tint
-ok   8.99 (need 4.5)  Neutral ink on neutral tint (chips)
-ok   10.26 (need 4.5)  Neutral ink on surface
-ok   9.57 (need 4.5)  Neutral ink on ground
-ok   5.90 (need 4.5)  On accent on accent (primary button)
-ok   17.76 (need 4.5)  On ink on ink (selected tab)
-ok   5.90 (need 4.5)  Accent on surface (link)
-ok   5.51 (need 4.5)  Accent on ground (link)
-ok   8.13 (need 4.5)  Accent ink on accent tint (active state)
-ok   9.29 (need 4.5)  Accent ink on surface
-ok   5.32 (need 4.5)  Success on surface
-ok   4.67 (need 4.5)  Success on success tint (badge)
-ok   7.02 (need 4.5)  Success ink on success tint
-ok   8.40 (need 4.5)  Warning ink on warning tint
-ok   9.16 (need 4.5)  Warning ink on surface
-ok   8.55 (need 4.5)  Warning ink on ground
-ok   9.57 (need 3)  Diagram stroke on ground
-ok   8.98 (need 3)  Diagram stroke on accent tint
-ok   5.51 (need 3)  Accent on ground (active state, focus ring)
-ok   5.90 (need 3)  Accent on surface (focus ring)
-ok   5.17 (need 3)  Accent on accent tint (active state edge)
-ok   3.72 (need 3)  Warning on ground (wrong part of an answer)
-ok   3.99 (need 3)  Warning on surface
-ok   3.66 (need 3)  Warning on warning tint (label edge)
-ok   4.96 (need 3)  Success on ground (valid, saved)
-ok   4.27 (need 3)  Border strong on surface (input edge)
-ok   3.98 (need 3)  Border strong on ground (input edge)
-```
-
-### 7. `pnpm --filter web exec vitest run`
-```
- RUN  v5.0.3 /home/Aldebaran64/webtomata/web
-
- ✓ src/lib/editor/conversion.wasm.test.ts (49 tests) 488ms
- ✓ src/lib/editor/compare.wasm.test.ts (6 tests) 458ms
- ✓ src/lib/editor/interaction/editor.test.ts (41 tests) 520ms
- ✓ src/lib/share/link.test.ts (15 tests) 872ms
- ✓ src/lib/questions/check.wasm.test.ts (27 tests) 594ms
- ✓ src/lib/editor/diagram/geometry.test.ts (38 tests) 892ms
- ✓ src/lib/questions/load.test.ts (32 tests) 370ms
- ✓ src/lib/editor/regex-compile.wasm.test.ts (5 tests) 159ms
- ✓ src/lib/editor/regex-simplify.wasm.test.ts (6 tests) 391ms
- ✓ src/lib/editor/run.wasm.test.ts (29 tests) 187ms
- ✓ src/lib/editor/commands.test.ts (26 tests) 371ms
- ✓ src/lib/editor/history.property.test.ts (7 tests) 1395ms
- ✓ src/lib/share/files.wasm.test.ts (6 tests | 1 skipped) 122ms
- ✓ src/lib/questions/grade.wasm.test.ts (13 tests) 279ms
- ✓ src/lib/editor/document.test.ts (32 tests) 183ms
- ✓ src/lib/i18n/i18n.test.ts (14 tests) 108ms
- ✓ src/lib/questions/question.test.ts (4 tests) 59ms
- ✓ src/lib/editor/regex-conversion.wasm.test.ts (4 tests) 200ms
- ✓ src/lib/storage/autosave.tests-field.test.ts (9 tests) 115ms
- ✓ src/lib/storage/library.test.ts (21 tests) 100ms
- ✓ src/lib/editor/history.test.ts (20 tests) 20ms
- ✓ src/lib/storage/autosave.test.ts (12 tests) 19ms
- ✓ src/lib/questions/summaries.test.ts (10 tests) 161ms
- ✓ src/lib/engine/client.test.ts (30 tests) 54ms
- ✓ src/lib/guides/load.test.ts (10 tests) 93ms
- ✓ src/lib/editor/table.test.ts (22 tests) 50ms
- ✓ src/lib/share/image.test.ts (10 tests) 18ms
- ✓ src/lib/share/open-file.wasm.test.ts (8 tests | 1 skipped) 43ms
- ✓ src/lib/questions/statement.test.ts (15 tests) 19ms
- ✓ src/lib/editor/layout-client.test.ts (9 tests) 16ms
- ✓ src/lib/storage/library.svelte.test.ts (14 tests) 21ms
- ✓ src/lib/storage/example.test.ts (7 tests) 20ms
- ✓ src/lib/questions/answer.test.ts (12 tests) 26ms
- ✓ src/lib/storage/progress.test.ts (8 tests) 16ms
- ✓ src/lib/questions/feedback-view.test.ts (12 tests) 30ms
- ✓ src/lib/storage/autosave.progress.test.ts (5 tests) 14ms
- ✓ src/lib/questions/statement-fold.test.ts (6 tests) 18ms
- ✓ src/lib/storage/question-work.test.ts (13 tests) 18ms
- ✓ src/lib/editor/tester.test.ts (11 tests) 17ms
- ✓ src/lib/questions/machine.test.ts (17 tests) 18ms
- ✓ src/lib/storage/titles.test.ts (10 tests) 16ms
- ✓ src/lib/editor/interaction/editor.link.test.ts (19 tests) 18ms
- ✓ src/lib/storage/machines.test.ts (9 tests) 16ms
- ✓ src/lib/engine/handlers.test.ts (14 tests) 16ms
- ✓ src/lib/storage/memory.test.ts (6 tests) 15ms
- ✓ src/lib/questions/list.test.ts (18 tests) 17ms
- ✓ src/lib/questions/feedback-text.test.ts (6 tests) 16ms
- ✓ src/lib/storage/migrate.test.ts (8 tests) 16ms
- ✓ src/lib/language/language-math.test.ts (16 tests) 16ms
- ✓ src/lib/editor/checker.test.ts (2 tests) 14ms
- ✓ src/lib/editor/checks.test.ts (4 tests) 14ms
- ✓ src/lib/editor/definition.test.ts (6 tests) 14ms
- ✓ src/lib/seo.test.ts (6 tests) 14ms
- ✓ src/lib/editor/conversion-text.test.ts (8 tests) 14ms
- ✓ src/lib/share/files.test.ts (11 tests) 14ms
- ✓ src/lib/lint.test.ts (1 test) 15ms
-
- Test Files  56 passed (56)
-      Tests  776 passed | 2 skipped (778)
-   Start at  04:02:10
-   Duration  4.92s (transform 2.05s, setup 0ms, collect 5.17s, tests 10.74s, environment 1ms, prepare 2.12s)
-```
-
-### 8. `pnpm build`
-```
-$ pnpm build:wasm && pnpm --filter web build
-$ wasm-pack build --target web --out-dir ../../web/src/lib/engine/wasm crates/engine-wasm
-[INFO]: Checking for the Wasm target...
-[INFO]: Compiling to Wasm...
-    Finished `release` profile [optimized] target(s) in 0.04s
-[INFO]: Installing wasm-bindgen...
-[INFO]: Optimizing wasm binaries with `wasm-opt`...
-[INFO]: Optional refmt was not run
-[INFO]: :-) Done in 0.50s
-$ vite build
-vite v8.3.4 building ssr environment for production...
-✓ 321 modules transformed.
-✓ built in 1.44s
-Prerendering
-> Using @sveltejs/adapter-static
-Wrote site to "build"
-✔ done
-```
-
-### 9. `pnpm size`
-```
+$ pnpm size
 $ node tools/check-size.mjs
-ok   initial js 101.1 kB gzip (budget 170 kB, 59% used)
-ok   wasm 193.3 kB gzip (budget 250 kB, 77% used)
+ok   initial JS index.html: 78.4 KB gzip (limit 170 KB)
+ok   initial JS panduan/berakhiran-x.html: 83.3 KB gzip (limit 170 KB)
+ok   initial JS panduan.html: 77.6 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 116.7 KB gzip (limit 170 KB)
+ok   initial JS soal/berakhiran-10.html: 116.3 KB gzip (limit 170 KB)
+ok   initial JS soal/jumlah-a-genap.html: 116.3 KB gzip (limit 170 KB)
+ok   initial JS soal/mengandung-101.html: 116.3 KB gzip (limit 170 KB)
+ok   initial JS soal.html: 79.0 KB gzip (limit 170 KB)
+ok   initial JS tentang.html: 76.9 KB gzip (limit 170 KB)
+ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
+ok   wasm _app/immutable/workers/assets/engine_wasm_bg-qpglZrwP.wasm: 206.2 KB gzip (limit 250 KB)
 ```
 
-### 10. Repeated phone specs (45 runs across 5 repetitions)
+### 7. New E2E Suite Repeated 10 Times (`--repeat-each=10`)
 ```
-$ pnpm --filter web exec playwright test --project=phone grammar-phone.spec.ts language-phone.spec.ts --repeat-each=5
+$ pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-open-cnf.spec.ts --repeat-each=10
 
-Running 55 tests using 6 workers
-  10 skipped
-  45 passed (59.6s)
+Running 60 tests using 6 workers
+
+  ✓  5 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (4.7s)
+  ✓  3 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (5.0s)
+  ✓  8 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (3.7s)
+  ✓  2 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (11.6s)
+  ✓  4 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (11.5s)
+  ✓  7 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (10.6s)
+  ✓ 11 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (4.4s)
+  ✓ 14 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (4.0s)
+  ✓ 10 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (11.7s)
+  ✓ 17 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (3.7s)
+  ✓ 13 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (11.1s)
+  ✓ 20 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (4.3s)
+  ✓ 16 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (11.0s)
+  ✓ 23 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (3.7s)
+  ✓ 19 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (11.0s)
+  ✓ 26 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (3.9s)
+  ✓ 22 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (10.9s)
+  ✓ 29 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (3.4s)
+  ✓ 25 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (10.3s)
+  ✓ 28 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (10.1s)
+  ✓ 33 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (6.7s)
+  ✓ 36 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (7.2s)
+  ✓ 39 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (6.9s)
+  ✓ 42 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (6.7s)
+  ✓ 44 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (6.9s)
+  ✓ 48 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (6.9s)
+  ✓ 51 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (7.0s)
+  ✓ 54 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (6.3s)
+  ✓ 57 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (5.0s)
+  ✓ 60 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (3.7s)
+
+  30 skipped
+  30 passed (1.1m)
 ```
 
-### 11. Desktop specs at 1280x800 (10 runs across 5 repetitions)
+### 8. WebKit Phone Cross-Browser Test
 ```
-$ pnpm --filter web exec playwright test --project=desktop grammar-phone.spec.ts language-phone.spec.ts --repeat-each=5
+$ pnpm --filter web exec playwright test --project=webkit-phone e2e/cross/workstation-phone.spec.ts
 
-Running 55 tests using 6 workers
-  45 skipped
-  10 passed (21.0s)
+Running 2 tests using 2 workers
+
+  ✓  2 [webkit-phone] › e2e/cross/workstation-phone.spec.ts:69:1 › language phone layout on WebKit phone: tab navigation and axe (4.8s)
+  ✓  1 [webkit-phone] › e2e/cross/workstation-phone.spec.ts:30:1 › grammar phone layout on WebKit phone: tab navigation, shortcut, and axe (5.0s)
+
+  2 passed (6.1s)
 ```
 
-### 12. `webkit-phone` cross-browser tests
+### 9. Full Web Unit Test Suite
 ```
-$ pnpm --filter web exec playwright test --project=webkit-phone
+$ pnpm test:web
+$ pnpm --filter web test
+$ vitest run
 
-Running 133 tests using 6 workers
-  14 skipped
-  119 passed (2.2m)
+ Test Files  90 passed (90)
+      Tests  1154 passed | 2 expected fail | 3 skipped (1159)
+   Start at  21:36:03
+   Duration  4.72s (tests 62%, transform 29%, import 9%)
 ```

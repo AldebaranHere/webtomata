@@ -3,7 +3,13 @@
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import GrammarMathDisplay from './GrammarMathDisplay.svelte';
 
-	let { trace }: { trace: CnfTransformationTrace } = $props();
+	let {
+		trace,
+		onopen
+	}: {
+		trace: CnfTransformationTrace;
+		onopen?: () => void;
+	} = $props();
 
 	let currentStepIdx = $state<number>(0);
 
@@ -108,6 +114,14 @@
 				</div>
 				<GrammarMathDisplay grammar={step.grammar} />
 			</div>
+		</div>
+	{/if}
+
+	{#if onopen && currentStepIdx === totalSteps - 1}
+		<div class="stepper-actions">
+			<button type="button" class="btn-open-result" onclick={onopen}>
+				{t('grammar.open_cnf_as_new')}
+			</button>
 		</div>
 	{/if}
 </div>
@@ -311,6 +325,39 @@
 		color: var(--color-ink-muted);
 	}
 
+	.stepper-actions {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		margin-top: var(--space-2);
+	}
+
+	.btn-open-result {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: var(--space-2) var(--space-4);
+		border-radius: var(--radius-md);
+		border: 0;
+		background: var(--color-accent);
+		color: var(--color-on-accent);
+		font-family: var(--font-ui);
+		font-weight: var(--weight-strong);
+		font-size: var(--text-sm);
+		cursor: pointer;
+		transition: background 0.15s ease;
+		min-height: 36px;
+	}
+
+	.btn-open-result:hover {
+		background: var(--color-accent-ink);
+	}
+
+	.btn-open-result:focus-visible {
+		outline: var(--focus-ring-width) solid var(--focus-ring-color);
+		outline-offset: var(--focus-ring-offset);
+	}
+
 	@media (max-width: 900px) {
 		.stepper-container {
 			height: auto;
@@ -344,6 +391,16 @@
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
+		}
+
+		.stepper-actions {
+			margin-top: var(--space-3);
+		}
+
+		.btn-open-result {
+			width: 100%;
+			min-height: var(--target-min);
+			padding: var(--space-3) var(--space-4);
 		}
 	}
 </style>
