@@ -723,7 +723,8 @@ Expected: all pass; the `.wasm` stays within the budget. Paste the real output i
 
 ## Task T-017 — The two local-reference tests keep only finite automata
 
-**Status:** in-progress
+**Status:** done
+**Commit:** `aba03fe`
 **Owner:** worker
 **Branch:** `task/T-017-local-reference-tests`
 
