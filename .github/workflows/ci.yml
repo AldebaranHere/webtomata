@@ -23,7 +23,72 @@ env:
 # green only if every one of them is (docs/decisions/0027). So the ruleset never changes when a job
 # is added: tools/check-workflows.mjs makes sure that `web` waits for every job of this file.
 jobs:
+  scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      docs_only: ${{ steps.diff.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check changed paths
+        id: diff
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Push to main is never docs-only: production always runs full CI
+          if [ "$REF_NAME" = "main" ]; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BASE=""
+          HEAD=""
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BASE="$PR_BASE_SHA"
+            HEAD="$PR_HEAD_SHA"
+          elif [ "$EVENT_NAME" = "push" ]; then
+            if [ -n "$PUSH_BEFORE" ] && [ "$PUSH_BEFORE" != "0000000000000000000000000000000000000000" ]; then
+              BASE="$PUSH_BEFORE"
+              HEAD="$PUSH_SHA"
+            fi
+          fi
+
+          if [ -z "$BASE" ] || [ -z "$HEAD" ]; then
+            echo "Cannot determine diff range; falling back to full CI."
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Diffing $BASE ... $HEAD"
+          DOCS_ONLY="false"
+          if git cat-file -e "$BASE" 2>/dev/null && git cat-file -e "$HEAD" 2>/dev/null; then
+            if RESULT=$(git diff --name-only -z "$BASE" "$HEAD" | node tools/docs-only.mjs 2>/dev/null); then
+              if [ "$RESULT" = "true" ]; then
+                DOCS_ONLY="true"
+              fi
+            fi
+          else
+            echo "Commits not found in local clone; falling back to full CI."
+          fi
+
+          echo "docs_only=$DOCS_ONLY"
+          echo "docs_only=$DOCS_ONLY" >> "$GITHUB_OUTPUT"
+
   rust:
+    needs: scope
+    if: needs.scope.outputs.docs_only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -43,6 +108,8 @@ jobs:
   # The checks that need no browser: the tests, the linters and the guard rails, and the production
   # build with its size budgets and the smoke test.
   checks:
+    needs: scope
+    if: needs.scope.outputs.docs_only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -85,6 +152,8 @@ jobs:
   # finds no accessibility violation (docs/decisions/0018-playwright.md). Uses the Chrome of the
   # runner. The tests are split over four computers; every test runs in exactly one of them.
   e2e:
+    needs: scope
+    if: needs.scope.outputs.docs_only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -112,6 +181,8 @@ jobs:
 
   # The performance, accessibility, best-practices and SEO scores of the budgets (CLAUDE.md, section 7).
   lighthouse:
+    needs: scope
+    if: needs.scope.outputs.docs_only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -141,6 +212,8 @@ jobs:
   # rights. One computer for each browser, so that each one downloads only its own system libraries.
   # The browser is downloaded by Playwright, at the exact version of the lockfile.
   cross-browser:
+    needs: scope
+    if: needs.scope.outputs.docs_only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     strategy:
@@ -195,21 +268,18 @@ jobs:
 
   # The gate. The ruleset requires this check by its name, `web`. It runs also when a job before it
   # failed or was cancelled (`if: always()`), because a skipped required check counts as passed, and
-  # it is green only if every job before it is green.
+  # it is green only if every job before it is green (or legitimately skipped for docs-only PRs).
   web:
     if: always()
-    needs: [checks, e2e, lighthouse, cross-browser]
+    needs: [scope, checks, e2e, lighthouse, cross-browser]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Every job before the gate must have succeeded
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Evaluate gate
         env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
-        run: |
-          echo "results: $RESULTS"
-          for result in $RESULTS; do
-            if [ "$result" != "success" ]; then
-              echo "A job did not succeed ($result)."
-              exit 1
-            fi
-          done
+          DOCS_ONLY: ${{ needs.scope.outputs.docs_only }}
+          NEEDS_JSON: ${{ toJson(needs) }}
+        run: node tools/ci-gate.mjs
