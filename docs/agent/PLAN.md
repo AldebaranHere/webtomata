@@ -4,7 +4,7 @@
 > `todo` means ready: every field is written and the human approved it. Several tasks can be `todo` at the same time. The worker does one task at a time: the one that the human names in the start prompt ("Do task T-xxx"). The worker sets it to `in-progress` in the first commit of its own PR and to `done` in the last. The planner does not open a pull request only to change a status.
 > The blank task template is in `PLAN-TEMPLATE.md`.
 
-**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL.
+**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other.
 
 Status legend: `proposed` | `todo` | `in-progress` | `blocked` | `done` | `rejected`
 
@@ -666,6 +666,195 @@ Expected: the tests pass; the two last commands print `true` and `false`. Paste 
 
 ---
 
+## Task T-019 — One limit and one translated message for the length of a CYK string
+
+**Status:** todo (written on 2026-11-04; the owner approves it by merging the PR that adds it)
+**Owner:** worker
+**Branch:** `task/T-019-cyk-input-limit`
+
+**Goal:** The CYK tester has three different limits and three different ways to fail. `CykParser::MAX_INPUT_LEN` is 100 **characters** (`crates/engine-core/src/grammar/cyk.rs`). The API check in `cyk_parse` (`crates/engine-core/src/api.rs`, a literal `256`) calls `too_long`, which compares `text.len()`, the number of **bytes**, although its label says "input characters". So: a word of 101 to 256 bytes passes the API and fails in the parser with an Indonesian **sentence** (`api.cyk_failed` with that sentence as `detail`); a longer word fails in the API with `machine.limit_exceeded`, whose text says "the machine in this file is too big", which is wrong here; and `GrammarCykTester.svelte` shows `params.detail` or, when there is none, the **raw key**. A student sees an Indonesian sentence in the English interface, or the text `machine.limit_exceeded`. Make it one limit (100 characters) and one message that the UI translates.
+
+**Scope (in):**
+- `crates/engine-core/src/api.rs`, `cyk_parse`: check `input_word.chars().count()` against `CykParser::MAX_INPUT_LEN` (no literal `256`). When it is too long, return a message with the new key `grammar.cyk_input_too_long` and the parameters `limit` (100) and `length` (the number of characters). Keep the parser's own check in `CykParser::parse` for native callers; through the API it can no longer be reached. The engine produces no sentence.
+- `web/src/lib/grammar/GrammarCykTester.svelte`: show a known engine message as text through the message files, the way the editor does (`web/src/lib/editor/interaction/editor.ts` line 148 uses `Object.hasOwn(messages, error.key)`; copy the pattern, not the code). For a key that is not in the message files, keep showing what it shows today. Do not change the other errors of this tester (see the finding below).
+- Strings in `id` and `en`: `grammar.cyk_input_too_long` = "String terlalu panjang untuk diuji ({length} karakter; paling banyak {limit})." / "The string is too long to test ({length} characters; at most {limit}).". Wording is the planner's; if the worker thinks it reads badly, say so in `REPORT.md`. No new Indonesian term.
+- Rust tests first (`crates/engine-core/tests/`): (a) 100 characters give no limit message; (b) 101 characters of `a` give the key `grammar.cyk_input_too_long` with `limit` 100 and `length` 101; (c) 101 characters of `λ` (202 bytes, under the old 256) also give it; (d) 60 characters of `λ` (120 bytes, over 100 bytes) give **no** limit message: the limit counts characters, not bytes; (e) the same message for 300 and for 5000 characters.
+- A web test (Vitest or Playwright, the worker chooses the smaller one that proves it): with the interface in `id` and in `en`, a 101-character word shows the translated sentence, not a key and not an engine sentence.
+
+**Non-goals (out):**
+- No change to the limit of 100, to the parser's algorithm, to the 8192-character limit of the grammar text, or to any other error of the grammar tester.
+- The `too_long` helper still counts bytes for its other callers; only the CYK word check changes.
+
+**Finding, not in scope:** the other errors of the grammar workstation have the same fault. `GrammarError` has `Display` with Indonesian sentences, and `api.invalid_grammar` and `api.cyk_failed` pass such a sentence as `detail`, which the UI shows as it is (also in English). This breaks principle 6 of `CLAUDE.md` (the engine never produces sentences). It is a larger task: backlog item **T-028**.
+
+**Files expected to touch:** `crates/engine-core/src/api.rs`, `crates/engine-core/tests/api.rs` (or the grammar tests), `web/src/lib/grammar/GrammarCykTester.svelte`, `web/src/lib/i18n/id.ts`, `web/src/lib/i18n/en.ts`, one web test, `docs/agent/REPORT.md`.
+
+**Design reference:** none (no new screen; the error appears where it appears today).
+
+**Acceptance criteria:**
+- AC1: the five Rust tests above pass, and the literal `256` is gone from `cyk_parse`.
+- AC2: in `id` and in `en` a 101-character word shows the translated sentence with the numbers 101 and 100.
+- AC3: a word of 100 characters is tested as before.
+- AC4: `check:strings` passes; the new key exists in both files.
+- AC5: deliberate break: put the `256` and the byte count back; tests (c) and (d) fail. Show it, then restore.
+
+**Verification (Mode A; in Mode B wrap each in the bridge):**
+```
+cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+wasm-pack test --node crates/engine-wasm
+pnpm build:wasm && pnpm --filter web exec vitest run
+pnpm check && pnpm lint && pnpm format:check && pnpm check:strings
+pnpm build && pnpm size
+pnpm test:e2e
+```
+Expected: all pass; the `.wasm` stays within the budget. Paste the real output into `REPORT.md`.
+
+**Rollback:** `git revert <sha>`.
+
+**Depends on:** none.
+
+**Notes for worker:** Write the Rust tests first and show (b) failing before you change `api.rs`. The wording of the sentence is the only thing here that is not code: do not invent other text.
+
+---
+
+## Task T-017 — The two local-reference tests keep only finite automata
+
+**Status:** todo (written on 2026-11-04; the owner approves it by merging the PR that adds it)
+**Owner:** worker
+**Branch:** `task/T-017-local-reference-tests`
+
+**Goal:** `web/src/lib/share/files.wasm.test.ts` and `web/src/lib/share/open-file.wasm.test.ts` read the top level of `REFERENCES/JFF-FILES` and assume that the folder holds finite automata: each ends with `expect(finite).toBeGreaterThan(0)`. On 2026-11-02 one Turing machine file at the top level made the pre-push hook fail ("0 finite automata found"). The folder is private and changes with the owner's course files, so the tests must not depend on what it holds. Today the top level has no `.jff` file (only sub-folders), so both tests are skipped; the fault is waiting for the next file the owner saves there. Since 2026-11-04 the worker's clone has a copy of `REFERENCES/`, so the hook there reads it.
+
+**Scope (in):**
+- One small helper, for the two tests, that lists the `.jff` files of the top level of the folder and keeps only those whose `<type>` is `fa` (read the type from the text; do not depend on the engine's answer to decide what to keep). It returns an empty list when the folder is absent. Put it in a test-only file (for example `web/src/lib/share/local-jff.ts`, not imported by the app).
+- Both tests use it: `describe.skipIf(list.length === 0)`, and no `expect(finite).toBeGreaterThan(0)`. The part that checks that a file of another type is named `jff.unsupported_type` stays, but it reads the other files of the folder and passes when there are none.
+- A unit test of the helper with a temporary folder (`mkdtemp`) and small original files written by the test: (a) a folder with only a Turing machine file gives an empty list, so the local tests skip; (b) one `fa` file and one `turing` file give exactly the `fa` file; (c) a missing folder gives an empty list; (d) a file that is not `.jff` and a sub-folder are ignored; (e) a damaged file with no `<type>` is ignored, no throw. The files of the test are written by the test; nothing from `REFERENCES/` is copied into the repository.
+
+**Non-goals (out):**
+- Do not touch, move or copy anything in `REFERENCES/` (worker rule 11 in `AGENTS.md`). Do not add course files as fixtures. Do not change the other tests of those two files.
+
+**Files expected to touch:** `web/src/lib/share/files.wasm.test.ts`, `web/src/lib/share/open-file.wasm.test.ts`, the new helper and its test, `docs/agent/REPORT.md`.
+
+**Design reference:** none.
+
+**Acceptance criteria:**
+- AC1: the five unit tests above pass.
+- AC2: with the folder as it is today (no `.jff` at the top level) both local tests are skipped, not failed.
+- AC3: deliberate break: make the helper keep every `.jff` again; test (b) fails. Show it, then restore.
+- AC4: the pre-push hook passes in the worker's clone.
+
+**Verification:**
+```
+pnpm --filter web exec vitest run src/lib/share
+pnpm build:wasm && pnpm --filter web exec vitest run
+pnpm check && pnpm lint && pnpm format:check
+```
+Expected: all pass. Paste the real output into `REPORT.md`, with the "skipped" count of the two local tests.
+
+**Rollback:** `git revert <sha>`.
+
+**Depends on:** none.
+
+**Notes for worker:** You cannot test against a Turing machine file in the real folder (it is read-only to you). The temporary folder in the test is the proof.
+
+---
+
+## Task T-025 — Landmarks on a laptop, tab panels on a phone
+
+**Status:** todo (written on 2026-11-04; the owner approves it by merging the PR that adds it)
+**Owner:** worker
+**Branch:** `task/T-025-workstation-landmarks`
+
+**Goal:** Before T-016 the three columns of the grammar and the language workstations were an `aside` and two `section` elements with a label, so a screen reader found three landmarks. T-016 made them `div role="tabpanel"` with `aria-labelledby` at every width. Above 900 px the tab strip is hidden, so a screen-reader user finds tab panels that belong to no tab list. Give each width the right roles: landmarks on a laptop, tab panels on a phone.
+
+**Scope (in):**
+- `web/src/lib/grammar/GrammarWorkstation.svelte` and `web/src/lib/language/LanguageWorkstation.svelte`: one reactive "phone layout" state from `window.matchMedia('(max-width: 900px)')`, read after mount, updated on change (follow the `matchMedia` use in `web/src/lib/editor/SidePanel.svelte`). It uses the **same** boundary as the CSS and as `WorkstationPhoneTabs.svelte`; read both so that exactly one width is not wrong.
+- While it is true (phone): the columns keep `role="tabpanel"` and `aria-labelledby` as today.
+- While it is false (laptop): no `role="tabpanel"` and no `aria-labelledby` on the three columns. The library column is a complementary landmark (`role="complementary"` or an `aside`) with its name; the editor column and the results column are region landmarks (`role="region"` or a `section`) with their names. Keep the existing `aria-label` texts (they are already in `id` and `en`).
+- The inner CNF and CYK panels of the grammar results column (`grammar-pane-cnf`, `grammar-pane-cyk`) have a visible tab strip of their own on a laptop; leave them as they are.
+- Before the first read (prerender and first paint) use the laptop roles. A phone gets the tab panel roles right after mount.
+- No new string, no visual change, no new token.
+
+**Non-goals (out):**
+- No change to the layout, to the tab strip, to the splitters, to the CSS breakpoint, or to the keyboard behavior. No change to the other workstation components.
+
+**Files expected to touch:** the two workstation components, `web/e2e/grammar-phone.spec.ts`, `web/e2e/language-phone.spec.ts` (or one new spec), `web/e2e/cross/workstation-phone.spec.ts`, `docs/agent/REPORT.md`.
+
+**Design reference:** `design/screens/workstation-phone-layout.md` (the tab strip). No new design.
+
+**Acceptance criteria:**
+- AC1: at 1280 × 800, in each workstation: no element has `role="tabpanel"` among the three columns; there is exactly one complementary landmark and two region landmarks, each with its accessible name; the tab strip is not visible.
+- AC2: at 390 × 844: the tab strip is visible; the shown column has `role="tabpanel"` and its `aria-labelledby` points to its tab; no column is a landmark.
+- AC3: the roles change when the window is resized across 900 px, without a reload (the test calls `setViewportSize` twice, once on each side of the boundary, and also at 900 and 901).
+- AC4: axe reports no violation at both widths, on every tab of the phone layout, on Chromium and on WebKit phone.
+- AC5: deliberate break: leave the roles of the phone on at every width; AC1 fails. Show it, then restore.
+
+**Verification:**
+```
+pnpm check && pnpm lint && pnpm format:check && pnpm check:strings && pnpm check:tokens
+pnpm build && pnpm size
+pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-phone.spec.ts e2e/language-phone.spec.ts --repeat-each=5
+pnpm test:e2e
+pnpm test:e2e:cross
+```
+Expected: all pass. Paste the real output into `REPORT.md`.
+
+**Rollback:** `git revert <sha>`.
+
+**Depends on:** none (T-016 is merged).
+
+**Notes for worker:** The risk is the boundary: a width where the CSS shows the tabs but the roles are the laptop roles, or the reverse. Test 900 and 901 on purpose. Do not rely on `window.innerWidth` if the CSS media query counts the scrollbar differently; read `matchMedia`.
+
+---
+
+## Task T-013 — Preset text in `id` and `en`, and readable rule chips
+
+**Status:** todo (written on 2026-11-04; the owner approves it by merging the PR that adds it)
+**Owner:** worker
+**Branch:** `task/T-013-preset-text-and-rule-chips`
+
+**Goal:** Two small faults in the grammar and language workstations. (1) The preset titles and descriptions are Indonesian only: `web/src/lib/grammar/presets.ts` has `title` and `description` in Indonesian; `web/src/lib/language/presets.ts` has `name` in Indonesian and `descriptionId`/`descriptionEn`. So with the interface in English a student reads Indonesian titles, which breaks principle 5 of `CLAUDE.md` (every user-facing string in `id` and `en`). Also the default title of a new custom grammar, `Tata Bahasa ${id}`, is written in `GrammarWorkstation.svelte`. (2) The rule chips of the CNF stepper join the symbols without spaces (`formatRule` in `GrammarCnfStepper.svelte`), so a rule reads `S → T_aST_b`, which a student cannot read as `S → T_a S T_b`.
+
+**Scope (in):**
+- Presets: follow the pattern that `language/presets.ts` already uses (a field for each language, chosen with `getLocale()`), not a new mechanism. Grammar presets: `title` becomes `titleId` and `titleEn`, `description` becomes `descriptionId` and `descriptionEn`. Language presets: `name` becomes `nameId` and `nameEn`. Update every place that reads them (search for `.title`, `.description` and `.name` of a preset; the e2e tests select cards by title, so check `web/e2e`). The Indonesian text does not change, so with the default locale nothing changes on screen. The English text is written by the worker, in plain words; names that are only a formula may be equal in both fields. Phase names: "Fase 4" is "Phase 4".
+- A unit test for each preset file: every preset has a non-empty `Id` and `En` field for each text, and the `En` text is not equal to the `Id` text unless the text has no letters other than math symbols.
+- The default title of a new custom grammar: a message key (`grammar.default_custom_title`, with the parameter `id`) in `id` and `en`, used when the grammar is created. The stored title is then the user's text and does not change when the locale changes. Titles of the form `<name> (CNF)` of T-023 keep working.
+- Rule chips: one pure function, for example `formatRuleDisplay(rule)` next to `grammarToText` in `web/src/lib/grammar/grammar-text.ts`, that returns `head → ` and the body with one space between every two symbols, and `λ` for an empty body (the same symbol the chip shows today). The stepper uses it. This is only the text on the chip; no key, no rule and no engine data changes.
+- New Indonesian wording: only the new key above; mark nothing in the glossary unless a new term appears.
+
+**Non-goals (out):**
+- No change to the Indonesian text of the presets, to the preset grammars or formulas, to the CNF phases, or to the math display (`GrammarMathDisplay`). No new preset. No change to the stored format of custom grammars.
+
+**Files expected to touch:** `web/src/lib/grammar/presets.ts`, `web/src/lib/language/presets.ts`, their tests, `web/src/lib/grammar/grammar-text.ts` and its test, `GrammarCnfStepper.svelte`, `GrammarWorkstation.svelte`, `LanguageWorkstation.svelte`, `id.ts`, `en.ts`, the e2e specs that select a preset by title, `docs/agent/REPORT.md`.
+
+**Design reference:** none (same layout).
+
+**Acceptance criteria:**
+- AC1: the unit tests for the presets pass; each preset of both files has the four (grammar) or three (language) text fields in both languages.
+- AC2: with the interface in `en` the library of each workstation shows English titles and descriptions; in `id` it shows exactly what it shows today.
+- AC3: `formatRuleDisplay` gives `S → T_a S T_b` for the rule `S → T_a S T_b`, `S → λ` for an empty body, and one space between every two symbols for a body of one, two and three symbols; the stepper chips use it.
+- AC4: a new custom grammar gets the title from the key, in the locale of the moment.
+- AC5: the e2e tests that select a preset by title still pass.
+- AC6: `check:strings` passes.
+- AC7: deliberate break: join the chip symbols without spaces again; AC3 fails. Show it, then restore.
+
+**Verification:**
+```
+pnpm --filter web exec vitest run src/lib/grammar src/lib/language
+pnpm check && pnpm lint && pnpm format:check && pnpm check:strings
+pnpm build && pnpm size
+pnpm test:e2e
+```
+Expected: all pass. Paste the real output into `REPORT.md`.
+
+**Rollback:** `git revert <sha>`. Custom grammars that were saved keep their titles: they are plain text.
+
+**Depends on:** none (T-023 is merged; it uses the `<name> (CNF)` title).
+
+**Notes for worker:** Search first (`grep -rn "\.title\|\.description\|\.name" web/src/lib/grammar web/src/lib/language web/e2e`) so that no reader of the old field is left. Do not do T-013 and T-025 in one branch: both touch the two workstation components.
+
+---
+
 ## Planner task P-001 — As-built spec of the grammar workstation, the language workstation and the switcher
 
 **Status:** done (PR 117, merged on 2026-11-02; the phone layout became task T-016)
@@ -686,17 +875,18 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 
 ## Backlog (`proposed`, not dispatchable until the planner specifies the missing fields)
 
-**A. Clean up (after P-001 is approved)**
+**A. Clean up (P-001 is done)**
 - **T-010** e2e and axe tests for the grammar workstation (build a grammar, run the six phases, test a string with CYK; laptop and phone).
 - **T-011** e2e and axe tests for the language workstation and the workstation switcher (keyboard, 44 px targets).
 - **T-012** A test and, if needed, a fix for the panel drag handle on a phone (the `pointer-events` change in PR 105 has no test).
-- **T-016** The phone layout of the grammar and the language workstations: specified in its own task block above, `proposed` until the owner approves the design.
+- **T-016** The phone layout of the grammar and the language workstations: done (PR 121).
 - **T-015** The UI switch between the course version and the minimized version of the CNF conversion (needs P-002 approved, and T-014 done).
-- **T-013** Check whether preset titles and descriptions of the grammar and language workstations belong in the i18n files (they are plain Indonesian text in `presets.ts`), and move them if so. Also make the rule chips readable (`S → T_aST_b` has no spaces).
+- **T-013** Preset text in `id` and `en`, and readable rule chips: specified in its own task block above (`todo`).
 - **T-024** Bigger touch areas for the rule boxes of the grammar Editor on a phone. The left-hand box is 64 × 26 px and each alternative box is 45 × 22 px (measured in the review of T-016). The design needs the owner's approval first, because the matrix row layout may change.
-- **T-025** Landmarks of the two workstations on a laptop. T-016 turned the three columns (`aside` and `section` with a label) into `div role="tabpanel"` on every screen size, so on a laptop a screen reader finds tab panels without tabs. Use the landmark elements above 900 px and the tab panel roles below it (for example with one `matchMedia` state), and test both.
-- **T-019** CYK input limits: the parser stops at 100 characters (`CykParser::MAX_INPUT_LEN`) but the API accepts up to 256 (`api.rs`), so a string of 101 to 256 characters reaches the parser and fails with a different message. Use one constant and one message (found by the report of T-004).
-- **T-017** Make the two local-reference tests (`web/src/lib/share/files.wasm.test.ts` and `open-file.wasm.test.ts`) tolerate other machine types. They read the top level of `REFERENCES/JFF-FILES` and assume every `.jff` there is a finite automaton, so one Turing machine file at the top level made the pre-push hook fail on 2026-11-02 (0 finite automata found). They should keep only files whose type is `fa`, and skip when there are none.
+- **T-025** Landmarks on a laptop, tab panels on a phone: specified in its own task block above (`todo`).
+- **T-019** One limit and one translated message for the length of a CYK string: specified in its own task block above (`todo`).
+- **T-017** The two local-reference tests keep only finite automata: specified in its own task block above (`todo`).
+- **T-028** The grammar engine's errors carry Indonesian sentences. `GrammarError` has `Display` with Indonesian text, and `api.invalid_grammar` and `api.cyk_failed` pass it as `detail`, which the grammar UI shows as it is, also in English; for a key without `detail` it shows the raw key. This breaks principle 6 of `CLAUDE.md`. Make the parser, the CNF transformer and CYK return typed errors with a message key and parameters, and translate them in the UI. Larger than T-019 (found while specifying T-019); needs its own spec and a test for every error.
 
 **B. Grammar additions** (a wireframe the owner approves comes first for T-020)
 - **T-020** Multi-string test for grammars, like the FSM test list, using the CYK parser.
