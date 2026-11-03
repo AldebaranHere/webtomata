@@ -6,7 +6,7 @@
 - id: T-026
 - title: CNF helper variables that the grammar parser can read back
 - branch: `task/T-026-readable-cnf-helper-names`
-- pull request: https://github.com/AldebaranHere/webtomata/pull/127
+- pull request: https://github.com/AldebaranHere/webtomata/pull/126
 
 ## What changed
 - `crates/engine-core/src/grammar/cnf.rs`:
