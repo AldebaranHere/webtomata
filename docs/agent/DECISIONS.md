@@ -14,6 +14,13 @@ Format:
 
 ---
 
+## 2026-11-04 — Four small tasks specified: T-019, T-017, T-025, T-013 (and T-028 found)
+- Decider: planner (the owner approves by merging the PR)
+- Context: The owner asked for the specs of the four small items of the backlog while T-002 runs.
+- Decision: T-019, T-017, T-025 and T-013 are `todo`. While reading the code for T-019 the planner found that the grammar engine's errors are Indonesian sentences that the UI shows as they are (and a raw key when there is no `detail`); that is a larger task, T-028, in the backlog. T-013 follows the pattern that `language/presets.ts` already has (a text field for each language) and does not add a new mechanism. T-019 adds one message key, `grammar.cyk_input_too_long`, with wording written by the planner.
+- Alternatives considered: one big task for all grammar errors now (too large for one review); moving preset text into the message files (a second mechanism next to the one that exists).
+- Reversible? yes
+
 ## 2026-11-04 — Lessons from the review of T-050 (the CI fast path)
 - Decider: planner
 - Context: The first spec of T-050 had two gaps that the worker and the review found. The spec said that `audit.yml` and `fuzz.yml` get `paths-ignore`, but both already have a positive `paths` filter (GitHub forbids both on one event), so they never run for a documents-only change. And the spec did not say how to list the changed files: `git diff --name-only` detects renames, so a code file moved into `docs/` listed only the new path and would have been classed as documents-only.
