@@ -6,8 +6,8 @@
 - id: T-023
 - title: Open the CNF result as a new grammar
 - branch: `task/T-023-open-cnf-as-grammar`
-- commit: pending PR
-- pull request: pending PR
+- commit: `3ca949d`
+- pull request: https://github.com/AldebaranHere/webtomata/pull/124
 
 ## What changed
 - `web/src/lib/grammar/grammar-text.ts` (new):
