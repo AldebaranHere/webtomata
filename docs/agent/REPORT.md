@@ -6,7 +6,7 @@
 - id: T-050
 - title: A fast path in CI for pull requests that change only documents
 - branch: `task/T-050-ci-docs-only-fast-path`
-- pull request: (to be created)
+- pull request: https://github.com/AldebaranHere/webtomata/pull/129
 - status: done
 
 ## What changed
