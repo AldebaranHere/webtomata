@@ -74,7 +74,8 @@ Expected: the two typecheck commands and `pnpm check` end with `svelte-check fou
 
 ## Task T-002 — Remove the stale `tokio` audit ignore
 
-**Status:** in-progress
+**Status:** done
+**Commit:** `9dcad9d`
 **Owner:** worker
 **Branch:** `task/T-002-tokio-audit`
 
