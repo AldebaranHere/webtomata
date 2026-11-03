@@ -27,9 +27,9 @@ Three roles:
 
 ## Start prompt for the worker
 
-> You are the WORKER. First, run the WSL check from `AGENTS.md` ("Where the worker runs", rule 3): it must print `Linux` and `v24.21.0`; if not, stop and tell me. Read `AGENTS.md` and `.antigravity/rules.md` in full. Then do task T-xxx from `docs/agent/PLAN.md` (replace T-xxx by the id): it must have `Status: todo`, its date must have come, and the tasks it depends on must be done and merged; if not, stop and tell me why. Restate its id, goal, scope, non-goals and the exact verification commands. Do not edit anything until I answer "Confirmed. Go."
+> You are the WORKER. First, run the WSL check from `AGENTS.md` ("Where the worker runs", rule 3): it must print `Linux` and `v24.21.0`; if not, stop and tell me. Then, in `~/webtomata`, run `git status --short`: it must print nothing; if not, stop and tell me. Then run `git fetch origin && git switch staging && git pull --ff-only`, so that you read the current files. Read `AGENTS.md` and `.antigravity/rules.md` in full. Then do task T-xxx from `docs/agent/PLAN.md` (replace T-xxx by the id): it must have `Status: todo`, its date must have come, and the tasks it depends on must be done and merged; if not, stop and tell me why. Restate its id, goal, scope, non-goals and the exact verification commands. Do not edit anything until I answer "Confirmed. Go."
 
-If Antigravity already loads `.antigravity/rules.md` on its own, the first two sentences are repeated work, which is harmless.
+If Antigravity already loads `.antigravity/rules.md` on its own, reading it again is harmless. The sync comes before the reading on purpose: a clone that is still on an old branch would show an old `AGENTS.md`.
 
 ## Prompt for the planner
 
