@@ -4,7 +4,7 @@
 > `todo` means ready: every field is written and the human approved it. Several tasks can be `todo` at the same time. The worker does one task at a time: the one that the human names in the start prompt ("Do task T-xxx"). The worker sets it to `in-progress` in the first commit of its own PR and to `done` in the last. The planner does not open a pull request only to change a status.
 > The blank task template is in `PLAN-TEMPLATE.md`.
 
-**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL.
+**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL.
 
 Status legend: `proposed` | `todo` | `in-progress` | `blocked` | `done` | `rejected`
 
@@ -527,6 +527,74 @@ Expected: all pass. Run the new e2e tests 10 times (they use local storage). Pas
 **Depends on:** T-016 done and merged (it changes the same two components).
 
 **Notes for worker:** Look at how the FSM panel places "Buka sebagai mesin baru" and copy the pattern, not the code. The sticky stepper header of T-016 must keep working. Do not touch the CNF engine: this task reads `cnfTrace.finalGrammar` only.
+
+---
+
+## Task T-026 — CNF helper variables that the grammar parser can read back
+
+**Status:** todo (the owner chose this fix on 2026-11-03; start it after T-023 is merged)
+**Owner:** worker
+**Branch:** `task/T-026-readable-cnf-helper-names`
+
+**Goal:** CNF phase 5 names the helper variable of a terminal `c` as `T_c` (`cnf.rs`, `phase5_isolate_terminals`). For a letter or a digit this is fine (`T_a`, `T_0`). For a terminal such as `(` or `+` the name is `T_(`, which the grammar parser cannot read: it reads `T_` and then the terminal `(`. So the CNF result that the student sees is not the same grammar as the text that T-023 stores when the student opens the result as a new grammar. Make every helper name readable by the parser, so that the text and the grammar always agree.
+
+**Scope (in):**
+- `crates/engine-core/src/grammar/cnf.rs`, phase 5: if the terminal is an ASCII letter or digit, keep the name `T_<c>` (no visible change for existing grammars). Otherwise use `T_p<n>`, where `n` is 1, 2, 3 in the order in which the engine first needs a helper for such a terminal (the order is fixed by the sort of the rules, so the result is the same every time). Keep `fresh_variable_name` as the guard against a name that already exists. A name must match what `parser.rs` reads as one variable: an uppercase letter, `_`, then letters or digits.
+- The step trace must still say which terminal each helper stands for (the rule `T_p1 -> (` shows it). If the current message parameters do not, add a parameter; do not put a sentence in the engine.
+- Rust tests first: (a) `T_a`, `T_0` names are unchanged for the existing presets (the CNF results of all presets except `CFG_PAREN` are equal to what they are today); (b) `CFG_PAREN` gives `T_p1` and `T_p2` (or the names your rule gives) and no name with a non-alphanumeric character; (c) a `proptest` property: for random grammars over letters, digits and the characters `( ) + * , ;`, every variable of `finalGrammar` is read back as exactly one variable when you write the rules with `grammarToText`-style spacing and parse them again, and the rule set is equal; (d) a grammar that already has a variable `T_p1` still gets a fresh name.
+- `web/src/lib/grammar/grammar-text.wasm.test.ts` (from T-023): the two tests that T-023 marked `it.fails` with the comment "known until T-026" become normal passing tests (the `CFG_PAREN` round trip and its CNF idempotence). Remove the "engine finding" wording.
+- The Phase 5 description text in `id.ts` and `en.ts` (key for "Menggantikan terminal ... T_a → a") may need one more example for a symbol. Change it only if it would now be wrong; any new Indonesian wording is marked `TODO(review)` in `docs/glossary.md`.
+
+**Non-goals (out):**
+- No other CNF phase, no `S0`/`X_n` names, no parser change (that is T-027), no change to the CYK tab or the stepper layout.
+- Do not change the name of any helper that is already readable.
+
+**Files:** `cnf.rs`, the Rust tests in `crates/engine-core/tests/grammar.rs`, `grammar-text.wasm.test.ts`, maybe `id.ts`/`en.ts`, `docs/agent/REPORT.md`.
+
+**Verification:**
+```
+cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+wasm-pack test --node crates/engine-wasm
+pnpm build:wasm && pnpm --filter web exec vitest run
+pnpm check && pnpm lint && pnpm format:check && pnpm check:strings
+pnpm build && pnpm size
+pnpm test:e2e
+```
+Expected: all pass, and the `.wasm` stays within the budget in `AGENTS.md`/`CLAUDE.md` section 7. Do a deliberate break: make phase 5 use `T_{c}` for every terminal again; test (b) and the `grammar-text.wasm.test.ts` round trip for `CFG_PAREN` must fail. Paste the real output into `REPORT.md`.
+
+**Rollback:** `git revert <sha>`. Saved machines and grammars are plain text and stay valid.
+
+**Depends on:** T-023 done and merged.
+
+**Notes for worker:** The textbook (Rich) only needs a new variable for each terminal, so the exact name is free; keep `T_a` for letters so that students still recognize it. Do not decide a different naming scheme alone: if `T_p<n>` has a problem, stop and ask.
+
+---
+
+## Task T-027 — The grammar parser reads `λ` as the empty string
+
+**Status:** todo (found in the review of T-023 on 2026-11-03; independent of T-026)
+**Owner:** worker
+**Branch:** `task/T-027-parser-lambda-empty`
+
+**Goal:** The Editor legend says that `ε`, `λ` and `^` all mean the empty string, and the presets use `λ`. But `parse_rhs_symbols` in `crates/engine-core/src/grammar/parser.rs` accepts `ε`, `^`, `\lambda`, `\epsilon`, `lambda` and `epsilon`, not the character `λ` (U+03BB). So `S -> a S b | λ` gives a rule with the terminal `λ`, not an empty rule. Make the parser accept `λ`.
+
+**Scope (in):**
+- `parser.rs`: add `trimmed == "λ"` to the empty-body check. Rust tests first: `S -> a S b | λ` gives a rule with an empty body and none with the terminal `λ`; the same for `ε` and `^`; `λ` inside a longer body (`a λ`) keeps today's behavior (say in the test what that is).
+- Check every preset that contains `λ` (`GRAMMAR_PRESETS`, and `presets.ts`): its CNF result may change, because the rule was a terminal before. For each preset whose result changes, show the old and the new result in `REPORT.md` and say which one is the correct one by the textbook meaning. Update the expectations of the tests that pinned the old result, and say so in the PR.
+- Add a wasm test: every preset parses; no preset body contains the terminal `λ` after parsing.
+
+**Non-goals (out):**
+- Do not change `grammarToText` (it keeps writing `ε`), the legend, or the CNF phases.
+
+**Files:** `parser.rs`, `crates/engine-core/tests/grammar.rs`, a wasm test in `web/src/lib/grammar/`, `docs/agent/REPORT.md`.
+
+**Verification:** as in T-026, plus `pnpm test:e2e` and `pnpm test:e2e:cross`. Do a deliberate break: remove the new check; the new parser test must fail.
+
+**Rollback:** `git revert <sha>`.
+
+**Depends on:** T-023 done and merged (it settles which symbol the button writes).
+
+**Notes for worker:** A grammar saved earlier with `λ` was read as a terminal; after this change it is read as empty. That is the meaning the legend promises, so it is a fix, but say it in the PR description.
 
 ---
 
