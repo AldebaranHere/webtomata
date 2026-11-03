@@ -6,6 +6,7 @@
 - id: T-027
 - title: The grammar parser reads `λ` as the empty string
 - branch: `task/T-027-parser-lambda-empty`
+- pull request: https://github.com/AldebaranHere/webtomata/pull/128
 - status: done
 
 ## What changed
