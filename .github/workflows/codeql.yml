@@ -7,6 +7,16 @@ name: CodeQL
 on:
   pull_request:
     branches: [main, staging]
+    paths-ignore:
+      - 'docs/**'
+      - 'design/**'
+      - '.antigravity/**'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+      - 'SECURITY.md'
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - 'LICENSE'
   push:
     branches: [main, staging]
   schedule:

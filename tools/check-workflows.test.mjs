@@ -184,29 +184,57 @@ test('a timeout of more than 30 minutes is a problem: CI must not hang for long'
 // The ruleset requires the checks `rust` and `web`. `web` is a gate: it waits for every other job of
 // ci.yml and is green only if all of them are. A skipped required check counts as passed, so the
 // gate must run when a job before it failed (`if: always()`).
+// A fast path for docs-only PRs uses a scope job, skips heavy jobs when docs_only is true, and
+// checks out in the gate.
 const ci = `
 name: CI
 on:
   pull_request:
 jobs:
+  scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: ${PIN}
+      - run: git diff --no-renames --name-only -z
   rust:
+    needs: scope
+    if: needs.scope.outputs.docs_only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: ${PIN}
   checks:
+    needs: scope
+    if: needs.scope.outputs.docs_only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: ${PIN}
   e2e:
+    needs: scope
+    if: needs.scope.outputs.docs_only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: ${PIN}
+  lighthouse:
+    needs: scope
+    if: needs.scope.outputs.docs_only != 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: ${PIN}
+  cross-browser:
+    needs: scope
+    if: needs.scope.outputs.docs_only != 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: ${PIN}
   web:
     if: always()
-    needs: [checks, e2e]
+    needs: [scope, checks, e2e, lighthouse, cross-browser]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -220,7 +248,7 @@ test('a gate job web that waits for every other job, and runs always, has no pro
 });
 
 test('a job that the gate does not wait for is a problem, so that a new job cannot be left out', () => {
-	const bad = ci.replace('needs: [checks, e2e]', 'needs: [checks]');
+	const bad = ci.replace('needs: [scope, checks, e2e, lighthouse, cross-browser]', 'needs: [scope, checks, lighthouse, cross-browser]');
 	const problems = checkCi(bad);
 	assert.equal(problems.length, 1);
 	assert.match(problems[0], /web/);
@@ -228,7 +256,7 @@ test('a job that the gate does not wait for is a problem, so that a new job cann
 });
 
 test('the job rust does not have to be in the needs of the gate: it is required by itself', () => {
-	assert.ok(!checkCi(ci.replace('needs: [checks, e2e]', 'needs: [checks, e2e, rust]')).length);
+	assert.ok(!checkCi(ci.replace('needs: [scope, checks, e2e, lighthouse, cross-browser]', 'needs: [scope, checks, e2e, lighthouse, cross-browser, rust]')).length);
 });
 
 test('a gate without if: always() is a problem: a skipped required check counts as passed', () => {
@@ -242,6 +270,132 @@ test('a ci.yml without the gate job web is a problem', () => {
 	const problems = checkCi(bad);
 	assert.equal(problems.length, 1);
 	assert.match(problems[0], /web/);
+});
+
+test('a ci.yml without the scope job is a problem', () => {
+	const bad = ci.replace(/ {2}scope:[\s\S]*? {2}rust:/, '  rust:');
+	const problems = checkCi(bad);
+	assert.ok(problems.some((p) => /scope.*missing/.test(p)));
+});
+
+test('a scope job without --no-renames is a problem', () => {
+	const bad = ci.replace('--no-renames ', '');
+	const problems = checkCi(bad);
+	assert.ok(problems.some((p) => /--no-renames/.test(p)));
+});
+
+test('a heavy job without needs: scope is a problem', () => {
+	const bad = ci.replace('    needs: scope\n    if: needs.scope.outputs.docs_only != \'true\'\n    runs-on: ubuntu-24.04\n    timeout-minutes: 20', '    if: needs.scope.outputs.docs_only != \'true\'\n    runs-on: ubuntu-24.04\n    timeout-minutes: 20');
+	const problems = checkCi(bad);
+	assert.ok(problems.some((p) => /heavy job must wait for scope/.test(p)));
+});
+
+test('a heavy job without if: needs.scope.outputs.docs_only != \'true\' is a problem', () => {
+	const bad = ci.replace('    if: needs.scope.outputs.docs_only != \'true\'\n', '');
+	const problems = checkCi(bad);
+	assert.ok(problems.some((p) => /heavy job must have "if: needs\.scope\.outputs\.docs_only != 'true'"/.test(p)));
+});
+
+const docsIgnoreList = `
+      - 'docs/**'
+      - 'design/**'
+      - '.antigravity/**'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+      - 'SECURITY.md'
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - 'LICENSE'
+`;
+
+test('codeql.yml and deploy.yml with valid paths-ignore have no problems', () => {
+	const codeql = `
+name: CodeQL
+on:
+  pull_request:
+    branches: [main, staging]
+    paths-ignore:${docsIgnoreList}
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: ${PIN}
+`;
+	assert.deepEqual(checkWorkflows([{ name: 'codeql.yml', text: codeql }]), []);
+});
+
+test('codeql.yml or deploy.yml without paths-ignore is a problem', () => {
+	const badCodeql = `
+name: CodeQL
+on:
+  pull_request:
+    branches: [main, staging]
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: ${PIN}
+`;
+	const problems = checkWorkflows([{ name: 'codeql.yml', text: badCodeql }]);
+	assert.ok(problems.some((p) => /paths-ignore equal to the allowlist/.test(p)));
+});
+
+test('codeql.yml with differing paths-ignore is a problem', () => {
+	const badCodeql = `
+name: CodeQL
+on:
+  pull_request:
+    branches: [main, staging]
+    paths-ignore:
+      - 'docs/**'
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: ${PIN}
+`;
+	const problems = checkWorkflows([{ name: 'codeql.yml', text: badCodeql }]);
+	assert.ok(problems.some((p) => /must match the docs-only allowlist exactly/.test(p)));
+});
+
+test('audit.yml with positive paths list and no allowlisted entry has no problems', () => {
+	const audit = `
+name: Audit
+on:
+  pull_request:
+    paths:
+      - "Cargo.lock"
+      - "pnpm-lock.yaml"
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: ${PIN}
+`;
+	assert.deepEqual(checkWorkflows([{ name: 'audit.yml', text: audit }]), []);
+});
+
+test('audit.yml or fuzz.yml with allowlisted entry in paths is a problem', () => {
+	const badAudit = `
+name: Audit
+on:
+  pull_request:
+    paths:
+      - "Cargo.lock"
+      - "docs/**"
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: ${PIN}
+`;
+	const problems = checkWorkflows([{ name: 'audit.yml', text: badAudit }]);
+	assert.ok(problems.some((p) => /must not include allowlisted docs path "docs\/\*\*"/.test(p)));
 });
 
 test('the gate is only asked of ci.yml', () => {
@@ -298,5 +452,5 @@ test('a pinned runner is not a problem', () => {
 });
 
 test('read rights are not a problem', () => {
-	assert.deepEqual(check(withPermission('contents: read')), []);
+	assert.deepEqual(check(withPermission('contents: read'), 'release.yml'), []);
 });

@@ -18,16 +18,20 @@
 //    `rust` (`needs: [a, b]`), and must run also when one of them failed (`if: always()`). A skipped
 //    required check counts as passed, so without `if: always()` a failed job would let a pull
 //    request merge.
+// 7. CI fast path for documents: ci.yml has a scope job, every heavy job waits for scope and has
+//    an if skipping when docs_only is true, and non-required workflows either have paths-ignore
+//    matching the allowlist or positive paths containing no allowlisted entry (docs/decisions/0033).
 // 8. `runs-on` is a pinned image (`ubuntu-24.04`), not a `-latest` label. GitHub moves `ubuntu-latest`
 //    to a new Ubuntu on a date it chooses (to Ubuntu 26 from October 2026), and the system libraries
 //    that Playwright installs for Firefox and WebKit may not exist there.
-// 7. Write rights are narrow: only cleanup-caches.yml may have `actions: write` (it deletes the
+// 9. Write rights are narrow: only cleanup-caches.yml may have `actions: write` (it deletes the
 //    caches of a closed pull request), and no workflow may have `contents: write`.
 //
 // The workflow files are read line by line, with no YAML library, so the files must keep the
 // usual shape: `jobs:` at the left edge, and each job name indented by two spaces.
 import { readdirSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { WORKFLOW_PATHS_IGNORE } from './docs-only.mjs';
 
 const DEPLOY_FILE = 'deploy.yml';
 const DEPLOY_JOB = 'deploy';
@@ -38,6 +42,9 @@ const CI_FILE = 'ci.yml';
 const GATE_JOB = 'web';
 /** Required by the ruleset on its own, so the gate does not wait for it. */
 const OWN_REQUIRED_JOB = 'rust';
+const SCOPE_JOB = 'scope';
+const HEAVY_JOBS = ['rust', 'checks', 'e2e', 'lighthouse', 'cross-browser'];
+const DOCS_FILTERED_WORKFLOWS = ['codeql.yml', 'deploy.yml', 'audit.yml', 'fuzz.yml'];
 const BUILD_CODE =
 	/\b(pnpm\s+(--filter\s+\S+\s+)?(build|lint|test|check)\b|cargo\s|wasm-pack|vite\s)/;
 
@@ -45,35 +52,122 @@ const BUILD_CODE =
 export function checkWorkflows(files) {
 	const problems = [];
 	for (const { name, text } of files) {
+		let inOn = false;
+		let inPullRequest = false;
+		let inPathsIgnore = false;
+		let inPaths = false;
+		const pathsIgnore = [];
+		const positivePaths = [];
+		let hasPullRequestTrigger = false;
+
 		let inJobs = false;
 		let job = '';
-		/** The jobs of this file, with the line of the header and the timeout that was read. */
+		/** The jobs of this file, with the line of the header, timeout, needs, ifCondition, always. */
 		const jobs = [];
+
 		text.split(/\r?\n/).forEach((raw, index) => {
 			if (/^\s*#/.test(raw)) return;
 			const line = raw.replace(/\s+#.*$/, '');
+
+			if (/^on:\s*$/.test(line)) {
+				inOn = true;
+				return;
+			}
 			if (/^jobs:\s*$/.test(line)) {
+				inOn = false;
+				inPullRequest = false;
+				inPathsIgnore = false;
+				inPaths = false;
 				inJobs = true;
 				return;
 			}
+
+			if (inOn) {
+				if (/^ {2}pull_request:\s*$/.test(line)) {
+					inPullRequest = true;
+					hasPullRequestTrigger = true;
+					inPathsIgnore = false;
+					inPaths = false;
+					return;
+				}
+				if (inPullRequest) {
+					if (/^ {4}paths-ignore:\s*$/.test(line)) {
+						inPathsIgnore = true;
+						inPaths = false;
+						return;
+					}
+					if (/^ {4}paths:\s*$/.test(line)) {
+						inPaths = true;
+						inPathsIgnore = false;
+						return;
+					}
+					if (inPathsIgnore) {
+						const itemMatch = line.match(/^ {6}-\s*['"]?([^'"]+)['"]?\s*$/);
+						if (itemMatch) {
+							pathsIgnore.push(itemMatch[1]);
+							return;
+						}
+						if (!/^\s*$/.test(line)) {
+							inPathsIgnore = false;
+						}
+					}
+					if (inPaths) {
+						const itemMatch = line.match(/^ {6}-\s*['"]?([^'"]+)['"]?\s*$/);
+						if (itemMatch) {
+							positivePaths.push(itemMatch[1]);
+							return;
+						}
+						if (!/^\s*$/.test(line)) {
+							inPaths = false;
+						}
+					}
+					if (/^ {2}[A-Za-z0-9_-]+:/.test(line) || /^\S/.test(line)) {
+						inPullRequest = false;
+						inPathsIgnore = false;
+						inPaths = false;
+					}
+				}
+			}
+
 			if (inJobs) {
 				const header = line.match(/^ {2}([A-Za-z0-9_-]+):\s*$/);
 				if (header) {
 					job = header[1];
-					jobs.push({ name: job, line: index + 1, timeout: null, needs: null, always: false });
+					jobs.push({
+						name: job,
+						line: index + 1,
+						timeout: null,
+						needs: null,
+						ifCondition: null,
+						always: false,
+						hasNoRenames: false,
+					});
+				} else if (/--no-renames/.test(line)) {
+					jobs[jobs.length - 1].hasNoRenames = true;
 				} else if (/^ {4}timeout-minutes:/.test(line)) {
 					jobs[jobs.length - 1].timeout = line.replace(/^ {4}timeout-minutes:\s*/, '').trim();
-				} else if (/^ {4}needs:\s*\[.*\]\s*$/.test(line)) {
-					jobs[jobs.length - 1].needs = line
-						.replace(/^ {4}needs:\s*\[/, '')
-						.replace(/\]\s*$/, '')
-						.split(',')
-						.map((n) => n.trim())
-						.filter(Boolean);
-				} else if (/^ {4}if:\s*always\(\)\s*$/.test(line)) {
-					jobs[jobs.length - 1].always = true;
-				} else if (/^\S/.test(line)) inJobs = false;
+				} else if (/^ {4}needs:\s*(.+)$/.test(line)) {
+					const rawNeeds = line.replace(/^ {4}needs:\s*/, '').trim();
+					if (rawNeeds.startsWith('[') && rawNeeds.endsWith(']')) {
+						jobs[jobs.length - 1].needs = rawNeeds
+							.slice(1, -1)
+							.split(',')
+							.map((n) => n.trim())
+							.filter(Boolean);
+					} else {
+						jobs[jobs.length - 1].needs = [rawNeeds];
+					}
+				} else if (/^ {4}if:\s*(.+)$/.test(line)) {
+					const cond = line.replace(/^ {4}if:\s*/, '').trim();
+					jobs[jobs.length - 1].ifCondition = cond;
+					if (cond === 'always()') {
+						jobs[jobs.length - 1].always = true;
+					}
+				} else if (/^\S/.test(line)) {
+					inJobs = false;
+				}
 			}
+
 			const where = `${name}${inJobs && job ? ` (job ${job})` : ''}, line ${index + 1}`;
 			const inDeploy = name === DEPLOY_FILE && inJobs && job === DEPLOY_JOB;
 
@@ -109,7 +203,16 @@ export function checkWorkflows(files) {
 				}
 			}
 		});
+
 		if (name === CI_FILE) {
+			const scope = jobs.find((j) => j.name === SCOPE_JOB);
+			if (!scope) {
+				problems.push(`${CI_FILE}: the scope job "${SCOPE_JOB}" is missing`);
+			} else if (!scope.hasNoRenames) {
+				problems.push(
+					`${CI_FILE} (job ${SCOPE_JOB}), line ${scope.line}: the scope diff command must include --no-renames`
+				);
+			}
 			const gate = jobs.find((j) => j.name === GATE_JOB);
 			if (!gate) {
 				problems.push(
@@ -131,7 +234,52 @@ export function checkWorkflows(files) {
 					);
 				}
 			}
+			for (const heavyName of HEAVY_JOBS) {
+				const heavyJob = jobs.find((j) => j.name === heavyName);
+				if (heavyJob) {
+					const where = `${CI_FILE} (job ${heavyName}), line ${heavyJob.line}`;
+					if (!heavyJob.needs?.includes(SCOPE_JOB)) {
+						problems.push(`${where}: heavy job must wait for ${SCOPE_JOB} (needs: ...)`);
+					}
+					if (heavyJob.ifCondition !== "needs.scope.outputs.docs_only != 'true'") {
+						problems.push(
+							`${where}: heavy job must have "if: needs.scope.outputs.docs_only != 'true'"`
+						);
+					}
+				}
+			}
 		}
+
+		if (DOCS_FILTERED_WORKFLOWS.includes(name) && hasPullRequestTrigger) {
+			if (pathsIgnore.length > 0) {
+				const match =
+					pathsIgnore.length === WORKFLOW_PATHS_IGNORE.length &&
+					pathsIgnore.every((p, idx) => p === WORKFLOW_PATHS_IGNORE[idx]);
+				if (!match) {
+					problems.push(
+						`${name}: pull_request paths-ignore must match the docs-only allowlist exactly`
+					);
+				}
+			} else if (positivePaths.length > 0) {
+				for (const path of positivePaths) {
+					if (
+						WORKFLOW_PATHS_IGNORE.includes(path) ||
+						path.startsWith('docs/') ||
+						path.startsWith('design/') ||
+						path.startsWith('.antigravity/')
+					) {
+						problems.push(
+							`${name}: pull_request paths list must not include allowlisted docs path "${path}"`
+						);
+					}
+				}
+			} else {
+				problems.push(
+					`${name}: pull_request trigger must have paths-ignore equal to the allowlist or positive paths with no allowlisted entry`
+				);
+			}
+		}
+
 		for (const { name: job, line, timeout } of jobs) {
 			const where = `${name} (job ${job}), line ${line}`;
 			if (timeout === null) {
