@@ -435,7 +435,12 @@ pub fn transform_to_cnf(grammar_text: &str, share_helpers: bool) -> String {
 pub fn cyk_parse(grammar_text: &str, input_word: &str) -> String {
     let run = || -> Result<crate::grammar::CykResult, Message> {
         too_long(grammar_text, "grammar characters", 8192)?;
-        too_long(input_word, "input characters", 256)?;
+        let input_len = input_word.chars().count();
+        if input_len > crate::grammar::CykParser::MAX_INPUT_LEN {
+            return Err(Message::new("grammar.cyk_input_too_long")
+                .with("limit", crate::grammar::CykParser::MAX_INPUT_LEN)
+                .with("length", input_len));
+        }
         let grammar = crate::grammar::GrammarParser::parse(grammar_text)
             .map_err(|e| Message::new("api.invalid_grammar").with("detail", e.to_string()))?;
         crate::grammar::CykParser::parse(&grammar, input_word)

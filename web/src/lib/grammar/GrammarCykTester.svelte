@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { engine } from '#lib/engine/client.ts';
 	import type { CykResult, Grammar } from '#lib/engine/types.ts';
+	import { id as messages, type MessageKey } from '#lib/i18n/id.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
+	import type { Params } from '#lib/i18n/translate.ts';
 
 	let {
 		grammar,
@@ -11,10 +13,20 @@
 		presetStrings?: string[];
 	} = $props();
 
+	type CykError = { key: MessageKey; params: Params } | { raw: string };
+
 	let testInput = $state<string>('');
 	let isRunning = $state<boolean>(false);
 	let cykResult = $state<CykResult | null>(null);
-	let cykError = $state<string | null>(null);
+	let cykError = $state<CykError | null>(null);
+
+	const cykErrorMessage = $derived.by(() => {
+		if (!cykError) return null;
+		if ('key' in cykError) {
+			return t(cykError.key, cykError.params);
+		}
+		return cykError.raw;
+	});
 
 	// Convert grammar object to string for the engine call
 	const grammarText = $derived.by(() => {
@@ -46,11 +58,22 @@
 			if (res.ok) {
 				cykResult = res.value;
 			} else {
-				cykError = res.error.params?.detail ? String(res.error.params.detail) : res.error.key;
+				if (Object.hasOwn(messages, res.error.key)) {
+					cykError = {
+						key: res.error.key as MessageKey,
+						params: (res.error.params ?? {}) as Params
+					};
+				} else {
+					cykError = {
+						raw: res.error.params?.detail ? String(res.error.params.detail) : res.error.key
+					};
+				}
 				cykResult = null;
 			}
 		} catch (err) {
-			cykError = err instanceof Error ? err.message : String(err);
+			cykError = {
+				raw: err instanceof Error ? err.message : String(err)
+			};
 			cykResult = null;
 		} finally {
 			isRunning = false;
@@ -108,10 +131,10 @@
 		{/if}
 	</div>
 
-	{#if cykError}
+	{#if cykErrorMessage}
 		<div class="cyk-error" role="alert">
 			<span class="error-icon">!</span>
-			<span class="error-text">{cykError}</span>
+			<span class="error-text">{cykErrorMessage}</span>
 		</div>
 	{/if}
 
