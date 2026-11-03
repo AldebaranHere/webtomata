@@ -14,6 +14,14 @@ Format:
 
 ---
 
+## 2026-11-03 — Readable CNF helper names and `λ` as empty (tasks T-026, T-027)
+- Decider: owner (planner proposed)
+- Context: The review of T-023 showed that the grammar the button stores can differ from the CNF result on screen: the parser reads the helper name `T_(` as `T_` plus `(`, and reads `λ` as a terminal, although the Editor legend says it means the empty string.
+- Decision: The engine names the helper of a non-alphanumeric terminal `T_p<n>` (T-026), and the parser accepts `λ` as the empty string (T-027). T-023 writes `ε` for an empty body and marks the two known failures `it.fails` until T-026.
+- Alternatives considered: hide the button when a name is unreadable (needs a new message element and a wireframe); rename only in the stored copy (the stored text would differ from what the student saw).
+- Reversible? yes
+- Note: the planner's T-023 plan told the worker to copy the Editor's `λ`; that was wrong because the engine does not read `λ` as empty. The worker found it, and the review logged it.
+
 ## 2026-11-03 — Open the CNF result as a new grammar (task T-023)
 - Decider: owner (planner proposed)
 - Context: After the phone test the owner noticed that the FSM panels end with "Buka sebagai mesin baru" but the grammar workstation has no way to keep the CNF result.
