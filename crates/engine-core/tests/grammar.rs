@@ -1,4 +1,7 @@
-use engine_core::grammar::{CnfTransformer, CykParser, Grammar, GrammarParser, Symbol};
+use std::collections::BTreeSet;
+
+use engine_core::grammar::{CnfTransformer, CykParser, Grammar, GrammarParser, Production, Symbol};
+use proptest::prelude::*;
 
 #[test]
 fn test_parse_simple_grammar() {
@@ -623,5 +626,242 @@ fn test_cnf_variable_deduplication_step6() {
             head,
             trace.final_grammar.to_display_string()
         );
+    }
+}
+
+fn grammar_to_text(grammar: &Grammar) -> String {
+    let mut result = String::new();
+    let mut seen_heads = BTreeSet::new();
+
+    let mut heads = vec![grammar.start.clone()];
+    for r in &grammar.rules {
+        if !heads.contains(&r.head) {
+            heads.push(r.head.clone());
+        }
+    }
+
+    for head in heads {
+        if !seen_heads.insert(head.clone()) {
+            continue;
+        }
+        let bodies: Vec<&Production> = grammar.rules.iter().filter(|r| r.head == head).collect();
+        if bodies.is_empty() {
+            continue;
+        }
+        if !result.is_empty() {
+            result.push('\n');
+        }
+        result.push_str(&head);
+        result.push_str(" -> ");
+        for (i, p) in bodies.iter().enumerate() {
+            if i > 0 {
+                result.push_str(" | ");
+            }
+            if p.body.is_empty() {
+                result.push('ε');
+            } else {
+                let symbols: Vec<String> = p
+                    .body
+                    .iter()
+                    .map(|sym| match sym {
+                        Symbol::Terminal(c) => c.to_string(),
+                        Symbol::NonTerminal(nt) => nt.clone(),
+                    })
+                    .collect();
+                result.push_str(&symbols.join(" "));
+            }
+        }
+    }
+    result
+}
+
+/// (a) T_a, T_0 names are unchanged for the existing presets (all presets except CFG_PAREN)
+#[test]
+fn test_cnf_presets_alphanumeric_helpers_unchanged() {
+    let presets = [
+        ("CNF_ORDER", "S -> a | A B\nA -> a\nB -> B b"),
+        (
+            "CNF_NULLABLE",
+            "S -> A B C\nA -> a A | ε\nB -> b B | A\nC -> c | ε",
+        ),
+        ("CNF_START_LONG", "S -> x S y y | z"),
+        (
+            "CNF_UNIT_CHAIN",
+            "S -> A\nA -> B\nB -> C | b b\nC -> c C | c",
+        ),
+        (
+            "CNF_SHARED_TAIL",
+            "S -> a B C D | b B C D\nB -> x\nC -> y\nD -> z",
+        ),
+        ("CFG_PAL", "S -> a S a | b S b | a | b | ε"),
+        ("CFG_ANBN", "S -> a S b | a b"),
+        ("CFG_EQ", "S -> a S b S | b S a S | ε"),
+    ];
+
+    for (id, src) in presets {
+        let grammar = GrammarParser::parse(src).expect(id);
+        let trace = CnfTransformer::transform(&grammar).expect(id);
+        assert_valid_cnf(&trace.final_grammar);
+
+        for var in trace.final_grammar.variables() {
+            if let Some(suffix) = var.strip_prefix("T_") {
+                assert!(
+                    suffix.chars().all(|c| c.is_ascii_alphanumeric()),
+                    "Preset {} helper variable '{}' should only have alphanumeric characters",
+                    id,
+                    var
+                );
+                assert!(
+                    !var.starts_with("T_p"),
+                    "Preset {} should not use T_p helper, found: {}",
+                    id,
+                    var
+                );
+            }
+        }
+    }
+}
+
+/// (b) CFG_PAREN gives T_p1 and T_p2 and no name with a non-alphanumeric character
+#[test]
+fn test_cnf_cfg_paren_helper_names_readable() {
+    let input = "S -> ( S ) S | ε";
+    let grammar = GrammarParser::parse(input).expect("Should parse CFG_PAREN");
+    let trace = CnfTransformer::transform(&grammar).expect("CNF transformation should succeed");
+    assert_valid_cnf(&trace.final_grammar);
+
+    let p1 = trace
+        .final_grammar
+        .rules
+        .iter()
+        .find(|r| r.body == vec![Symbol::Terminal('(')]);
+    let p2 = trace
+        .final_grammar
+        .rules
+        .iter()
+        .find(|r| r.body == vec![Symbol::Terminal(')')]);
+
+    assert!(p1.is_some(), "Helper for '(' must exist");
+    assert!(p2.is_some(), "Helper for ')' must exist");
+
+    assert_eq!(
+        p1.unwrap().head,
+        "T_p1",
+        "Expected T_p1 for helper rule of '('"
+    );
+    assert_eq!(
+        p2.unwrap().head,
+        "T_p2",
+        "Expected T_p2 for helper rule of ')'"
+    );
+
+    for var in trace.final_grammar.variables() {
+        assert!(
+            var.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'),
+            "Variable '{}' contains invalid characters for the parser",
+            var
+        );
+        assert!(
+            !var.contains('(') && !var.contains(')'),
+            "Variable '{}' must not contain parentheses",
+            var
+        );
+    }
+}
+
+/// (d) A grammar that already has a variable T_p1 still gets a fresh name
+#[test]
+fn test_cnf_variable_fresh_when_t_p1_already_exists() {
+    let input = r#"
+        S -> ( S ) | T_p1 a
+        T_p1 -> a
+    "#;
+    let grammar = GrammarParser::parse(input).expect("Should parse grammar with T_p1");
+    let trace = CnfTransformer::transform(&grammar).expect("CNF transformation should succeed");
+    assert_valid_cnf(&trace.final_grammar);
+
+    let helper_rule = trace
+        .final_grammar
+        .rules
+        .iter()
+        .find(|r| r.body == vec![Symbol::Terminal('(')]);
+    assert!(helper_rule.is_some(), "Helper for '(' must exist");
+    let helper_name = &helper_rule.unwrap().head;
+    assert_ne!(helper_name, "T_p1", "Helper for '(' must get a fresh name");
+    let suffix = helper_name
+        .strip_prefix("T_")
+        .expect("Helper name should start with T_");
+    assert!(
+        suffix.chars().all(|c| c.is_ascii_alphanumeric()),
+        "Helper name '{}' must have alphanumeric suffix after T_",
+        helper_name
+    );
+}
+
+fn arb_symbol() -> impl Strategy<Value = Symbol> {
+    prop_oneof![
+        3 => prop::sample::select(vec!['a', 'b', 'c', '0', '1', '(', ')', '+', '*', ',', ';']).prop_map(Symbol::Terminal),
+        2 => prop::sample::select(vec!["S".to_string(), "A".to_string(), "B".to_string(), "C".to_string()]).prop_map(Symbol::NonTerminal),
+    ]
+}
+
+fn arb_grammar() -> impl Strategy<Value = Grammar> {
+    let heads = vec![
+        "S".to_string(),
+        "A".to_string(),
+        "B".to_string(),
+        "C".to_string(),
+    ];
+    prop::collection::vec(
+        (
+            prop::sample::select(heads),
+            prop::collection::vec(arb_symbol(), 0..=3),
+        ),
+        1..=8,
+    )
+    .prop_map(|rules| {
+        let mut productions: Vec<Production> = rules
+            .into_iter()
+            .map(|(h, b)| Production::new(h, b))
+            .collect();
+        // Ensure start symbol S has at least one production deriving a terminal
+        if !productions.iter().any(|r| r.head == "S") {
+            productions.push(Production::new(
+                "S".to_string(),
+                vec![Symbol::Terminal('a')],
+            ));
+        }
+        Grammar::new("S".to_string(), productions)
+    })
+}
+
+proptest! {
+    /// (c) proptest: for random grammars over letters, digits and ( ) + * , ;
+    /// every variable of finalGrammar is read back as exactly one variable when you write
+    /// the rules with grammarToText-style spacing and parse them again, and the rule set is equal
+    #[test]
+    fn cnf_proptest_variables_read_back_as_single_variable(g in arb_grammar()) {
+        if let Ok(trace) = CnfTransformer::transform(&g) {
+            let cnf = &trace.final_grammar;
+            if cnf.rules.is_empty() {
+                return Ok(());
+            }
+            let text = grammar_to_text(cnf);
+            let parsed = GrammarParser::parse(&text).expect("CNF output must be parseable");
+            prop_assert_eq!(&parsed.start, &cnf.start);
+
+            let cnf_rules: BTreeSet<_> = cnf.rules.iter().cloned().collect();
+            let parsed_rules: BTreeSet<_> = parsed.rules.iter().cloned().collect();
+            prop_assert_eq!(parsed_rules, cnf_rules);
+            prop_assert_eq!(parsed.variables(), cnf.variables());
+
+            for var in cnf.variables() {
+                prop_assert!(
+                    var.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'),
+                    "Variable '{}' contains non-alphanumeric characters",
+                    var
+                );
+            }
+        }
     }
 }
