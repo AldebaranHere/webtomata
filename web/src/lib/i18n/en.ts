@@ -927,6 +927,8 @@ export const en: Record<MessageKey, string> = {
 	'grammar.cyk_table_title': 'CYK Dynamic Programming Table',
 	'grammar.cyk_table_note': 'Variables capable of deriving substring w[j..j+l-1]',
 	'grammar.cyk_len_col': 'Length (l)',
+	'grammar.cyk_input_too_long':
+		'The string is too long to test ({length} characters; at most {limit}).',
 	'grammar.legend_arrow_desc': 'Production rule separator (-> or →)',
 	'grammar.legend_alt_desc': 'Right-hand side alternative separator (|)',
 	'grammar.legend_empty_desc': 'Empty string production (ε, λ, ^)',

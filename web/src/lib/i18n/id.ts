@@ -924,6 +924,8 @@ export const id = {
 	'grammar.cyk_table_title': 'Tabel Dynamic Programming CYK',
 	'grammar.cyk_table_note': 'Memetakan variabel yang dapat menurunkan substring w[j..j+l-1]',
 	'grammar.cyk_len_col': 'Panjang (l)',
+	'grammar.cyk_input_too_long':
+		'String terlalu panjang untuk diuji ({length} karakter; paling banyak {limit}).',
 	'grammar.legend_arrow_desc': 'Pemisah aturan produksi ruas kiri ke ruas kanan (-> atau →)',
 	'grammar.legend_alt_desc': 'Pemisah alternatif ruas kanan (|)',
 	'grammar.legend_empty_desc': 'Aturan produksi string kosong (ε, λ, ^)',

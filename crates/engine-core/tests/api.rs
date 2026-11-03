@@ -436,6 +436,58 @@ fn jff_import_and_export() {
     );
 }
 
+// ---- CYK input length limits ----
+
+#[test]
+fn cyk_parse_limit_a_100_chars_accepted_or_rejected_without_limit_error() {
+    let grammar = "S -> a";
+    let res = ok(api::cyk_parse(grammar, &"a".repeat(100)));
+    assert_eq!(res["accepted"], false);
+}
+
+#[test]
+fn cyk_parse_limit_b_101_chars_reports_cyk_input_too_long() {
+    let grammar = "S -> a";
+    let res = err(api::cyk_parse(grammar, &"a".repeat(101)));
+    assert_eq!(res["key"], "grammar.cyk_input_too_long");
+    assert_eq!(res["params"]["limit"], 100);
+    assert_eq!(res["params"]["length"], 101);
+}
+
+#[test]
+fn cyk_parse_limit_c_101_lambda_chars_reports_cyk_input_too_long() {
+    let grammar = "S -> a";
+    let lambda_101: String = "λ".repeat(101);
+    assert_eq!(lambda_101.len(), 202);
+    let res = err(api::cyk_parse(grammar, &lambda_101));
+    assert_eq!(res["key"], "grammar.cyk_input_too_long");
+    assert_eq!(res["params"]["limit"], 100);
+    assert_eq!(res["params"]["length"], 101);
+}
+
+#[test]
+fn cyk_parse_limit_d_60_lambda_chars_no_limit_message() {
+    let grammar = "S -> a";
+    let lambda_60: String = "λ".repeat(60);
+    assert_eq!(lambda_60.len(), 120);
+    let res = ok(api::cyk_parse(grammar, &lambda_60));
+    assert_eq!(res["accepted"], false);
+}
+
+#[test]
+fn cyk_parse_limit_e_300_and_5000_chars() {
+    let grammar = "S -> a";
+    let res_300 = err(api::cyk_parse(grammar, &"a".repeat(300)));
+    assert_eq!(res_300["key"], "grammar.cyk_input_too_long");
+    assert_eq!(res_300["params"]["limit"], 100);
+    assert_eq!(res_300["params"]["length"], 300);
+
+    let res_5000 = err(api::cyk_parse(grammar, &"a".repeat(5000)));
+    assert_eq!(res_5000["key"], "grammar.cyk_input_too_long");
+    assert_eq!(res_5000["params"]["limit"], 100);
+    assert_eq!(res_5000["params"]["length"], 5000);
+}
+
 // ---- always an envelope, always the same answer ----
 
 #[test]
