@@ -573,7 +573,7 @@ Expected: all pass, and the `.wasm` stays within the budget in `AGENTS.md`/`CLAU
 
 ## Task T-027 — The grammar parser reads `λ` as the empty string
 
-**Status:** in-progress
+**Status:** done
 **Owner:** worker
 **Branch:** `task/T-027-parser-lambda-empty`
 

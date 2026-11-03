@@ -60,6 +60,7 @@ impl GrammarParser {
         // Check for epsilon / empty string representations
         if trimmed.is_empty()
             || trimmed == "ε"
+            || trimmed == "λ"
             || trimmed == "^"
             || trimmed == "\\lambda"
             || trimmed == "\\epsilon"

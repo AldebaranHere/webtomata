@@ -35,6 +35,77 @@ fn test_parse_arrow_variants_and_empty_symbols() {
     assert_eq!(grammar.start, "S");
     // S -> A | B (2 rules), A -> a | λ (2 rules), B -> b | ^ | epsilon (3 rules)
     assert_eq!(grammar.rules.len(), 7);
+    assert_eq!(grammar.rules[2].body, vec![Symbol::Terminal('a')]);
+    assert!(
+        grammar.rules[3].body.is_empty(),
+        "A -> λ should have empty body"
+    );
+    assert_eq!(grammar.rules[4].body, vec![Symbol::Terminal('b')]);
+    assert!(
+        grammar.rules[5].body.is_empty(),
+        "B -> ^ should have empty body"
+    );
+    assert!(
+        grammar.rules[6].body.is_empty(),
+        "B -> epsilon should have empty body"
+    );
+}
+
+#[test]
+fn test_parse_lambda_empty_symbol() {
+    let input = "S -> a S b | λ";
+    let grammar = GrammarParser::parse(input).expect("Should parse grammar with λ");
+    assert_eq!(grammar.rules.len(), 2);
+    assert_eq!(
+        grammar.rules[0].body,
+        vec![
+            Symbol::Terminal('a'),
+            Symbol::NonTerminal("S".into()),
+            Symbol::Terminal('b'),
+        ]
+    );
+    // λ as standalone alternative must yield an empty production body
+    assert!(
+        grammar.rules[1].body.is_empty(),
+        "Rule for λ should have an empty body, but got {:?}",
+        grammar.rules[1].body
+    );
+    assert!(
+        !grammar
+            .rules
+            .iter()
+            .any(|r| r.body.contains(&Symbol::Terminal('λ'))),
+        "Grammar must not contain terminal 'λ'"
+    );
+
+    // Equivalent behavior for ε and ^
+    let input_eps = "S -> a S b | ε";
+    let grammar_eps = GrammarParser::parse(input_eps).unwrap();
+    assert!(grammar_eps.rules[1].body.is_empty());
+    assert!(
+        !grammar_eps
+            .rules
+            .iter()
+            .any(|r| r.body.contains(&Symbol::Terminal('ε')))
+    );
+
+    let input_caret = "S -> a S b | ^";
+    let grammar_caret = GrammarParser::parse(input_caret).unwrap();
+    assert!(grammar_caret.rules[1].body.is_empty());
+    assert!(
+        !grammar_caret
+            .rules
+            .iter()
+            .any(|r| r.body.contains(&Symbol::Terminal('^')))
+    );
+
+    // λ inside a longer body (e.g. "a λ") is treated as a terminal symbol 'λ'
+    let input_inline = "S -> a λ";
+    let grammar_inline = GrammarParser::parse(input_inline).unwrap();
+    assert_eq!(
+        grammar_inline.rules[0].body,
+        vec![Symbol::Terminal('a'), Symbol::Terminal('λ')]
+    );
 }
 
 #[test]
@@ -881,4 +952,110 @@ proptest! {
             }
         }
     }
+}
+
+fn assert_cnf_idempotent(grammar: &Grammar) {
+    let serialized = grammar_to_text(grammar);
+    let parsed = GrammarParser::parse(&serialized).expect("Serialized CNF must parse");
+    let trace2 = CnfTransformer::transform(&parsed).expect("Transform of CNF must succeed");
+    let rules1: BTreeSet<_> = grammar.rules.iter().cloned().collect();
+    let rules2: BTreeSet<_> = trace2.final_grammar.rules.iter().cloned().collect();
+    assert_eq!(rules1, rules2, "CNF must be idempotent");
+    assert_eq!(grammar.start, trace2.final_grammar.start);
+}
+
+#[test]
+fn test_t027_audit_lambda_presets_and_grammars() {
+    let cyk = |g: &Grammar, w: &str| CykParser::parse(g, w).unwrap().accepted;
+
+    // 1. CFG_PAL
+    let pal_src = "S -> a S a | b S b | a | b | λ";
+    let pal_grammar = GrammarParser::parse(pal_src).expect("CFG_PAL with λ must parse");
+    let pal_trace = CnfTransformer::transform(&pal_grammar).expect("CFG_PAL CNF must succeed");
+    assert_valid_cnf(&pal_trace.final_grammar);
+    assert!(
+        cyk(&pal_trace.final_grammar, ""),
+        "CFG_PAL must accept empty string"
+    );
+    assert!(cyk(&pal_trace.final_grammar, "a"));
+    assert!(cyk(&pal_trace.final_grammar, "b"));
+    assert!(cyk(&pal_trace.final_grammar, "aba"));
+    assert!(cyk(&pal_trace.final_grammar, "abba"));
+    assert!(!cyk(&pal_trace.final_grammar, "ab"));
+    assert!(!cyk(&pal_trace.final_grammar, "abb"));
+    assert_cnf_idempotent(&pal_trace.final_grammar);
+
+    // 2. CFG_PAREN
+    let paren_src = "S -> ( S ) S | λ";
+    let paren_grammar = GrammarParser::parse(paren_src).expect("CFG_PAREN with λ must parse");
+    let paren_trace =
+        CnfTransformer::transform(&paren_grammar).expect("CFG_PAREN CNF must succeed");
+    assert_valid_cnf(&paren_trace.final_grammar);
+    assert!(
+        cyk(&paren_trace.final_grammar, ""),
+        "CFG_PAREN must accept empty string"
+    );
+    assert!(cyk(&paren_trace.final_grammar, "()"));
+    assert!(cyk(&paren_trace.final_grammar, "(())"));
+    assert!(cyk(&paren_trace.final_grammar, "()()"));
+    assert!(cyk(&paren_trace.final_grammar, "(()())"));
+    assert!(!cyk(&paren_trace.final_grammar, "("));
+    assert!(!cyk(&paren_trace.final_grammar, ")("));
+    assert_cnf_idempotent(&paren_trace.final_grammar);
+
+    // 3. CFG_EQ
+    let eq_src = "S -> a S b S | b S a S | λ";
+    let eq_grammar = GrammarParser::parse(eq_src).expect("CFG_EQ with λ must parse");
+    let eq_trace = CnfTransformer::transform(&eq_grammar).expect("CFG_EQ CNF must succeed");
+    assert_valid_cnf(&eq_trace.final_grammar);
+    assert!(
+        cyk(&eq_trace.final_grammar, ""),
+        "CFG_EQ must accept empty string"
+    );
+    assert!(cyk(&eq_trace.final_grammar, "ab"));
+    assert!(cyk(&eq_trace.final_grammar, "ba"));
+    assert!(cyk(&eq_trace.final_grammar, "aabb"));
+    assert!(cyk(&eq_trace.final_grammar, "baba"));
+    assert!(!cyk(&eq_trace.final_grammar, "aab"));
+    assert!(!cyk(&eq_trace.final_grammar, "abb"));
+    assert_cnf_idempotent(&eq_trace.final_grammar);
+
+    // 4. Default new grammar: S -> aSb | λ
+    let default_src = "S -> a S b | λ";
+    let default_grammar = GrammarParser::parse(default_src).expect("Default grammar must parse");
+    let default_trace =
+        CnfTransformer::transform(&default_grammar).expect("Default CNF must succeed");
+    assert_valid_cnf(&default_trace.final_grammar);
+    assert!(
+        cyk(&default_trace.final_grammar, ""),
+        "Default grammar S -> aSb | λ must accept empty string"
+    );
+    assert!(cyk(&default_trace.final_grammar, "ab"));
+    assert!(cyk(&default_trace.final_grammar, "aabb"));
+    assert!(cyk(&default_trace.final_grammar, "aaabbb"));
+    assert!(!cyk(&default_trace.final_grammar, "a"));
+    assert!(!cyk(&default_trace.final_grammar, "b"));
+    assert!(!cyk(&default_trace.final_grammar, "aab"));
+    assert!(!cyk(&default_trace.final_grammar, "ba"));
+    assert_cnf_idempotent(&default_trace.final_grammar);
+
+    // 5. Existing test at line 31
+    let line31_src = "
+        S → A | B
+        A ::= a | λ
+        B -> b | ^ | epsilon
+    ";
+    let line31_grammar = GrammarParser::parse(line31_src).expect("Line 31 grammar must parse");
+    let line31_trace =
+        CnfTransformer::transform(&line31_grammar).expect("Line 31 CNF must succeed");
+    assert_valid_cnf(&line31_trace.final_grammar);
+    assert!(
+        cyk(&line31_trace.final_grammar, ""),
+        "Line 31 grammar must accept empty string"
+    );
+    assert!(cyk(&line31_trace.final_grammar, "a"));
+    assert!(cyk(&line31_trace.final_grammar, "b"));
+    assert!(!cyk(&line31_trace.final_grammar, "c"));
+    assert!(!cyk(&line31_trace.final_grammar, "ab"));
+    assert_cnf_idempotent(&line31_trace.final_grammar);
 }

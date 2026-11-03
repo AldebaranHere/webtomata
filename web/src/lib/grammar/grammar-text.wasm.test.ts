@@ -144,4 +144,51 @@ describe('grammar-text.wasm round-trip (AC2 & AC5)', () => {
 			});
 		}
 	});
+
+	describe('T-027: λ parsed as empty symbol across all presets', () => {
+		it('parses every preset without containing terminal λ in any production body', () => {
+			for (const preset of GRAMMAR_PRESETS) {
+				const parseRes = engine.parseGrammar(preset.grammar);
+				expect(parseRes.ok).toBe(true);
+				if (!parseRes.ok) continue;
+
+				for (const rule of parseRes.value.rules) {
+					for (const sym of rule.body) {
+						expect(sym.value).not.toBe('λ');
+					}
+				}
+			}
+		});
+
+		it('accepts the empty string in CYK on each preset with λ (CFG_PAL, CFG_PAREN, CFG_EQ)', () => {
+			const lambdaPresetIds = ['CFG_PAL', 'CFG_PAREN', 'CFG_EQ'];
+			for (const id of lambdaPresetIds) {
+				const preset = GRAMMAR_PRESETS.find((p) => p.id === id)!;
+				const cnfRes = engine.transformToCnf(preset.grammar, false);
+				expect(cnfRes.ok).toBe(true);
+				if (!cnfRes.ok) continue;
+
+				const text = grammarToText(cnfRes.value.finalGrammar);
+				const cykEmpty = engine.cykParse(text, '');
+				expect(cykEmpty.ok).toBe(true);
+				if (cykEmpty.ok) {
+					expect(cykEmpty.value.accepted).toBe(true);
+				}
+			}
+		});
+
+		it('accepts the empty string on default new custom grammar S -> aSb | λ', () => {
+			const defaultGrammar = 'S -> aSb | λ';
+			const cnfRes = engine.transformToCnf(defaultGrammar, false);
+			expect(cnfRes.ok).toBe(true);
+			if (!cnfRes.ok) return;
+
+			const text = grammarToText(cnfRes.value.finalGrammar);
+			const cykEmpty = engine.cykParse(text, '');
+			expect(cykEmpty.ok).toBe(true);
+			if (cykEmpty.ok) {
+				expect(cykEmpty.value.accepted).toBe(true);
+			}
+		});
+	});
 });
