@@ -33,7 +33,7 @@ No agent may change code before it has restated the current state to the human.
 - `docs/decisions/` — ADRs; `docs/ux/` — wireframes and interaction specs; `docs/glossary.md` — Indonesian terms
 - `design/` — design artifacts (tokens, components, per-screen specs)
 - `docs/agent/` — the state machine of this team (handoff, plan, report, decisions)
-- `MD_FILES/` and `REFERENCES/` — private files on the owner's laptop, git-ignored. Read them, never commit them or copy their text.
+- `MD_FILES/` and `REFERENCES/` — private files on the owner's laptop, git-ignored. The one real copy is in the WSL clone `~/webtomata` (the planner reads it as `\\wsl.localhost\Ubuntu\home\Aldebaran64\webtomata`). Read them, never commit them or copy their text.
 
 Update this section as the project evolves.
 
@@ -83,6 +83,7 @@ Why: Windows blocks `wasm-pack` (Device Guard), so the WASM build and the WASM t
 8. **E2E tests** need the Playwright browsers in WSL. Check `ls ~/.cache/ms-playwright`. If it is empty and the task needs e2e, stop and tell the owner. Do not run `playwright install --with-deps` yourself. Engine, documentation and unit-test tasks do not need e2e.
 9. **What you cannot run** (a phone, the live site) is the owner's. Say in `REPORT.md` what you did not run and why.
 10. **Line endings.** Files must have LF line endings and no byte-order mark. In Mode B your editor writes through a Windows path, so run `pnpm format` before the checks, and look at `git diff --stat` for files that you did not mean to change.
+11. **Private folders.** `MD_FILES/`, `REFERENCES/` and `.agents/` in `~/webtomata` are the one real copy that the owner and the planner read. They are git-ignored, so git keeps no history of them. (a) Treat them as read-only: never edit, move or delete a file in them; if one is wrong, tell the owner. (b) Never run `git clean -x`, `git clean -X` or `git clean -fdx`: they delete ignored files. (c) Never replace one of these folders by a link; the editor does not follow a link that leaves the workspace.
 
 ## Coding standards
 
