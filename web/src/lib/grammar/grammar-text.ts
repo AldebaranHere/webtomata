@@ -5,9 +5,9 @@ import type { Grammar } from '#lib/engine/types.ts';
  * - One line per head, start symbol first, then in order of first appearance: A -> X Y | a
  * - One space between every two symbols
  * - Preserves variable names as they are (e.g. S_0, T_a, X1)
- * - Empty body defaults to λ (the symbol used by the Editor legend and matrixRowsToGrammarText)
+ * - Empty body defaults to ε (the empty word symbol parsed by the engine)
  */
-export function grammarToText(grammar: Grammar, emptySymbol = 'λ'): string {
+export function grammarToText(grammar: Grammar, emptySymbol = 'ε'): string {
 	const headMap = new Map<string, string[]>();
 	const orderedHeads: string[] = [];
 
@@ -30,11 +30,10 @@ export function grammarToText(grammar: Grammar, emptySymbol = 'λ'): string {
 	}
 
 	return orderedHeads
-		.filter((head) => (headMap.get(head) ?? []).length > 0 || head === grammar.start)
+		.filter((head) => (headMap.get(head) ?? []).length > 0)
 		.map((head) => {
-			const alts = headMap.get(head) ?? [];
-			const rhs = alts.length > 0 ? alts.join(' | ') : emptySymbol;
-			return `${head} -> ${rhs}`;
+			const alts = headMap.get(head)!;
+			return `${head} -> ${alts.join(' | ')}`;
 		})
 		.join('\n');
 }

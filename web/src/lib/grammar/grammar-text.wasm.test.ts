@@ -36,57 +36,30 @@ function createLcg(seed = 1337) {
 describe('grammar-text.wasm round-trip (AC2 & AC5)', () => {
 	describe('presets direct and CNF round-trip', () => {
 		for (const preset of GRAMMAR_PRESETS) {
-			it(`round-trips preset ${preset.id} where supported`, () => {
+			it(`round-trips preset ${preset.id} directly`, () => {
 				const parseRes = engine.parseGrammar(preset.grammar);
 				expect(parseRes.ok).toBe(true);
 				if (!parseRes.ok) return;
 
 				const orig = parseRes.value;
-				if (preset.id === 'CNF_NULLABLE') {
-					// CNF_NULLABLE uses 'ε' in presets.ts; serializing with 'ε' round-trips
-					const textEps = grammarToText(orig, 'ε');
-					const roundEps = engine.parseGrammar(textEps);
-					expect(roundEps.ok).toBe(true);
-					if (roundEps.ok) {
-						expect(roundEps.value.start).toBe(orig.start);
-						expect(rulesEqual(roundEps.value.rules, orig.rules)).toBe(true);
-					}
-				} else {
-					// Other presets use λ or have no empty rules; serializing with λ round-trips
-					const text = grammarToText(orig, 'λ');
-					const round = engine.parseGrammar(text);
-					expect(round.ok).toBe(true);
-					if (round.ok) {
-						expect(round.value.start).toBe(orig.start);
-						expect(rulesEqual(round.value.rules, orig.rules)).toBe(true);
-					}
+				// Production default path uses ε by default
+				const text = grammarToText(orig);
+				const round = engine.parseGrammar(text);
+				expect(round.ok).toBe(true);
+				if (round.ok) {
+					expect(round.value.start).toBe(orig.start);
+					expect(rulesEqual(round.value.rules, orig.rules)).toBe(true);
 				}
+			});
 
-				// Check CNF results (both standard and with shared helpers)
-				for (const shareHelpers of [false, true]) {
-					const cnfRes = engine.transformToCnf(preset.grammar, shareHelpers);
-					expect(cnfRes.ok).toBe(true);
-					if (!cnfRes.ok) return;
+			if (preset.id !== 'CFG_PAREN') {
+				it(`round-trips CNF result of preset ${preset.id}`, () => {
+					for (const shareHelpers of [false, true]) {
+						const cnfRes = engine.transformToCnf(preset.grammar, shareHelpers);
+						expect(cnfRes.ok).toBe(true);
+						if (!cnfRes.ok) return;
 
-					const cnf = cnfRes.value.finalGrammar;
-
-					if (preset.id === 'CNF_NULLABLE') {
-						// CNF_NULLABLE has an empty rule S0 -> [] in finalGrammar.
-						// With 'ε' it round-trips; with 'λ' it demonstrates the engine parser finding.
-						const textEps = grammarToText(cnf, 'ε');
-						const roundEps = engine.parseGrammar(textEps);
-						expect(roundEps.ok).toBe(true);
-						if (roundEps.ok) {
-							expect(roundEps.value.start).toBe(cnf.start);
-							expect(rulesEqual(roundEps.value.rules, cnf.rules)).toBe(true);
-						}
-					} else if (preset.id === 'CFG_PAREN') {
-						// CFG_PAREN produces helper variable T_( which the engine parser parses as
-						// variable T_ followed by terminal '('. This is documented as an engine finding.
-						const text = grammarToText(cnf);
-						const round = engine.parseGrammar(text);
-						expect(round.ok).toBe(true);
-					} else {
+						const cnf = cnfRes.value.finalGrammar;
 						const text = grammarToText(cnf);
 						const round = engine.parseGrammar(text);
 						expect(round.ok).toBe(true);
@@ -95,13 +68,29 @@ describe('grammar-text.wasm round-trip (AC2 & AC5)', () => {
 							expect(rulesEqual(round.value.rules, cnf.rules)).toBe(true);
 						}
 					}
-				}
-			});
+				});
+			}
 		}
+
+		it.fails('round-trips CNF result of CFG_PAREN (known until T-026)', () => {
+			// known until T-026: Phase 5 helper variable T_( contains non-alphanumeric char
+			// which crates/engine-core/src/grammar/parser.rs rejects on the RHS.
+			const preset = GRAMMAR_PRESETS.find((p) => p.id === 'CFG_PAREN')!;
+			const cnfRes = engine.transformToCnf(preset.grammar, false);
+			expect(cnfRes.ok).toBe(true);
+			if (!cnfRes.ok) return;
+
+			const cnf = cnfRes.value.finalGrammar;
+			const text = grammarToText(cnf);
+			const round = engine.parseGrammar(text);
+			expect(round.ok).toBe(true);
+			if (!round.ok) return;
+			expect(rulesEqual(round.value.rules, cnf.rules)).toBe(true);
+		});
 	});
 
 	describe('seeded generator: 200 random grammars round-trip', () => {
-		it('preserves start symbol and rule sets across 200 seeded grammars', () => {
+		it('preserves start symbol and rule sets across 200 seeded grammars using default grammarToText', () => {
 			const rand = createLcg(42);
 			const nonTerminals = ['S', 'A', 'B', 'C', 'S0', 'T_a', 'X1', 'X10'];
 			const terminals = ['a', 'b', 'c', '0', '1'];
@@ -130,8 +119,8 @@ describe('grammar-text.wasm round-trip (AC2 & AC5)', () => {
 				}
 
 				const grammar: Grammar = { start, rules };
-				// Use 'ε' for empty bodies to ensure engine parser round-trips empty bodies
-				const text = grammarToText(grammar, 'ε');
+				// Default grammarToText() with no extra arguments writes ε for empty bodies
+				const text = grammarToText(grammar);
 				const roundRes = engine.parseGrammar(text);
 
 				expect(roundRes.ok).toBe(true);
@@ -146,6 +135,7 @@ describe('grammar-text.wasm round-trip (AC2 & AC5)', () => {
 	describe('CNF idempotence (AC5)', () => {
 		const idempotentPresets = [
 			'CNF_ORDER',
+			'CNF_NULLABLE',
 			'CNF_START_LONG',
 			'CNF_UNIT_CHAIN',
 			'CNF_SHARED_TAIL',
@@ -171,43 +161,21 @@ describe('grammar-text.wasm round-trip (AC2 & AC5)', () => {
 			});
 		}
 
-		it('documents CNF_NULLABLE and CFG_PAREN engine findings', () => {
-			// CNF_NULLABLE: finalGrammar has S0 -> [] which is serialized as λ;
-			// engine parser treats λ as terminal λ, leading to rule set difference.
-			const pNullable = GRAMMAR_PRESETS.find((p) => p.id === 'CNF_NULLABLE')!;
-			const cnfNullable1 = engine.transformToCnf(pNullable.grammar, false);
-			expect(cnfNullable1.ok).toBe(true);
-			if (cnfNullable1.ok) {
-				const text = grammarToText(cnfNullable1.value.finalGrammar);
-				const cnfNullable2 = engine.transformToCnf(text, false);
-				expect(cnfNullable2.ok).toBe(true);
-				if (cnfNullable2.ok) {
-					const match = rulesEqual(
-						cnfNullable2.value.finalGrammar.rules,
-						cnfNullable1.value.finalGrammar.rules
-					);
-					// Engine finding: differs because λ is parsed as terminal
-					expect(match).toBe(false);
-				}
-			}
+		it.fails('is idempotent on preset CFG_PAREN (known until T-026)', () => {
+			// known until T-026: Phase 5 helper variable T_( contains non-alphanumeric char
+			// which crates/engine-core/src/grammar/parser.rs rejects on the RHS.
+			const preset = GRAMMAR_PRESETS.find((p) => p.id === 'CFG_PAREN')!;
+			const cnf1 = engine.transformToCnf(preset.grammar, false);
+			expect(cnf1.ok).toBe(true);
+			if (!cnf1.ok) return;
 
-			// CFG_PAREN: finalGrammar has helper variable T_( which is parsed as T_ followed by '('
-			const pParen = GRAMMAR_PRESETS.find((p) => p.id === 'CFG_PAREN')!;
-			const cnfParen1 = engine.transformToCnf(pParen.grammar, false);
-			expect(cnfParen1.ok).toBe(true);
-			if (cnfParen1.ok) {
-				const text = grammarToText(cnfParen1.value.finalGrammar);
-				const cnfParen2 = engine.transformToCnf(text, false);
-				expect(cnfParen2.ok).toBe(true);
-				if (cnfParen2.ok) {
-					const match = rulesEqual(
-						cnfParen2.value.finalGrammar.rules,
-						cnfParen1.value.finalGrammar.rules
-					);
-					// Engine finding: differs because T_( is not parsed as single variable
-					expect(match).toBe(false);
-				}
-			}
+			const text = grammarToText(cnf1.value.finalGrammar);
+			const cnf2 = engine.transformToCnf(text, false);
+			expect(cnf2.ok).toBe(true);
+			if (!cnf2.ok) return;
+
+			expect(cnf2.value.finalGrammar.start).toBe(cnf1.value.finalGrammar.start);
+			expect(rulesEqual(cnf2.value.finalGrammar.rules, cnf1.value.finalGrammar.rules)).toBe(true);
 		});
 	});
 });

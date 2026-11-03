@@ -6,55 +6,55 @@
 - id: T-023
 - title: Open the CNF result as a new grammar
 - branch: `task/T-023-open-cnf-as-grammar`
-- commit: `3ca949d`
 - pull request: https://github.com/AldebaranHere/webtomata/pull/124
 
 ## What changed
-- `web/src/lib/grammar/grammar-text.ts` (new):
-  - Implemented `grammarToText(grammar: Grammar, emptySymbol = 'λ'): string`.
+- `web/src/lib/grammar/grammar-text.ts`:
+  - `grammarToText(grammar: Grammar, emptySymbol = 'ε'): string`:
     - Outputs one line per non-terminal head in order of appearance (start symbol first): `Head -> body1 | body2`.
-    - Separates RHS symbols with a single space (`A 1` vs `A1`) to prevent ambiguity between terminal sequences and helper non-terminals upon parsing.
-    - Formats empty bodies using `'λ'` (consistent with `matrixRowsToGrammarText` and editor legend).
-  - Implemented `nextCustomId(existing: Array<{ id: string }>): string`.
-    - Scans for the smallest unused integer `n >= 1` returning `G<n>`, preventing ID collisions when middle custom grammars (e.g. `G1`) are deleted.
+    - Single space between RHS symbols (`A 1` vs `A1`).
+    - Uses `'ε'` by default for empty bodies so that the output matches the engine parser's empty-word symbol.
+    - Does not invent `S -> ε` when a start symbol has no rules in `grammar.rules`.
+  - `nextCustomId(existing: Array<{ id: string }>): string`:
+    - Calculates first unused `G<n>` (`G1`, `G2`, etc.) to prevent duplicate ID collisions after deletions.
 - `web/src/lib/grammar/GrammarCnfStepper.svelte`:
   - Added optional `onopen?: () => void` prop.
-  - Rendered `.btn-open-result` button (`grammar.open_cnf_as_new`) conditionally when `onopen` is defined and `currentStepIdx === totalSteps - 1`.
-  - Added styling: minimum 44px height, responsive full-width display on phone screens (`@media (max-width: 900px)`).
+  - Rendered `.btn-open-result` button (`grammar.open_cnf_as_new`) conditionally on step 6.
+  - Styled with min 44px height and responsive full-width display on phone screens (`@media (max-width: 900px)`).
 - `web/src/lib/grammar/GrammarWorkstation.svelte`:
-  - Updated `createNewCustomGrammar` to use `nextCustomId` instead of `customGrammars.length + 1`.
-  - Added title numbering helper `computeCnfTitle` handling `(CNF)`, `(CNF 2)`, `(CNF 3)`, etc.
-  - Added `handleOpenCnfAsNewGrammar`: converts `cnfTrace.finalGrammar` with `grammarToText`, creates new custom grammar, saves to `localStorage`, selects it, switches to `editor` tab, and persists state without adding any message or toast elements.
+  - Uses `nextCustomId` in `createNewCustomGrammar`.
+  - Added `computeCnfTitle` helper producing `<title> (CNF)`, `<title> (CNF 2)`, etc.
+  - Implemented `handleOpenCnfAsNewGrammar`: converts `cnfTrace.finalGrammar` with `grammarToText`, saves to custom grammars in `localStorage`, selects it, switches to `editor` tab, and persists state without adding any message or toast elements.
   - Passed `onopen={handleOpenCnfAsNewGrammar}` to `<GrammarCnfStepper>`.
 - `web/src/lib/i18n/id.ts` & `web/src/lib/i18n/en.ts`:
-  - Added translation key `grammar.open_cnf_as_new`:
-    - `id`: `"Buka sebagai tata bahasa baru"`
-    - `en`: `"Open as a new grammar"`
+  - Added `grammar.open_cnf_as_new` (`"Buka sebagai tata bahasa baru"` / `"Open as a new grammar"`).
 - `web/eslint.config.js`:
   - Added `src/lib/grammar/grammar-text.wasm.test.ts` to `no-restricted-imports` exceptions.
 - Tests:
-  - `web/src/lib/grammar/grammar-text.test.ts` (new): Unit tests for AC1 (three handwritten grammars: empty rule, `S_0` with `T_a`/`X1`, two-digit helper `X10` next to digit terminal) and AC7 (`nextCustomId` collision avoidance).
-  - `web/src/lib/grammar/grammar-text.wasm.test.ts` (new): AC2 round-trip tests (presets, CNF results, 200 seeded random grammars) and AC5 CNF idempotence tests.
-  - `web/e2e/grammar-open-cnf.spec.ts` (new): Playwright E2E tests for AC3, AC4, AC6, AC8 on desktop and phone.
-  - `web/e2e/cross/workstation-phone.spec.ts`: Added step 6 button visibility and axe scan for `webkit-phone`.
+  - `web/src/lib/grammar/grammar-text.test.ts`:
+    - AC1: handwritten grammars with empty rule defaulting to `ε`, custom empty symbol `λ`, no rule invention for empty start symbol, `S_0` with `T_a`/`X1`, and `X10` next to digit terminal.
+    - AC7: `nextCustomId` collision tests.
+  - `web/src/lib/grammar/grammar-text.wasm.test.ts`:
+    - AC2: production default path (`grammarToText(g)`) round-trips every preset and CNF result directly, including `CNF_NULLABLE`.
+    - AC5: CNF idempotence verified for all presets, including `CNF_NULLABLE`.
+    - `CFG_PAREN`: CNF round-trip and AC5 idempotence marked `it.fails` with comment `"known until T-026"`.
+    - Seeded generator: 200 random grammars round-trip with default `grammarToText`.
+  - `web/e2e/grammar-open-cnf.spec.ts`:
+    - AC3, AC4, AC6, AC8 on desktop and phone.
+    - Added test opening `CNF_NULLABLE` ('Variabel Nullable Majemuk (Fase 2)'), tapping the button, and verifying the new grammar's CNF tab shows the exact same rules as the original CNF result.
+  - `web/e2e/cross/workstation-phone.spec.ts`: Step 6 button visibility and axe scan for `webkit-phone`.
 
 ---
 
-## Engine Findings (AC5 & AC2)
+## Engine Findings & Known Issues
 
-1. **Parser Unicode `'λ'` Handling (`crates/engine-core/src/grammar/parser.rs` line 61):**
-   - In `crates/engine-core/src/grammar/parser.rs`, empty production parsing checks:
-     `trimmed.is_empty() || trimmed == "ε" || trimmed == "^" || trimmed == "\\lambda" || trimmed == "\\epsilon" || trimmed.eq_ignore_ascii_case("lambda") || trimmed.eq_ignore_ascii_case("epsilon")`.
-   - Literal Unicode `'λ'` (`U+03BB`) is absent from this check.
-   - Consequently, when `grammarToText` writes `'λ'` (per the editor legend and `matrixRowsToGrammarText`), `parseGrammar('S -> λ')` parses `'λ'` as a terminal token rather than an empty production.
-   - This prevents round-tripping grammars with empty productions via literal `'λ'` until the engine parser is updated to recognize Unicode `'λ'`.
+1. **CFG_PAREN Phase 5 Helper Variable Names (`crates/engine-core/src/grammar/parser.rs` lines 124–127):**
+   - For preset `CFG_PAREN`, CNF Phase 5 creates helper variables `T_(` and `T_)`.
+   - The engine parser accepts only ASCII alphanumeric characters after an underscore (`_`), so `T_(` is parsed as non-terminal `T_` followed by terminal `(`.
+   - Per reviewer direction, the two tests asserting this issue (`round-trips CNF result of CFG_PAREN` and `is idempotent on preset CFG_PAREN`) are marked `it.fails` with comment `"known until T-026"`.
 
-2. **Phase 5 Helper Variable Names (`crates/engine-core/src/grammar/parser.rs` lines 124–127):**
-   - For preset `CFG_PAREN`, CNF Phase 5 isolates parentheses terminals by introducing non-terminal variables `T_(` and `T_)`.
-   - However, `crates/engine-core/src/grammar/parser.rs` accepts only ASCII alphanumeric characters after an underscore (`_`).
-   - When `T_(` appears in a rule body, the parser tokenizes it as non-terminal `T_` followed by terminal `(`, preventing round-tripping of grammars with special-character helper names generated by CNF Phase 5.
-
-Both findings have been cleanly documented with tests in `grammar-text.wasm.test.ts`.
+2. **CNF_NULLABLE & Default `'ε'`:**
+   - With `grammarToText` writing `'ε'` by default for empty bodies, `CNF_NULLABLE` and its CNF output (`S0 -> ε`) round-trip cleanly in the engine parser, and AC5 CNF idempotence passes completely for `CNF_NULLABLE`.
 
 ---
 
@@ -71,25 +71,24 @@ Symbols in `grammarToText` were joined without spaces (`body.map((s) => s.value)
 ```
 $ pnpm --filter web exec vitest run src/lib/grammar
 ...
- FAIL  src/lib/grammar/grammar-text.test.ts > grammarToText (AC1) > serializes a grammar with multi-digit helper next to digit terminal without ambiguity
-AssertionError: expected 'S -> X10 0 | 1' to deeply equal 'S -> X100 | 1'
+ FAIL  src/lib/grammar/grammar-text.test.ts > grammarToText (AC1) > serializes grammar with two-digit helper X10 next to a digit terminal
+AssertionError: expected 'S -> X10 0\nX10 -> 1' to deeply equal 'S -> X100\nX10 -> 1'
 
 - Expected:
-S -> X100 | 1
+S -> X100
+X10 -> 1
 
 + Received:
-S -> X10 0 | 1
+S -> X10 0
+X10 -> 1
 
- ❯ src/lib/grammar/grammar-text.test.ts:46:44
-
- FAIL  src/lib/grammar/grammar-text.wasm.test.ts > grammarToText WASM round-trip (AC2) > round-trips 200 random grammars
-AssertionError: expected [ …(3) ] to deeply equal [ …(3) ]
+ ❯ src/lib/grammar/grammar-text.test.ts:114:44
 ...
  Test Files  2 failed | 1 passed (3)
-      Tests  17 failed | 12 passed (29)
+      Tests  17 failed | 2 expected fail | 22 passed (41)
 ```
 
-Upon restoring the single-space separator between RHS symbols, all 29 tests in `src/lib/grammar` passed cleanly.
+Upon restoring the single-space separator between RHS symbols, all tests in `src/lib/grammar` passed cleanly.
 
 ---
 
@@ -101,23 +100,23 @@ $ pnpm --filter web exec vitest run src/lib/grammar
 
  RUN  v5.0.3 /home/Aldebaran64/webtomata/web
 
- ✓ src/lib/grammar/grammar-text.wasm.test.ts (18 tests) 96ms
- ✓ src/lib/grammar/grammar-text.test.ts (8 tests) 7ms
- ✓ src/lib/grammar/presets.test.ts (3 tests) 5ms
+ ✓ src/lib/grammar/grammar-text.test.ts (10 tests) 8ms
+ ✓ src/lib/grammar/presets.test.ts (3 tests) 12ms
+ ✓ src/lib/grammar/grammar-text.wasm.test.ts (28 tests) 119ms
 
  Test Files  3 passed (3)
-      Tests  29 passed (29)
-   Start at  20:41:40
-   Duration  416ms (tests 108ms, transform 117ms, import 185ms)
+      Tests  39 passed | 2 expected fail (41)
+   Start at  21:34:28
+   Duration  468ms (transform 51%, tests 29%, import 14%, worker 5%)
 ```
 
 ### 2. Svelte Check
 ```
 $ pnpm check
-$ svelte-check --tsconfig ./tsconfig.json
+$ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
 Loading svelte-check in workspace: /home/Aldebaran64/webtomata/web
-Getting Svelte diagnostic counter...
-====================================
+Getting Svelte diagnostics...
+
 svelte-check found 0 errors and 0 warnings
 ```
 
@@ -138,10 +137,10 @@ All matched files use Prettier code style!
 ### 5. Guard Rails (Strings, Tokens, Contrast)
 ```
 $ pnpm check:strings
-All 213 translation keys match across locales.
+ok   63 components have no hard-coded text
 
 $ pnpm check:tokens
-Token check passed: all 152 CSS variable usages match design/tokens.json.
+ok   65 files use no raw colors
 
 $ pnpm check:contrast
 Contrast check passed: all 13 text/background token pairs meet WCAG AA (4.5:1).
@@ -151,57 +150,58 @@ Contrast check passed: all 13 text/background token pairs meet WCAG AA (4.5:1).
 ```
 $ pnpm size
 $ node tools/check-size.mjs
-  ✓ Size check passed: total bundle is 91.0 kB (budget 150 kB), 59.0 kB under limit.
+ok   initial JS index.html: 78.4 KB gzip (limit 170 KB)
+ok   initial JS panduan/berakhiran-x.html: 83.3 KB gzip (limit 170 KB)
+ok   initial JS panduan.html: 77.6 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 116.7 KB gzip (limit 170 KB)
+ok   initial JS soal/berakhiran-10.html: 116.3 KB gzip (limit 170 KB)
+ok   initial JS soal/jumlah-a-genap.html: 116.3 KB gzip (limit 170 KB)
+ok   initial JS soal/mengandung-101.html: 116.3 KB gzip (limit 170 KB)
+ok   initial JS soal.html: 79.0 KB gzip (limit 170 KB)
+ok   initial JS tentang.html: 76.9 KB gzip (limit 170 KB)
+ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
+ok   wasm _app/immutable/workers/assets/engine_wasm_bg-qpglZrwP.wasm: 206.2 KB gzip (limit 250 KB)
 ```
 
 ### 7. New E2E Suite Repeated 10 Times (`--repeat-each=10`)
 ```
 $ pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-open-cnf.spec.ts --repeat-each=10
 
-Running 40 tests using 6 workers
+Running 60 tests using 6 workers
 
-  ✓  1 [desktop] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #1) (6.8s)
-  ✓  2 [desktop] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #1) (6.6s)
-  ✓  4 [desktop] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #2) (6.9s)
-  ✓  3 [desktop] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #2) (7.1s)
-  ✓  5 [desktop] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #3) (6.7s)
-  ✓  6 [desktop] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #3) (6.7s)
-  ✓  8 [desktop] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #4) (6.8s)
-  ✓  7 [desktop] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #4) (7.2s)
-  ✓ 10 [desktop] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #5) (6.4s)
-  ✓  9 [desktop] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #5) (6.9s)
-  ✓ 12 [desktop] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #6) (6.5s)
-  ✓ 11 [desktop] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #6) (7.0s)
-  ✓ 14 [desktop] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #7) (6.8s)
-  ✓ 13 [desktop] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #7) (6.9s)
-  ✓ 16 [desktop] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #8) (6.8s)
-  ✓ 15 [desktop] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #8) (7.1s)
-  ✓ 18 [desktop] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #9) (6.7s)
-  ✓ 17 [desktop] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #9) (7.2s)
-  ✓ 19 [desktop] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #10) (6.4s)
-  ✓ 20 [desktop] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #10) (6.6s)
-  ✓ 21 [phone] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #1) (6.6s)
-  ✓ 22 [phone] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #1) (6.8s)
-  ✓ 24 [phone] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #2) (6.9s)
-  ✓ 23 [phone] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #2) (7.4s)
-  ✓ 25 [phone] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #3) (6.5s)
-  ✓ 26 [phone] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #3) (6.6s)
-  ✓ 28 [phone] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #4) (6.7s)
-  ✓ 27 [phone] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #4) (7.0s)
-  ✓ 30 [phone] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #5) (6.5s)
-  ✓ 29 [phone] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #5) (7.2s)
-  ✓ 32 [phone] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #6) (6.3s)
-  ✓ 31 [phone] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #6) (7.0s)
-  ✓ 34 [phone] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #7) (6.5s)
-  ✓ 33 [phone] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #7) (7.0s)
-  ✓ 36 [phone] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #8) (6.4s)
-  ✓ 35 [phone] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #8) (6.8s)
-  ✓ 38 [phone] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #9) (6.5s)
-  ✓ 37 [phone] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #9) (7.1s)
-  ✓ 39 [phone] › e2e/grammar-open-cnf.spec.ts:10:1 › open CNF as new grammar: button appears only on step 6 and meets axe (repeat #10) (6.5s)
-  ✓ 40 [phone] › e2e/grammar-open-cnf.spec.ts:39:1 › open CNF as new grammar: copies result to new custom grammar, jumps to editor, and preserves original (repeat #10) (6.7s)
+  ✓  5 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (4.7s)
+  ✓  3 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (5.0s)
+  ✓  8 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (3.7s)
+  ✓  2 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (11.6s)
+  ✓  4 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (11.5s)
+  ✓  7 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (10.6s)
+  ✓ 11 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (4.4s)
+  ✓ 14 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (4.0s)
+  ✓ 10 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (11.7s)
+  ✓ 17 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (3.7s)
+  ✓ 13 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (11.1s)
+  ✓ 20 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (4.3s)
+  ✓ 16 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (11.0s)
+  ✓ 23 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (3.7s)
+  ✓ 19 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (11.0s)
+  ✓ 26 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (3.9s)
+  ✓ 22 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (10.9s)
+  ✓ 29 [desktop] › e2e/grammar-open-cnf.spec.ts:81:1 › desktop: open nullable preset, tap open CNF result, and check new grammar CNF tab shows same rules (3.4s)
+  ✓ 25 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (10.3s)
+  ✓ 28 [desktop] › e2e/grammar-open-cnf.spec.ts:15:1 › desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8) (10.1s)
+  ✓ 33 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (6.7s)
+  ✓ 36 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (7.2s)
+  ✓ 39 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (6.9s)
+  ✓ 42 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (6.7s)
+  ✓ 44 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (6.9s)
+  ✓ 48 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (6.9s)
+  ✓ 51 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (7.0s)
+  ✓ 54 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (6.3s)
+  ✓ 57 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (5.0s)
+  ✓ 60 [phone] › e2e/grammar-open-cnf.spec.ts:127:1 › phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8) (3.7s)
 
-  40 passed (48.4s)
+  30 skipped
+  30 passed (1.1m)
 ```
 
 ### 8. WebKit Phone Cross-Browser Test
@@ -210,10 +210,10 @@ $ pnpm --filter web exec playwright test --project=webkit-phone e2e/cross/workst
 
 Running 2 tests using 2 workers
 
-  ✓  2 [webkit-phone] › e2e/cross/workstation-phone.spec.ts:69:1 › language phone layout on WebKit phone: tab navigation and axe (5.2s)
-  ✓  1 [webkit-phone] › e2e/cross/workstation-phone.spec.ts:30:1 › grammar phone layout on WebKit phone: tab navigation, shortcut, and axe (5.4s)
+  ✓  2 [webkit-phone] › e2e/cross/workstation-phone.spec.ts:69:1 › language phone layout on WebKit phone: tab navigation and axe (4.8s)
+  ✓  1 [webkit-phone] › e2e/cross/workstation-phone.spec.ts:30:1 › grammar phone layout on WebKit phone: tab navigation, shortcut, and axe (5.0s)
 
-  2 passed (6.7s)
+  2 passed (6.1s)
 ```
 
 ### 9. Full Web Unit Test Suite
@@ -222,7 +222,8 @@ $ pnpm test:web
 $ pnpm --filter web test
 $ vitest run
 
-Test Files  90 passed (90)
-     Tests  1144 passed | 3 skipped (1147)
-  Duration  4.77s
+ Test Files  90 passed (90)
+      Tests  1154 passed | 2 expected fail | 3 skipped (1159)
+   Start at  21:36:03
+   Duration  4.72s (tests 62%, transform 29%, import 9%)
 ```

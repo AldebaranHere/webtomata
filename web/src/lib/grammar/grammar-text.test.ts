@@ -4,7 +4,7 @@ import { grammarToText, nextCustomId } from './grammar-text.ts';
 
 describe('grammar-text', () => {
 	describe('grammarToText (AC1)', () => {
-		it('serializes grammar with empty rule', () => {
+		it('serializes grammar with empty rule using ε by default', () => {
 			const g: Grammar = {
 				start: 'S',
 				rules: [
@@ -22,7 +22,36 @@ describe('grammar-text', () => {
 					}
 				]
 			};
-			expect(grammarToText(g)).toBe('S -> a S b | λ');
+			expect(grammarToText(g)).toBe('S -> a S b | ε');
+		});
+
+		it('supports custom emptySymbol when specified', () => {
+			const g: Grammar = {
+				start: 'S',
+				rules: [
+					{
+						head: 'S',
+						body: [
+							{ type: 'terminal', value: 'a' },
+							{ type: 'nonTerminal', value: 'S' },
+							{ type: 'terminal', value: 'b' }
+						]
+					},
+					{
+						head: 'S',
+						body: []
+					}
+				]
+			};
+			expect(grammarToText(g, 'λ')).toBe('S -> a S b | λ');
+		});
+
+		it('does not invent S -> ε for a start symbol with no rules', () => {
+			const g: Grammar = {
+				start: 'S',
+				rules: []
+			};
+			expect(grammarToText(g)).toBe('');
 		});
 
 		it('serializes grammar with start symbol S_0 and helpers T_a, X1', () => {
