@@ -571,9 +571,7 @@ impl CnfTransformer {
         }
         let mut counter = 1;
         loop {
-            let candidate = if base.contains('_')
-                || (base.len() > 1 && base.chars().skip(1).all(|c| c.is_ascii_digit()))
-            {
+            let candidate = if base.contains('_') {
                 format!("{}{}", base, counter)
             } else {
                 format!("{}_{}", base, counter)

@@ -675,50 +675,51 @@ fn grammar_to_text(grammar: &Grammar) -> String {
     result
 }
 
-/// (a) T_a, T_0 names are unchanged for the existing presets (all presets except CFG_PAREN)
+/// (a) Helper variable names for each preset exactly match what current staging gives
 #[test]
 fn test_cnf_presets_alphanumeric_helpers_unchanged() {
-    let presets = [
-        ("CNF_ORDER", "S -> a | A B\nA -> a\nB -> B b"),
+    let presets: [(&str, &str, &[&str]); 8] = [
+        ("CNF_ORDER", "S -> a | A B\nA -> a\nB -> B b", &[]),
         (
             "CNF_NULLABLE",
             "S -> A B C\nA -> a A | ε\nB -> b B | A\nC -> c | ε",
+            &["T_a", "T_b"],
         ),
-        ("CNF_START_LONG", "S -> x S y y | z"),
+        ("CNF_START_LONG", "S -> x S y y | z", &["T_x", "T_y"]),
         (
             "CNF_UNIT_CHAIN",
             "S -> A\nA -> B\nB -> C | b b\nC -> c C | c",
+            &["T_b", "T_c"],
         ),
         (
             "CNF_SHARED_TAIL",
             "S -> a B C D | b B C D\nB -> x\nC -> y\nD -> z",
+            &["T_a", "T_b"],
         ),
-        ("CFG_PAL", "S -> a S a | b S b | a | b | ε"),
-        ("CFG_ANBN", "S -> a S b | a b"),
-        ("CFG_EQ", "S -> a S b S | b S a S | ε"),
+        ("CFG_PAL", "S -> a S a | b S b | a | b | ε", &["T_a", "T_b"]),
+        ("CFG_ANBN", "S -> a S b | a b", &["T_a", "T_b"]),
+        ("CFG_EQ", "S -> a S b S | b S a S | ε", &["T_a", "T_b"]),
     ];
 
-    for (id, src) in presets {
+    for (id, src, expected_helpers) in presets {
         let grammar = GrammarParser::parse(src).expect(id);
         let trace = CnfTransformer::transform(&grammar).expect(id);
         assert_valid_cnf(&trace.final_grammar);
 
-        for var in trace.final_grammar.variables() {
-            if let Some(suffix) = var.strip_prefix("T_") {
-                assert!(
-                    suffix.chars().all(|c| c.is_ascii_alphanumeric()),
-                    "Preset {} helper variable '{}' should only have alphanumeric characters",
-                    id,
-                    var
-                );
-                assert!(
-                    !var.starts_with("T_p"),
-                    "Preset {} should not use T_p helper, found: {}",
-                    id,
-                    var
-                );
-            }
-        }
+        let mut actual_helpers: Vec<String> = trace
+            .final_grammar
+            .variables()
+            .into_iter()
+            .filter(|v| v.starts_with("T_"))
+            .collect();
+        actual_helpers.sort();
+
+        let expected_vec: Vec<String> = expected_helpers.iter().map(|s| s.to_string()).collect();
+        assert_eq!(
+            actual_helpers, expected_vec,
+            "Preset {} helper variable set must exactly match staging",
+            id
+        );
     }
 }
 
@@ -795,6 +796,22 @@ fn test_cnf_variable_fresh_when_t_p1_already_exists() {
         suffix.chars().all(|c| c.is_ascii_alphanumeric()),
         "Helper name '{}' must have alphanumeric suffix after T_",
         helper_name
+    );
+}
+
+/// With a variable S0 already in the grammar, the new start symbol isolated in Phase 1
+/// must be S0_1, preserving the underscore naming scheme rather than changing to S01.
+#[test]
+fn test_cnf_phase1_start_symbol_collision_with_existing_s0() {
+    let input = r#"
+        S -> a S | S0
+        S0 -> b
+    "#;
+    let grammar = GrammarParser::parse(input).expect("Should parse grammar with S0");
+    let trace = CnfTransformer::transform(&grammar).expect("CNF transformation should succeed");
+    assert_eq!(
+        trace.final_grammar.start, "S0_1",
+        "When S0 already exists, the isolated start symbol must remain S0_1"
     );
 }
 
