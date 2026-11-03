@@ -52,41 +52,23 @@ describe('grammar-text.wasm round-trip (AC2 & AC5)', () => {
 				}
 			});
 
-			if (preset.id !== 'CFG_PAREN') {
-				it(`round-trips CNF result of preset ${preset.id}`, () => {
-					for (const shareHelpers of [false, true]) {
-						const cnfRes = engine.transformToCnf(preset.grammar, shareHelpers);
-						expect(cnfRes.ok).toBe(true);
-						if (!cnfRes.ok) return;
+			it(`round-trips CNF result of preset ${preset.id}`, () => {
+				for (const shareHelpers of [false, true]) {
+					const cnfRes = engine.transformToCnf(preset.grammar, shareHelpers);
+					expect(cnfRes.ok).toBe(true);
+					if (!cnfRes.ok) return;
 
-						const cnf = cnfRes.value.finalGrammar;
-						const text = grammarToText(cnf);
-						const round = engine.parseGrammar(text);
-						expect(round.ok).toBe(true);
-						if (round.ok) {
-							expect(round.value.start).toBe(cnf.start);
-							expect(rulesEqual(round.value.rules, cnf.rules)).toBe(true);
-						}
+					const cnf = cnfRes.value.finalGrammar;
+					const text = grammarToText(cnf);
+					const round = engine.parseGrammar(text);
+					expect(round.ok).toBe(true);
+					if (round.ok) {
+						expect(round.value.start).toBe(cnf.start);
+						expect(rulesEqual(round.value.rules, cnf.rules)).toBe(true);
 					}
-				});
-			}
+				}
+			});
 		}
-
-		it.fails('round-trips CNF result of CFG_PAREN (known until T-026)', () => {
-			// known until T-026: Phase 5 helper variable T_( contains non-alphanumeric char
-			// which crates/engine-core/src/grammar/parser.rs rejects on the RHS.
-			const preset = GRAMMAR_PRESETS.find((p) => p.id === 'CFG_PAREN')!;
-			const cnfRes = engine.transformToCnf(preset.grammar, false);
-			expect(cnfRes.ok).toBe(true);
-			if (!cnfRes.ok) return;
-
-			const cnf = cnfRes.value.finalGrammar;
-			const text = grammarToText(cnf);
-			const round = engine.parseGrammar(text);
-			expect(round.ok).toBe(true);
-			if (!round.ok) return;
-			expect(rulesEqual(round.value.rules, cnf.rules)).toBe(true);
-		});
 	});
 
 	describe('seeded generator: 200 random grammars round-trip', () => {
@@ -140,6 +122,7 @@ describe('grammar-text.wasm round-trip (AC2 & AC5)', () => {
 			'CNF_UNIT_CHAIN',
 			'CNF_SHARED_TAIL',
 			'CFG_PAL',
+			'CFG_PAREN',
 			'CFG_ANBN',
 			'CFG_EQ'
 		];
@@ -160,22 +143,5 @@ describe('grammar-text.wasm round-trip (AC2 & AC5)', () => {
 				expect(rulesEqual(cnf2.value.finalGrammar.rules, cnf1.value.finalGrammar.rules)).toBe(true);
 			});
 		}
-
-		it.fails('is idempotent on preset CFG_PAREN (known until T-026)', () => {
-			// known until T-026: Phase 5 helper variable T_( contains non-alphanumeric char
-			// which crates/engine-core/src/grammar/parser.rs rejects on the RHS.
-			const preset = GRAMMAR_PRESETS.find((p) => p.id === 'CFG_PAREN')!;
-			const cnf1 = engine.transformToCnf(preset.grammar, false);
-			expect(cnf1.ok).toBe(true);
-			if (!cnf1.ok) return;
-
-			const text = grammarToText(cnf1.value.finalGrammar);
-			const cnf2 = engine.transformToCnf(text, false);
-			expect(cnf2.ok).toBe(true);
-			if (!cnf2.ok) return;
-
-			expect(cnf2.value.finalGrammar.start).toBe(cnf1.value.finalGrammar.start);
-			expect(rulesEqual(cnf2.value.finalGrammar.rules, cnf1.value.finalGrammar.rules)).toBe(true);
-		});
 	});
 });

@@ -432,6 +432,7 @@ impl CnfTransformer {
         let mut new_rules = Vec::new();
         let mut helper_rules = Vec::new();
         let mut removed_rules = Vec::new();
+        let mut p_counter = 1;
 
         for rule in &grammar.rules {
             if rule.body.len() < 2 {
@@ -451,8 +452,14 @@ impl CnfTransformer {
                 match sym {
                     Symbol::Terminal(c) => {
                         let var_name = term_map.entry(*c).or_insert_with(|| {
-                            let name =
-                                Self::fresh_variable_name(&existing_vars, &format!("T_{}", c));
+                            let base = if c.is_ascii_alphanumeric() {
+                                format!("T_{}", c)
+                            } else {
+                                let name = format!("T_p{}", p_counter);
+                                p_counter += 1;
+                                name
+                            };
+                            let name = Self::fresh_variable_name(&existing_vars, &base);
                             existing_vars.insert(name.clone());
                             helper_rules
                                 .push(Production::new(name.clone(), vec![Symbol::Terminal(*c)]));
@@ -564,7 +571,11 @@ impl CnfTransformer {
         }
         let mut counter = 1;
         loop {
-            let candidate = format!("{}_{}", base, counter);
+            let candidate = if base.contains('_') {
+                format!("{}{}", base, counter)
+            } else {
+                format!("{}_{}", base, counter)
+            };
             if !vars.contains(&candidate) {
                 return candidate;
             }
