@@ -532,7 +532,8 @@ Expected: all pass. Run the new e2e tests 10 times (they use local storage). Pas
 
 ## Task T-026 — CNF helper variables that the grammar parser can read back
 
-**Status:** in-progress
+**Status:** done
+**Commit:** `959dd6a`
 **Owner:** worker
 **Branch:** `task/T-026-readable-cnf-helper-names`
 
