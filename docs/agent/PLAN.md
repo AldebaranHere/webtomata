@@ -670,7 +670,7 @@ Expected: the tests pass; the two last commands print `true` and `false`. Paste 
 
 ## Task T-019 — One limit and one translated message for the length of a CYK string
 
-**Status:** todo (written on 2026-11-04; the owner approves it by merging the PR that adds it)
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-019-cyk-input-limit`
 
