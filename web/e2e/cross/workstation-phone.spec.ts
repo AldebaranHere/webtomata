@@ -48,9 +48,22 @@ test('grammar phone layout on WebKit phone: tab navigation, shortcut, and axe', 
 	await expect(shortcutBtn).toBeVisible();
 	await shortcutBtn.click();
 	await expect(tabs.nth(2)).toHaveAttribute('aria-selected', 'true');
-	await expect(page.locator('#grammar-pane-cnf')).toBeVisible();
+	const cnfPane = page.locator('#grammar-pane-cnf');
+	await expect(cnfPane).toBeVisible();
+
+	// Step 6 has "Buka sebagai tata bahasa baru"
+	const stepPills = cnfPane.locator('.step-pill');
+	await stepPills.nth(5).click();
+	const openResultBtn = cnfPane.locator('.btn-open-result');
+	await expect(openResultBtn).toBeVisible();
 
 	await expectNoAxeViolations(page);
+
+	// Tapping openResultBtn jumps to Editor tab with (CNF) title
+	await openResultBtn.click();
+	await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+	await expect(editorPane).toBeVisible();
+	await expect(editorPane.locator('.col-header')).toContainText('(CNF)');
 });
 
 test('language phone layout on WebKit phone: tab navigation and axe', async ({ page }) => {

@@ -12,6 +12,7 @@
 		type PhoneTabItem
 	} from '#lib/components/WorkstationPhoneTabs.svelte';
 	import { GRAMMAR_PRESETS, type PresetGrammar } from './presets.ts';
+	import { grammarToText, nextCustomId } from './grammar-text.ts';
 
 	interface MatrixRow {
 		id: string;
@@ -327,12 +328,39 @@
 	}
 
 	function createNewCustomGrammar() {
-		const nextNum = customGrammars.length + 1;
-		const id = `G${nextNum}`;
+		const id = nextCustomId(customGrammars);
 		const newGrammar: CustomGrammar = {
 			id,
 			title: `Tata Bahasa ${id}`,
 			grammar: `S -> aSb | λ`
+		};
+		const updated = [...customGrammars, newGrammar];
+		saveCustomGrammars(updated);
+		selectCustom(newGrammar);
+	}
+
+	function computeCnfTitle(baseTitle: string, existingGrammars: CustomGrammar[]): string {
+		const firstCandidate = `${baseTitle} (CNF)`;
+		const existingTitles = new Set(existingGrammars.map((c) => c.title));
+		if (!existingTitles.has(firstCandidate)) {
+			return firstCandidate;
+		}
+		let counter = 2;
+		while (existingTitles.has(`${baseTitle} (CNF ${counter})`)) {
+			counter++;
+		}
+		return `${baseTitle} (CNF ${counter})`;
+	}
+
+	function handleOpenCnfAsNewGrammar() {
+		if (!cnfTrace) return;
+		const text = grammarToText(cnfTrace.finalGrammar);
+		const id = nextCustomId(customGrammars);
+		const title = computeCnfTitle(activeTitle, customGrammars);
+		const newGrammar: CustomGrammar = {
+			id,
+			title,
+			grammar: text
 		};
 		const updated = [...customGrammars, newGrammar];
 		saveCustomGrammars(updated);
@@ -1002,7 +1030,7 @@
 				hidden={phoneTab !== 'cnf' && activeTab !== 'cnf'}
 			>
 				{#if cnfTrace}
-					<GrammarCnfStepper trace={cnfTrace} />
+					<GrammarCnfStepper trace={cnfTrace} onopen={handleOpenCnfAsNewGrammar} />
 				{:else if errorMessage}
 					<div class="empty-state">
 						<p>{errorMessage}</p>
