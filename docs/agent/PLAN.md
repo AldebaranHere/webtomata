@@ -601,7 +601,7 @@ Expected: all pass, and the `.wasm` stays within the budget in `AGENTS.md`/`CLAU
 
 ## Task T-050 — A fast path in CI for pull requests that change only documents
 
-**Status:** in-progress
+**Status:** done
 **Owner:** worker
 **Branch:** `task/T-050-ci-docs-only-fast-path`
 

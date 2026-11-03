@@ -1,295 +1,203 @@
-# Report — T-027
+# Report — T-050
 
 > Written by the worker at the end of the session. One file per task; overwrite each session.
 
 ## Task
-- id: T-027
-- title: The grammar parser reads `λ` as the empty string
-- branch: `task/T-027-parser-lambda-empty`
-- pull request: https://github.com/AldebaranHere/webtomata/pull/128
+- id: T-050
+- title: A fast path in CI for pull requests that change only documents
+- branch: `task/T-050-ci-docs-only-fast-path`
+- pull request: (to be created)
 - status: done
 
 ## What changed
-- `crates/engine-core/src/grammar/parser.rs`:
-  - Added `|| trimmed == "λ"` (U+03BB) to `parse_rhs_symbols`'s empty string / epsilon representations check.
-  - When `λ` appears as a standalone alternative (e.g. `S -> a S b | λ`), it produces an empty production body (`Production::new(head, vec![])`), matching the existing behavior of `ε`, `^`, `\lambda`, `\epsilon`, `lambda`, and `epsilon`.
-  - When `λ` appears inside a longer body (e.g. `S -> a λ`), it continues to be parsed as a terminal symbol `Symbol::Terminal('λ')`, matching the behavior of `ε`.
-- `crates/engine-core/tests/grammar.rs`:
-  - Updated `test_parse_arrow_variants_and_empty_symbols`: verified that rule 3 (`A -> λ`), rule 5 (`B -> ^`), and rule 6 (`B -> epsilon`) have empty bodies.
-  - Added `test_parse_lambda_empty_symbol`: tests `S -> a S b | λ` yields an empty production body and no `Symbol::Terminal('λ')`; tests equivalent behavior for `ε` and `^`; pins inline `λ` behavior (`S -> a λ` yields `[Terminal('a'), Terminal('λ')]`).
-  - Added `test_t027_audit_lambda_presets_and_grammars`: comprehensive audit covering `CFG_PAL`, `CFG_PAREN`, `CFG_EQ`, the default new custom grammar `S -> aSb | λ`, and the existing test grammar at line 31. Asserts valid CNF, acceptance of `""` in CYK, acceptance of valid language strings, rejection of non-language strings, and CNF idempotence.
-- `web/src/lib/grammar/grammar-text.wasm.test.ts`:
-  - Added `T-027: λ parsed as empty symbol across all presets`:
-    - Verifies that every preset in `GRAMMAR_PRESETS` parses without containing terminal `λ` in any production body.
-    - Verifies that CYK accepts the empty string `""` on each preset containing `λ` (`CFG_PAL`, `CFG_PAREN`, `CFG_EQ`).
-    - Verifies that CYK accepts `""` on the default new custom grammar `S -> aSb | λ`.
+- `tools/docs-only.mjs` (new):
+  - Pure function `isAllowedPath(path)`: checks whether an individual path is strictly within the allowed documentation scope. Denies whitespace, newlines, carriage returns, backslashes, path traversals (`..`), leading slashes or `./`, duplicate slashes, and any path outside the allowlist.
+  - Pure function `isDocsOnly(paths)`: returns `true` only if `paths` is an array, non-empty, and every entry satisfies `isAllowedPath`.
+  - `parseNullSeparatedPaths(raw)`: parses NUL-delimited paths output by `git diff -z`.
+  - CLI execution: reads standard input to EOF, parses NUL-separated paths, and prints `true\n` or `false\n`.
+  - Exports `WORKFLOW_PATHS_IGNORE` matching the exact allowlist for workflows.
+- `tools/docs-only.test.mjs` (new):
+  - Comprehensive unit and integration test suite covering AC1:
+    - Positive cases: allowed root files and allowed directories (`docs/`, `design/`, `.antigravity/`).
+    - Negative cases explicitly required by AC1: `content/guides/x.md`, `web/src/README.md`, `.github/ISSUE_TEMPLATE/x.md`, `tools/x.mjs`, `docsx/a.md`, `docs/../web/src/a.ts`, `./docs/a.md`, `README.md.js`, paths with spaces or newlines, empty paths, empty path list, mixed lists.
+    - CLI execution with child process stdin piping.
+- `tools/ci-gate.mjs` (new):
+  - Evaluates the merge gate (`web` job) based on the `needs` context and `docs_only` output:
+    - Fails if `scope` job is missing or its result is not `success`.
+    - Fails if any job failed or was cancelled.
+    - If `docs_only` is `'true'`: heavy jobs may be `skipped` or `success`.
+    - If `docs_only` is not `'true'`: every heavy job must be `success` (any `skipped` heavy job is a failure).
+    - Fails on malformed, missing, or unexpected job results.
+  - CLI execution: supports environment variables (`DOCS_ONLY`, `NEEDS_JSON`) and CLI flags (`--docs-only`, `--needs-json`).
+- `tools/ci-gate.test.mjs` (new):
+  - Comprehensive unit and integration tests covering AC2:
+    - Every row of the decision table.
+    - Failures for failed or cancelled jobs.
+    - Missing or odd inputs.
+    - CLI execution exit codes (0 on success, 1 on failure).
+- `tools/check-workflows.mjs`:
+  - Enforces that `ci.yml` contains the `scope` job with pinned runner, actions, and timeout.
+  - Enforces that every heavy job in `ci.yml` (`rust`, `checks`, `e2e`, `lighthouse`, `cross-browser`) waits for `scope` (`needs: ...`) and has `if: needs.scope.outputs.docs_only != 'true'`.
+  - Enforces that gate job `web` has `if: always()` and waits for `scope`.
+  - Enforces that non-required workflows (`codeql.yml`, `deploy.yml`, `audit.yml`, `fuzz.yml`) under `pull_request` either have `paths-ignore` matching `WORKFLOW_PATHS_IGNORE` exactly (`codeql.yml`, `deploy.yml`), or have positive `paths:` that contain no allowlisted documentation paths (`audit.yml`, `fuzz.yml`).
+- `tools/check-workflows.test.mjs`:
+  - Updated `ci` template to include `scope`, heavy jobs with `needs: scope` and `if`, and gate waiting for `scope`.
+  - Tests that missing `scope`, heavy jobs without `needs: scope`, heavy jobs without `if`, or gate without `if: always()` fail the check.
+  - Tests that `codeql.yml` or `deploy.yml` without `paths-ignore` or with differing lists fail.
+  - Tests that `audit.yml` or `fuzz.yml` with allowlisted entries in positive paths fail.
+- `.github/workflows/ci.yml`:
+  - Added `scope` job as the first job: runs on `ubuntu-24.04`, timeout 5 min, read-only permissions, pinned checkout action (`actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1` with `fetch-depth: 0`, `persist-credentials: false`).
+  - Resolves commit range (`PR_BASE_SHA..PR_HEAD_SHA` for PRs, `PUSH_BEFORE..PUSH_SHA` for pushes). Forces `docs_only=false` on pushes to `main`. Pipes `git diff --name-only -z` into `tools/docs-only.mjs` as data.
+  - Added `needs: scope` and `if: needs.scope.outputs.docs_only != 'true'` to `rust`, `checks`, `e2e`, `lighthouse`, and `cross-browser`.
+  - Updated `web` gate job: waits for `[scope, checks, e2e, lighthouse, cross-browser]`, runs `node tools/ci-gate.mjs` with `DOCS_ONLY` and `NEEDS_JSON`.
+- `.github/workflows/codeql.yml` & `.github/workflows/deploy.yml`:
+  - Added `paths-ignore` under `pull_request` matching the exact documentation allowlist.
+- `docs/decisions/0033-docs-only-fast-path-in-ci.md` (new):
+  - Documents context, architecture, allowlist rationale, threat model, fail-safe rules, and consequences.
 
 ---
 
-## Audit of Grammars Containing `λ` & Textbook Rationale
+## Workflow Design Rationale: Option A for `audit.yml` and `fuzz.yml`
 
-### 1. `CFG_PAL` (`S -> aSa | bSb | a | b | λ`)
-- **Old Result:** `λ` was parsed as `Symbol::Terminal('λ')`. `S` was not recognized as nullable. In Phase 1 `S0 -> S` was added, but in Phase 2 no epsilon productions were eliminated and no nullable variations were generated. The terminal `λ` was isolated as a terminal helper (e.g. `T_p1 -> λ`). The grammar generated palindromes containing literal `λ`, but could NOT generate `""`, `"aa"`, `"bb"`, or `"abba"`. CYK rejected `""`.
-- **New Result:** `λ` parses as empty production `S -> ε`. `S` and `S0` are nullable. Phase 1 introduces `S0 -> S`. Phase 2 generates `S0 -> ε`, adds nullable variations `S -> a a | b b`, and removes `S -> ε`. Phase 3 eliminates unit rules `S0 -> S`. Phase 5 isolates terminals `T_a -> a`, `T_b -> b`. Phase 6 binarizes the rules. CYK accepts `""`, `"a"`, `"b"`, `"aa"`, `"bb"`, `"aba"`, `"abba"`.
-- **Textbook Correctness (Rich ACCTA Ch. 11, Sipser Ch. 2):** In formal language theory, the language of palindromes over $\{a, b\}$ includes the empty word $\epsilon$ ($\epsilon^R = \epsilon$). In CNF, when $\epsilon \in L$, the only rule deriving $\epsilon$ is $S_0 \to \epsilon$. The new result correctly models $L = \{ w \in \{a, b\}^* : w = w^R \}$. The old result was textbook-incorrect because it treated $\lambda$ as an alphabet terminal.
+During specification review, it was identified that `audit.yml` and `fuzz.yml` already have specific positive `paths:` triggers:
+- `audit.yml` runs only on lockfile changes (`Cargo.lock`, `fuzz/Cargo.lock`, `pnpm-lock.yaml`, `.github/workflows/audit.yml`).
+- `fuzz.yml` runs only on engine core / fuzz changes (`crates/engine-core/**`, `fuzz/**`, `.github/workflows/fuzz.yml`).
 
-### 2. `CFG_PAREN` (`S -> (S)S | λ`)
-- **Old Result:** `λ` was treated as a terminal. `S` was not nullable. Empty string `""` and balanced string `"()"` could not be derived without terminal `λ`. CYK rejected `""`.
-- **New Result:** `λ` produces empty body. `S` and `S0` are nullable. Phase 2 generates combinations `( )`, `( ) S`, `( S )`, `( S ) S` and $S_0 \to \epsilon$. Terminals `(` and `)` are isolated as `T_p1` and `T_p2`. CYK accepts `""`, `"()"`, `"(())"`, `"()()"`, `"(()())"`, and rejects `"("`, `")("`.
-- **Textbook Correctness:** The Dyck language of balanced parentheses includes $\epsilon$ (0 pairs of parentheses). The new CNF correctly accepts $\epsilon$ and all Dyck words.
+In GitHub Actions:
+1. `paths` and `paths-ignore` cannot be combined under the same event (`pull_request`). Doing so causes a workflow syntax validation error.
+2. Replacing `paths` with `paths-ignore` would drastically widen their scope, causing `audit.yml` and `fuzz.yml` to run on every frontend Svelte, CSS, or script change where they previously never ran.
+3. Because their positive `paths:` lists contain only code/lockfile paths, they already naturally never trigger on documentation-only pull requests.
 
-### 3. `CFG_EQ` (`S -> aSbS | bSaS | λ`)
-- **Old Result:** `λ` was parsed as terminal `'λ'`. `S` was not nullable. Empty string `""` was rejected.
-- **New Result:** `λ` produces empty body. `S` is nullable, yielding $S_0 \to \epsilon$ and combinations for nullable `S` in Phase 2 (`a b`, `a b S`, `a S b`, etc.). CYK accepts `""`, `"ab"`, `"ba"`, `"aabb"`, `"baba"`, and rejects `"a"`, `"b"`, `"aab"`.
-- **Textbook Correctness:** For $L = \{ w \in \{a, b\}^* : \#_a(w) = \#_b(w) \}$, $\#_a(\epsilon) = 0 = \#_b(\epsilon)$, so $\epsilon \in L$. The new CNF result correctly includes $\epsilon$.
-
-### 4. Default New Custom Grammar in `GrammarWorkstation.svelte` (`S -> aSb | λ`)
-- **Old Result:** Generated $L = \{ a^n \lambda b^n \}$. Rejected `""` and `"ab"`.
-- **New Result:** Correctly recognized as canonical CFG for $\{ a^n b^n : n \ge 0 \}$. CNF derives $S_0 \to \epsilon \mid T_a T_b \mid T_a X_1$, $S \to T_a T_b \mid T_a X_1$, $X_1 \to S T_b$. CYK accepts `""`, `"ab"`, `"aabb"`, `"aaabbb"`.
-- **Textbook Correctness:** Canonical textbook language $\{ a^n b^n : n \ge 0 \}$ where $n=0$ is $\epsilon$.
-
-### 5. Line 31 Test Grammar (`S → A | B`, `A ::= a | λ`, `B -> b | ^ | epsilon`)
-- **Old Result:** Rule 3 was `A -> Terminal('λ')`. Only `B` was nullable, so `A` was not nullable.
-- **New Result:** Both `A` and `B` have empty bodies and are nullable. Thus `S` is nullable ($S \to \epsilon$). Unit rules eliminate `A` and `B`, giving final minimal CNF `S -> a | b | ε`. CYK accepts `""`, `"a"`, `"b"`.
-- **Textbook Correctness:** $S \to A \mid B$ with $A \to a \mid \epsilon$ and $B \to b \mid \epsilon$ generates $L = \{ \epsilon, a, b \}$. The new CNF is minimal and textbook-correct.
+Per owner confirmation (Option A):
+- `codeql.yml` and `deploy.yml` receive `paths-ignore` matching the allowlist.
+- `audit.yml` and `fuzz.yml` remain on their positive `paths` filters.
+- `tools/check-workflows.mjs` verifies that non-required workflows either have `paths-ignore` matching the allowlist or positive `paths` containing no allowlisted paths.
 
 ---
 
-## Idempotence Re-check (T-026 & T-027)
-- `CFG_PAL`: Idempotent in Rust (`assert_cnf_idempotent`) and in Vitest WASM test.
-- `CFG_EQ`: Idempotent in Rust (`assert_cnf_idempotent`) and in Vitest WASM test.
-- `CFG_PAREN`: Idempotent in Rust (`assert_cnf_idempotent`) and in Vitest WASM test.
-- All 9 presets pass the CNF idempotence test suite in `grammar-text.wasm.test.ts`.
+## Deliberate Breaks (AC4)
+
+### Deliberate Break 1: Add `content/` to `ALLOWLIST_DIRS` in `tools/docs-only.mjs`
+
+Added `'content/'` to `ALLOWLIST_DIRS` in `tools/docs-only.mjs`, then ran `node --test tools/docs-only.test.mjs`:
+
+```
+✔ isAllowedPath: allowed root files (1.587796ms)
+✔ isAllowedPath: allowed directories (0.189492ms)
+✖ isAllowedPath: forbidden paths explicitly required by AC1 (2.250849ms)
+✔ isDocsOnly: only allowed paths returns true (0.182406ms)
+✔ isDocsOnly: one path outside the list returns false (0.116327ms)
+✔ isDocsOnly: empty list returns false (0.118284ms)
+✖ isDocsOnly: empty path or invalid path in list returns false (0.253464ms)
+✔ WORKFLOW_PATHS_IGNORE matches allowlist exactly (0.72721ms)
+✔ CLI: pipes NUL-separated input and outputs true/false (79.643083ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 7
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 167.257091
+
+✖ failing tests:
+
+test at tools/docs-only.test.mjs:19:1
+✖ isAllowedPath: forbidden paths explicitly required by AC1 (2.250849ms)
+  AssertionError [ERR_ASSERTION]: expected "content/guides/x.md" to be forbidden
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///home/Aldebaran64/webtomata/tools/docs-only.test.mjs:35:10)
+...
+```
+
+Code was restored, and all tests passed.
+
+### Deliberate Break 2: Make gate accept a skipped heavy job when `docs_only` is not `true`
+
+Commented out `if (!isDocsOnly && result === 'skipped')` in `tools/ci-gate.mjs`, then ran `node --test tools/ci-gate.test.mjs`:
+
+```
+✔ ci-gate: docs_only is true and heavy jobs are skipped -> ok (1.145637ms)
+✔ ci-gate: docs_only is true and heavy jobs are success -> ok (0.257252ms)
+✔ ci-gate: docs_only is false and all heavy jobs are success -> ok (0.179278ms)
+✖ ci-gate: docs_only is false and a heavy job is skipped -> fail (0.982309ms)
+✔ ci-gate: scope job is not success -> fail (0.330042ms)
+✔ ci-gate: any job failed or was cancelled -> fail (0.236312ms)
+✔ ci-gate: missing or odd input -> fail (0.175303ms)
+✖ CLI: exits 0 on valid inputs and 1 on failure (64.024294ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 6
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 150.683581
+
+✖ failing tests:
+
+test at tools/ci-gate.test.mjs:52:1
+✖ ci-gate: docs_only is false and a heavy job is skipped -> fail (0.982309ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///home/Aldebaran64/webtomata/tools/ci-gate.test.mjs:63:9)
+...
+```
+
+Code was restored, and all tests passed.
 
 ---
 
-## Tests First: Failing Test Output Before Code Change
+## AC5 Note on this Pull Request's CI Run
 
-Before adding `|| trimmed == "λ"` to `parser.rs`, the new test in `crates/engine-core/tests/grammar.rs` was run:
-
-```
-$ cargo test -p engine-core --test grammar test_parse
-   Compiling engine-core v0.0.0 (/home/Aldebaran64/webtomata/crates/engine-core)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.85s
-     Running tests/grammar.rs (target/debug/deps/grammar-55e09d754fbe5e9c)
-
-running 3 tests
-test test_parse_simple_grammar ... ok
-test test_parse_arrow_variants_and_empty_symbols ... FAILED
-test test_parse_lambda_empty_symbol ... FAILED
-
-failures:
-
----- test_parse_arrow_variants_and_empty_symbols stdout ----
-
-thread 'test_parse_arrow_variants_and_empty_symbols' (516285) panicked at crates/engine-core/tests/grammar.rs:39:5:
-A -> λ should have empty body
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-
----- test_parse_lambda_empty_symbol stdout ----
-
-thread 'test_parse_lambda_empty_symbol' (516286) panicked at crates/engine-core/tests/grammar.rs:59:5:
-Rule for λ should have an empty body, but got [Terminal('λ')]
-
-
-failures:
-    test_parse_arrow_variants_and_empty_symbols
-    test_parse_lambda_empty_symbol
-
-test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.00s
-
-error: test failed, to rerun pass `-p engine-core --test grammar`
-```
+This pull request modifies `.github/workflows/**` and `tools/**`. Because neither `.github/` nor `tools/` is in the documentation allowlist, the `scope` job will output `docs_only=false`. Therefore, in this PR's CI run, every heavy job (`rust`, `checks`, `e2e`, `lighthouse`, `cross-browser`) and both required checks (`rust` and `web`) will run in full.
 
 ---
 
-## Deliberate Break
+## Verification Output
 
-Temporarily removing `|| trimmed == "λ"` from `crates/engine-core/src/grammar/parser.rs` causes `test_parse_lambda_empty_symbol` to fail:
-
+### 1. `pnpm check:workflows`
 ```
-thread 'test_parse_lambda_empty_symbol' panicked at crates/engine-core/tests/grammar.rs:59:5:
-Rule for λ should have an empty body, but got [Terminal('λ')]
-```
-
-After restoring `trimmed == "λ"`, all tests pass.
-
----
-
-## WASM Size Report
-```
-ok   wasm _app/immutable/workers/assets/engine_wasm_bg-DmuDISdj.wasm: 206.3 KB gzip (limit 250 KB)
-```
-Budget: 250 KB. Actual: 206.3 KB gzip. Well within budget.
-
----
-
-## What was not run and why
-- **Firefox E2E tests (`pnpm test:e2e:cross` with `firefox`)**: Not run locally because Firefox does not start in this WSL environment (per `AGENTS.md`: "Firefox does not start on the owner's laptop; the Firefox tests run only in CI"). The WebKit suite (`webkit-phone`) was run locally and passed completely (119 passed, 14 skipped, 0 failed).
-- **Physical mobile devices**: Not run directly; emulated via Playwright's mobile emulation profiles (`phone` = Pixel 7, `webkit-phone` = iPhone 13).
-
----
-
-## Verification Commands & Actual Outputs
-
-### 1. `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`
-```
-$ cargo fmt --check
-(exited 0 with no diff)
-
-$ cargo clippy --all-targets -- -D warnings
-    Checking engine-core v0.0.0 (/home/Aldebaran64/webtomata/crates/engine-core)
-    Checking engine-wasm v0.0.0 (/home/Aldebaran64/webtomata/crates/engine-wasm)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.62s
-
-$ cargo test
-     Running unittests src/lib.rs (target/debug/deps/engine_core-670a3d94c89462ba)
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-     Running tests/api.rs (target/debug/deps/api-b80225d7cef47478)
-test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
-     Running tests/boundaries.rs (target/debug/deps/boundaries-86334ddba1c3c79e)
-test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
-     Running tests/determinize.rs (target/debug/deps/determinize-b9746edb6b0d6811)
-test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
-     Running tests/differential.rs (target/debug/deps/differential-859c5c32261d2a58)
-test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.69s
-     Running tests/fsm_to_regex.rs (target/debug/deps/fsm_to_regex-1941d4f40f0653c4)
-test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
-     Running tests/grammar.rs (target/debug/deps/grammar-53ed0d438fef75e6)
-running 20 tests
-test test_cnf_cfg_paren_helper_names_readable ... ok
-test test_cnf_phase1_start_symbol_collision_with_existing_s0 ... ok
-test test_cnf_slide_example_eliminating_long_rhs ... ok
-test test_cnf_variable_fresh_when_t_p1_already_exists ... ok
-test test_cyk_empty_string ... ok
-test test_parse_arrow_variants_and_empty_symbols ... ok
-test test_cyk_parser_on_cnf ... ok
-test test_parse_simple_grammar ... ok
-test test_parse_lambda_empty_symbol ... ok
-test test_cnf_variable_deduplication_step6 ... ok
-test test_full_pipeline_cfg_to_cnf_to_cyk ... ok
-test test_cnf_transformation_trace_6_phases ... ok
-test test_cnf_presets_alphanumeric_helpers_unchanged ... ok
-test test_cnf_preset_order ... ok
-test test_t027_audit_lambda_presets_and_grammars ... ok
-test test_cnf_preset_unit_chain ... ok
-test cnf_proptest_variables_read_back_as_single_variable ... ok
-test test_cnf_preset_start_long ... ok
-test test_cnf_preset_nullable ... ok
-test test_cnf_preset_shared_tail ... ok
-test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.04s
-     Running tests/language.rs (target/debug/deps/language-4f057c7d8ae31e90)
-test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
-     Running tests/minimize.rs (target/debug/deps/minimize-b6b23a9d70034a81)
-test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
-     Running tests/nondeterministic_states.rs (target/debug/deps/nondeterministic_states-3d2382bc19445199)
-test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
-     Running tests/regex_compile.rs (target/debug/deps/regex_compile-514ffc3ea31828f7)
-test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
-     Running tests/regex_parser.rs (target/debug/deps/regex_parser-5d26ae810ba2b5a1)
-test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
-     Running tests/regex_simplify.rs (target/debug/deps/regex_simplify-006d6ae2a7e71954)
-test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
-     Running tests/regex_oracle.rs (target/debug/deps/regex_oracle-8160578fcffdab82)
-test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.95s
-     Running tests/simulate.rs (target/debug/deps/simulate-1dbd64b6389fef35)
-test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
-     Running tests/trap_state.rs (target/debug/deps/trap_state-4aee2a592eea6543)
-test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.14s
-     Running tests/ts_export.rs (target/debug/deps/ts_export-33cfd47880a3bf7a)
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-     Running tests/validate.rs (target/debug/deps/validate-6703e515f13f4509)
-test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
-     Running tests/xor.rs (target/debug/deps/xor-64f20ad6e96eb367)
-test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.67s
-     Running unittests src/lib.rs (target/debug/deps/engine_wasm-c813d8d0c2a39401)
-test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-   Doc-tests engine_core
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-   Doc-tests engine_wasm
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+$ node tools/check-workflows.mjs
+ok   6 workflows follow the guard rails
 ```
 
-### 2. `wasm-pack test --node crates/engine-wasm`
+### 2. `pnpm test:tools`
 ```
-[INFO]: 🎯  Checking for the Wasm target...
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.12s
-[INFO]: ⬇️  Installing wasm-bindgen...
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.25s
-     Running unittests src/lib.rs (target/wasm32-unknown-unknown/debug/deps/engine_wasm-b764f7b99cfd7388.wasm)
-running 9 tests
-test tests::version_matches_crate_version ... ok
-test tests::transform_to_cnf_answers_in_envelope ... ok
-test tests::simulate_answers_in_the_envelope ... ok
-test tests::parse_grammar_answers_in_envelope ... ok
-test tests::equivalent_names_the_witness ... ok
-test tests::enumerate_language_answers_in_envelope ... ok
-test tests::cyk_parse_answers_in_envelope ... ok
-test tests::bad_input_is_an_error_and_not_a_trap ... ok
-test tests::a_budget_that_is_too_small_stops_the_run ... ok
-
-test result: ok. 9 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.06s
+$ node --test "tools/*.test.mjs"
+...
+ℹ tests 130
+ℹ suites 3
+ℹ pass 130
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11448.873417
 ```
 
-### 3. `pnpm build:wasm && pnpm --filter web exec vitest run`
+### 3. `pnpm format:check`
 ```
-$ pnpm build:wasm
-[INFO]: ✨   Done in 25.23s
-[INFO]: 📦   Your wasm pkg is ready to publish at web/src/lib/engine/wasm.
-
-$ pnpm --filter web test
- RUN  v5.0.3 /home/Aldebaran64/webtomata/web
- Test Files  90 passed (90)
-      Tests  1160 passed | 2 skipped (1162)
-   Duration  4.33s
-```
-
-### 4. `pnpm check && pnpm lint && pnpm format:check && pnpm check:strings`
-```
-$ pnpm check
-svelte-check found 0 errors and 0 warnings
-
-$ pnpm lint
-(exited 0 with no errors)
-
-$ pnpm format:check
+$ pnpm --filter web format:check && cargo fmt --check
+$ prettier --check .
 Checking formatting...
 All matched files use Prettier code style!
-
-$ pnpm check:strings
-ok   63 components have no hard-coded text
 ```
 
-### 5. `pnpm build && pnpm size`
+### 4. `pnpm lint`
 ```
-$ pnpm build
-✓ built in 1.34s
-Wrote site to "build"
-
-$ pnpm size
-ok   initial JS index.html: 78.4 KB gzip (limit 170 KB)
-ok   initial JS panduan/berakhiran-x.html: 83.3 KB gzip (limit 170 KB)
-ok   initial JS panduan.html: 77.6 KB gzip (limit 170 KB)
-ok   initial JS sandbox.html: 116.7 KB gzip (limit 170 KB)
-ok   initial JS soal/berakhiran-10.html: 116.3 KB gzip (limit 170 KB)
-ok   initial JS soal/jumlah-a-genap.html: 116.3 KB gzip (limit 170 KB)
-ok   initial JS soal/mengandung-101.html: 116.3 KB gzip (limit 170 KB)
-ok   initial JS soal.html: 79.0 KB gzip (limit 170 KB)
-ok   initial JS tentang.html: 76.9 KB gzip (limit 170 KB)
-ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
-ok   wasm _app/immutable/workers/assets/engine_wasm_bg-DmuDISdj.wasm: 206.3 KB gzip (limit 250 KB)
+$ pnpm --filter web lint
+$ eslint .
 ```
 
-### 6. `pnpm test:e2e`
+### 5. `tools/docs-only.mjs` CLI Verification
 ```
-Running 856 tests using 6 workers
-  137 skipped
-  719 passed (11.6m)
-```
-
-### 7. `pnpm --filter web exec playwright test --project=webkit-phone`
-```
-Running 133 tests using 6 workers
-  14 skipped
-  119 passed (2.3m)
+$ printf 'docs/a.md\0README.md\0' | node tools/docs-only.mjs
+true
+$ printf 'docs/a.md\0web/src/a.ts\0' | node tools/docs-only.mjs
+false
 ```
