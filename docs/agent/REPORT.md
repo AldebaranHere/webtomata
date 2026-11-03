@@ -7,6 +7,7 @@
 - title: Remove the stale `tokio` audit ignore
 - branch: `task/T-002-tokio-audit`
 - commits: `760951d..9dcad9d`
+- pull request: https://github.com/AldebaranHere/webtomata/pull/134
 - status: done
 
 ## What changed

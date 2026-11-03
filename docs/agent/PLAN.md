@@ -76,6 +76,7 @@ Expected: the two typecheck commands and `pnpm check` end with `svelte-check fou
 
 **Status:** done
 **Commit:** `9dcad9d`
+**PR:** #134
 **Owner:** worker
 **Branch:** `task/T-002-tokio-audit`
 
