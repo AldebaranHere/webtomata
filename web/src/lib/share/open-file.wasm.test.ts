@@ -1,12 +1,13 @@
 // Opening a file against the real engine (the WASM module: `pnpm build:wasm`): the files of the page's own export,
 // small `.jff` files written for these tests (fixtures/), and the files of the course when that folder exists.
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import init, * as wasm from '../engine/wasm/engine_wasm.js';
 import type { EngineResult, Jff } from '../engine/types.ts';
 import { endsWith01 } from '../editor/diagram/samples.ts';
 import { documentsEqual, toMachine } from '../editor/document.ts';
 import { JFF_EXTENSION, JSON_EXTENSION, fileName, jffFile, jsonFile } from './files.ts';
+import { localFaFiles, localOtherJffFiles } from './local-jff.ts';
 import { openFile } from './open-file.ts';
 import type { ImportFile } from './open-file.ts';
 
@@ -122,26 +123,28 @@ describe('opening a .jff file from JFLAP', () => {
 });
 
 const folder = new URL('../../../../REFERENCES/JFF-FILES/', import.meta.url);
-const files = existsSync(folder) ? readdirSync(folder).filter((name) => name.endsWith('.jff')) : [];
+const list = localFaFiles(folder);
+const other = localOtherJffFiles(folder);
 
-describe.skipIf(files.length === 0)(
-	'opening the JFLAP files of the course (a local folder)',
-	() => {
-		it('opens each finite automaton, and names the type of each of the others', async () => {
-			let finite = 0;
-			for (const name of files) {
-				const result = await openFile(
-					fileOf(name, readFileSync(new URL(name, folder), 'utf8')),
-					engine
-				);
-				if (result.ok) {
-					finite += 1;
-					expect(result.value.doc.states.length, name).toBeGreaterThan(0);
-				} else {
-					expect(result.error.key, name).toBe('jff.unsupported_type');
-				}
+describe.skipIf(list.length === 0)('opening the JFLAP files of the course (a local folder)', () => {
+	it('opens each finite automaton, and names the type of each of the others', async () => {
+		for (const name of list) {
+			const result = await openFile(
+				fileOf(name, readFileSync(new URL(name, folder), 'utf8')),
+				engine
+			);
+			expect(result.ok, name).toBe(true);
+			if (result.ok) {
+				expect(result.value.doc.states.length, name).toBeGreaterThan(0);
 			}
-			expect(finite).toBeGreaterThan(0);
-		});
-	}
-);
+		}
+
+		for (const name of other) {
+			const result = await openFile(
+				fileOf(name, readFileSync(new URL(name, folder), 'utf8')),
+				engine
+			);
+			expect(!result.ok && result.error.key, name).toBe('jff.unsupported_type');
+		}
+	});
+});
