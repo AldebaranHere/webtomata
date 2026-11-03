@@ -725,6 +725,7 @@ Expected: all pass; the `.wasm` stays within the budget. Paste the real output i
 
 **Status:** done
 **Commit:** `aba03fe`
+**PR:** #136
 **Owner:** worker
 **Branch:** `task/T-017-local-reference-tests`
 

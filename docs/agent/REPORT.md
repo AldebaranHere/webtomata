@@ -7,6 +7,7 @@
 - title: The two local-reference tests keep only finite automata
 - branch: `task/T-017-local-reference-tests`
 - commits: `867647d..aba03fe`
+- pull request: https://github.com/AldebaranHere/webtomata/pull/136
 - status: done
 
 ## What changed
