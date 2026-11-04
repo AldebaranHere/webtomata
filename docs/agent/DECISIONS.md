@@ -14,6 +14,14 @@ Format:
 
 ---
 
+## 2026-11-04 — The worker does not run the full e2e suite on its machine
+- Decider: planner (the owner asked whether the worker could shard the suite like CI)
+- Context: CI runs the e2e suite in four shards on four machines (about 5 minutes); the worker ran the whole suite on one laptop under WSL, which takes much longer, and sharding on one machine does not add speed.
+- Decision: the worker runs the specs of the area (found with `grep -l`), the cross-browser spec of the area for layout, touch or phone changes, and repeats new specs 5 or 10 times; CI runs the full suite and the owner merges only on green. A task that lists `pnpm test:e2e` means the area specs unless it says "full suite locally". T-025 was changed to match, and it also gets the small e2e that T-013 left out (T-013 AC2 was checked by hand only).
+- Alternatives considered: running `--shard` in sequence (no gain); raising `--workers` or the WSL core and memory limits (the owner may try it; not a rule).
+- Reversible? yes
+- Affects: `AGENTS.md` (verification tiers), `docs/agent/PLAN.md` (T-025)
+
 ## 2026-11-04 — Four small tasks specified: T-019, T-017, T-025, T-013 (and T-028 found)
 - Decider: planner (the owner approves by merging the PR)
 - Context: The owner asked for the specs of the four small items of the backlog while T-002 runs.

@@ -780,6 +780,7 @@ Expected: all pass. Paste the real output into `REPORT.md`, with the "skipped" c
 - The inner CNF and CYK panels of the grammar results column (`grammar-pane-cnf`, `grammar-pane-cyk`) have a visible tab strip of their own on a laptop; leave them as they are.
 - Before the first read (prerender and first paint) use the laptop roles. A phone gets the tab panel roles right after mount.
 - No new string, no visual change, no new token.
+- One small e2e test that T-013 left out (its AC2 was only checked by hand): in each workstation, switch the interface to English and see that a preset in the library shows its English title (for example "Palindromes {a, b}" and "Finite Set {ab, bc}"), then create a new grammar and see that its title is "Grammar G1" and stays so after switching back to Indonesian. Put it in the same spec files as the other new tests.
 
 **Non-goals (out):**
 - No change to the layout, to the tab strip, to the splitters, to the CSS breakpoint, or to the keyboard behavior. No change to the other workstation components.
@@ -800,10 +801,9 @@ Expected: all pass. Paste the real output into `REPORT.md`, with the "skipped" c
 pnpm check && pnpm lint && pnpm format:check && pnpm check:strings && pnpm check:tokens
 pnpm build && pnpm size
 pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-phone.spec.ts e2e/language-phone.spec.ts --repeat-each=5
-pnpm test:e2e
-pnpm test:e2e:cross
+pnpm --filter web exec playwright test --project=firefox --project=webkit-phone e2e/cross/workstation-phone.spec.ts
 ```
-Expected: all pass. Paste the real output into `REPORT.md`.
+Expected: all pass. The area specs are those of the two workstations (`grep -l -i "grammar\|language" web/e2e/*.spec.ts`); run them once too. Do not run the full suite locally (see `AGENTS.md`, verification tiers); CI runs it. Paste the real output into `REPORT.md`, and name the specs you ran.
 
 **Rollback:** `git revert <sha>`.
 
