@@ -14,6 +14,14 @@ Format:
 
 ---
 
+## 2026-11-05 — The CNF stepper follows the homework order (T-060), and T-029 is specified
+- Decider: owner (follow the homework); planner (specs)
+- Context: T-010 review. The course homework asks for six CNF stages: unreachable, non-productive, ε, unit, mixed, long rules. The engine's six phases are: start symbol, ε, unit, useless (both kinds), terminals, long. Its phase names and descriptions are Indonesian sentences written in Rust. The worker of T-010 also found that the CYK tester joins rule symbols with no space, which the planner reproduced: `S -> T_aT_b` fails with "must be CNF", `S -> T_a T_b` works.
+- Decision: (1) The six phases follow the homework order (T-060, `proposed` until the owner approves `design/screens/cnf-stepper-homework-order.md` and answers two questions: the order of the first two stages, and where the new start symbol goes). The planner's pick for the start symbol: no stage of its own; `S₀` is added in the ε stage only when the empty string is in the language and `S` is on a right-hand side. (2) The phase names and descriptions become message keys, in the same task. (3) The toggle "versi kuliah / versi ringkas" (T-015) comes after T-060. (4) T-029 (the CYK tester uses `grammarToText`) is `todo`: it breaks the main flow of convert, open as grammar, test a string.
+- Alternatives considered: keep Rich's order and explain it in a guide (a student comparing with the homework still sees different intermediate grammars); split the key change from the order change (the same twelve texts would be rewritten twice).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-029, T-060, T-015, P-002), `design/screens/cnf-stepper-homework-order.md` and `.svg`, `docs/ux/wireframes.md`
+
 ## 2026-11-04 — Rule rows on touch screens (T-024), and three tasks specified
 - Decider: owner (design and CNF/PDA answers); planner (specs)
 - Context: The planner measured the rule matrix of the grammar Editor, found that a row can be deleted only by right-click, and proposed a phone layout (P-003). The owner also answered the open questions for the CNF switch and the PDA.
