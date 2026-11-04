@@ -4,7 +4,7 @@
 > `todo` means ready: every field is written and the human approved it. Several tasks can be `todo` at the same time. The worker does one task at a time: the one that the human names in the start prompt ("Do task T-xxx"). The worker sets it to `in-progress` in the first commit of its own PR and to `done` in the last. The planner does not open a pull request only to change a status.
 > The blank task template is in `PLAN-TEMPLATE.md`.
 
-**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 and T-015 (CNF homework order, then the toggle) are `proposed` until the owner approves `design/screens/cnf-stepper-homework-order.md`.
+**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 (CNF phases in the homework order, after T-029 is merged) is `todo` since the owner approved `design/screens/cnf-stepper-homework-order.md`; T-015 (the toggle) stays `proposed` until T-060 is merged.
 
 Status legend: `proposed` | `todo` | `in-progress` | `blocked` | `done` | `rejected`
 
@@ -1063,7 +1063,7 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 
 ## Task T-060 — CNF phases in the homework order, with message keys
 
-**Status:** proposed (waits for the owner to approve the wireframe `design/screens/cnf-stepper-homework-order.md`; its two content questions were settled from the course slides on 2026-11-05; then it becomes `todo`)
+**Status:** todo (the owner approved the wireframe `design/screens/cnf-stepper-homework-order.md` on 2026-11-05; its two content questions were settled from the course slides the same day)
 **Owner:** worker
 **Branch:** `task/T-060-cnf-homework-order`
 
@@ -1143,7 +1143,7 @@ Write `design/screens/grammar-workstation.md`, `design/screens/language-workstat
 
 ## Planner task P-002 — Wireframe of the CNF "versi panjang / versi ringkas" switch
 
-**Status:** drawn on 2026-11-05 in `design/screens/cnf-stepper-homework-order.md` and `.svg`; waits for the owner's approval of the wireframe (the stage order and the start-symbol rule were settled from the course slides on the same day). It also changes the phase order (the owner agreed on 2026-11-05: follow the homework). Tasks: T-060 (order and message keys), then T-015 (the toggle).
+**Status:** drawn on 2026-11-05 in `design/screens/cnf-stepper-homework-order.md` and `.svg`, and approved by the owner the same day (the stage order and the start-symbol rule were settled from the course slides). It also changes the phase order (the owner agreed on 2026-11-05: follow the homework). Tasks: T-060 (order and message keys), then T-015 (the toggle).
 **Owner:** planner
 
 **Owner's answers (2026-11-04):** the long version is the default; a toggle switches to a "minimized" version with reused rules (one version at a time, not side by side). The engine's six phases follow the course's homework text for CNF (report the grammar after each stage: unreachable rules, non-productive rules, epsilon rules, unit rules, mixed rules, long right-hand sides). Still to draw and ask: where the toggle sits (in the stepper header is the planner's pick), and what exactly "minimized" does (shared helper variables only, or also reuse of an existing `A → a` rule; see the note below).
