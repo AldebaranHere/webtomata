@@ -64,9 +64,12 @@
 	const SELECTED_ID_KEY = 'webtomata.grammar.selected_id';
 	const LIBRARY_WIDTH_KEY = 'webtomata.grammar.col1_width';
 	const OUTPUT_WIDTH_KEY = 'webtomata.grammar.col3_width';
+	const CNF_VERSION_KEY = 'webtomata.grammar.cnf_version';
 
 	let customGrammars = $state<CustomGrammar[]>([]);
 	let selectedId = $state<string>('CNF_ORDER');
+	let cnfVersion = $state<'long' | 'short'>('long');
+	let pipelineCallId = 0;
 
 	// Matrix State
 	let rows = $state<MatrixRow[]>([]);
@@ -169,11 +172,13 @@
 
 	onMount(() => {
 		try {
+			let loadedCustom: CustomGrammar[] = [];
 			const saved = localStorage.getItem(CUSTOM_STORAGE_KEY);
 			if (saved) {
 				const parsed = JSON.parse(saved) as CustomGrammar[];
 				if (Array.isArray(parsed) && parsed.length > 0) {
 					customGrammars = parsed;
+					loadedCustom = parsed;
 				}
 			}
 			const savedWidth = localStorage.getItem(LIBRARY_WIDTH_KEY);
@@ -190,10 +195,16 @@
 					outputWidth = ow;
 				}
 			}
+			const savedCnfVersion = localStorage.getItem(CNF_VERSION_KEY);
+			if (savedCnfVersion === 'short') {
+				cnfVersion = 'short';
+			} else {
+				cnfVersion = 'long';
+			}
 			const savedSelected = localStorage.getItem(SELECTED_ID_KEY);
 			let initialText = GRAMMAR_PRESETS[0]?.grammar ?? 'S -> λ';
 			if (savedSelected) {
-				const foundCustom = customGrammars.find((c) => c.id === savedSelected);
+				const foundCustom = loadedCustom.find((c) => c.id === savedSelected);
 				const foundPreset = GRAMMAR_PRESETS.find((p) => p.id === savedSelected);
 				if (foundCustom) {
 					selectedId = foundCustom.id;
@@ -614,6 +625,17 @@
 		void runPipeline();
 	}
 
+	function handleVersionChange(newVersion: 'long' | 'short') {
+		if (newVersion === cnfVersion) return;
+		cnfVersion = newVersion;
+		try {
+			localStorage.setItem(CNF_VERSION_KEY, newVersion);
+		} catch {
+			// ignore storage errors
+		}
+		void runPipeline();
+	}
+
 	async function runPipeline() {
 		const grammarText = matrixRowsToGrammarText(rows);
 		if (!grammarText.trim()) {
@@ -623,11 +645,13 @@
 			return;
 		}
 
+		const callId = ++pipelineCallId;
 		isTransforming = true;
 		errorMessage = null;
 
 		try {
 			const parseRes = await engine.parseGrammar(grammarText);
+			if (callId !== pipelineCallId) return;
 			if (!parseRes.ok) {
 				errorMessage = parseRes.error.params?.detail
 					? String(parseRes.error.params.detail)
@@ -638,7 +662,8 @@
 			}
 			parsedGrammar = parseRes.value;
 
-			const cnfRes = await engine.transformToCnf(grammarText);
+			const cnfRes = await engine.transformToCnf(grammarText, cnfVersion === 'short');
+			if (callId !== pipelineCallId) return;
 			if (!cnfRes.ok) {
 				errorMessage = cnfRes.error.params?.detail
 					? String(cnfRes.error.params.detail)
@@ -648,11 +673,14 @@
 			}
 			cnfTrace = cnfRes.value;
 		} catch (e) {
+			if (callId !== pipelineCallId) return;
 			errorMessage = e instanceof Error ? e.message : 'Unknown grammar transformation error';
 			parsedGrammar = null;
 			cnfTrace = null;
 		} finally {
-			isTransforming = false;
+			if (callId === pipelineCallId) {
+				isTransforming = false;
+			}
 		}
 	}
 </script>
@@ -1073,7 +1101,12 @@
 				hidden={phoneTab !== 'cnf' && activeTab !== 'cnf'}
 			>
 				{#if cnfTrace}
-					<GrammarCnfStepper trace={cnfTrace} onopen={handleOpenCnfAsNewGrammar} />
+					<GrammarCnfStepper
+						trace={cnfTrace}
+						version={cnfVersion}
+						onversionchange={handleVersionChange}
+						onopen={handleOpenCnfAsNewGrammar}
+					/>
 				{:else if errorMessage}
 					<div class="empty-state">
 						<p>{errorMessage}</p>

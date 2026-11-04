@@ -7,9 +7,13 @@
 
 	let {
 		trace,
+		version = 'long',
+		onversionchange,
 		onopen
 	}: {
 		trace: CnfTransformationTrace;
+		version?: 'long' | 'short';
+		onversionchange?: (version: 'long' | 'short') => void;
 		onopen?: () => void;
 	} = $props();
 
@@ -17,6 +21,30 @@
 
 	const step = $derived<CnfStepResult | undefined>(trace.steps[currentStepIdx]);
 	const totalSteps = $derived(trace.steps.length);
+
+	let longRadioRef = $state<HTMLButtonElement | null>(null);
+	let shortRadioRef = $state<HTMLButtonElement | null>(null);
+
+	function setVersion(newVersion: 'long' | 'short') {
+		if (newVersion !== version) {
+			onversionchange?.(newVersion);
+		}
+	}
+
+	function handleRadioKeydown(event: KeyboardEvent, current: 'long' | 'short') {
+		if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+			event.preventDefault();
+			setVersion('short');
+			shortRadioRef?.focus();
+		} else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+			event.preventDefault();
+			setVersion('long');
+			longRadioRef?.focus();
+		} else if (event.key === ' ' || event.key === 'Enter') {
+			event.preventDefault();
+			setVersion(current);
+		}
+	}
 
 	function goToStep(idx: number) {
 		if (idx >= 0 && idx < totalSteps) {
@@ -27,40 +55,73 @@
 
 <div class="stepper-container">
 	<div class="stepper-header">
-		<div class="step-nav">
-			{#each trace.steps as s, idx (s.phase)}
+		<div class="version-toggle-row">
+			<div class="version-toggle" role="radiogroup" aria-label={t('grammar.cnf.version.aria')}>
 				<button
 					type="button"
-					class="step-pill"
-					class:active={idx === currentStepIdx}
-					onclick={() => goToStep(idx)}
-					aria-label={t(`${s.phaseKey}.title` as MessageKey)}
+					role="radio"
+					class="version-radio"
+					class:checked={version === 'long'}
+					aria-checked={version === 'long'}
+					tabindex={version === 'long' ? 0 : -1}
+					bind:this={longRadioRef}
+					onclick={() => setVersion('long')}
+					onkeydown={(e) => handleRadioKeydown(e, 'long')}
 				>
-					<span class="step-num">{s.phase}</span>
+					{t('grammar.cnf.version.long')}
 				</button>
-			{/each}
+				<button
+					type="button"
+					role="radio"
+					class="version-radio"
+					class:checked={version === 'short'}
+					aria-checked={version === 'short'}
+					tabindex={version === 'short' ? 0 : -1}
+					bind:this={shortRadioRef}
+					onclick={() => setVersion('short')}
+					onkeydown={(e) => handleRadioKeydown(e, 'short')}
+				>
+					{t('grammar.cnf.version.short')}
+				</button>
+			</div>
 		</div>
 
-		<div class="nav-controls">
-			<button
-				type="button"
-				class="nav-btn"
-				disabled={currentStepIdx === 0}
-				onclick={() => goToStep(currentStepIdx - 1)}
-			>
-				{t('grammar.btn_prev_step')}
-			</button>
-			<span class="step-counter">
-				{currentStepIdx + 1} / {totalSteps}
-			</span>
-			<button
-				type="button"
-				class="nav-btn"
-				disabled={currentStepIdx === totalSteps - 1}
-				onclick={() => goToStep(currentStepIdx + 1)}
-			>
-				{t('grammar.btn_next_step')}
-			</button>
+		<div class="nav-row">
+			<div class="step-nav">
+				{#each trace.steps as s, idx (s.phase)}
+					<button
+						type="button"
+						class="step-pill"
+						class:active={idx === currentStepIdx}
+						onclick={() => goToStep(idx)}
+						aria-label={t(`${s.phaseKey}.title` as MessageKey)}
+					>
+						<span class="step-num">{s.phase}</span>
+					</button>
+				{/each}
+			</div>
+
+			<div class="nav-controls">
+				<button
+					type="button"
+					class="nav-btn"
+					disabled={currentStepIdx === 0}
+					onclick={() => goToStep(currentStepIdx - 1)}
+				>
+					{t('grammar.btn_prev_step')}
+				</button>
+				<span class="step-counter">
+					{currentStepIdx + 1} / {totalSteps}
+				</span>
+				<button
+					type="button"
+					class="nav-btn"
+					disabled={currentStepIdx === totalSteps - 1}
+					onclick={() => goToStep(currentStepIdx + 1)}
+				>
+					{t('grammar.btn_next_step')}
+				</button>
+			</div>
 		</div>
 	</div>
 
@@ -134,12 +195,67 @@
 
 	.stepper-header {
 		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		padding-bottom: var(--space-2);
+		border-bottom: 1px solid var(--color-border);
+	}
+
+	.version-toggle-row {
+		display: flex;
+		align-items: center;
+	}
+
+	.version-toggle {
+		display: inline-flex;
+		align-items: center;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-surface);
+		padding: 2px;
+		gap: 2px;
+	}
+
+	.version-radio {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-height: var(--target-min);
+		padding: 0 var(--space-3);
+		border: 1px solid transparent;
+		border-radius: var(--radius-sm);
+		background: transparent;
+		color: var(--color-ink-muted);
+		font-family: var(--font-ui);
+		font-size: var(--text-xs);
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.version-radio:hover:not(.checked) {
+		color: var(--color-ink);
+		background: var(--color-surface-hover);
+	}
+
+	.version-radio:focus-visible {
+		outline: var(--focus-ring-width) solid var(--focus-ring-color);
+		outline-offset: var(--focus-ring-offset);
+	}
+
+	.version-radio.checked {
+		background: var(--color-accent);
+		border-color: var(--color-accent);
+		color: var(--color-surface);
+		font-weight: 600;
+	}
+
+	.nav-row {
+		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-2);
 		flex-wrap: wrap;
-		padding-bottom: var(--space-2);
-		border-bottom: 1px solid var(--color-border);
 	}
 
 	.step-nav {
@@ -366,10 +482,24 @@
 		outline-offset: var(--focus-ring-offset);
 	}
 
-	@media (max-width: 900px) {
+	@media (max-width: 900px), (pointer: coarse) {
 		.stepper-container {
 			height: auto;
 			overflow: visible;
+		}
+
+		.version-toggle-row {
+			width: 100%;
+		}
+
+		.version-toggle {
+			width: 100%;
+		}
+
+		.version-radio {
+			flex: 1;
+			min-height: var(--target-min);
+			font-size: var(--text-sm);
 		}
 
 		.stepper-header {

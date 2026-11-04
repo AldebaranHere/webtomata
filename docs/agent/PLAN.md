@@ -1113,7 +1113,7 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 
 ## Task T-015 — Toggle "versi panjang / versi ringkas" in the CNF stepper
 
-**Status:** in-progress
+**Status:** done
 **Owner:** worker
 **Branch:** `task/T-015-cnf-version-toggle`
 

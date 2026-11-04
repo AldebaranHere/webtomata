@@ -136,3 +136,46 @@ test('cross-browser grammar rule rows on webkit-phone and firefox (AC6)', async 
 	expect(altBox!.height).toBeGreaterThanOrEqual(43.5);
 	expect(altBox!.width).toBeGreaterThanOrEqual(63.5);
 });
+
+test('cross-browser grammar CNF version toggle on webkit-phone and firefox (T-015)', async ({
+	page,
+	isMobile
+}) => {
+	if (!isMobile) {
+		await page.setViewportSize({ width: 390, height: 844 });
+	}
+	await page.addInitScript(() => {
+		const r1 = {
+			id: 'G_R1_TEST',
+			title: 'Tata Bahasa R1',
+			grammar: 'S -> x B y | z B y | z B | x\nB -> x'
+		};
+		localStorage.setItem('webtomata.grammar.custom', JSON.stringify([r1]));
+		localStorage.setItem('webtomata.grammar.selected_id', r1.id);
+	});
+	await page.goto('/sandbox?mode=grammar');
+	await page.locator('.workstation').waitFor();
+
+	// On phone layout, navigate to CNF tab
+	const cnfTab = page.locator('#grammar-tab-cnf');
+	if (await cnfTab.isVisible()) {
+		await cnfTab.click();
+	}
+
+	const cnfPane = page.locator('#grammar-pane-cnf');
+	await expect(cnfPane).toBeVisible();
+
+	// Jump to phase 5
+	const stepPills = cnfPane.locator('.step-pill');
+	await stepPills.nth(4).click();
+	await expect(cnfPane.locator('.step-counter')).toHaveText('5 / 6');
+	await expect(cnfPane.locator('.rule-count')).toHaveText('8 aturan');
+
+	// Tap the "Versi ringkas" radio
+	const ringkasRadio = cnfPane.locator('.version-radio', { hasText: 'Versi ringkas' });
+	await ringkasRadio.click();
+
+	// Check phase remains 5 and rule count changed to 7 aturan
+	await expect(cnfPane.locator('.step-counter')).toHaveText('5 / 6');
+	await expect(cnfPane.locator('.rule-count')).toHaveText('7 aturan');
+});

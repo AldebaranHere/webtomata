@@ -183,6 +183,31 @@ where
     dfs(grammar, &mut current, max_len, alphabet, &mut oracle);
 }
 
+fn check_cyk_equivalence(g1: &Grammar, g2: &Grammar, alphabet: &[char], max_len: usize) {
+    fn dfs(g1: &Grammar, g2: &Grammar, current: &mut String, max_len: usize, alphabet: &[char]) {
+        let r1 = CykParser::parse(g1, current)
+            .map(|r| r.accepted)
+            .unwrap_or(false);
+        let r2 = CykParser::parse(g2, current)
+            .map(|r| r.accepted)
+            .unwrap_or(false);
+        assert_eq!(
+            r1, r2,
+            "CYK acceptance mismatch for word '{}' (g1: {}, g2: {})",
+            current, r1, r2
+        );
+        if current.len() < max_len {
+            for &c in alphabet {
+                current.push(c);
+                dfs(g1, g2, current, max_len, alphabet);
+                current.pop();
+            }
+        }
+    }
+    let mut current = String::with_capacity(max_len);
+    dfs(g1, g2, &mut current, max_len, alphabet);
+}
+
 #[test]
 fn test_cnf_preset_order() {
     let input = r#"
@@ -868,6 +893,163 @@ fn test_hand_derivation_t010_flow_grammar() {
 }
 
 #[test]
+fn test_hand_derivation_r1_version_toggle() {
+    let input = r#"
+        S -> x B y | z B y | z B | x
+        B -> x
+    "#;
+    let grammar = GrammarParser::parse(input).expect("Should parse R1");
+
+    let is_r1_lang = |w: &str| w == "x" || w == "xxy" || w == "zxy" || w == "zx";
+
+    // 1. Long version
+    let trace_long = CnfTransformer::transform_with_options(&grammar, false).unwrap();
+    assert_eq!(trace_long.steps[4].removed_rules.len(), 3);
+    assert_eq!(trace_long.steps[4].added_rules.len(), 6);
+    assert_eq!(trace_long.steps[4].grammar.rules.len(), 8);
+    assert_eq!(trace_long.steps[4].note_key, None);
+
+    assert_eq!(trace_long.steps[5].removed_rules.len(), 2);
+    assert_eq!(trace_long.steps[5].added_rules.len(), 4);
+    assert_eq!(trace_long.steps[5].grammar.rules.len(), 10);
+    assert_eq!(trace_long.steps[5].note_key, None);
+    assert_valid_cnf(&trace_long.final_grammar);
+    check_exhaustive_cyk(&trace_long.final_grammar, &['x', 'y', 'z'], 6, is_r1_lang);
+
+    // 2. Short version
+    let trace_short = CnfTransformer::transform_with_options(&grammar, true).unwrap();
+    assert_eq!(trace_short.steps[4].removed_rules.len(), 3);
+    assert_eq!(trace_short.steps[4].added_rules.len(), 5);
+    assert_eq!(trace_short.steps[4].grammar.rules.len(), 7);
+    assert_eq!(
+        trace_short.steps[4].note_key,
+        Some("grammar.cnf.phase_mixed.note_short".into())
+    );
+
+    assert_eq!(trace_short.steps[5].removed_rules.len(), 2);
+    assert_eq!(trace_short.steps[5].added_rules.len(), 3);
+    assert_eq!(trace_short.steps[5].grammar.rules.len(), 8);
+    assert_eq!(
+        trace_short.steps[5].note_key,
+        Some("grammar.cnf.phase_long.note_short".into())
+    );
+    assert_valid_cnf(&trace_short.final_grammar);
+    check_exhaustive_cyk(&trace_short.final_grammar, &['x', 'y', 'z'], 6, is_r1_lang);
+}
+
+#[test]
+fn test_hand_derivation_r2_must_not_reuse() {
+    let input = r#"
+        S -> a C
+        C -> c | a
+    "#;
+    let grammar = GrammarParser::parse(input).expect("Should parse R2");
+
+    let is_r2_lang = |w: &str| w == "ac" || w == "aa";
+
+    for &short in &[false, true] {
+        let trace = CnfTransformer::transform_with_options(&grammar, short).unwrap();
+        assert_eq!(trace.steps[4].removed_rules.len(), 1);
+        assert_eq!(trace.steps[4].added_rules.len(), 2);
+        assert_eq!(trace.steps[4].grammar.rules.len(), 4);
+        assert_eq!(trace.steps[4].note_key, None);
+
+        assert_eq!(trace.steps[5].removed_rules.len(), 0);
+        assert_eq!(trace.steps[5].added_rules.len(), 0);
+        assert_eq!(trace.steps[5].grammar.rules.len(), 4);
+        assert_eq!(trace.steps[5].note_key, None);
+
+        assert_valid_cnf(&trace.final_grammar);
+        check_exhaustive_cyk(&trace.final_grammar, &['a', 'c'], 6, is_r2_lang);
+    }
+}
+
+#[test]
+fn test_hand_derivation_r3a_t010_flow_grammar() {
+    let input = r#"
+        S -> a S b | A | U
+        A -> B
+        B -> b B | λ
+        U -> U c
+    "#;
+    let grammar = GrammarParser::parse(input).expect("Should parse R3a");
+
+    // Long
+    let trace_long = CnfTransformer::transform_with_options(&grammar, false).unwrap();
+    assert_eq!(trace_long.steps[4].grammar.rules.len(), 15);
+    assert_eq!(trace_long.steps[4].note_key, None);
+    assert_eq!(trace_long.steps[5].removed_rules.len(), 2);
+    assert_eq!(trace_long.steps[5].added_rules.len(), 4);
+    assert_eq!(trace_long.steps[5].grammar.rules.len(), 17);
+    assert_eq!(trace_long.steps[5].note_key, None);
+    assert_valid_cnf(&trace_long.final_grammar);
+
+    // Short
+    let trace_short = CnfTransformer::transform_with_options(&grammar, true).unwrap();
+    assert_eq!(trace_short.steps[4].grammar.rules.len(), 15);
+    assert_eq!(trace_short.steps[4].note_key, None);
+    assert_eq!(trace_short.steps[5].removed_rules.len(), 2);
+    assert_eq!(trace_short.steps[5].added_rules.len(), 3);
+    assert_eq!(trace_short.steps[5].grammar.rules.len(), 16);
+    assert_eq!(
+        trace_short.steps[5].note_key,
+        Some("grammar.cnf.phase_long.note_short".into())
+    );
+    assert_valid_cnf(&trace_short.final_grammar);
+
+    // Both accept the same strings up to length 8 over {a, b, c}
+    check_cyk_equivalence(
+        &trace_long.final_grammar,
+        &trace_short.final_grammar,
+        &['a', 'b', 'c'],
+        8,
+    );
+}
+
+#[test]
+fn test_hand_derivation_r3b_truly_identical() {
+    let input = r#"
+        S -> a S b | c
+    "#;
+    let grammar = GrammarParser::parse(input).expect("Should parse R3b");
+
+    let is_r3b_lang = |w: &str| {
+        if !w.contains('c') {
+            return false;
+        }
+        let parts: Vec<&str> = w.split('c').collect();
+        if parts.len() != 2 {
+            return false;
+        }
+        let n = parts[0].len();
+        parts[0].chars().all(|ch| ch == 'a')
+            && parts[1].len() == n
+            && parts[1].chars().all(|ch| ch == 'b')
+    };
+
+    for &short in &[false, true] {
+        let trace = CnfTransformer::transform_with_options(&grammar, short).unwrap();
+        assert_eq!(trace.steps[0].grammar.rules.len(), 2);
+        assert_eq!(trace.steps[1].grammar.rules.len(), 2);
+        assert_eq!(trace.steps[2].grammar.rules.len(), 2);
+        assert_eq!(trace.steps[3].grammar.rules.len(), 2);
+
+        assert_eq!(trace.steps[4].removed_rules.len(), 1);
+        assert_eq!(trace.steps[4].added_rules.len(), 3);
+        assert_eq!(trace.steps[4].grammar.rules.len(), 4);
+        assert_eq!(trace.steps[4].note_key, None);
+
+        assert_eq!(trace.steps[5].removed_rules.len(), 1);
+        assert_eq!(trace.steps[5].added_rules.len(), 2);
+        assert_eq!(trace.steps[5].grammar.rules.len(), 5);
+        assert_eq!(trace.steps[5].note_key, None);
+
+        assert_valid_cnf(&trace.final_grammar);
+        check_exhaustive_cyk(&trace.final_grammar, &['a', 'b', 'c'], 8, is_r3b_lang);
+    }
+}
+
+#[test]
 fn test_hand_derivation_unreachable_after_phase2() {
     let input = r#"
         S -> A B | c
@@ -975,6 +1157,35 @@ proptest! {
                 );
             }
         }
+    }
+
+    /// AC2: proptest property on random grammars:
+    /// the short final grammar is in CNF and equivalent to the long final grammar (same strings up to length 4, by CYK),
+    /// and has no more rules than the long one.
+    #[test]
+    fn cnf_proptest_short_version_equiv_and_leq_rules(g in arb_grammar()) {
+        let trace_long = match CnfTransformer::transform_with_options(&g, false) {
+            Ok(t) => t,
+            Err(_) => return Ok(()),
+        };
+        let trace_short = match CnfTransformer::transform_with_options(&g, true) {
+            Ok(t) => t,
+            Err(_) => return Ok(()),
+        };
+
+        let cnf_long = &trace_long.final_grammar;
+        let cnf_short = &trace_short.final_grammar;
+
+        prop_assert!(CykParser::is_cnf(cnf_short), "Short grammar must be valid CNF");
+        prop_assert!(
+            cnf_short.rules.len() <= cnf_long.rules.len(),
+            "Short grammar should have no more rules than long (short: {}, long: {})",
+            cnf_short.rules.len(),
+            cnf_long.rules.len()
+        );
+
+        let terms: Vec<char> = g.terminals().into_iter().take(3).collect();
+        check_cyk_equivalence(cnf_long, cnf_short, &terms, 4);
     }
 }
 
