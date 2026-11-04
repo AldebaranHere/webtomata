@@ -1,216 +1,177 @@
-# Report — T-010
+# Report — T-011
 
 > Written by the worker at the end of the session. One file per task; overwrite each session.
 
 ## Task
-- id: T-010
-- title: End-to-end tests for the grammar workstation flow
-- branch: `task/T-010-grammar-flow-e2e`
-- commits: `dd78d68..ccafc05`
-- pull request: https://github.com/AldebaranHere/webtomata/pull/142
+- id: T-011
+- title: End-to-end tests for the language workstation and the mode switcher
+- branch: `task/T-011-language-and-switcher-e2e`
+- commits: `0103fa8..e0c793d`
+- pull request: https://github.com/AldebaranHere/webtomata/pull/143
 - status: done
 
 ## What changed
-- `web/e2e/grammar-flow.spec.ts`:
-  - New comprehensive end-to-end test suite for the grammar workstation flow:
-    - **Matrix editing (desktop 1280x800):** creates a new grammar from empty state; types LHS `S`, enters RHS alternative `A B`, presses space to create a second alternative box with focus; types `a`, presses `|` to create a third alternative box; presses `Backspace` on an empty box, removing it and focusing the previous alternative; opens the symbol bar and inserts `ε` at cursor; blur pruning: empty alternative is pruned when focus leaves the row; `+ Tambah Baris` adds a row and focuses it; context menu right-click deletes a row; error banner (`role="alert"`) appears when a non-terminal has no production rules, and disappears when valid.
-    - **Matrix editing (phone 390x844):** navigates to Editor tab via bottom tab strip; taps cell to reveal symbol bar; inserts `ε` via symbol bar; separates alternatives using space and `|`; backspace on empty alternative removes cell and focuses previous; deletes row using the touch delete button (`.btn-delete-row` from T-024) without confirmation prompt.
-    - **Six CNF phases walkthrough & hand derivation:** steps through phases 1 to 6 using "Selanjutnya"; steps back using "Sebelumnya"; jumps directly between phases using numbered pills 1-6; checks counter ("1 / 6" to "6 / 6"), phase titles in Indonesian, added/removed rule chips (exact text and counts), and remaining rule counts after each phase; verifies valid CNF after Phase 6 against the hand derivation based on Rich's method.
-    - **CYK tester:** verifies accepted string `ab` (verdict "Diterima"), empty string `ε` (verdict "String Kosong Diterima"), rejected string `a` (verdict "Ditolak"); verifies clicking example chips fills the input field; verifies top pyramid cell `.cyk-cell.top-accepting` is highlighted only for accepted strings and contains `S`.
-    - **English interface:** switches locale to `en`; verifies tab labels ("Library", "Editor", "CNF Conversion", "CYK Tester"); verifies stepper buttons ("Previous step", "Next step"); verifies CYK verdict texts ("Accepted", "Empty string", "Rejected").
-    - **axe accessibility checks:** desktop at 1280x800 (Library tab, Editor tab with error banner, Editor tab with expanded legend, CNF Stepper middle phase 3, and CYK tester with both accepted and rejected verdicts); phone at 390x844 (all tabs: Pustaka, Editor with error and legend, CNF phase 3, CYK tester).
-- `web/src/lib/grammar/GrammarCykTester.svelte`:
-  - Fixed accessibility issues exposed by tests:
-    - Promoted `<h4 class="table-title">` to `<h2 class="table-title">` to maintain strict heading level hierarchy (`h1` -> `h2`).
-    - Removed `opacity: 0.9;` on `.verdict-sub` to pass WCAG 2.2 AA contrast ratio (previously 4.39:1 on `#6b7280`, now passes with 5.9:1 on `#4b5563`).
+- `web/e2e/language-flow.spec.ts`:
+  - New end-to-end test suite for the formal language workstation and string enumeration flow:
+    - **Preset selection and proper order enumeration (desktop 1280x800):** verifies presets L1 (`{ab, aca, b, ccab}`), L7 (`{ab, bc}`), and L2 (`{ac, c, bab, bcaa}`) against hand-derived proper order string sequences and length badges.
+    - **Finite language boundary:** verifies finite languages with fewer strings than $N$ (e.g. L1 with 4, L7 with 2) show all strings with no error banner.
+    - **Custom formula & alphabet badge:** types `{a, b}*`, verifies alphabet badge shows `Σ = {a, b}`, and validates the first 10 strings against hand derivation.
+    - **Panjang Min (|w| ≥ M):** verifies filtering with min length bound 2; confirms all output strings have length ≥ 2 and begin with `aa`.
+    - **Jumlah String (N):** verifies string count limit 5; checks exact list length and metadata count.
+    - **Format String Kosong:** tests switching empty string display between caret `^` and epsilon `ε`.
+    - **Salin Semua (Copy All):** verifies clipboard copy of strings joined by newlines (with granted clipboard permissions on Chromium, skipped with message on Firefox/WebKit); verifies button is disabled when results list is empty.
+    - **Invalid formula banner:** verifies invalid syntax (e.g. `∪ ∪ ∪` or unclosed `{`) displays red banner `role="alert"`, hides results list, and disables copy button.
+    - **Symbol toolbar:** verifies clicking quick symbol buttons (`∪`, `#a(w)`) inserts text at textarea cursor position and preserves focus in the textarea.
+    - **English locale:** verifies English preset names, column headers ("Enumeration Results (Proper Order)"), copy button ("Copy All"), and result metadata in English when locale is `en`.
+    - **Phone layout (390x844):** verifies phone tabs flow (`Pustaka` -> preset tap jumps to `Editor` -> `Hasil` tab displays results); verifies all touch targets are ≥ 44px (`.sym-btn`, `#min-len-input`, `#max-count-input`, `#empty-sym-select`, `.btn-primary`).
+    - **axe accessibility scans:** clean passes on desktop (1280x800) with results and with error banner, and phone (390x844) across all tabs and with error banner.
+- `web/e2e/switcher.spec.ts`:
+  - New end-to-end test suite for the workstation mode switcher:
+    - **Trigger & Popover:** verifies `aria-haspopup="listbox"`, `aria-expanded="false"`, click open/close.
+    - **Keyboard opening:** verifies Enter and Space open popover and focus active selected item (`aria-selected="true"`).
+    - **Keyboard navigation:** verifies ArrowDown and ArrowUp navigate enabled options (FSM -> Language -> Grammar) and wrap around in both directions.
+    - **Disabled items:** verifies PDA and Turing machine options have `aria-disabled="true"`, are skipped by arrow navigation, and clicking them does nothing.
+    - **Escape and outside click:** verifies Escape closes popover and returns focus to trigger; verifies clicking outside closes popover.
+    - **Selection & Mode loading:** verifies selecting Language loads `/sandbox?mode=language` and updates `localStorage`; Grammar loads `/sandbox?mode=grammar`; FSM restores default without `?mode=`.
+    - **Precedence & Persistence:** verifies mode persistence across reload, URL `?mode=` winning over `localStorage`, invalid `?mode=` falling back to `localStorage`, and fallback to FSM when both are absent/invalid.
+    - **Responsive dimensions & targets:** verifies all popover items are ≥ 44px tall; verifies trigger fits in one single line at 360px width.
+    - **axe accessibility scans:** clean passes with popover open on desktop (1280x800) and phone (360x780).
+- `web/src/lib/components/WorkstationSwitcher.svelte`:
+  - Added `role="presentation"` to `<div class="category-header">` so axe validates that children of `role="group"` inside `role="listbox"` are options.
+  - Added `role="option"` and `aria-selected="false"` to disabled `.switcher-item` elements to satisfy ARIA listbox requirements and match `design/screens/workstation-switcher.md`.
+  - Added `min-height: var(--target-min);` to `.switcher-item` so switcher items meet the 44px touch target specification.
 
 ---
 
-## Hand Derivation of the 6-Phase Grammar (AC2)
+## Hand Derivation of Proper Order Strings (AC2)
 
-Grammar chosen to exercise every phase:
+Proper order (length-lexicographical order) defines that strings are ordered strictly by length first (shortest strings first), and within the same length, in standard alphabetical (lexicographical) order.
+
+### 1. Preset L1: `{ab, aca, b, ccab}` over $\Sigma = \{a, b, c\}$
+- Length 1: `b`
+- Length 2: `ab`
+- Length 3: `aca`
+- Length 4: `ccab`
+- **Ordered strings:** `['b', 'ab', 'aca', 'ccab']` (lengths: 1, 2, 3, 4)
+
+### 2. Preset L7: `{ab, bc}` over $\Sigma = \{a, b, c\}$
+- Length 2: `ab`, `bc`
+- **Ordered strings:** `['ab', 'bc']` (lengths: 2, 2)
+
+### 3. Preset L2: `{ac, c, bab, bcaa}` over $\Sigma = \{a, b, c\}$
+- Length 1: `c`
+- Length 2: `ac`
+- Length 3: `bab`
+- Length 4: `bcaa`
+- **Ordered strings:** `['c', 'ac', 'bab', 'bcaa']` (lengths: 1, 2, 3, 4)
+
+### 4. Custom Formula: `{a, b}*` over $\Sigma = \{a, b\}$ (First 10)
+- Length 0 (1 string): `""` (displayed as `^` or `ε`)
+- Length 1 (2 strings): `a`, `b`
+- Length 2 (4 strings): `aa`, `ab`, `ba`, `bb`
+- Length 3 (first 3 strings): `aaa`, `aab`, `aba`
+- **Ordered strings:** `['^', 'a', 'b', 'aa', 'ab', 'ba', 'bb', 'aaa', 'aab', 'aba']` (lengths: 0, 1, 1, 2, 2, 2, 2, 3, 3, 3)
+
+### 5. Custom Formula: `{a, b}*` with Min Length $|w| \ge 2$ (First 10)
+- Length 2 (4 strings): `aa`, `ab`, `ba`, `bb`
+- Length 3 (6 strings): `aaa`, `aab`, `aba`, `abb`, `baa`, `bab`
+- **Ordered strings:** `['aa', 'ab', 'ba', 'bb', 'aaa', 'aab', 'aba', 'abb', 'baa', 'bab']` (lengths: 2, 2, 2, 2, 3, 3, 3, 3, 3, 3)
+
+---
+
+## Precedence and Query Parameter Behavior Finding
+
+In `web/src/routes/sandbox/+page.svelte` (lines 107–119):
+```typescript
+const urlMode = new URLSearchParams(window.location.search).get('mode');
+if (urlMode === 'language' || urlMode === 'grammar' || urlMode === 'fsm') {
+    activeMode = urlMode;
+} else {
+    try {
+        const saved = localStorage.getItem('webtomata_sandbox_mode');
+        if (saved === 'language' || saved === 'grammar' || saved === 'fsm') {
+            activeMode = saved;
+        }
+    } catch {
+        // ignore
+    }
+}
 ```
-S -> a S b | A | U
-A -> B
-B -> b B | λ
-U -> U c
-```
-Language: $L(G) = \{ a^n b^m \mid n \ge 0, m \ge n \} = \{ a^n b^{n+k} \mid n \ge 0, k \ge 0 \}$.
-The empty string $\lambda \in L(G)$ (for $n=0, k=0$).
-Has: start on RHS ($S \to a S b$), nullable variable ($B \to \lambda$), unit rules ($A \to B, S \to A$), useless variable ($U$), mixed rules ($S \to a S b, B \to b B$), and long rules ($S \to a S b$).
-
-### Phase 1: Tambah Simbol Awal Baru ($S_0 \to S$)
-Start symbol $S$ appears on the RHS of $S \to a S b$. Add new start symbol $S_0$.
-- Removed: none
-- Added (1): $S_0 \to S$
-- Remaining rules: 8
-  - $S_0 \to S$
-  - $S \to a S b \mid A \mid U$
-  - $A \to B$
-  - $B \to b B \mid \lambda$
-  - $U \to U c$
-
-### Phase 2: Eliminasi Aturan $\varepsilon$ (Nullable)
-Nullable set computation:
-- $B \to \lambda \implies B \in \text{Nullable}$
-- $A \to B \implies A \in \text{Nullable}$
-- $S \to A \implies S \in \text{Nullable}$
-- $S_0 \to S \implies S_0 \in \text{Nullable}$
-- $U$ is not nullable.
-
-Expand nullable variables:
-- $S \to a S b \implies S \to a b$
-- $B \to b B \implies B \to b$
-- $S_0 \to S \implies S_0 \to \lambda$ (preserved at new start symbol $S_0$ since $\lambda \in L$)
-- Removed (1): $B \to \lambda$
-- Added (3): $S_0 \to \lambda$, $B \to b$, $S \to a b$
-- Remaining rules: 10
-  - $S_0 \to \lambda \mid S$
-  - $S \to a S b \mid a b \mid A \mid U$
-  - $A \to B$
-  - $B \to b B \mid b$
-  - $U \to U c$
-
-### Phase 3: Eliminasi Aturan Unit ($A \to B$)
-Unit rules to eliminate: $S_0 \to S$, $A \to B$, $S \to A$, $S \to U$.
-Unit chains and inherited non-unit productions:
-- $(A, B) \implies A \to b B \mid b$
-- $(S, A) \implies S \to b B \mid b$
-- $(S, U) \implies S \to U c$
-- $(S_0, S) \implies S_0 \to a S b \mid a b \mid b B \mid b \mid U c$
-- Removed (4): $S_0 \to S$, $A \to B$, $S \to A$, $S \to U$
-- Added (10): $A \to b$, $A \to b B$, $S \to b$, $S \to b B$, $S \to U c$, $S_0 \to a b$, $S_0 \to a S b$, $S_0 \to b$, $S_0 \to b B$, $S_0 \to U c$
-- Remaining rules: 16
-  - $S_0 \to \lambda \mid a b \mid a S b \mid b \mid b B \mid U c$
-  - $S \to a b \mid a S b \mid b \mid b B \mid U c$
-  - $A \to b \mid b B$
-  - $B \to b \mid b B$
-  - $U \to U c$
-
-### Phase 4: Eliminasi Simbol Tidak Berguna (Useless)
-- Step 4a (Generating / Productive):
-  - Base: $B \to b$, $A \to b$, $S \to a b$, $S_0 \to a b \implies \{S_0, S, A, B\}$ are generating.
-  - $U \to U c$: $U$ only ever produces sentential forms with $U$; it never generates terminal strings. Thus $U$ is unproductive.
-  - Eliminate $U$ and all rules mentioning $U$: $U \to U c$, $S_0 \to U c$, $S \to U c$.
-- Step 4b (Reachable):
-  - Starting from $S_0$: productions are $S_0 \to \lambda \mid a b \mid a S b \mid b \mid b B$.
-  - Reachable variables: $\{S_0, S, B\}$.
-  - $A$ is never reached from $S_0$. Thus $A$ is unreachable.
-  - Eliminate unreachable $A$ and its rules: $A \to b$, $A \to b B$.
-- Removed (5): $U \to U c$, $S_0 \to U c$, $S \to U c$, $A \to b$, $A \to b B$
-- Added: none
-- Remaining rules: 11
-  - $S_0 \to \lambda \mid a b \mid a S b \mid b \mid b B$
-  - $S \to a b \mid a S b \mid b \mid b B$
-  - $B \to b \mid b B$
-
-### Phase 5: Penggantian Terminal dalam Aturan Campuran
-Rules of length $\ge 2$ containing terminals:
-- $S_0 \to a b, a S b, b B$
-- $S \to a b, a S b, b B$
-- $B \to b B$
-Terminals $a$ and $b$ are isolated with helper variables $T_a \to a$ and $T_b \to b$.
-- Removed (7): $B \to b B$, $S \to a b$, $S \to a S b$, $S \to b B$, $S_0 \to a b$, $S_0 \to a S b$, $S_0 \to b B$
-- Added (9): $T_a \to a$, $T_b \to b$, $B \to T_b B$, $S \to T_a T_b$, $S \to T_a S T_b$, $S \to T_b B$, $S_0 \to T_a T_b$, $S_0 \to T_a S T_b$, $S_0 \to T_b B$
-- Remaining rules: 13
-  - $S_0 \to \lambda \mid b \mid T_a T_b \mid T_a S T_b \mid T_b B$
-  - $S \to b \mid T_a T_b \mid T_a S T_b \mid T_b B$
-  - $B \to b \mid T_b B$
-  - $T_a \to a$
-  - $T_b \to b$
-
-### Phase 6: Binarisasi Aturan Panjang (Panjang $\ge 3$)
-Rules of length $\ge 3$:
-- $S_0 \to T_a S T_b$ (length 3)
-- $S \to T_a S T_b$ (length 3)
-Using the course method (Rich / Fasilkom slides without helper sharing by default, T-014):
-- $S_0 \to T_a X$, where $X \to S T_b$
-- $S \to T_a X_1$, where $X_1 \to S T_b$
-- Removed (2): $S_0 \to T_a S T_b$, $S \to T_a S T_b$
-- Added (4): $S_0 \to T_a X$, $X \to S T_b$, $S \to T_a X_1$, $X_1 \to S T_b$
-- Remaining rules: 15
-  - $B \to b \mid T_b B$
-  - $S \to b \mid T_a T_b \mid T_b B \mid T_a X_1$
-  - $S_0 \to \lambda \mid b \mid T_a T_b \mid T_b B \mid T_a X$
-  - $T_a \to a$
-  - $T_b \to b$
-  - $X \to S T_b$
-  - $X_1 \to S T_b$
-
-Every rule in the final grammar is either $A \to B C$ or $A \to a$, with $S_0 \to \lambda$ permitted as the only nullable rule because $S_0$ does not appear on any RHS. The grammar is in valid Chomsky Normal Form.
+Findings:
+1. **URL precedence:** If `?mode=` contains a recognized valid mode (`'language'`, `'grammar'`, `'fsm'`), it takes precedence over any value stored in `localStorage`.
+2. **Fallback to localStorage:** If `?mode=` is omitted, or contains an unknown/invalid value (e.g. `?mode=invalid`), it falls back to the valid mode stored in `localStorage.getItem('webtomata_sandbox_mode')`.
+3. **Default to FSM:** If both the URL param and `localStorage` are absent or invalid, the active mode defaults to `'fsm'`.
+This behavior is fully verified in `switcher.spec.ts`.
 
 ---
 
 ## Deliberate Breaks (AC5)
 
-### Break 1: In `GrammarWorkstation.svelte`, bypass `Backspace` handler on empty alternative
-Bypassed `handleAltKeydown` when key is `Backspace` and cell is empty.
-```
-  1) [desktop] › e2e/grammar-flow.spec.ts:26:2 › grammar workstation matrix editing (desktop 1280x800) › desktop matrix editing: new grammar, space/pipe alts, backspace, symbol bar, prune on blur, add/delete row, error banner 
+### Break 1: ArrowDown wrapping in `WorkstationSwitcher.svelte`
+- Modification: replaced `const next = (idx + 1) % buttons.length;` with `const next = Math.min(buttons.length - 1, idx + 1);`.
+- Command:
+  ```bash
+  pnpm --filter web exec playwright test --project=desktop -g "ArrowDown and ArrowUp navigate enabled items and wrap around"
+  ```
+- Output:
+  ```
+  1) [desktop] › e2e/switcher.spec.ts:63:2 › workstation mode switcher - keyboard, mouse, and state › ArrowDown and ArrowUp navigate enabled items and wrap around 
+    Error: expect(locator).toBeFocused() failed
+    Locator:  locator('.switcher-popover[role="listbox"]').locator('button.switcher-item[role="option"]').first()
+    Expected: focused
+    Received: inactive
+      89 | 		// ArrowDown wraps to FSM
+      90 | 		await page.keyboard.press('ArrowDown');
+    > 91 | 		await expect(optFsm).toBeFocused();
+  1 failed
+  ```
+- Code restored and re-verified.
 
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 3
-    Received: 4
-
-      64 | 		// Backspace on empty 4th alternative removes it and focuses 3rd
-      65 | 		await page.keyboard.press('Backspace');
-    > 66 | 		expect(await getAltInputs().count()).toBe(3);
-         | 		                                     ^
-      67 | 		await expect(getAltInputs().nth(2)).toBeFocused();
-```
-Restored: `handleAltKeydown` backspace handling.
-
-### Break 2: In `GrammarCnfStepper.svelte`, make "Selanjutnya" skip one phase
-Changed `goToStep(currentStepIdx + 1)` to `goToStep(currentStepIdx + 2)`.
-```
-  1) [desktop] › e2e/grammar-flow.spec.ts:212:2 › six CNF phases walkthrough & hand derivation (desktop) › walk through phases 1 to 6 with Selanjutnya, back with Sebelumnya, and jump with pills 
-
+### Break 2: Enumeration sort order in `LanguageWorkstation.svelte`
+- Modification: replaced `results = res.value.strings;` with `results = [...res.value.strings].sort();` (purely alphabetical sorting instead of length-first).
+- Command:
+  ```bash
+  pnpm --filter web exec playwright test --project=desktop -g "preset selection and proper order enumeration against hand derivation"
+  ```
+- Output:
+  ```
+  1) [desktop] › e2e/language-flow.spec.ts:64:2 › language workstation enumeration flow (desktop 1280x800) › preset selection and proper order enumeration against hand derivation 
     Error: expect(locator).toHaveText(expected) failed
+    Locator:  locator('.string-ordered-list').locator('.string-row').first().locator('.word-text')
+    Expected: "b"
+    Received: "ab"
+      84 | 			const row = rows.nth(i);
+      85 | 			await expect(row.locator('.row-num')).toHaveText(`${i + 1}.`);
+    > 86 | 			await expect(row.locator('.word-text')).toHaveText(HAND_DERIVED_L1[i]!);
+  1 failed
+  ```
+- Code restored and re-verified.
 
-    Locator:  locator('#grammar-pane-cnf').locator('.step-counter')
-    Expected: "2 / 6"
-    Received: "3 / 6"
-    Timeout:  5000ms
-
-    Call log:
-      - Expect "toHaveText" locator('#grammar-pane-cnf').locator('.step-counter') with timeout 5000ms
-      - waiting for locator('#grammar-pane-cnf').locator('.step-counter')
-        14 × locator resolved to <span class="step-counter svelte-xlr01w">3 / 6</span>
-           - unexpected value "3 / 6"
-
-      244 | 		// === Phase 2: Eliminasi Aturan ε (Nullable) ===
-      245 | 		await nextBtn.click();
-    > 246 | 		await expect(stepCounter).toHaveText('2 / 6');
-          | 		                          ^
-```
-Restored: `goToStep(currentStepIdx + 1)`.
-
-### Break 3: In `GrammarCykTester.svelte`, invert `isTopAccepting` highlight condition
-Changed `cell.includes(grammar.start)` to `!cell.includes(grammar.start)`.
-```
-  1) [desktop] › e2e/grammar-flow.spec.ts:354:2 › CYK tester & English locale (desktop) › CYK testing: accepted string, empty string, rejected string, example chips, top pyramid cell highlight 
-
-    Error: expect(locator).toBeVisible() failed
-
-    Locator: locator('#grammar-pane-cyk').locator('.cyk-cell.top-accepting')
-    Expected: visible
-    Timeout: 5000ms
-    Error: element(s) not found
-
-      381 | 		// Top cell of the CYK table pyramid is highlighted exactly when string is accepted
-      382 | 		const topAcceptingCell = cykPane.locator('.cyk-cell.top-accepting');
-    > 383 | 		await expect(topAcceptingCell).toBeVisible();
-          | 		                               ^
-```
-Restored: `cell.includes(grammar.start)`.
+### Break 3: Disabled handling in `WorkstationSwitcher.svelte`
+- Modification: removed `disabled: true` from the PDA entry (`{ id: 'pda', mode: 'fsm', labelKey: 'sandbox.mode_pda' }`).
+- Command:
+  ```bash
+  pnpm --filter web exec playwright test --project=desktop -g "disabled items (PDA, TM) are never focused and clicking them does nothing"
+  ```
+- Output:
+  ```
+  1) [desktop] › e2e/switcher.spec.ts:106:2 › workstation mode switcher - keyboard, mouse, and state › disabled items (PDA, TM) are never focused and clicking them does nothing 
+    Error: expect(locator).toHaveCount(expected) failed
+    Locator:  locator('.switcher-popover[role="listbox"]').locator('.switcher-item.disabled')
+    Expected: 2
+    Received: 1
+     115 |
+     116 | 		const disabledItems = popover.locator('.switcher-item.disabled');
+   > 117 | 		await expect(disabledItems).toHaveCount(2);
+  1 failed
+  ```
+- Code restored and re-verified.
 
 ---
 
 ## Verification Outputs
 
 ### 1. Static Checks
-`pnpm check && pnpm lint && pnpm format:check && pnpm check:strings`
 ```
 $ pnpm --filter web check
 $ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
@@ -229,52 +190,49 @@ ok   63 components have no hard-coded text
 ```
 
 ### 2. Build
-`pnpm build`
 ```
 $ pnpm build:wasm && pnpm --filter web build
+$ wasm-pack build crates/engine-wasm --target web --release --out-dir ../../web/src/lib/engine/wasm && pnpm build:types
+[INFO]: 🎯  Checking for the Wasm target...
+[INFO]: 🌀  Compiling to Wasm...
+    Finished `release` profile [optimized] target(s) in 0.02s
+[INFO]: ⬇️  Installing wasm-bindgen...
+[INFO]: Optimizing wasm binaries with `wasm-opt`...
+[INFO]: ✨   Done in 17.83s
 [INFO]: 📦   Your wasm pkg is ready to publish at web/src/lib/engine/wasm.
+$ cargo test -p engine-core --features ts --test ts_export
 running 1 test
 test the_types_match_the_json ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
 $ vite build
 vite v8.3.4 building ssr environment for production...
-✓ built in 1.63s
+transforming...
+✓ 321 modules transformed.
+rendering chunks...
+✓ built in 1.21s
 Prerendering
 > Using @sveltejs/adapter-static
 Wrote site to "build"
 ✔ done
 ```
 
-### 3. Repeated Flow E2E Tests (AC4: 5x repeats on desktop and phone)
-`pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-flow.spec.ts --repeat-each=5`
+### 3. New Specs Repeated 5 Times
 ```
-Running 70 tests using 6 workers
-  35 skipped
-  35 passed (1.3m)
-```
+pnpm --filter web exec playwright test --project=desktop --project=phone e2e/language-flow.spec.ts e2e/switcher.spec.ts --repeat-each=5
 
-### 4. Area E2E Tests
-`pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-phone.spec.ts e2e/grammar-open-cnf.spec.ts e2e/grammar-cyk-limit.spec.ts`
-```
-Running 26 tests using 6 workers
-  13 skipped
-  13 passed (26.4s)
+Running 180 tests using 6 workers
+
+  90 skipped
+  90 passed (1.7m)
 ```
 
-### 5. WebKit Cross-Browser Test
-`pnpm --filter web exec playwright test --project=webkit-phone e2e/cross/workstation-phone.spec.ts`
+### 4. Area Specs
 ```
-Running 3 tests using 3 workers
-  ✓  1 [webkit-phone] › e2e/cross/workstation-phone.spec.ts:116:1 › cross-browser grammar rule rows on webkit-phone and firefox (AC6) (3.3s)
-  ✓  3 [webkit-phone] › e2e/cross/workstation-phone.spec.ts:79:1 › language phone layout on WebKit phone: tab navigation and axe (5.9s)
-  ✓  2 [webkit-phone] › e2e/cross/workstation-phone.spec.ts:32:1 › grammar phone layout on WebKit phone: tab navigation, shortcut, and axe (6.0s)
+pnpm --filter web exec playwright test --project=desktop --project=phone e2e/language-phone.spec.ts e2e/shell.spec.ts
 
-  3 passed (7.4s)
+Running 40 tests using 6 workers
+
+  10 skipped
+  30 passed (24.3s)
 ```
-
----
-
-## Findings & Proposed Improvements
-
-- **Proposed item T-029 in PLAN.md:**
-  In `GrammarCykTester.svelte`, `grammarText` derives CNF rule strings by concatenating RHS symbols without spaces: `${rule.lhs} -> ${rule.rhs.join('')}`. When multi-letter helper variables like `T_a` are produced by CNF conversion, this creates strings such as `T_aT_b`, which `GrammarParser` reads as a single variable token named `T_aT_b` rather than two separate variables $T_a$ and $T_b$. This triggers a non-CNF error in CYK parsing. For testing CYK, a grammar with single-character variables was used (`S -> A B | λ`, `A -> a`, `B -> b`), which runs cleanly without token ambiguity. Separating symbols with spaces (`${rule.rhs.join(' ')}`) or passing parsed `Grammar` directly into the CYK parser would resolve this for arbitrary variable names.

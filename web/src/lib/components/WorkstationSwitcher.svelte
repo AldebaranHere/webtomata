@@ -149,10 +149,15 @@
 		>
 			{#each CATEGORIES as cat (cat.categoryKey)}
 				<div class="category-group" role="group" aria-label={t(cat.categoryKey)}>
-					<div class="category-header">{t(cat.categoryKey)}</div>
+					<div class="category-header" role="presentation">{t(cat.categoryKey)}</div>
 					{#each cat.items as item (item.id)}
 						{#if item.disabled}
-							<div class="switcher-item disabled" aria-disabled="true">
+							<div
+								class="switcher-item disabled"
+								role="option"
+								aria-selected="false"
+								aria-disabled="true"
+							>
 								<span class="item-name">{t(item.labelKey)}</span>
 								<span class="coming-soon-badge">{t('sandbox.badge_coming_soon')}</span>
 							</div>
@@ -268,6 +273,7 @@
 		align-items: center;
 		justify-content: space-between;
 		width: 100%;
+		min-height: var(--target-min);
 		padding: var(--space-2) var(--space-2);
 		border: 1px solid transparent;
 		border-radius: var(--radius-sm);
