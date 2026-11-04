@@ -413,6 +413,16 @@
 		void onMatrixChange();
 	}
 
+	function handleDeleteRowButton(index: number) {
+		const isLast = index >= rows.length - 1;
+		deleteRow(index);
+		const targetRowIdx = isLast ? Math.max(0, rows.length - 1) : index;
+		focusedRowIndex = targetRowIdx;
+		focusedAltIndex = 0;
+		focusedField = 'rhs';
+		focusCell(targetRowIdx, 0);
+	}
+
 	function handleContextMenu(event: MouseEvent, index: number) {
 		event.preventDefault();
 		contextMenu = {
@@ -503,7 +513,7 @@
 		void onMatrixChange();
 	}
 
-	function handleRowFocusOut(event: FocusEvent, rowIdx: number) {
+	function handleRowFocusOut(event: FocusEvent, rowId: string) {
 		const rowEl = event.currentTarget as HTMLElement;
 		// Check if the newly focused element is still inside this row or its toolbar
 		const relatedTarget = event.relatedTarget as Node | null;
@@ -513,6 +523,8 @@
 		}
 
 		// Leaving the row entirely: prune trailing or empty alternative cells
+		const rowIdx = rows.findIndex((r) => r.id === rowId);
+		if (rowIdx === -1) return;
 		const row = rows[rowIdx];
 		if (!row) return;
 
@@ -798,23 +810,29 @@
 		<div class="editor-body">
 			<!-- JFLAP-style Nx3 Grammar Matrix Editor with Multi-Cell RHS & Inline Active Toolbar -->
 			<div class="matrix-card">
-				<table class="matrix-table">
-					<thead>
-						<tr>
-							<th class="th-lhs">{t('grammar.matrix_col_lhs')}</th>
-							<th class="th-arrow">{t('grammar.matrix_col_arrow')}</th>
-							<th class="th-rhs">{t('grammar.matrix_col_rhs')}</th>
+				<!-- svelte-ignore a11y_no_redundant_roles -->
+				<table class="matrix-table" role="table">
+					<!-- svelte-ignore a11y_no_redundant_roles -->
+					<thead role="rowgroup">
+						<!-- svelte-ignore a11y_no_redundant_roles -->
+						<tr role="row">
+							<th class="th-lhs" role="columnheader">{t('grammar.matrix_col_lhs')}</th>
+							<th class="th-arrow" role="columnheader">{t('grammar.matrix_col_arrow')}</th>
+							<th class="th-rhs" role="columnheader">{t('grammar.matrix_col_rhs')}</th>
 						</tr>
 					</thead>
-					<tbody>
+					<!-- svelte-ignore a11y_no_redundant_roles -->
+					<tbody role="rowgroup">
 						{#each rows as row, idx (row.id)}
+							<!-- svelte-ignore a11y_no_redundant_roles -->
 							<tr
 								class="matrix-row"
 								class:row-active={focusedRowIndex === idx}
+								role="row"
 								oncontextmenu={(e) => handleContextMenu(e, idx)}
-								onfocusout={(e) => handleRowFocusOut(e, idx)}
+								onfocusout={(e) => handleRowFocusOut(e, row.id)}
 							>
-								<td class="td-lhs">
+								<td class="td-lhs" role="cell">
 									<input
 										type="text"
 										class="matrix-input lhs-input"
@@ -830,10 +848,10 @@
 										spellcheck="false"
 									/>
 								</td>
-								<td class="td-arrow">
+								<td class="td-arrow" role="cell">
 									<span class="arrow-glyph">→</span>
 								</td>
-								<td class="td-rhs">
+								<td class="td-rhs" role="cell">
 									<div class="rhs-wrapper">
 										<div class="alts-cell-container">
 											{#each row.alternatives as alt, altIdx (altIdx)}
@@ -897,6 +915,16 @@
 											</div>
 										{/if}
 									</div>
+								</td>
+								<td class="td-delete" role="cell">
+									<button
+										type="button"
+										class="btn-delete-row"
+										aria-label={t('grammar.matrix_delete_row')}
+										onclick={() => handleDeleteRowButton(idx)}
+									>
+										×
+									</button>
 								</td>
 							</tr>
 						{/each}
@@ -1384,9 +1412,18 @@
 
 	.td-lhs,
 	.td-arrow,
-	.td-rhs {
+	.td-rhs,
+	.td-delete {
 		padding: var(--space-2) var(--space-2);
 		vertical-align: top;
+	}
+
+	.td-delete {
+		display: none;
+	}
+
+	.btn-delete-row {
+		display: none;
 	}
 
 	.td-arrow {
@@ -1526,6 +1563,11 @@
 	.inline-sym-btn {
 		font-family: var(--font-math);
 		font-size: var(--text-xs);
+		min-width: 24px;
+		min-height: 24px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		padding: 1px 6px;
 		border-radius: var(--radius-sm);
 		border: 1px solid var(--color-border);
@@ -1908,12 +1950,139 @@
 			min-height: var(--target-min);
 		}
 
+		.legend-header {
+			min-height: var(--target-min);
+		}
+	}
+
+	@media (max-width: 900px), (pointer: coarse) {
+		.matrix-table {
+			display: block;
+			width: 100%;
+			table-layout: auto;
+		}
+
+		.matrix-table thead {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			margin: -1px;
+			padding: 0;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		.matrix-table tbody {
+			display: block;
+			width: 100%;
+		}
+
+		.matrix-row {
+			display: grid !important;
+			grid-template-columns: 72px auto 1fr auto;
+			grid-template-areas:
+				'lhs arrow . delete'
+				'rhs rhs rhs rhs';
+			align-items: center;
+			gap: var(--space-2);
+			padding: var(--space-3);
+			border-bottom: 1px solid var(--color-border);
+		}
+
+		.matrix-row:last-child {
+			border-bottom: none;
+		}
+
+		.td-lhs {
+			grid-area: lhs;
+			padding: 0;
+			width: 72px;
+		}
+
+		.lhs-input {
+			width: 72px;
+			min-height: var(--target-min);
+			box-sizing: border-box;
+			margin-top: 0;
+		}
+
+		.td-arrow {
+			grid-area: arrow;
+			padding: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.td-delete {
+			grid-area: delete;
+			padding: 0;
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+		}
+
+		.btn-delete-row {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: var(--target-min);
+			height: var(--target-min);
+			min-width: var(--target-min);
+			min-height: var(--target-min);
+			padding: 0;
+			font-family: inherit;
+			font-size: var(--text-base);
+			line-height: 1;
+			color: var(--color-muted);
+			background: transparent;
+			border: none;
+			border-radius: var(--radius-sm);
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+
+		.btn-delete-row:hover,
+		.btn-delete-row:focus-visible {
+			color: var(--color-warning-ink);
+			background: var(--color-warning-tint);
+			outline: var(--focus-ring-width) solid var(--focus-ring-color);
+			outline-offset: var(--focus-ring-offset);
+		}
+
+		.td-rhs {
+			grid-area: rhs;
+			padding: 0;
+			width: 100%;
+		}
+
+		.rhs-wrapper {
+			width: 100%;
+		}
+
+		.alts-cell-container {
+			min-height: var(--target-min);
+			gap: var(--space-1);
+		}
+
+		.alt-cell-input {
+			min-width: 64px;
+			min-height: var(--target-min);
+			box-sizing: border-box;
+		}
+
 		.btn-add-alt {
+			width: var(--target-min);
+			height: var(--target-min);
 			min-width: var(--target-min);
 			min-height: var(--target-min);
 		}
 
 		.inline-symbol-bar {
+			width: 100%;
+			box-sizing: border-box;
 			flex-wrap: wrap;
 		}
 
@@ -1922,16 +2091,29 @@
 		}
 
 		.inline-sym-btn {
+			width: var(--target-min);
+			height: var(--target-min);
 			min-width: var(--target-min);
 			min-height: var(--target-min);
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			padding: 0;
+		}
+
+		.matrix-footer {
+			width: 100%;
+			box-sizing: border-box;
+			padding: var(--space-2);
 		}
 
 		.btn-add-row {
+			width: 100%;
 			min-height: var(--target-min);
-		}
-
-		.legend-header {
-			min-height: var(--target-min);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			text-align: center;
 		}
 	}
 </style>
