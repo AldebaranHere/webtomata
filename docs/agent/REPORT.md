@@ -7,6 +7,7 @@
 - title: Landmarks on a laptop, tab panels on a phone
 - branch: `task/T-025-workstation-landmarks`
 - commits: `c9aaa81..1e26263`
+- pull request: https://github.com/AldebaranHere/webtomata/pull/139
 - status: done
 
 ## What changed

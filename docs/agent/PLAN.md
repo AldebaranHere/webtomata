@@ -769,6 +769,7 @@ Expected: all pass. Paste the real output into `REPORT.md`, with the "skipped" c
 
 **Status:** done
 **Commit:** `1e26263`
+**PR:** #139
 **Owner:** worker
 **Branch:** `task/T-025-workstation-landmarks`
 
