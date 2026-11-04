@@ -767,7 +767,8 @@ Expected: all pass. Paste the real output into `REPORT.md`, with the "skipped" c
 
 ## Task T-025 — Landmarks on a laptop, tab panels on a phone
 
-**Status:** in-progress
+**Status:** done
+**Commit:** `1e26263`
 **Owner:** worker
 **Branch:** `task/T-025-workstation-landmarks`
 
