@@ -173,7 +173,7 @@
 		{#if cykResult.table.length > 0}
 			<div class="cyk-table-section">
 				<div class="table-header">
-					<h4 class="table-title">{t('grammar.cyk_table_title')}</h4>
+					<h2 class="table-title">{t('grammar.cyk_table_title')}</h2>
 					<span class="table-note">{t('grammar.cyk_table_note')}</span>
 				</div>
 
@@ -364,7 +364,6 @@
 
 	.verdict-sub {
 		font-size: var(--text-xs);
-		opacity: 0.9;
 	}
 
 	.cyk-table-section {
