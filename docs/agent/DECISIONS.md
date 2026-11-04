@@ -14,6 +14,16 @@ Format:
 
 ---
 
+## 2026-11-05 — T-060 merged; T-015 (the toggle) specified
+- Decider: owner (accepted T-060 as built); planner (what "versi ringkas" means)
+- Context: T-060 (PR 147) put the six phases in the homework order. The owner accepted that unit-rule removal can leave unreachable variables in the final grammar (the homework order has no cleanup stage after it; Rich's textbook leaves them too), and that opening a nullable CNF result as a new grammar adds a second `S₀` (the slide rule "add `S₀` when the start symbol is nullable").
+- Decision: "versi ringkas" is one flag with two effects: phase 5 reuses a variable whose only rule is `A → a`, and phase 6 shares identical helper variables. One flag, renamed from `share_helpers` to `short_version`. A note appears in a phase only when something was reused or shared. The choice is kept in `localStorage`, not in the share link. "Open as new grammar" and CYK use the version on screen. T-015 becomes `todo`.
+- Alternatives considered: two flags (one per phase), which the UI has no use for; reusing any variable that has `A → a` among several rules, which changes the language.
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-015)
+
+---
+
 ## 2026-11-05 — The owner approved the CNF stepper wireframe; T-060 is `todo`
 - Decider: owner (approval); planner (status)
 - Context: The owner read `design/screens/cnf-stepper-homework-order.md` and agreed with the stage order, the start-symbol rule and the toggle labels "versi panjang / versi ringkas".
