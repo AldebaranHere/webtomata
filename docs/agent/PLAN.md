@@ -4,7 +4,7 @@
 > `todo` means ready: every field is written and the human approved it. Several tasks can be `todo` at the same time. The worker does one task at a time: the one that the human names in the start prompt ("Do task T-xxx"). The worker sets it to `in-progress` in the first commit of its own PR and to `done` in the last. The planner does not open a pull request only to change a status.
 > The blank task template is in `PLAN-TEMPLATE.md`.
 
-**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 (CNF phases in the homework order, after T-029 is merged) is `todo` since the owner approved `design/screens/cnf-stepper-homework-order.md`; T-015 (the toggle) stays `proposed` until T-060 is merged.
+**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 (CNF phases in the homework order, after T-029 is merged) is `todo` since the owner approved `design/screens/cnf-stepper-homework-order.md`; T-060 is merged (PR 147). Written on 2026-11-05 after it: T-015 (`todo`: the "versi panjang / versi ringkas" toggle).
 
 Status legend: `proposed` | `todo` | `in-progress` | `blocked` | `done` | `rejected`
 
@@ -1113,15 +1113,66 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 
 ## Task T-015 — Toggle "versi panjang / versi ringkas" in the CNF stepper
 
-**Status:** proposed (needs T-060 done and the owner's approval of the design; the spec is a draft)
+**Status:** todo
 **Owner:** worker
 **Branch:** `task/T-015-cnf-version-toggle`
 
-**Goal:** A toggle in the stepper header switches between the long version (the default: one `T_a → a` per terminal, a chain of helper variables for each long rule) and the short version (a terminal that already has `A → a` reuses `A`; identical helper variables are shared). See `design/screens/cnf-stepper-homework-order.md`.
+**Goal:** A segmented control in the stepper header switches the CNF conversion between two versions. *Versi panjang* (default) is today's behavior. *Versi ringkas* reuses what exists: in phase 5 a terminal `a` uses an existing variable `A` whose only rule is `A → a` instead of a new `T_a`; in phase 6 identical helper variables are shared between rules. Both versions end in a CNF grammar for the same language. The six phases and their order stay as in T-060. See `design/screens/cnf-stepper-homework-order.md` (the owner approved it, and chose the names "versi panjang" and "versi ringkas").
 
-**Scope (in), draft:** the engine option for phase 5 (reuse an existing `A → a`; phase 6 already has `share_helpers`), the wasm call with the option, the segmented control (`role="radiogroup"`) in `GrammarCnfStepper.svelte`, the choice kept on the device (`localStorage`), `id` and `en` strings, tests with hand derivations for both versions, e2e and axe. The full spec is written when T-060 is merged.
+**What "versi ringkas" means (decided by the planner from the course slide "Tₐ can take A instead"; the owner can veto):**
+- Phase 5: for a terminal `a`, if some variable `A` has exactly one rule in the grammar and that rule is `A → a`, then every mixed rule uses `A` for `a` and no `T_a` is created. If several variables qualify, take the first by name order. A variable with more rules (for example `A → a | b`) must not be reused: it would change the language. The start symbol is allowed.
+- Phase 6: helper variables for the same pair of symbols are shared between rules (the existing `share_helpers` behavior).
+- Versi panjang changes nothing: one `T_a → a` per terminal for the whole grammar (as today), and one chain of helpers per long rule.
 
-**Depends on:** T-060 done and merged.
+**Scope (in):**
+- `crates/engine-core/src/grammar/cnf.rs`, `api.rs`, `crates/engine-wasm/src/lib.rs`, `web/src/lib/engine/handlers.ts` and `protocol.ts`: rename the option `share_helpers` / `shareHelpers` to `short_version` / `shortVersion` along the whole chain (one flag, default false), and add the phase-5 reuse to it. Phase 6 keeps its current sharing code under the renamed flag. Update every existing caller and test (`grep -rn "share_helpers\|shareHelpers"`).
+- Notes, as keys with no parameters: in the short version, phase 5 sets `note_key = "grammar.cnf.phase_mixed.note_short"` only if at least one terminal reused an existing variable, and phase 6 sets `"grammar.cnf.phase_long.note_short"` only if at least one helper variable was shared (used by two or more rules). The stepper already renders `note_key` (T-060). If nothing was reused or shared, no note: the two versions then give the same trace.
+- `GrammarWorkstation.svelte`: a state `cnfVersion: 'long' | 'short'` (default `'long'`), read from `localStorage` key `webtomata.grammar.cnf_version` in the existing `onMount` block (any other stored value means `'long'`; every read and write in try/catch) and written when it changes. `runPipeline` passes `cnfVersion === 'short'` to `engine.transformToCnf`. Changing the version runs the pipeline again. Pass `version` and `onversionchange` to the stepper. Not stored in the share link or in saved grammars.
+- Keep the phase: the stepper must stay mounted and keep `currentStepIdx` while the trace is recomputed (do not set `cnfTrace` to null on success; check that `isTransforming` does not unmount the stepper). Ignore a stale result: if the student toggles twice quickly, only the answer of the last call may set `cnfTrace` (a call counter is enough).
+- `GrammarCnfStepper.svelte`: the control from the wireframe, placed above the six round buttons. It is a `role="radiogroup"` with `aria-label` from a key, holding two `role="radio"` buttons with `aria-checked`. Roving tabindex: Tab enters the checked radio; ArrowLeft/ArrowRight (and Up/Down) move and select; Space/Enter select. Each half is at least `var(--target-min)` high. On the touch layout (`@media (max-width: 900px), (pointer: coarse)`) the control is as wide as the column. Use only existing tokens; the checked half uses the same blue as the active round button; focus ring visible.
+- "Buka sebagai tata bahasa baru" (T-023) opens the final grammar of the version on screen. The CYK tester also tests the final grammar of the version on screen. No other change to them.
+- `id.ts` and `en.ts`: `grammar.cnf.version.aria` (id "Versi konversi CNF", en "CNF conversion version"), `grammar.cnf.version.long` ("Versi panjang" / "Long version"), `grammar.cnf.version.short` ("Versi ringkas" / "Short version"), and the two note keys: id phase 5 "Versi ringkas: terminal yang sudah punya variabel dengan satu aturan A → a memakai variabel itu, tanpa T_a baru."; id phase 6 "Versi ringkas: variabel pembantu yang sama dipakai bersama oleh beberapa aturan."; and the English equivalents. Add "versi panjang" and "versi ringkas" to `docs/glossary.md` with `TODO(review)`.
+- Tests, with hand derivations (below), e2e and axe.
+
+**Non-goals (out):**
+- No side-by-side view, no per-phase toggle, no change to the six phases, their order, their titles or `S₀`. No change to variable names in the long version. No new storage mechanism (a plain `localStorage` convenience is enough). No change to CYK, to the parser or to `GrammarError` sentences (T-028).
+
+**Files expected to touch:** `cnf.rs` and its tests, `api.rs`, `crates/engine-core/tests/grammar.rs`, `crates/engine-wasm/src/lib.rs`, `handlers.ts`, `protocol.ts`, any test that passes the old flag (`grep`), `GrammarWorkstation.svelte`, `GrammarCnfStepper.svelte`, `id.ts`, `en.ts`, `docs/glossary.md`, new `web/e2e/grammar-cnf-version.spec.ts`, `docs/agent/REPORT.md`.
+
+**Design reference:** `design/screens/cnf-stepper-homework-order.md` and `.svg` (toggle, section "The toggle").
+
+**Hand derivations the planner has done (the worker redoes them in `REPORT.md` before running any test; if the engine disagrees, stop and report):**
+- *Grammar R1:* `S -> x B y | z B y | z B | x` and `B -> x`. Language `{x, xxy, zxy, zx}`. Phases 1 to 4 change nothing. Phase 5, long: 8 rules (three rewritten mixed rules of `S` using `T_x`, `T_y`, `T_z`, plus `S → x`, `B → x`, and three helpers); removed 3, added 6. Phase 5, short: `x` reuses `B` (its only rule is `B → x`), so only `T_y` and `T_z` are created: 7 rules; removed 3, added 5; the phase-5 note is present. Phase 6, long: two rules have length 3 and get their own helper each: 10 rules; removed 2, added 4. Phase 6, short: the pair `(B, T_y)` is shared by both rules, so one helper: 8 rules; removed 2, added 3; the phase-6 note is present. Both final grammars are in CNF and accept exactly `{x, xxy, zxy, zx}` (CYK oracle on all strings over `{x,y,z}` up to length 6).
+- *Grammar R2 (must not reuse):* `S -> a C` and `C -> c | a`. `C` has two rules, so `a` needs its own `T_a` in the short version too; no phase-5 note. The short and long finals both accept exactly `{ac, aa}` (a wrong reuse of `C` for `a` would also accept `cc` and `ca`).
+- *Grammar R3 (nothing to reuse or share):* the T-010 flow grammar. The short and long traces are identical, with no notes.
+
+**Acceptance criteria:**
+- AC1: R1, R2 and R3 match the derivations above in both versions (rule counts, removed and added, notes), and the language oracle passes for each final grammar.
+- AC2: a `proptest` property on random grammars: the short final grammar is in CNF and equivalent to the long final grammar (same strings up to a small length, by CYK), and has no more rules than the long one.
+- AC3: the toggle: default is "Versi panjang"; choosing "Versi ringkas" on phase 4 of R1 keeps the stepper on phase 4 and changes the rule counts of phases 5 and 6 as above; choosing it back restores the long counts; arrow keys move and select; after a reload the choice is kept; a stored value `"x"` gives the long version. Works in `id` and `en`.
+- AC4: touch targets of the two halves are at least 44 px high on desktop and phone; on the phone the control is as wide as the column; axe has zero violations with the control visible; no horizontal scroll at 375 px.
+- AC5: toggling twice quickly ends on the version of the second click (a test that clicks twice without waiting).
+- AC6: deliberate breaks, each shown failing, then restored: reuse a variable with more than one rule (R2 fails); never share in phase 6 (R1 short counts fail); do not forward the flag from `GrammarWorkstation` (the toggle test fails); remove one new key from `en.ts` (a test or `check:strings` fails).
+- AC7: `wasm` stays under 250 KB gzip and the initial JS under 170 KB (`pnpm size`).
+
+**Verification:**
+```
+cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+pnpm build:wasm
+pnpm check && pnpm lint && pnpm format:check && pnpm check:strings && pnpm check:tokens
+pnpm --filter web exec vitest run
+pnpm build && pnpm size
+pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-cnf-version.spec.ts --repeat-each=10
+pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-flow.spec.ts e2e/grammar-open-cnf.spec.ts e2e/grammar-phone.spec.ts e2e/grammar-cyk-limit.spec.ts
+pnpm --filter web exec playwright test --project=firefox --project=webkit-phone e2e/cross/workstation-phone.spec.ts (add one toggle test there: tap the control on the phone layout and check the phase and the rule count)
+```
+Expected: all pass. Do not run the full suite locally. Paste real output into `REPORT.md` and name the specs you ran. The new spec is repeated 10 times because it uses storage and a quick double click.
+
+**Rollback:** `git revert <sha>`. The stored key is harmless if unused.
+
+**Depends on:** T-060 done and merged (done, PR 147).
+
+**Notes for worker:** The flag rename is mechanical but touches many tests; do it in its own commit so the diff is easy to read. The reuse rule is about the grammar *at the start of phase 5*, after phases 1 to 4. If a stage of the course method is unclear, ask the planner; do not guess.
 
 ---
 
@@ -1159,7 +1210,7 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-011** e2e and axe tests for the language workstation and the switcher: specified in its own task block above (`todo`).
 - **T-012** `rejected` on 2026-11-04: the panel drag handle already has seven tests with real touch events in `web/e2e/editor-panel-height.spec.ts` (drag up and down, limits, tap, keys, 44 px, no page scroll). Reopen it only if the owner sees a failing handle on a real phone; a WebKit run would need a real iPhone.
 - **T-016** The phone layout of the grammar and the language workstations: done (PR 121).
-- **T-015** The UI switch between the long version and the short version of the CNF conversion: draft in its own block above (`proposed`; after T-060).
+- **T-015** The UI switch between the long version and the short version of the CNF conversion: specified in its own block above (`todo`; T-060 is merged).
 - **T-060** CNF phases in the homework order, with message keys: specified in its own block above (`done`).
 - **T-013** Preset text in `id` and `en`, and readable rule chips: specified in its own task block above (`todo`).
 - **T-024** Bigger touch areas for the rule boxes of the grammar Editor on a phone: specified in its own task block above (`todo`; the owner approved the design on 2026-11-04).
