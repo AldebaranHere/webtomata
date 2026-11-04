@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { engine } from '#lib/engine/client.ts';
 	import type { CykResult, Grammar } from '#lib/engine/types.ts';
+	import { grammarToText } from './grammar-text.ts';
 	import { id as messages, type MessageKey } from '#lib/i18n/id.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import type { Params } from '#lib/i18n/translate.ts';
@@ -28,25 +29,8 @@
 		return cykError.raw;
 	});
 
-	// Convert grammar object to string for the engine call
-	const grammarText = $derived.by(() => {
-		const lines: string[] = [];
-		const heads: string[] = [];
-		if (grammar.start) heads.push(grammar.start);
-		for (const r of grammar.rules) {
-			if (!heads.includes(r.head)) heads.push(r.head);
-		}
-		for (const head of heads) {
-			const rules = grammar.rules.filter((r) => r.head === head);
-			const alts = rules.map((r) =>
-				r.body.length === 0
-					? 'ε'
-					: r.body.map((s) => (s.type === 'terminal' ? s.value : s.value)).join('')
-			);
-			lines.push(`${head} -> ${alts.join(' | ')}`);
-		}
-		return lines.join('\n');
-	});
+	// Convert grammar object to canonical text format with spaced symbols for the engine call
+	const grammarText = $derived(grammarToText(grammar));
 
 	async function runCyk(inputWord: string) {
 		const word = inputWord.trim();
