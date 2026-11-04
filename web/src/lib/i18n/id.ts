@@ -893,6 +893,7 @@ export const id = {
 	'grammar.library_aria': 'Daftar Tata Bahasa',
 	'grammar.library_title': 'Perpustakaan Tata Bahasa',
 	'grammar.new_grammar': '+ Tata Bahasa Baru',
+	'grammar.default_custom_title': 'Tata Bahasa {id}',
 	'grammar.preset_section': 'Preset Soal & Referensi',
 	'grammar.custom_section': 'Tata Bahasa Kustom',
 	'grammar.editor_aria': 'Editor Tata Bahasa Bebas Konteks',

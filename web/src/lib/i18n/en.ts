@@ -896,6 +896,7 @@ export const en: Record<MessageKey, string> = {
 	'grammar.library_aria': 'Grammar Library',
 	'grammar.library_title': 'Grammar Library',
 	'grammar.new_grammar': '+ New Grammar',
+	'grammar.default_custom_title': 'Grammar {id}',
 	'grammar.preset_section': 'Problems & References',
 	'grammar.custom_section': 'Custom Grammars',
 	'grammar.editor_aria': 'Context-Free Grammar Editor',

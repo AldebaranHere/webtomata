@@ -3,7 +3,7 @@
 	import { SvelteMap } from 'svelte/reactivity';
 	import { engine } from '#lib/engine/client.ts';
 	import type { CnfTransformationTrace, Grammar } from '#lib/engine/types.ts';
-	import { t } from '#lib/i18n/index.svelte.ts';
+	import { t, getLocale } from '#lib/i18n/index.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
 	import GrammarMathDisplay from './GrammarMathDisplay.svelte';
 	import GrammarCnfStepper from './GrammarCnfStepper.svelte';
@@ -12,7 +12,7 @@
 		type PhoneTabItem
 	} from '#lib/components/WorkstationPhoneTabs.svelte';
 	import { GRAMMAR_PRESETS, type PresetGrammar } from './presets.ts';
-	import { grammarToText, nextCustomId } from './grammar-text.ts';
+	import { computeCnfTitle, grammarToText, nextCustomId } from './grammar-text.ts';
 
 	interface MatrixRow {
 		id: string;
@@ -100,7 +100,13 @@
 
 	const activePreset = $derived(GRAMMAR_PRESETS.find((p) => p.id === selectedId));
 	const activeTitle = $derived(
-		activePreset?.title ?? customGrammars.find((c) => c.id === selectedId)?.title ?? ''
+		(activePreset
+			? getLocale() === 'en'
+				? activePreset.titleEn
+				: activePreset.titleId
+			: undefined) ??
+			customGrammars.find((c) => c.id === selectedId)?.title ??
+			''
 	);
 
 	const GRAMMAR_PHONE_TABS: PhoneTabItem[] = [
@@ -331,25 +337,12 @@
 		const id = nextCustomId(customGrammars);
 		const newGrammar: CustomGrammar = {
 			id,
-			title: `Tata Bahasa ${id}`,
+			title: t('grammar.default_custom_title', { id }),
 			grammar: `S -> aSb | λ`
 		};
 		const updated = [...customGrammars, newGrammar];
 		saveCustomGrammars(updated);
 		selectCustom(newGrammar);
-	}
-
-	function computeCnfTitle(baseTitle: string, existingGrammars: CustomGrammar[]): string {
-		const firstCandidate = `${baseTitle} (CNF)`;
-		const existingTitles = new Set(existingGrammars.map((c) => c.title));
-		if (!existingTitles.has(firstCandidate)) {
-			return firstCandidate;
-		}
-		let counter = 2;
-		while (existingTitles.has(`${baseTitle} (CNF ${counter})`)) {
-			counter++;
-		}
-		return `${baseTitle} (CNF ${counter})`;
 	}
 
 	function handleOpenCnfAsNewGrammar() {
@@ -688,9 +681,13 @@
 					>
 						<div class="card-top">
 							<span class="preset-id-badge">{preset.id}</span>
-							<span class="card-title">{preset.title}</span>
+							<span class="card-title"
+								>{getLocale() === 'en' ? preset.titleEn : preset.titleId}</span
+							>
 						</div>
-						<div class="card-desc">{preset.description}</div>
+						<div class="card-desc">
+							{getLocale() === 'en' ? preset.descriptionEn : preset.descriptionId}
+						</div>
 					</div>
 				{/each}
 			</div>
