@@ -869,6 +869,7 @@ Expected: all pass. Paste the real output into `REPORT.md`.
 
 **Status:** done
 **Commit:** `9cbc226`
+**PR:** #141
 **Owner:** worker
 **Branch:** `task/T-024-rule-rows-touch`
 
