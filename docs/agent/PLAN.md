@@ -973,6 +973,7 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 
 **Status:** done
 **Commit:** `e0c793d`
+**PR:** #143
 **Owner:** worker
 **Branch:** `task/T-011-language-and-switcher-e2e`
 

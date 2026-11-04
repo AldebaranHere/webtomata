@@ -7,7 +7,7 @@
 - title: End-to-end tests for the language workstation and the mode switcher
 - branch: `task/T-011-language-and-switcher-e2e`
 - commits: `0103fa8..e0c793d`
-- pull request: to be opened
+- pull request: https://github.com/AldebaranHere/webtomata/pull/143
 - status: done
 
 ## What changed
