@@ -971,7 +971,8 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 
 ## Task T-011 — End-to-end tests for the language workstation and the mode switcher
 
-**Status:** in-progress
+**Status:** done
+**Commit:** `e0c793d`
 **Owner:** worker
 **Branch:** `task/T-011-language-and-switcher-e2e`
 
