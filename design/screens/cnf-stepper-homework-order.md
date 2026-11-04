@@ -1,4 +1,4 @@
-# CNF stepper: homework order and the "versi kuliah / versi ringkas" toggle (P-002, proposal)
+# CNF stepper: homework order and the "versi panjang / versi ringkas" toggle (P-002, proposal)
 
 **Status:** proposed. The owner has not approved it. It becomes tasks T-060 and T-015 when approved and when the open questions below are answered.
 **Picture:** `cnf-stepper-homework-order.svg`.
@@ -27,8 +27,8 @@ The Indonesian words "tak terjangkau" and "tak produktif" are new terms: they go
 
 **The start symbol.** There is no stage for it. A new start symbol `S₀` is added in Fase 3, only when the empty string is in the language and `S` appears on the right side of a rule (that is the only case where `S₀ → ε` is needed to keep the grammar legal). In Fase 3 a note box says so. If it is not needed, the note is not shown and no `S₀` appears.
 
-**The toggle.** A segmented control "Versi kuliah | Versi ringkas" (en: "Course version | Compact version") sits between the two output tabs and the six round buttons. "Versi kuliah" is the default.
-- *Versi kuliah:* as the course does it: one new `T_a → a` for every terminal that needs one, and every long rule gets its own chain of helper variables.
+**The toggle.** A segmented control "Versi panjang | Versi ringkas" (en: "Long version | Short version") sits between the two output tabs and the six round buttons. "Versi panjang" is the default.
+- *Versi panjang* (named by length, not by the course, so that a student outside the course understands it; the owner chose the name on 2026-11-05): the full method, one new `T_a → a` for every terminal that needs one, and every long rule gets its own chain of helper variables.
 - *Versi ringkas:* reuse what exists: a terminal that already has a rule `A → a` uses `A` instead of a new `T_a`, and identical helper variables are shared between rules.
 - Changing the toggle recomputes the six phases and keeps the phase the student is on. The choice is kept on the device (not in the share link).
 - On a phone the control is as wide as the column and 44 px tall; each half is a button. It is a `role="radiogroup"` with two `role="radio"` buttons.

@@ -31,7 +31,7 @@
     <text x="20" y="28" font-size="14" font-weight="600">Stepper CNF: urutan tugas kuliah dan tombol versi (laptop dan HP)</text>
     <text x="20" y="46" fill="#6b7280">Wireframe, belum disetujui. Kotak oranye = catatan yang muncul di Fase 3.</text>
     <text x="40" y="89">Transformasi CNF (6 Fase)</text><text x="235" y="89" fill="#6b7280">Uji String (CYK)</text>
-    <text x="42" y="127" fill="#2563eb">Versi kuliah ✓</text><text x="168" y="127">Versi ringkas</text>
+    <text x="42" y="127" fill="#2563eb">Versi panjang ✓</text><text x="168" y="127">Versi ringkas</text>
     <text x="40" y="169">1</text><text x="72" y="169">2</text><text x="104" y="169" fill="#ffffff">3</text><text x="136" y="169">4</text><text x="168" y="169">5</text><text x="200" y="169">6</text>
     <text x="250" y="169">‹ Sebelumnya   3 / 6   Selanjutnya ›</text>
     <text x="46" y="213" font-size="10">Fase 3</text>
@@ -46,7 +46,7 @@
     <text x="50" y="406" fill="#166534">S₀ → λ</text><text x="166" y="406" fill="#166534">B → b</text>
     <text x="40" y="436" font-size="10" fill="#6b7280">Tata bahasa setelah fase ini: n aturan, dalam notasi matematika</text>
     <text x="470" y="97" font-size="10" fill="#1f2937">Transformasi CNF (6 Fase)</text>
-    <text x="475" y="149" fill="#2563eb">Versi kuliah ✓</text><text x="595" y="149">Versi ringkas</text>
+    <text x="475" y="149" fill="#2563eb">Versi panjang ✓</text><text x="595" y="149">Versi ringkas</text>
     <text x="477" y="204">1</text><text x="515" y="204">2</text><text x="553" y="204" fill="#ffffff">3</text><text x="591" y="204">4</text><text x="629" y="204">5</text><text x="667" y="204">6</text>
     <text x="476" y="251" font-size="10">Fase 3</text>
     <text x="470" y="278" font-size="13" font-weight="600">Hapus Aturan ε</text>

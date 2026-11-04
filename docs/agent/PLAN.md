@@ -1109,13 +1109,13 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 
 ---
 
-## Task T-015 — Toggle "versi kuliah / versi ringkas" in the CNF stepper
+## Task T-015 — Toggle "versi panjang / versi ringkas" in the CNF stepper
 
 **Status:** proposed (needs T-060 done and the owner's approval of the design; the spec is a draft)
 **Owner:** worker
 **Branch:** `task/T-015-cnf-version-toggle`
 
-**Goal:** A toggle in the stepper header switches between the course version (the default: one `T_a → a` per terminal, a chain of helper variables for each long rule) and the compact version (a terminal that already has `A → a` reuses `A`; identical helper variables are shared). See `design/screens/cnf-stepper-homework-order.md`.
+**Goal:** A toggle in the stepper header switches between the long version (the default: one `T_a → a` per terminal, a chain of helper variables for each long rule) and the short version (a terminal that already has `A → a` reuses `A`; identical helper variables are shared). See `design/screens/cnf-stepper-homework-order.md`.
 
 **Scope (in), draft:** the engine option for phase 5 (reuse an existing `A → a`; phase 6 already has `share_helpers`), the wasm call with the option, the segmented control (`role="radiogroup"`) in `GrammarCnfStepper.svelte`, the choice kept on the device (`localStorage`), `id` and `en` strings, tests with hand derivations for both versions, e2e and axe. The full spec is written when T-060 is merged.
 
@@ -1139,12 +1139,12 @@ Write `design/screens/grammar-workstation.md`, `design/screens/language-workstat
 
 **Added on 2026-11-02, after the owner's phone test:** the two workstations are not usable on a phone. Both stack their three areas as small boxes with their own scroll bars, so a student sees about one item of the library, one row of the grammar, or only the heading of the CNF phase; in the language workstation the results are below the settings and off the screen. P-001 therefore also proposes a phone layout for both (the proposal is in `design/screens/workstation-phone-layout.md`: one area at a time with a tab strip at the top, like the panel tabs of the FSM editor). The owner approves it before T-016.
 
-## Planner task P-002 — Wireframe of the CNF "versi kuliah / versi ringkas" switch
+## Planner task P-002 — Wireframe of the CNF "versi panjang / versi ringkas" switch
 
 **Status:** drawn on 2026-11-05 in `design/screens/cnf-stepper-homework-order.md` and `.svg`; waits for the owner's approval and answers to its three open questions. It also changes the phase order (the owner agreed on 2026-11-05: follow the homework). Tasks: T-060 (order and message keys), then T-015 (the toggle).
 **Owner:** planner
 
-**Owner's answers (2026-11-04):** the course version is the default; a toggle switches to a "minimized" version with reused rules (one version at a time, not side by side). The engine's six phases follow the course's homework text for CNF (report the grammar after each stage: unreachable rules, non-productive rules, epsilon rules, unit rules, mixed rules, long right-hand sides). Still to draw and ask: where the toggle sits (in the stepper header is the planner's pick), and what exactly "minimized" does (shared helper variables only, or also reuse of an existing `A → a` rule; see the note below).
+**Owner's answers (2026-11-04):** the long version is the default; a toggle switches to a "minimized" version with reused rules (one version at a time, not side by side). The engine's six phases follow the course's homework text for CNF (report the grammar after each stage: unreachable rules, non-productive rules, epsilon rules, unit rules, mixed rules, long right-hand sides). Still to draw and ask: where the toggle sits (in the stepper header is the planner's pick), and what exactly "minimized" does (shared helper variables only, or also reuse of an existing `A → a` rule; see the note below).
 
 The owner's idea (2026-11-02): the CNF conversion shows a verbose version that follows the course (no sharing) and a minimized version, with a toggle. The planner draws it and the owner approves it before T-015. Open points for the owner at that time: is "minimized" only shared helper variables, or also reuse of an existing `A → a` rule for a terminal (the slide mentions it)? Are the two versions shown one at a time, or side by side? **Found by the report of T-004:** phase 5 always reuses one `T_c` variable for each terminal across the whole grammar, even when `share_helpers` is false. That is the idea of the slide's note ("Ta can take A instead") only in part, so it matters for what "minimized" means.
 
@@ -1157,7 +1157,7 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-011** e2e and axe tests for the language workstation and the switcher: specified in its own task block above (`todo`).
 - **T-012** `rejected` on 2026-11-04: the panel drag handle already has seven tests with real touch events in `web/e2e/editor-panel-height.spec.ts` (drag up and down, limits, tap, keys, 44 px, no page scroll). Reopen it only if the owner sees a failing handle on a real phone; a WebKit run would need a real iPhone.
 - **T-016** The phone layout of the grammar and the language workstations: done (PR 121).
-- **T-015** The UI switch between the course version and the compact version of the CNF conversion: draft in its own block above (`proposed`; after T-060).
+- **T-015** The UI switch between the long version and the short version of the CNF conversion: draft in its own block above (`proposed`; after T-060).
 - **T-060** CNF phases in the homework order, with message keys: specified in its own block above (`proposed`; waits for the owner's approval of the wireframe).
 - **T-013** Preset text in `id` and `en`, and readable rule chips: specified in its own task block above (`todo`).
 - **T-024** Bigger touch areas for the rule boxes of the grammar Editor on a phone: specified in its own task block above (`todo`; the owner approved the design on 2026-11-04).
