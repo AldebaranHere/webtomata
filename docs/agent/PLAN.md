@@ -1061,23 +1061,23 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 
 ## Task T-060 — CNF phases in the homework order, with message keys
 
-**Status:** proposed (waits for the owner to approve `design/screens/cnf-stepper-homework-order.md` and to answer its questions 1 and 2; then it becomes `todo`)
+**Status:** proposed (waits for the owner to approve the wireframe `design/screens/cnf-stepper-homework-order.md`; its two content questions were settled from the course slides on 2026-11-05; then it becomes `todo`)
 **Owner:** worker
 **Branch:** `task/T-060-cnf-homework-order`
 
 **Goal:** The six phases of the CNF stepper follow the six stages of the course homework: (1) unreachable rules, (2) non-productive rules, (3) ε-rules, (4) unit rules, (5) mixed rules, (6) long right-hand sides. Today they are: start symbol, ε-rules, unit rules, useless symbols, terminals, long rules. Also, the engine returns Indonesian sentences for the phase names and descriptions; they become message keys, translated in the UI.
 
 **Scope (in):**
-- `crates/engine-core/src/grammar/cnf.rs`: new phase order as in the design table. Phase 1 removes unreachable variables and their rules; phase 2 removes non-productive variables and every rule that uses them, **and the variables that this removal made unreachable** (if the owner answers question 1 differently, this line changes before the task is `todo`); phase 3 is the existing ε-removal, with the new start symbol `S₀` added only when the empty string is in the language and the start symbol appears on a right-hand side (owner's question 2); phases 4, 5 and 6 are the existing unit, mixed and long-rule phases, unchanged in behavior and in the rules they report. The `share_helpers` option stays as it is (T-015 uses it).
+- `crates/engine-core/src/grammar/cnf.rs`: new phase order as in the design table. Phase 1 removes unreachable variables and their rules; phase 2 removes non-productive variables and every rule that uses them, **and the variables that this removal made unreachable** (the trace says so; for the four grammars of the 2026 homework this changes nothing); phase 3 is the existing ε-removal followed by the course slides' "returning ε" step: if the start symbol is nullable, add a new start symbol `S₀` with `S₀ → S | ε` (whether or not `S` is on a right-hand side), and show the note; the old phase 1 (`S₀ → S` whenever `S` is on a right-hand side) is removed; phases 4, 5 and 6 are the existing unit, mixed and long-rule phases, unchanged in behavior and in the rules they report. The `share_helpers` option stays as it is (T-015 uses it).
 - The step result carries `phase_key` (a message key, for example `grammar.cnf.phase_unreachable`) and no `phase_name` or `description` text. A parameter list is allowed if a phase needs one. Regenerate the TypeScript types.
 - `web/src/lib/grammar/GrammarCnfStepper.svelte`: show `t(key + '.title')` and `t(key + '.desc')`, and the new note of phase 3 (a key too) when `S₀` was added. Use the existing visual design; no new layout.
 - `id.ts` and `en.ts`: the six titles and descriptions and the note, from the design table (Indonesian terms new to the glossary go in `docs/glossary.md` with `TODO(review)`).
-- Engine tests: the existing CNF tests that name the old order are changed to the new order, each with a hand-derived expectation (see below). Add a test for each of: phase 2 removing a variable that becomes unreachable; no `S₀` when the empty string is not in the language; no `S₀` when `S` is not on a right-hand side; `S₀` when both hold.
+- Engine tests: the existing CNF tests that name the old order are changed to the new order, each with a hand-derived expectation (see below). Add a test for each of: phase 2 removing a variable that becomes unreachable; `S₀` when the start symbol is nullable and is on a right-hand side; `S₀` when it is nullable and on no right-hand side; no `S₀` when it is not nullable, also when it is on a right-hand side.
 - `web/e2e/grammar-flow.spec.ts` (T-010) and `grammar-open-cnf.spec.ts`: update the phase titles, chips and rule counts of the six-phase test to the new order with a new hand derivation (the same test grammar). Other e2e specs that read phase titles: `grep -rn "Isolasi Simbol Awal\|Tak Berguna\|phaseName" web`.
 - The CNF presets in `presets.ts` keep their grammars. If a preset's description names a phase number, update it (T-013 text; `Id` and `En`).
 
 **Non-goals (out):**
-- No toggle (T-015). No change to the CYK, to the parser, to `GrammarError` sentences (T-028), or to the six round buttons and chip styles. No change to the final CNF grammars except `S₀` when it is no longer needed in a case that the old phase 1 added it for (state each such case in the report).
+- No toggle (T-015). No change to the CYK, to the parser, to `GrammarError` sentences (T-028), or to the six round buttons and chip styles. No change to the final CNF grammars except `S₀`: it is now added when the start symbol is nullable, and no longer when it is only on a right-hand side (state each case in the report where a final grammar changes).
 
 **Files expected to touch:** `cnf.rs` and its tests, `crates/engine-core/tests/*` that read phases, generated TypeScript types, `GrammarCnfStepper.svelte`, `id.ts`, `en.ts`, `docs/glossary.md`, `grammar-flow.spec.ts`, `grammar-open-cnf.spec.ts`, `docs/agent/REPORT.md`.
 
@@ -1087,7 +1087,7 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 - AC1: for the grammar of the T-010 flow test and for two more that the worker chooses (one with a variable that becomes unreachable only after phase 2, one where the empty string is not in the language), the six phase results equal the worker's hand derivation from the homework text, written in `REPORT.md` before the tests run. If the engine disagrees, stop and report.
 - AC2: the final grammar is in CNF and generates the same language as the original, checked by the existing property test (`proptest`) on random grammars, if there is one (if not, add one).
 - AC3: no Indonesian sentence remains in `cnf.rs` (`grep -n '"[A-Z][a-z]* ' crates/engine-core/src/grammar/cnf.rs` shows none outside tests and comments); `check:strings` passes; both locales show their own titles.
-- AC4: deliberate breaks, each shown failing, then restored: swap phases 1 and 2 in the engine (a test fails); always add `S₀` (the new `S₀` tests fail); remove one key from `en.ts` (a test or `check:strings` fails).
+- AC4: deliberate breaks, each shown failing, then restored: swap phases 1 and 2 in the engine (a test fails); always add `S₀`, or never (the `S₀` tests fail); remove one key from `en.ts` (a test or `check:strings` fails).
 - AC5: the T-010 test, updated, passes 5 times on both projects.
 
 **Verification:**
@@ -1103,7 +1103,7 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 
 **Rollback:** `git revert <sha>`. Saved grammars are plain text and do not depend on the phases.
 
-**Depends on:** T-029 done and merged (both touch the grammar flow tests); the owner's approval of the design and answers to questions 1 and 2.
+**Depends on:** T-029 done and merged (both touch the grammar flow tests); the owner's approval of the wireframe.
 
 **Notes for worker:** Ask the planner if a stage of the homework text is unclear; do not guess. This changes what a student reports for homework, so the hand derivation matters more than the code.
 
@@ -1141,7 +1141,7 @@ Write `design/screens/grammar-workstation.md`, `design/screens/language-workstat
 
 ## Planner task P-002 — Wireframe of the CNF "versi panjang / versi ringkas" switch
 
-**Status:** drawn on 2026-11-05 in `design/screens/cnf-stepper-homework-order.md` and `.svg`; waits for the owner's approval and answers to its three open questions. It also changes the phase order (the owner agreed on 2026-11-05: follow the homework). Tasks: T-060 (order and message keys), then T-015 (the toggle).
+**Status:** drawn on 2026-11-05 in `design/screens/cnf-stepper-homework-order.md` and `.svg`; waits for the owner's approval of the wireframe (the stage order and the start-symbol rule were settled from the course slides on the same day). It also changes the phase order (the owner agreed on 2026-11-05: follow the homework). Tasks: T-060 (order and message keys), then T-015 (the toggle).
 **Owner:** planner
 
 **Owner's answers (2026-11-04):** the long version is the default; a toggle switches to a "minimized" version with reused rules (one version at a time, not side by side). The engine's six phases follow the course's homework text for CNF (report the grammar after each stage: unreachable rules, non-productive rules, epsilon rules, unit rules, mixed rules, long right-hand sides). Still to draw and ask: where the toggle sits (in the stepper header is the planner's pick), and what exactly "minimized" does (shared helper variables only, or also reuse of an existing `A → a` rule; see the note below).

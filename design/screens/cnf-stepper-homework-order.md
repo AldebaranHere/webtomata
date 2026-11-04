@@ -25,7 +25,7 @@ Second problem: the phase titles and descriptions are Indonesian sentences writt
 
 The Indonesian words "tak terjangkau" and "tak produktif" are new terms: they go in `docs/glossary.md` with `TODO(review)`.
 
-**The start symbol.** There is no stage for it. A new start symbol `S₀` is added in Fase 3, only when the empty string is in the language and `S` appears on the right side of a rule (that is the only case where `S₀ → ε` is needed to keep the grammar legal). In Fase 3 a note box says so. If it is not needed, the note is not shown and no `S₀` appears.
+**The start symbol.** There is no stage for it. As the course slides do ("returning ε", slide CFG2): after the ε-rules are removed, **if the start symbol `S` is nullable**, a new start symbol `S₀` is added with the rules `S₀ → S | ε`. That is Fase 3, and a note box says so. If `S` is not nullable, the note is not shown and no `S₀` appears. (The engine today adds `S₀` as a phase of its own whenever `S` is on a right-hand side; that goes away.)
 
 **The toggle.** A segmented control "Versi panjang | Versi ringkas" (en: "Long version | Short version") sits between the two output tabs and the six round buttons. "Versi panjang" is the default.
 - *Versi panjang* (named by length, not by the course, so that a student outside the course understands it; the owner chose the name on 2026-11-05): the full method, one new `T_a → a` for every terminal that needs one, and every long rule gets its own chain of helper variables.
@@ -33,11 +33,15 @@ The Indonesian words "tak terjangkau" and "tak produktif" are new terms: they go
 - Changing the toggle recomputes the six phases and keeps the phase the student is on. The choice is kept on the device (not in the share link).
 - On a phone the control is as wide as the column and 44 px tall; each half is a button. It is a `role="radiogroup"` with two `role="radio"` buttons.
 
-## Open questions for the owner
+## Questions, and how they were settled (2026-11-05, from the course files)
 
-1. **Order of the first two stages.** The homework lists "unreachable" before "non-productive". The usual textbook order is the reverse (removing non-productive variables can make others unreachable). Planner's pick: follow the homework order, and let Fase 2 also remove the variables that its own removal made unreachable (it says so in the trace). Does the course's answer key do this, or does it leave them?
-2. **The new start symbol.** Planner's pick: only in Fase 3 and only when needed (above). Does the course add `S₀` always, never, or only in this case? Which stage shows it?
-3. **Toggle place.** Planner's pick: in the stepper header, as drawn. The alternative is a setting in the panel header.
+The owner asked the planner to find the answers in the course files. No answer key for the homework is in `REFERENCES/`, so these come from the slides and the homework text (the planner read the PDFs with a PDF reader).
+
+1. **Order of the first two stages.** The homework text lists "unreachable" before "non-productive". The slides (CFG1) present the algorithm for non-productive rules first, then unreachable, which is also the textbook order. The planner checked the four grammars of the 2026 homework (HW05) by hand: in none of them does the order change any intermediate grammar (removing the non-productive variables makes nothing new unreachable). Decision: follow the homework order (it is what the student must report), and let Fase 2 also remove the variables that its own removal made unreachable, saying so in the trace, so a grammar where the order matters still ends up clean. The owner can veto it.
+2. **The new start symbol.** The slides (CFG2, "returning ε") say: if the start symbol is nullable, add a new start symbol `S₀` with `S₀ → S | ε`, after the ε-rules are removed. Decision: exactly that, in Fase 3, whether or not `S` appears on a right-hand side. This replaces the planner's earlier pick (only when `S` is also on a right-hand side).
+3. **Toggle place.** Planner's pick: in the stepper header, as drawn. The alternative is a setting in the panel header. The owner approves by merging.
+
+Also seen in the slides, not changed here: the course names the helper variables `Tₐ` for terminals and `M₁, M₂, …` for long rules, and notes that "Tₐ can take A instead" when a rule `A → a` exists, which is the "versi ringkas" idea. The engine names the long-rule helpers `X`, `X_1`; this is left as it is.
 
 ## What the tasks will need to prove
 
