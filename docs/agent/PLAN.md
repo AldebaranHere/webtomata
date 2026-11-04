@@ -4,7 +4,7 @@
 > `todo` means ready: every field is written and the human approved it. Several tasks can be `todo` at the same time. The worker does one task at a time: the one that the human names in the start prompt ("Do task T-xxx"). The worker sets it to `in-progress` in the first commit of its own PR and to `done` in the last. The planner does not open a pull request only to change a status.
 > The blank task template is in `PLAN-TEMPLATE.md`.
 
-**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other.
+**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time.
 
 Status legend: `proposed` | `todo` | `in-progress` | `blocked` | `done` | `rejected`
 
@@ -865,6 +865,160 @@ Expected: all pass. Paste the real output into `REPORT.md`.
 
 ---
 
+## Task T-024 — Rule rows with 44 px targets on touch screens
+
+**Status:** todo
+**Owner:** worker
+**Branch:** `task/T-024-rule-rows-touch`
+
+**Goal:** On a phone the controls of the rule matrix are too small for a finger (left-hand box 64 × 26 px, alternative box 45 × 22 px, "+" 24 × 24 px, symbol buttons about 20 px tall, "+ Tambah Baris" about 28 px tall), which breaks the 44 px rule of `CLAUDE.md`. Also, a row can be deleted only by a right-click (`oncontextmenu`), which a finger cannot do on iOS. The owner approved the design on 2026-11-04: option B (alternatives flow in one line, like the textbook), for every touch screen and every width up to 900 px, and a delete button that deletes without asking.
+
+**Scope (in):**
+- `web/src/lib/grammar/GrammarWorkstation.svelte` only (markup and CSS). The touch layout is one CSS media query, `@media (max-width: 900px), (pointer: coarse)`. No new JavaScript state. The 900 px is the same boundary as the phone tabs; do not write a second one.
+- Markup: add a delete button to each row, in a new last cell. It is `type="button"`, shows `×`, has the accessible name `t('grammar.matrix_delete_row')` (the key exists; check `en.ts` has it) and calls `deleteRow(idx)`. Outside the touch layout it is `display: none`, so the laptop does not change.
+- Touch layout, as in `design/screens/grammar-rule-rows-phone.md` (option B) and `.svg`: each row is a card. Header line: the left-hand box (72 px wide, at least `--target-min` tall), the arrow, and the delete button (`--target-min` square) at the right end. Under it, the alternatives flow in one wrapping line with `|` between them; each alternative box is at least 64 px wide and `--target-min` tall (the inline `width` style stays; a `min-width` wins over it). The "+" button is `--target-min` square. The symbol buttons are `--target-min` square and wrap to a second line when needed. "+ Tambah Baris" is full width and at least `--target-min` tall.
+- Use the token `--target-min` (it is 44 px; `SidePanel.svelte` already uses it), never a raw `44px` (`check:tokens`).
+- The three column headers are hidden **visually** on the touch layout (the visually-hidden pattern, not `display: none`), so a screen reader still hears them. Turning `tr` and `td` into grid items loses the table semantics in some engines: give the table, `thead`/`tbody`, rows, header cells and cells explicit ARIA roles (`table`, `rowgroup`, `row`, `columnheader`, `cell`) so they keep them. Test it (AC5).
+- Focus after the button deletes a row: move focus to the first alternative of the row that now has the same index, or of the previous row if the deleted one was last (reuse `focusCell`). The right-click menu path keeps its present behavior.
+- No new string.
+
+**Non-goals (out):**
+- No change on a laptop (no touch, wider than 900 px). No change to the right-click menu, to the `Backspace`-on-empty removal of an alternative, to the symbols, to `--text-base` or any other token. No handling of the soft keyboard covering the symbol bar (the owner's phone test will tell). No change to the CNF or CYK panes.
+
+**Files expected to touch:** `GrammarWorkstation.svelte`, new `web/e2e/grammar-rule-rows-touch.spec.ts`, `web/e2e/cross/workstation-phone.spec.ts` (one new test), `docs/agent/REPORT.md`.
+
+**Design reference:** `design/screens/grammar-rule-rows-phone.md` and `grammar-rule-rows-phone.svg` (approved, option B).
+
+**Acceptance criteria:**
+- AC1: at 390 × 844 on the `phone` project, for a grammar with three rows and several alternatives per row, every one of these measures at least 44 px in the stated direction (bounding boxes): the left-hand boxes (height), every alternative box (height) and at least 64 px wide, every "+" (both), every delete button (both), every symbol button of the active row (both), "+ Tambah Baris" (height).
+- AC2: a tap on the delete button removes that row; the grammar and the notation card update; deleting the only row leaves one empty row `S` (what `deleteRow` does today); focus moves as written above.
+- AC3: at 1280 × 800 on the `desktop` project (no touch) the delete button is not visible, the column headers are visible, and every existing grammar spec passes without a change.
+- AC4: a touch screen wider than 900 px gets the touch layout. Try `test.use({ hasTouch: true, isMobile: true, viewport: { width: 1024, height: 768 } })` and first assert in the test that `matchMedia('(pointer: coarse)').matches` is true. If Playwright cannot make it true, say so in `REPORT.md`, keep the assertion for the 390 px case, and the owner checks a tablet; do not fake it.
+- AC5: on the touch layout `getByRole('table')` exists; it has one `row` for the header and one per rule; it has three `columnheader`s; axe reports no violation at 390 × 844 and at 1280 × 800, with a row focused (symbol bar showing).
+- AC6: one cross-browser test on `webkit-phone` and `firefox`: the alternative box and the delete button are at least 44 px tall (grid on a `tr` behaves differently in each engine).
+- AC7: deliberate breaks, each shown failing, then restored: remove the `min-height` of the alternative boxes (AC1 fails); hide the delete button on the touch layout (AC2 fails); remove the explicit roles (AC5 fails, if the engine drops the semantics; if it does not, say so in the report and keep the roles anyway).
+
+**Verification:**
+```
+pnpm check && pnpm lint && pnpm format:check && pnpm check:strings && pnpm check:tokens
+pnpm build && pnpm size
+pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-rule-rows-touch.spec.ts --repeat-each=5
+pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-phone.spec.ts e2e/grammar-open-cnf.spec.ts e2e/grammar-cyk-limit.spec.ts
+pnpm --filter web exec playwright test --project=firefox --project=webkit-phone e2e/cross/workstation-phone.spec.ts
+```
+Expected: all pass. Do not run the full suite locally (see `AGENTS.md`, verification tiers); CI runs it. Paste the real output into `REPORT.md`, and name the specs you ran.
+
+**Rollback:** `git revert <sha>`.
+
+**Depends on:** none (T-016, T-025 and T-013 are merged).
+
+**Notes for worker:** After the merge the owner tests it on a real phone. In the report say which rows you checked by hand in a browser at 390 px. The risk is the table: read AC5 before you write the CSS, and run the semantics test early. If iOS zooms the page when an input is focused (an input under 16 px does), say so in the report; do not change the token.
+
+---
+
+## Task T-010 — End-to-end tests for the grammar workstation flow
+
+**Status:** todo
+**Owner:** worker
+**Branch:** `task/T-010-grammar-flow-e2e`
+
+**Goal:** The existing grammar specs test the layout, the targets, the landmarks, the locale, "open the CNF result" and the CYK length limit. Nothing tests what a student does: type a grammar into the matrix, walk through the six CNF phases, and test strings with CYK. Add those tests, with axe, so that later changes (T-024, T-015, T-028) cannot break the flow without a failing test.
+
+**Scope (in):**
+- New `web/e2e/grammar-flow.spec.ts`. Tests only. Use the helpers in `fixtures.ts`, `touch.ts` and the way `grammar-phone.spec.ts` opens the workstation.
+- **Matrix editing (laptop):** create a new grammar; type `A B` in the first alternative of `S`, press space, and see a second alternative box with focus; type `a`; press `|` and see a third; `Backspace` on an empty box removes it and focuses the previous one; the symbol bar inserts `ε` at the cursor; an empty box is removed when focus leaves it; `+ Tambah Baris` adds a row and focuses it; the right-click menu deletes a row; a grammar the parser rejects shows the red banner (`role="alert"`) and a valid one hides it.
+- **Matrix editing (phone):** the same on the `phone` project with taps, the tab strip, and the delete button of T-024 instead of the right-click.
+- **Six phases:** for a grammar that needs every phase (it has a useless symbol, a nullable symbol, a unit rule, a mixed rule and a long rule), step through phases 1 to 6 with "Selanjutnya", back with "Sebelumnya", and jump with the six numbered buttons. At each phase check the counter, the phase title, the removed and added rule chips (text and counts) and the rule count after the phase. After phase 6 every rule is `A → B C` or `A → a` (no `ε` except for the start symbol if the language has the empty string, no unit rule). **Derive the expected chips by hand from Rich's method, before you run the test, and write the derivation in `REPORT.md`.** If the engine disagrees with your derivation, stop and report it: engine correctness comes first; do not change the expectation to match.
+- **CYK:** for the grammar of the previous test (or a smaller one): an accepted string, a rejected string, and the empty string on a grammar whose language has it (the chip shows `ε`); the verdict title and sentence; the example chips fill the field; the top cell of the CYK table is highlighted exactly when the string is accepted. Expected verdicts come from the language of the grammar, derived by hand.
+- **English:** one test with the interface in English: tab names, stepper buttons, and a CYK verdict show English text.
+- **axe** at 1280 × 800 and at 390 × 844 (every tab on the phone): matrix with an error banner; CNF tab at a middle phase; CYK tab with an accepted and with a rejected verdict; the "Definisi & Format Penulisan" card expanded.
+
+**Non-goals (out):**
+- No change to any component, string or style. If a test shows a bug, do not fix it here: stop and report it in `REPORT.md` with the steps; the planner decides. Do not weaken or skip the test. (A fix of one line that the test exposes, such as a missing `aria-label`, may be made if the report names it.)
+- No new CYK length tests (T-019 has them), no layout tests (T-016, T-025), no "open the CNF result" tests (T-023).
+
+**Files expected to touch:** `web/e2e/grammar-flow.spec.ts`, `docs/agent/REPORT.md`.
+
+**Design reference:** `design/screens/grammar-workstation.md` (as built) and `grammar-rule-rows-phone.md` (T-024).
+
+**Acceptance criteria:**
+- AC1: each behavior listed above has at least one test that passes on the `desktop` project, and the phone ones on the `phone` project.
+- AC2: the six-phase test checks the chips of every phase against the hand derivation in the report.
+- AC3: axe reports no violation in every state listed.
+- AC4: the new spec passes 5 times in a row on both projects (`--repeat-each=5`); no `waitForTimeout` (wait for the state, not for time).
+- AC5: deliberate breaks, each shown failing, then restored: in `GrammarWorkstation.svelte` make the `Backspace` handler do nothing (the matrix test fails); in `GrammarCnfStepper.svelte` make "Selanjutnya" skip one phase (the phase test fails); in `GrammarCykTester.svelte` invert the highlight condition of the top cell (the CYK test fails).
+
+**Verification:**
+```
+pnpm check && pnpm lint && pnpm format:check && pnpm check:strings
+pnpm build
+pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-flow.spec.ts --repeat-each=5
+pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-phone.spec.ts e2e/grammar-open-cnf.spec.ts e2e/grammar-cyk-limit.spec.ts
+```
+Expected: all pass. Do not run the full suite locally. Paste the real output into `REPORT.md`, and name the specs you ran.
+
+**Rollback:** `git revert <sha>`.
+
+**Depends on:** T-024 done and merged (the phone tests use the delete button and the touch layout).
+
+**Notes for worker:** A known thing: the rule matrix drops an empty cell when it loses focus, and a row never means `ε` by itself (`design/screens/grammar-workstation.md`). Write tests for that, not against it.
+
+---
+
+## Task T-011 — End-to-end tests for the language workstation and the mode switcher
+
+**Status:** todo
+**Owner:** worker
+**Branch:** `task/T-011-language-and-switcher-e2e`
+
+**Goal:** The language workstation and the mode switcher are used by every other grammar and language spec to get to a screen, but nothing tests their own behavior: the enumeration in proper order, its settings, the copy button, the formula errors, and the switcher's keyboard and persistence. Add those tests, with axe.
+
+**Scope (in):**
+- New `web/e2e/language-flow.spec.ts` and `web/e2e/switcher.spec.ts`. Tests only.
+- **Enumeration:** choose a preset and check the first strings against the proper order (shortest first, then alphabetical) that you derive by hand from the formula; type a formula of your own (read the legend in the workstation for the notation) and see the alphabet badge and the list; "Panjang Min" starts the list at that length; "Jumlah String" limits the count; "Format String Kosong" switches the empty string between `^` and `ε` in the list; a finite language with fewer strings than N shows all of them and no error; "Salin Semua" puts the list in the clipboard (grant the permission on Chromium; skip the clipboard assertion on WebKit and Firefox with a stated reason) and is disabled when there is no result; a wrong formula shows the red banner (`role="alert"`) and no list; the symbol toolbar inserts at the cursor and keeps focus in the formula box.
+- **Phone:** the enumeration flow on the `phone` project through the tab strip, and the 44 px targets of the toolbar, the settings and the copy button.
+- **Switcher:** the trigger has `aria-haspopup="listbox"` and `aria-expanded`; Enter or Space opens it and focus goes to the selected item; ArrowDown and ArrowUp move through the enabled items and wrap; the two disabled items (PDA, Turing machine) are never focused and a click on them does nothing; Escape closes and returns focus to the trigger; a pointer press outside closes it; choosing an item closes it, returns focus to the trigger, and loads that workstation, with `?mode=` in the address and `webtomata_sandbox_mode` in `localStorage`; after a reload the mode stays. Read how the address and `localStorage` rank against each other and what a wrong `?mode=` value does; test what the code does, and write it in `REPORT.md`. If it looks wrong, report it; do not change it.
+- Items at least 44 px high; the trigger fits in one row at 360 px wide (the as-built spec says so).
+- **axe** at 1280 × 800 and 390 × 844: the language workstation with results, with an error banner, and with the switcher open.
+
+**Non-goals (out):**
+- No change to any component, string or style (same rule as T-010: report a bug, do not fix it, do not weaken the test). No test of the FSM editor. No layout tests (T-016, T-025).
+
+**Files expected to touch:** `web/e2e/language-flow.spec.ts`, `web/e2e/switcher.spec.ts`, `docs/agent/REPORT.md`.
+
+**Design reference:** `design/screens/language-workstation.md` and `workstation-switcher.md` (as built).
+
+**Acceptance criteria:**
+- AC1: every behavior listed has a test that passes on the `desktop` project (the phone ones on `phone`).
+- AC2: the proper-order checks use strings derived by hand, written in the report next to the formulas; none is read back from the page.
+- AC3: axe reports no violation in every state listed.
+- AC4: both specs pass 5 times in a row on both projects; no `waitForTimeout`.
+- AC5: deliberate breaks, each shown failing, then restored: make ArrowDown not wrap in `WorkstationSwitcher.svelte` (the wrap test fails); make the enumeration sort by something other than length first (the order test fails); remove the `disabled` handling of one item (the disabled test fails).
+
+**Verification:**
+```
+pnpm check && pnpm lint && pnpm format:check && pnpm check:strings
+pnpm build
+pnpm --filter web exec playwright test --project=desktop --project=phone e2e/language-flow.spec.ts e2e/switcher.spec.ts --repeat-each=5
+pnpm --filter web exec playwright test --project=desktop --project=phone e2e/language-phone.spec.ts e2e/shell.spec.ts
+```
+Expected: all pass. Do not run the full suite locally. Paste the real output into `REPORT.md`, and name the specs you ran.
+
+**Rollback:** `git revert <sha>`.
+
+**Depends on:** none. (Do it after T-010: both are e2e only, but one branch at a time.)
+
+**Notes for worker:** The enumeration runs in the engine worker with a budget of 50,000 checks; wait for the list to appear, not for a time.
+
+---
+
+## Planner task P-003 — Wireframe of the grammar rule rows on a phone
+
+**Status:** done (approved by the owner on 2026-11-04, option B; it became task T-024)
+**Owner:** planner
+
+`design/screens/grammar-rule-rows-phone.md` and `.svg`.
+
 ## Planner task P-001 — As-built spec of the grammar workstation, the language workstation and the switcher
 
 **Status:** done (PR 117, merged on 2026-11-02; the phone layout became task T-016)
@@ -876,8 +1030,10 @@ Write `design/screens/grammar-workstation.md`, `design/screens/language-workstat
 
 ## Planner task P-002 — Wireframe of the CNF "versi kuliah / versi ringkas" switch
 
-**Status:** proposed (after P-001)
+**Status:** proposed (after P-001; the owner answered the first questions on 2026-11-04, see below)
 **Owner:** planner
+
+**Owner's answers (2026-11-04):** the course version is the default; a toggle switches to a "minimized" version with reused rules (one version at a time, not side by side). The engine's six phases follow the course's homework text for CNF (report the grammar after each stage: unreachable rules, non-productive rules, epsilon rules, unit rules, mixed rules, long right-hand sides). Still to draw and ask: where the toggle sits (in the stepper header is the planner's pick), and what exactly "minimized" does (shared helper variables only, or also reuse of an existing `A → a` rule; see the note below).
 
 The owner's idea (2026-11-02): the CNF conversion shows a verbose version that follows the course (no sharing) and a minimized version, with a toggle. The planner draws it and the owner approves it before T-015. Open points for the owner at that time: is "minimized" only shared helper variables, or also reuse of an existing `A → a` rule for a terminal (the slide mentions it)? Are the two versions shown one at a time, or side by side? **Found by the report of T-004:** phase 5 always reuses one `T_c` variable for each terminal across the whole grammar, even when `share_helpers` is false. That is the idea of the slide's note ("Ta can take A instead") only in part, so it matters for what "minimized" means.
 
@@ -886,13 +1042,13 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 ## Backlog (`proposed`, not dispatchable until the planner specifies the missing fields)
 
 **A. Clean up (P-001 is done)**
-- **T-010** e2e and axe tests for the grammar workstation (build a grammar, run the six phases, test a string with CYK; laptop and phone).
-- **T-011** e2e and axe tests for the language workstation and the workstation switcher (keyboard, 44 px targets).
-- **T-012** A test and, if needed, a fix for the panel drag handle on a phone (the `pointer-events` change in PR 105 has no test).
+- **T-010** e2e and axe tests for the grammar workstation flow: specified in its own task block above (`todo`, after T-024).
+- **T-011** e2e and axe tests for the language workstation and the switcher: specified in its own task block above (`todo`).
+- **T-012** `rejected` on 2026-11-04: the panel drag handle already has seven tests with real touch events in `web/e2e/editor-panel-height.spec.ts` (drag up and down, limits, tap, keys, 44 px, no page scroll). Reopen it only if the owner sees a failing handle on a real phone; a WebKit run would need a real iPhone.
 - **T-016** The phone layout of the grammar and the language workstations: done (PR 121).
 - **T-015** The UI switch between the course version and the minimized version of the CNF conversion (needs P-002 approved, and T-014 done).
 - **T-013** Preset text in `id` and `en`, and readable rule chips: specified in its own task block above (`todo`).
-- **T-024** Bigger touch areas for the rule boxes of the grammar Editor on a phone. The left-hand box is 64 × 26 px and each alternative box is 45 × 22 px (measured in the review of T-016). The design needs the owner's approval first, because the matrix row layout may change.
+- **T-024** Bigger touch areas for the rule boxes of the grammar Editor on a phone: specified in its own task block above (`todo`; the owner approved the design on 2026-11-04).
 - **T-025** Landmarks on a laptop, tab panels on a phone: specified in its own task block above (`todo`).
 - **T-019** One limit and one translated message for the length of a CYK string: specified in its own task block above (`todo`).
 - **T-017** The two local-reference tests keep only finite automata: specified in its own task block above (`todo`).
@@ -904,6 +1060,7 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-022** (optional) Right-linear grammar to FA, using the FSM engine.
 
 **C. The PDA** (each step has its own ADR; a wireframe the owner approves comes first for T-033)
+Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's and the slides' (not Sipser's); the PDA is non-deterministic as well as deterministic (the course homework uses both); every run has a step budget, like the FSM engine, and ends as "stopped" with the partial trace.
 - **T-030** PDA data model, JSON schema and validation. **Before it is dispatched, the planner and the owner decide three things**, from the two JFLAP conversions that the owner saved in `REFERENCES/JFF-FILES/CFG-EXAMPLE/`: (1) JFLAP writes whole strings in `pop` and `push` (for example `pop="bSa"`), so the model must allow a string and not one symbol; (2) JFLAP's own output starts with a bottom marker `Z` and pops it at the end, while the autograder notes say the stack starts empty and `Z` is ignored; (3) the acceptance mode (final state, empty stack, input used up).
 - **T-031** PDA simulation with a stack trace and budgets.
 - **T-032** PDA `.jff` import and export (`<type>pda</type>`).
