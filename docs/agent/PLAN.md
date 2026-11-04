@@ -920,7 +920,7 @@ Expected: all pass. Do not run the full suite locally (see `AGENTS.md`, verifica
 
 ## Task T-010 — End-to-end tests for the grammar workstation flow
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-010-grammar-flow-e2e`
 
