@@ -867,7 +867,8 @@ Expected: all pass. Paste the real output into `REPORT.md`.
 
 ## Task T-024 — Rule rows with 44 px targets on touch screens
 
-**Status:** in-progress
+**Status:** done
+**Commit:** `9cbc226`
 **Owner:** worker
 **Branch:** `task/T-024-rule-rows-touch`
 
