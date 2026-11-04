@@ -920,7 +920,9 @@ Expected: all pass. Do not run the full suite locally (see `AGENTS.md`, verifica
 
 ## Task T-010 — End-to-end tests for the grammar workstation flow
 
-**Status:** in-progress
+**Status:** done
+**Commit:** `ccafc05`
+**PR:** #142
 **Owner:** worker
 **Branch:** `task/T-010-grammar-flow-e2e`
 
@@ -1055,6 +1057,7 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-019** One limit and one translated message for the length of a CYK string: specified in its own task block above (`todo`).
 - **T-017** The two local-reference tests keep only finite automata: specified in its own task block above (`todo`).
 - **T-028** The grammar engine's errors carry Indonesian sentences. `GrammarError` has `Display` with Indonesian text, and `api.invalid_grammar` and `api.cyk_failed` pass it as `detail`, which the grammar UI shows as it is, also in English; for a key without `detail` it shows the raw key. This breaks principle 6 of `CLAUDE.md`. Make the parser, the CNF transformer and CYK return typed errors with a message key and parameters, and translate them in the UI. Larger than T-019 (found while specifying T-019); needs its own spec and a test for every error.
+- **T-029** (proposed) Grammar parser / CYK handling for space-delimited symbols in CNF derived rule text. `GrammarCykTester.svelte` reconstructs grammar text for CYK parsing by concatenating RHS symbols without spaces (`${rule.lhs} -> ${rule.rhs.join('')}`). For multi-character helper variables like `T_a`, this produces strings such as `T_aT_b`, which `GrammarParser` reads as a single variable token rather than two separate variables, causing a non-CNF error in CYK. Space-separating symbols or passing the `Grammar` structure directly to CYK avoids tokenizer collisions.
 
 **B. Grammar additions** (a wireframe the owner approves comes first for T-020)
 - **T-020** Multi-string test for grammars, like the FSM test list, using the CYK parser.
