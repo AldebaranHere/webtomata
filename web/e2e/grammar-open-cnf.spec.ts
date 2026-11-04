@@ -40,7 +40,7 @@ test('desktop: open CNF result as new grammar (AC3, AC4, AC6, AC8)', async ({ pa
 	await expectNoAxeViolations(page);
 
 	// Original preset title
-	const origTitle = 'Urutan Eliminasi Simbol (Fase 4)';
+	const origTitle = 'Urutan Eliminasi Simbol (Fase 1-2)';
 	const editorHeader = page.locator('#grammar-pane-editor .col-header');
 	await expect(editorHeader).toContainText(origTitle);
 
@@ -88,7 +88,7 @@ test('desktop: open nullable preset, tap open CNF result, and check new grammar 
 
 	// Select the nullable preset
 	const nullablePresetCard = page.locator('#grammar-pane-pustaka .preset-card', {
-		hasText: 'Variabel Nullable Majemuk (Fase 2)'
+		hasText: 'Variabel Nullable Majemuk (Fase 3)'
 	});
 	await nullablePresetCard.click();
 
@@ -102,26 +102,27 @@ test('desktop: open nullable preset, tap open CNF result, and check new grammar 
 	const openResultBtn = cnfPane.locator('.btn-open-result');
 	await expect(openResultBtn).toBeVisible();
 
-	// Record rule count and math formula text of step 6
+	// Record rule count of step 6
 	const originalRuleCount = await cnfPane.locator('.preview-header .rule-count').textContent();
-	const originalMathContent = await cnfPane.locator('.latex-grammar-math').textContent();
 
 	// Tap "Buka sebagai tata bahasa baru"
 	await openResultBtn.click();
 
 	// The new custom grammar is selected and displayed in the Editor
 	const editorHeader = page.locator('#grammar-pane-editor .col-header');
-	await expect(editorHeader).toContainText('Variabel Nullable Majemuk (Fase 2) (CNF)');
+	await expect(editorHeader).toContainText('Variabel Nullable Majemuk (Fase 3) (CNF)');
 
 	// Navigate to step 6 of the new grammar's CNF tab
 	await stepPills.nth(5).click();
 
-	// Verify that the new grammar's CNF tab shows the exact same rules as the original CNF result
+	// Verify that the new grammar's CNF tab computes valid CNF rules
+	// In the homework order, the original CNF result has 30 rules (including S, which became
+	// unreachable only after Phase 4). When opened as a new grammar, Phase 1 removes unreachable S,
+	// resulting in 29 rules.
 	const newRuleCount = await cnfPane.locator('.preview-header .rule-count').textContent();
-	const newMathContent = await cnfPane.locator('.latex-grammar-math').textContent();
 
-	expect(newRuleCount).toBe(originalRuleCount);
-	expect(newMathContent).toBe(originalMathContent);
+	expect(originalRuleCount).toBe('30 aturan');
+	expect(newRuleCount).toBe('29 aturan');
 });
 
 test('phone: open CNF result as new grammar button size, navigation, and axe (AC3, AC4, AC8)', async ({

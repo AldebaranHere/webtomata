@@ -232,64 +232,58 @@ test.describe('six CNF phases walkthrough & hand derivation (desktop)', () => {
 			return group.locator('.diff-pill').allTextContents();
 		};
 
-		// === Phase 1: Isolasi Simbol Awal ===
+		// === Phase 1: Hapus Aturan Tak Terjangkau ===
 		await expect(stepCounter).toHaveText('1 / 6');
-		await expect(stepTitle).toHaveText('Isolasi Simbol Awal');
+		await expect(stepTitle).toHaveText('Hapus Aturan Tak Terjangkau');
 		await expect(prevBtn).toBeDisabled();
 		await expect(nextBtn).toBeEnabled();
 		expect(await getChips('removed')).toEqual([]);
-		expect(await getChips('added')).toEqual(['S0 → S']);
-		await expect(cnfPane.locator('.rule-count')).toHaveText('8 aturan');
+		expect(await getChips('added')).toEqual([]);
+		await expect(cnfPane.locator('.rule-count')).toHaveText('7 aturan');
 
-		// === Phase 2: Eliminasi Aturan ε (Nullable) ===
+		// === Phase 2: Hapus Aturan Tak Produktif ===
 		await nextBtn.click();
 		await expect(stepCounter).toHaveText('2 / 6');
-		await expect(stepTitle).toHaveText('Eliminasi Aturan ε (Nullable)');
-		expect(await getChips('removed')).toEqual(['B → λ']);
-		expect(await getChips('added')).toEqual(['S0 → λ', 'B → b', 'S → a b']);
-		await expect(cnfPane.locator('.rule-count')).toHaveText('10 aturan');
+		await expect(stepTitle).toHaveText('Hapus Aturan Tak Produktif');
+		expect(await getChips('removed')).toEqual(['S → U', 'U → U c']);
+		expect(await getChips('added')).toEqual([]);
+		await expect(cnfPane.locator('.rule-count')).toHaveText('5 aturan');
 
-		// === Phase 3: Eliminasi Aturan Unit (A → B) ===
+		// === Phase 3: Hapus Aturan ε ===
 		await nextBtn.click();
 		await expect(stepCounter).toHaveText('3 / 6');
-		await expect(stepTitle).toHaveText('Eliminasi Aturan Unit (A → B)');
-		expect(await getChips('removed')).toEqual(['S0 → S', 'A → B', 'S → A', 'S → U']);
+		await expect(stepTitle).toHaveText('Hapus Aturan ε');
+		expect(await getChips('removed')).toEqual(['B → λ']);
+		expect(await getChips('added')).toEqual(['S0 → λ', 'S0 → S', 'B → b', 'S → a b']);
+		await expect(cnfPane.locator('.rule-count')).toHaveText('8 aturan');
+		await expect(cnfPane.locator('.step-note')).toBeVisible();
+
+		// === Phase 4: Hapus Aturan Unit ===
+		await nextBtn.click();
+		await expect(stepCounter).toHaveText('4 / 6');
+		await expect(stepTitle).toHaveText('Hapus Aturan Unit');
+		expect(await getChips('removed')).toEqual(['S0 → S', 'A → B', 'S → A']);
 		expect(await getChips('added')).toEqual([
 			'S0 → a b',
 			'S0 → a S b',
 			'S0 → b',
 			'S0 → b B',
-			'S0 → U c',
 			'A → b',
 			'A → b B',
 			'S → b',
-			'S → b B',
-			'S → U c'
+			'S → b B'
 		]);
-		await expect(cnfPane.locator('.rule-count')).toHaveText('16 aturan');
+		await expect(cnfPane.locator('.rule-count')).toHaveText('13 aturan');
 
-		// === Phase 4: Eliminasi Simbol Tak Berguna (Useless) ===
-		await nextBtn.click();
-		await expect(stepCounter).toHaveText('4 / 6');
-		await expect(stepTitle).toHaveText('Eliminasi Simbol Tak Berguna (Useless)');
-		expect(await getChips('removed')).toEqual([
-			'S0 → U c',
-			'A → b',
-			'A → b B',
-			'S → U c',
-			'U → U c'
-		]);
-		expect(await getChips('added')).toEqual([]);
-		await expect(cnfPane.locator('.rule-count')).toHaveText('11 aturan');
-
-		// === Phase 5: Isolasi Terminal pada Aturan Campuran ===
+		// === Phase 5: Ganti Terminal pada Aturan Campuran ===
 		await nextBtn.click();
 		await expect(stepCounter).toHaveText('5 / 6');
-		await expect(stepTitle).toHaveText('Isolasi Terminal pada Aturan Campuran');
+		await expect(stepTitle).toHaveText('Ganti Terminal pada Aturan Campuran');
 		expect(await getChips('removed')).toEqual([
 			'S0 → a b',
 			'S0 → a S b',
 			'S0 → b B',
+			'A → b B',
 			'B → b B',
 			'S → a b',
 			'S → a S b',
@@ -299,6 +293,7 @@ test.describe('six CNF phases walkthrough & hand derivation (desktop)', () => {
 			'S0 → T_a S T_b',
 			'S0 → T_a T_b',
 			'S0 → T_b B',
+			'A → T_b B',
 			'B → T_b B',
 			'S → T_a S T_b',
 			'S → T_a T_b',
@@ -306,12 +301,12 @@ test.describe('six CNF phases walkthrough & hand derivation (desktop)', () => {
 			'T_a → a',
 			'T_b → b'
 		]);
-		await expect(cnfPane.locator('.rule-count')).toHaveText('13 aturan');
+		await expect(cnfPane.locator('.rule-count')).toHaveText('15 aturan');
 
-		// === Phase 6: Binarisasi Aturan Panjang (Panjang ≥ 3) ===
+		// === Phase 6: Pecah Aturan Panjang ===
 		await nextBtn.click();
 		await expect(stepCounter).toHaveText('6 / 6');
-		await expect(stepTitle).toHaveText('Binarisasi Aturan Panjang (Panjang ≥ 3)');
+		await expect(stepTitle).toHaveText('Pecah Aturan Panjang');
 		expect(await getChips('removed')).toEqual(['S0 → T_a S T_b', 'S → T_a S T_b']);
 		expect(await getChips('added')).toEqual([
 			'S0 → T_a X',
@@ -319,26 +314,26 @@ test.describe('six CNF phases walkthrough & hand derivation (desktop)', () => {
 			'X → S T_b',
 			'X_1 → S T_b'
 		]);
-		await expect(cnfPane.locator('.rule-count')).toHaveText('15 aturan');
+		await expect(cnfPane.locator('.rule-count')).toHaveText('17 aturan');
 		await expect(nextBtn).toBeDisabled();
 
 		// Back with 'Sebelumnya'
 		await prevBtn.click();
 		await expect(stepCounter).toHaveText('5 / 6');
-		await expect(stepTitle).toHaveText('Isolasi Terminal pada Aturan Campuran');
+		await expect(stepTitle).toHaveText('Ganti Terminal pada Aturan Campuran');
 
 		// Jump with numbered pills
 		await stepPills.nth(0).click(); // Phase 1
 		await expect(stepCounter).toHaveText('1 / 6');
-		await expect(stepTitle).toHaveText('Isolasi Simbol Awal');
+		await expect(stepTitle).toHaveText('Hapus Aturan Tak Terjangkau');
 
 		await stepPills.nth(3).click(); // Phase 4
 		await expect(stepCounter).toHaveText('4 / 6');
-		await expect(stepTitle).toHaveText('Eliminasi Simbol Tak Berguna (Useless)');
+		await expect(stepTitle).toHaveText('Hapus Aturan Unit');
 
 		await stepPills.nth(5).click(); // Phase 6
 		await expect(stepCounter).toHaveText('6 / 6');
-		await expect(stepTitle).toHaveText('Binarisasi Aturan Panjang (Panjang ≥ 3)');
+		await expect(stepTitle).toHaveText('Pecah Aturan Panjang');
 	});
 });
 
@@ -455,6 +450,7 @@ test.describe('grammar workstation axe accessibility checks', () => {
 		page,
 		isMobile
 	}) => {
+		test.slow();
 		test.skip(isMobile, 'desktop project only');
 		await page.setViewportSize({ width: 1280, height: 800 });
 		await openGrammar(page);
@@ -504,6 +500,7 @@ test.describe('grammar workstation axe accessibility checks', () => {
 		page,
 		isMobile
 	}) => {
+		test.slow();
 		test.skip(!isMobile, 'phone project only');
 		await page.setViewportSize({ width: 390, height: 844 });
 		await openGrammar(page);
@@ -581,7 +578,7 @@ test.describe('CYK tester with opened CNF grammar (T-029)', () => {
 		}
 
 		const presetCard = page.locator('#grammar-pane-pustaka .preset-card', {
-			hasText: 'Rantai Aturan Unit (Fase 3)'
+			hasText: 'Rantai Aturan Unit (Fase 4)'
 		});
 		await presetCard.click();
 

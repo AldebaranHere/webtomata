@@ -914,6 +914,26 @@ export const en: Record<MessageKey, string> = {
 	'grammar.btn_prev_step': 'Previous',
 	'grammar.btn_next_step': 'Next',
 	'grammar.step_phase': 'Phase',
+	'grammar.cnf.phase_unreachable.title': 'Remove Unreachable Rules',
+	'grammar.cnf.phase_unreachable.desc':
+		'Removes variables that cannot be reached from the start symbol, and their rules.',
+	'grammar.cnf.phase_nonproductive.title': 'Remove Non-Productive Rules',
+	'grammar.cnf.phase_nonproductive.desc':
+		'Removes variables that derive no terminal string (and those made unreachable as a result), and their rules.',
+	'grammar.cnf.phase_epsilon.title': 'Remove ε Rules',
+	'grammar.cnf.phase_epsilon.desc':
+		'Removes empty rules A → ε and adds rule variations that eliminate nullable variables.',
+	'grammar.cnf.phase_epsilon.note':
+		'Because the start symbol derives the empty string (is nullable), a new start symbol S₀ is added with rules S₀ → S | ε.',
+	'grammar.cnf.phase_unit.title': 'Remove Unit Rules',
+	'grammar.cnf.phase_unit.desc':
+		'Removes unit rule chains between variables and replaces them with direct rules.',
+	'grammar.cnf.phase_mixed.title': 'Replace Terminals in Mixed Rules',
+	'grammar.cnf.phase_mixed.desc':
+		'Replaces terminals in rules of length ≥ 2 with helper variables T_a → a.',
+	'grammar.cnf.phase_long.title': 'Split Long Rules',
+	'grammar.cnf.phase_long.desc':
+		'Splits rules with ≥ 3 symbols into binary rules (A → B C) using cascaded helper variables.',
 	'grammar.diff_removed': 'Rules Removed',
 	'grammar.diff_added': 'Rules Added',
 	'grammar.state_after_step': 'Grammar After This Phase',

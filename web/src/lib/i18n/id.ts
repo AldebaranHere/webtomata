@@ -911,6 +911,26 @@ export const id = {
 	'grammar.btn_prev_step': 'Sebelumnya',
 	'grammar.btn_next_step': 'Selanjutnya',
 	'grammar.step_phase': 'Fase',
+	'grammar.cnf.phase_unreachable.title': 'Hapus Aturan Tak Terjangkau',
+	'grammar.cnf.phase_unreachable.desc':
+		'Menghapus variabel yang tidak dapat dijangkau dari simbol awal, beserta aturannya.',
+	'grammar.cnf.phase_nonproductive.title': 'Hapus Aturan Tak Produktif',
+	'grammar.cnf.phase_nonproductive.desc':
+		'Menghapus variabel yang tidak menghasilkan string terminal (dan yang menjadi tak terjangkau karenanya), beserta aturannya.',
+	'grammar.cnf.phase_epsilon.title': 'Hapus Aturan ε',
+	'grammar.cnf.phase_epsilon.desc':
+		'Menghapus aturan kosong A → ε dan menambahkan variasi aturan yang menghilangkan variabel nullable.',
+	'grammar.cnf.phase_epsilon.note':
+		'Karena simbol awal dapat menghasilkan string kosong (nullable), simbol awal baru S₀ ditambahkan dengan aturan S₀ → S | ε.',
+	'grammar.cnf.phase_unit.title': 'Hapus Aturan Unit',
+	'grammar.cnf.phase_unit.desc':
+		'Menghapus rantai aturan unit antar variabel dan menggantikannya dengan aturan langsung.',
+	'grammar.cnf.phase_mixed.title': 'Ganti Terminal pada Aturan Campuran',
+	'grammar.cnf.phase_mixed.desc':
+		'Menggantikan terminal pada aturan yang memiliki panjang ≥ 2 dengan variabel pembantu T_a → a.',
+	'grammar.cnf.phase_long.title': 'Pecah Aturan Panjang',
+	'grammar.cnf.phase_long.desc':
+		'Memecah aturan dengan ≥ 3 simbol menjadi aturan biner (A → B C) menggunakan variabel kaskade.',
 	'grammar.diff_removed': 'Aturan Dihapus',
 	'grammar.diff_added': 'Aturan Ditambahkan',
 	'grammar.state_after_step': 'Tata Bahasa Setelah Fase Ini',

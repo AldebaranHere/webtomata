@@ -11,11 +11,12 @@ export interface PresetGrammar {
 export const GRAMMAR_PRESETS: PresetGrammar[] = [
 	{
 		id: 'CNF_ORDER',
-		titleId: 'Urutan Eliminasi Simbol (Fase 4)',
-		titleEn: 'Symbol Elimination Order (Phase 4)',
+		titleId: 'Urutan Eliminasi Simbol (Fase 1-2)',
+		titleEn: 'Symbol Elimination Order (Phases 1-2)',
 		descriptionId:
-			'Eliminasi simbol non-produktif B dan S -> A B terlebih dahulu, sehingga A menjadi tidak terjangkau.',
-		descriptionEn: 'Eliminate non-generating symbols B and S -> A B first, leaving A unreachable.',
+			'Eliminasi simbol non-produktif B dan S -> A B pada Fase 2, sehingga A menjadi tak terjangkau.',
+		descriptionEn:
+			'Eliminate non-productive symbol B and S -> A B in Phase 2, leaving A unreachable.',
 		grammar: `S -> a | A B
 A -> a
 B -> B b`,
@@ -23,8 +24,8 @@ B -> B b`,
 	},
 	{
 		id: 'CNF_NULLABLE',
-		titleId: 'Variabel Nullable Majemuk (Fase 2)',
-		titleEn: 'Multiple Nullable Variables (Phase 2)',
+		titleId: 'Variabel Nullable Majemuk (Fase 3)',
+		titleEn: 'Multiple Nullable Variables (Phase 3)',
 		descriptionId:
 			'Banyak variabel nullable (A, B, C), simbol awal nullable, dan aturan unit B -> A.',
 		descriptionEn:
@@ -40,20 +41,18 @@ C -> c | ε`,
 		titleId: 'Simbol Awal Rekursif & Aturan Panjang',
 		titleEn: 'Recursive Start Symbol & Long Rules',
 		descriptionId:
-			'Simbol awal di ruas kanan (Fase 1), isolasi terminal (Fase 5), dan binarisasi aturan panjang (Fase 6).',
+			'Simbol awal rekursif, isolasi terminal (Fase 5), dan binarisasi aturan panjang (Fase 6).',
 		descriptionEn:
-			'Start symbol on right-hand side (Phase 1), terminal isolation (Phase 5), and binarization of long rules (Phase 6).',
+			'Recursive start symbol, terminal isolation (Phase 5), and binarization of long rules (Phase 6).',
 		grammar: `S -> x S y y | z`,
 		testStrings: ['z', 'xzyy', 'xxzyyyy', 'xy', 'xz', 'xzy']
 	},
 	{
 		id: 'CNF_UNIT_CHAIN',
-		titleId: 'Rantai Aturan Unit (Fase 3)',
-		titleEn: 'Unit Rule Chain (Phase 3)',
-		descriptionId:
-			'Rantai unit A -> B -> C dengan pembersihan variabel A dan B yang menjadi tak terjangkau.',
-		descriptionEn:
-			'Unit chain A -> B -> C with cleanup of variables A and B that become unreachable.',
+		titleId: 'Rantai Aturan Unit (Fase 4)',
+		titleEn: 'Unit Rule Chain (Phase 4)',
+		descriptionId: 'Rantai aturan unit A -> B -> C pada Fase 4.',
+		descriptionEn: 'Unit rule chain A -> B -> C in Phase 4.',
 		grammar: `S -> A
 A -> B
 B -> C | b b

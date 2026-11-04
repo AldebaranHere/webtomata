@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { CnfStepResult, CnfTransformationTrace } from '#lib/engine/types.ts';
+	import type { MessageKey } from '#lib/i18n/id.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import GrammarMathDisplay from './GrammarMathDisplay.svelte';
 	import { formatRuleDisplay } from './grammar-text.ts';
@@ -33,7 +34,7 @@
 					class="step-pill"
 					class:active={idx === currentStepIdx}
 					onclick={() => goToStep(idx)}
-					aria-label={s.phaseName}
+					aria-label={t(`${s.phaseKey}.title` as MessageKey)}
 				>
 					<span class="step-num">{s.phase}</span>
 				</button>
@@ -67,10 +68,14 @@
 		<div class="step-card">
 			<div class="step-title-row">
 				<div class="step-badge">{t('grammar.step_phase')} {step.phase}</div>
-				<h2 class="step-title">{step.phaseName}</h2>
+				<h2 class="step-title">{t(`${step.phaseKey}.title` as MessageKey)}</h2>
 			</div>
 
-			<p class="step-desc">{step.description}</p>
+			<p class="step-desc">{t(`${step.phaseKey}.desc` as MessageKey)}</p>
+
+			{#if step.noteKey}
+				<div class="step-note">{t(step.noteKey as MessageKey)}</div>
+			{/if}
 
 			{#if step.addedRules.length > 0 || step.removedRules.length > 0}
 				<div class="diff-section">
@@ -241,6 +246,16 @@
 		color: var(--color-ink-muted);
 		line-height: 1.5;
 		margin: 0;
+	}
+
+	.step-note {
+		font-size: var(--text-xs);
+		color: var(--color-ink);
+		background: var(--color-surface-hover);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		padding: var(--space-2) var(--space-3);
+		line-height: 1.5;
 	}
 
 	.diff-section {
