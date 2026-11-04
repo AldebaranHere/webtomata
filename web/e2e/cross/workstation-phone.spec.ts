@@ -1,8 +1,10 @@
 import { expect, expectNoAxeViolations, test } from '../fixtures.ts';
 import type { Page } from '@playwright/test';
 
-test.beforeEach(({ isMobile }) => {
-	test.skip(!isMobile, 'a phone only');
+test.beforeEach(({ isMobile }, testInfo) => {
+	if (!testInfo.title.includes('cross-browser')) {
+		test.skip(!isMobile, 'a phone only');
+	}
 });
 
 async function openGrammar(page: Page) {
@@ -109,4 +111,28 @@ test('language phone layout on WebKit phone: tab navigation and axe', async ({ p
 	await expect(editorPane).toBeVisible();
 
 	await expectNoAxeViolations(page);
+});
+
+test('cross-browser grammar rule rows on webkit-phone and firefox (AC6)', async ({
+	page,
+	isMobile
+}) => {
+	if (!isMobile) {
+		await page.setViewportSize({ width: 390, height: 844 });
+	}
+	await openGrammar(page);
+
+	const deleteBtn = page.locator('.btn-delete-row').first();
+	await expect(deleteBtn).toBeVisible();
+	const delBox = await deleteBtn.boundingBox();
+	expect(delBox).not.toBeNull();
+	expect(delBox!.height).toBeGreaterThanOrEqual(43.5);
+	expect(delBox!.width).toBeGreaterThanOrEqual(43.5);
+
+	const altInput = page.locator('.alt-cell-input').first();
+	await expect(altInput).toBeVisible();
+	const altBox = await altInput.boundingBox();
+	expect(altBox).not.toBeNull();
+	expect(altBox!.height).toBeGreaterThanOrEqual(43.5);
+	expect(altBox!.width).toBeGreaterThanOrEqual(63.5);
 });
