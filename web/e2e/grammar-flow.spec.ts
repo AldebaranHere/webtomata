@@ -560,3 +560,79 @@ test.describe('grammar workstation axe accessibility checks', () => {
 		await expectNoAxeViolations(page);
 	});
 });
+
+test.describe('CYK tester with opened CNF grammar (T-029)', () => {
+	test('open CNF result of CNF_UNIT_CHAIN and verify strings in CYK', async ({
+		page,
+		isMobile
+	}) => {
+		if (isMobile) {
+			await page.setViewportSize({ width: 390, height: 844 });
+		} else {
+			await page.setViewportSize({ width: 1280, height: 800 });
+		}
+		await openGrammar(page);
+
+		// Select preset CNF_UNIT_CHAIN: "Rantai Aturan Unit (Fase 3)"
+		if (isMobile) {
+			const tablist = page.locator('.workstation [role="tablist"]');
+			const tabs = tablist.locator('[role="tab"]');
+			await tabs.nth(0).click(); // Pustaka tab
+		}
+
+		const presetCard = page.locator('#grammar-pane-pustaka .preset-card', {
+			hasText: 'Rantai Aturan Unit (Fase 3)'
+		});
+		await presetCard.click();
+
+		const cnfPane = page.locator('#grammar-pane-cnf');
+
+		if (isMobile) {
+			const tablist = page.locator('.workstation [role="tablist"]');
+			const tabs = tablist.locator('[role="tab"]');
+			await tabs.nth(2).click(); // CNF tab
+		}
+
+		await expect(cnfPane).toBeVisible();
+
+		// Step 6 of CNF
+		const stepPills = cnfPane.locator('.step-pill');
+		await stepPills.nth(5).click();
+
+		const openResultBtn = cnfPane.locator('.btn-open-result');
+		await expect(openResultBtn).toBeVisible();
+		await openResultBtn.click();
+
+		// Navigate to CYK tab
+		if (isMobile) {
+			const tablist = page.locator('.workstation [role="tablist"]');
+			const tabs = tablist.locator('[role="tab"]');
+			await tabs.nth(3).click(); // CYK tab
+		} else {
+			const cykTabBtn = page.locator('.tab-btn', { hasText: 'Uji String (CYK)' });
+			await cykTabBtn.click();
+		}
+
+		const cykPane = page.locator('#grammar-pane-cyk');
+		await expect(cykPane).toBeVisible();
+
+		const inputField = cykPane.locator('#cyk-test-word');
+		const testBtn = cykPane.locator('.test-btn');
+		const verdict = cykPane.locator('.cyk-verdict');
+
+		const testWord = async (word: string, expectedStatus: 'accepted' | 'rejected') => {
+			await inputField.fill(word);
+			await testBtn.click();
+			await expect(verdict).toHaveClass(new RegExp(expectedStatus));
+		};
+
+		// Accepted strings in L(G) = {bb} ∪ c⁺
+		await testWord('bb', 'accepted');
+		await testWord('c', 'accepted');
+		await testWord('ccc', 'accepted');
+
+		// Rejected strings
+		await testWord('b', 'rejected');
+		await testWord('bc', 'rejected');
+	});
+});
