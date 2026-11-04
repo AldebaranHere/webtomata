@@ -14,6 +14,14 @@ Format:
 
 ---
 
+## 2026-11-05 — The owner approved the CNF stepper wireframe; T-060 is `todo`
+- Decider: owner (approval); planner (status)
+- Context: The owner read `design/screens/cnf-stepper-homework-order.md` and agreed with the stage order, the start-symbol rule and the toggle labels "versi panjang / versi ringkas".
+- Decision: T-060 becomes `todo`. T-015 (the toggle) stays `proposed` until T-060 is merged and its full spec is written.
+- Alternatives considered: none.
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-060, P-002)
+
 ## 2026-11-05 — The CNF stepper follows the homework order (T-060), and T-029 is specified
 - Decider: owner (follow the homework); planner (specs)
 - Context: T-010 review. The course homework asks for six CNF stages: unreachable, non-productive, ε, unit, mixed, long rules. The engine's six phases are: start symbol, ε, unit, useless (both kinds), terminals, long. Its phase names and descriptions are Indonesian sentences written in Rust. The worker of T-010 also found that the CYK tester joins rule symbols with no space, which the planner reproduced: `S -> T_aT_b` fails with "must be CNF", `S -> T_a T_b` works.
