@@ -1,129 +1,281 @@
-# Report — T-029
+# Report — T-060
 
 > Written by the worker at the end of the session. One file per task; overwrite each session.
 
 ## Task
-- id: T-029
-- title: The CYK tester must space the symbols of a rule
-- branch: `task/T-029-cyk-text-spacing`
-- commits: `1665a38..c4cf6e9`
-- pull request: https://github.com/AldebaranHere/webtomata/pull/145
-- status: done
-
-## What changed
-- `web/src/lib/grammar/GrammarCykTester.svelte`:
-  - Removed the inline `grammarText` `$derived.by` block which joined symbols of a production body with an empty string (`.join('')`).
-  - Replaced it with canonical serialization via `grammarToText(grammar)` from `./grammar-text.ts`, ensuring that symbols in production rule bodies are separated by a space (e.g. `T_b T_b` instead of `T_bT_b`) and preserving start-symbol-first ordering and epsilon representations.
-- `web/e2e/grammar-flow.spec.ts`:
-  - Added new test suite `CYK tester with opened CNF grammar (T-029)`:
-    - Opens preset `CNF_UNIT_CHAIN` (`S → A`, `A → B`, `B → C | b b`, `C → c C | c`; language $\{bb\} \cup c^+$).
-    - Navigates to step 6 of the CNF transformation stepper and clicks "Buka sebagai tata bahasa baru" to save and select the transformed grammar (which contains helper variables such as `T_b` and `T_c`).
-    - Switches to the CYK testing tab.
-    - Tests words in the language: `bb` (accepted), `c` (accepted), `ccc` (accepted).
-    - Tests words not in the language: `b` (rejected), `bc` (rejected).
-    - Runs cleanly on both `desktop` (1280x800) and `phone` (390x844).
+- id: T-060
+- title: CNF phases in the homework order, with message keys
+- branch: `task/T-060-cnf-homework-order`
+- status: in-progress
 
 ---
 
-## Deliberate Break (AC2)
+## Hand Derivations (Pre-implementation)
 
-Before updating `GrammarCykTester.svelte` (with the local `.join('')` rule serializer active):
-- When opening the CNF result of `CNF_UNIT_CHAIN` and testing word `bb` in the CYK tab, the CYK parser reported that the grammar was not in Chomsky Normal Form because rule bodies with multi-character variables were concatenated without spaces (`T_bT_b`).
-- An error banner `role="alert"` was rendered with text:
-  `! Format aturan produksi tidak valid: Tata bahasa harus berada dalam Bentuk Normal Chomsky (CNF) untuk menjalankan algoritma CYK.`
-- Playwright test failed waiting for `.cyk-verdict`:
-  ```
-    1) [desktop] › e2e/grammar-flow.spec.ts:565:2 › CYK tester with opened CNF grammar (T-029) › open CNF result of CNF_UNIT_CHAIN and verify strings in CYK 
+As required, hand derivations are recorded here before writing code or running tests.
 
-      Error: expect(locator).toHaveClass(expected) failed
+### Grammar 1: T-010 Flow Grammar (`SIX_PHASE_GRAMMAR`)
+Original grammar:
+```
+S -> a S b | A | U
+A -> B
+B -> b B | λ
+U -> U c
+```
+(Start symbol: `S`, empty production body: `ε`)
 
-      Locator: locator('#grammar-pane-cyk').locator('.cyk-verdict')
-      Expected pattern: /accepted/
-      Timeout: 5000ms
-      Error: element(s) not found
+- **Phase 1: Hapus Aturan Tak Terjangkau (Remove Unreachable Rules)**
+  - Reachable set from `S`:
+    - From `S`: `{S, A, U}`
+    - From `A`: `{B}`
+    - From `B`: `{B}`
+    - From `U`: `{U}`
+    - Total reachable variables: `{S, A, B, U}`.
+  - Removed rules: `[]`
+  - Added rules: `[]`
+  - Grammar (7 rules):
+    ```
+    S -> a S b | A | U
+    A -> B
+    B -> b B | ε
+    U -> U c
+    ```
 
-        624 | 			await inputField.fill(word);
-        625 | 			await testBtn.click();
-      > 626 | 			await expect(verdict).toHaveClass(new RegExp(expectedStatus));
-            | 			                      ^
-        627 | 		};
-  ```
-- With `grammarToText(grammar)` applied, the grammar string produces `T_b T_b`, which is correctly parsed into two variable symbols, satisfying CNF and passing the tests.
+- **Phase 2: Hapus Aturan Tak Produktif (Remove Non-Productive Rules)**
+  - Productive variables:
+    - Base: `B -> ε` (derives empty string of terminals) => `B` is productive.
+    - Iteration 1: `A -> B` => `A` is productive; `B -> b B` => `B` productive.
+    - Iteration 2: `S -> A` => `S` is productive; `S -> a S b` => `S` productive.
+    - `U -> U c` cannot derive any terminal string without `U` => `U` is non-productive.
+  - Eliminate non-productive variable `U` and rules referencing `U`:
+    - Remove: `S -> U`, `U -> U c`.
+  - Reachability check on remaining rules from `S`:
+    - `S -> a S b | A`, `A -> B`, `B -> b B | ε`.
+    - Reachable: `{S, A, B}`. No variables became unreachable.
+  - Removed rules (2): `['S → U', 'U → U c']`
+  - Added rules (0): `[]`
+  - Grammar (5 rules):
+    ```
+    S -> a S b | A
+    A -> B
+    B -> b B | ε
+    ```
+
+- **Phase 3: Hapus Aturan ε (Remove ε Rules & Returning ε)**
+  - Nullable variables:
+    - `B -> ε` => `B` is nullable.
+    - `A -> B` => `A` is nullable.
+    - `S -> A` => `S` is nullable.
+    - Nullable set: `{S, A, B}`.
+  - Combinations:
+    - `S -> a S b`: omit `S` => `S -> a b`.
+    - `S -> A`: omit `A` => empty body.
+    - `A -> B`: omit `B` => empty body.
+    - `B -> b B`: omit `B` => `B -> b`.
+    - `B -> ε` is removed.
+  - "Returning ε":
+    - Start symbol `S` is nullable!
+    - Create fresh start symbol `S0`.
+    - Add rules `S0 -> S | ε`.
+  - Removed rules (1): `['B → λ']`
+  - Added rules (4): `['S0 → S', 'S0 → λ', 'S → a b', 'B → b']`
+  - Grammar (8 rules):
+    ```
+    S0 -> S | ε
+    S -> a S b | a b | A
+    A -> B
+    B -> b B | b
+    ```
+
+- **Phase 4: Hapus Aturan Unit (Remove Unit Rules)**
+  - Unit rules: `S0 -> S`, `S -> A`, `A -> B`.
+  - Unit pairs:
+    - `(S0, S)` => inherits non-unit rules of `S`: `S0 -> a S b`, `S0 -> a b`.
+    - `(S0, A)` => non-unit rules of `A` (initially none).
+    - `(S0, B)` => inherits non-unit rules of `B`: `S0 -> b B`, `S0 -> b`.
+    - `(S, A)` => non-unit rules of `A`.
+    - `(S, B)` => inherits non-unit rules of `B`: `S -> b B`, `S -> b`.
+    - `(A, B)` => inherits non-unit rules of `B`: `A -> b B`, `A -> b`.
+  - Removed rules (3): `['S0 → S', 'S → A', 'A → B']`
+  - Added rules (8):
+    `['S0 → a S b', 'S0 → a b', 'S0 → b B', 'S0 → b', 'S → b B', 'S → b', 'A → b B', 'A → b']`
+  - Grammar (13 rules):
+    ```
+    S0 -> ε | a S b | a b | b B | b
+    S -> a S b | a b | b B | b
+    A -> b B | b
+    B -> b B | b
+    ```
+
+- **Phase 5: Ganti Terminal pada Aturan Campuran (Replace Terminals in Mixed Rules)**
+  - Rules with length $\ge 2$ containing terminals replace terminals with helper variables:
+    `a -> T_a`, `b -> T_b`.
+  - Removed rules (8):
+    `['S0 → a S b', 'S0 → a b', 'S0 → b B', 'S → a S b', 'S → a b', 'S → b B', 'A → b B', 'B → b B']`
+  - Added rules (10):
+    `['S0 → T_a S T_b', 'S0 → T_a T_b', 'S0 → T_b B', 'S → T_a S T_b', 'S → T_a T_b', 'S → T_b B', 'A → T_b B', 'B → T_b B', 'T_a → a', 'T_b → b']`
+  - Grammar (15 rules):
+    ```
+    S0 -> ε | b | T_a S T_b | T_a T_b | T_b B
+    S -> b | T_a S T_b | T_a T_b | T_b B
+    A -> b | T_b B
+    B -> b | T_b B
+    T_a -> a
+    T_b -> b
+    ```
+
+- **Phase 6: Pecah Aturan Panjang (Split Long Rules)**
+  - Rules with length $\ge 3$:
+    `S0 -> T_a S T_b` (length 3)
+    `S -> T_a S T_b` (length 3)
+  - With default `share_helpers = false`:
+    - `S0 -> T_a S T_b` => `S0 -> T_a X`, `X -> S T_b`
+    - `S -> T_a S T_b` => `S -> T_a X_1`, `X_1 -> S T_b`
+  - Removed rules (2): `['S0 → T_a S T_b', 'S → T_a S T_b']`
+  - Added rules (4): `['S0 → T_a X', 'S → T_a X_1', 'X → S T_b', 'X_1 → S T_b']`
+  - Final Grammar (17 rules):
+    ```
+    S0 -> ε | b | T_a T_b | T_b B | T_a X
+    S -> b | T_a T_b | T_b B | T_a X_1
+    A -> b | T_b B
+    B -> b | T_b B
+    T_a -> a
+    T_b -> b
+    X -> S T_b
+    X_1 -> S T_b
+    ```
 
 ---
 
-## Verification Outputs
-
-### 1. Static Checks
+### Grammar 2: Variable Becomes Unreachable Only After Phase 2 (`G_UNREACHABLE_AFTER_P2`)
+Original grammar:
 ```
-$ pnpm --filter web check
-$ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
-Loading svelte-check in workspace: /home/Aldebaran64/webtomata/web
-Getting Svelte diagnostics...
-
-svelte-check found 0 errors and 0 warnings
-$ pnpm --filter web lint
-$ eslint .
-$ pnpm --filter web format:check && cargo fmt --check
-$ prettier --check .
-Checking formatting...
-All matched files use Prettier code style!
-$ node tools/check-strings.mjs
-ok   63 components have no hard-coded text
+S -> a | A B
+A -> a
+B -> B b
 ```
+(Start symbol: `S`)
 
-### 2. Build
+- **Phase 1: Hapus Aturan Tak Terjangkau**
+  - Reachable from `S`: `{S, A, B}`
+  - All variables are reachable.
+  - Removed rules (0): `[]`
+  - Added rules (0): `[]`
+  - Grammar (4 rules):
+    ```
+    S -> a | A B
+    A -> a
+    B -> B b
+    ```
+
+- **Phase 2: Hapus Aturan Tak Produktif (dan variabel yang menjadi tak terjangkau karenanya)**
+  - Productive variables:
+    `A -> a` => `A` productive.
+    `S -> a` => `S` productive.
+    `B -> B b` => `B` non-productive.
+  - Non-productive variable `B` removed:
+    Rules removed: `B -> B b`, `S -> A B`.
+  - Cascaded reachability check from `S`:
+    Remaining rules: `S -> a`, `A -> a`.
+    Reachable from `S`: `{S}`.
+    Variable `A` is no longer reachable from `S`!
+    Variable `A` and rule `A -> a` are therefore removed.
+  - Removed rules (3): `['S → A B', 'A → a', 'B → B b']`
+  - Added rules (0): `[]`
+  - Grammar (1 rule):
+    ```
+    S -> a
+    ```
+
+- **Phase 3: Hapus Aturan ε**
+  - Nullable variables: None. `S` not nullable. No `S0`.
+  - Removed rules (0): `[]`
+  - Added rules (0): `[]`
+  - Grammar (1 rule): `S -> a`
+
+- **Phase 4: Hapus Aturan Unit**
+  - Removed rules (0): `[]`
+  - Added rules (0): `[]`
+  - Grammar (1 rule): `S -> a`
+
+- **Phase 5: Ganti Terminal pada Aturan Campuran**
+  - Removed rules (0): `[]`
+  - Added rules (0): `[]`
+  - Grammar (1 rule): `S -> a`
+
+- **Phase 6: Pecah Aturan Panjang**
+  - Removed rules (0): `[]`
+  - Added rules (0): `[]`
+  - Final Grammar (1 rule):
+    ```
+    S -> a
+    ```
+
+---
+
+### Grammar 3: $\varepsilon$ is Not in the Language and Start Symbol Appears on RHS (`G_NO_EPSILON`)
+Original grammar:
 ```
-$ pnpm build:wasm && pnpm --filter web build
-$ wasm-pack build crates/engine-wasm --target web --release --out-dir ../../web/src/lib/engine/wasm && pnpm build:types
-[INFO]: 🎯  Checking for the Wasm target...
-[INFO]: 🌀  Compiling to Wasm...
-    Finished `release` profile [optimized] target(s) in 0.04s
-[INFO]: ⬇️  Installing wasm-bindgen...
-[INFO]: Optimizing wasm binaries with `wasm-opt`...
-[INFO]: ✨   Done in 22.97s
-[INFO]: 📦   Your wasm pkg is ready to publish at web/src/lib/engine/wasm.
-$ cargo test -p engine-core --features ts --test ts_export
-running 1 test
-test the_types_match_the_json ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
-
-$ vite build
-vite v8.3.4 building ssr environment for production...
-transforming...
-✓ 321 modules transformed.
-rendering chunks...
-✓ built in 1.70s
-Prerendering
-> Using @sveltejs/adapter-static
-Wrote site to "build"
-✔ done
+S -> a S b | a b
 ```
+(Start symbol: `S`, $L(G) = \{a^n b^n \mid n \ge 1\}$, $\varepsilon \notin L(G)$)
 
-### 3. Grammar Flow Tests Repeated 5 Times
-```
-pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-flow.spec.ts --repeat-each=5
+- **Phase 1: Hapus Aturan Tak Terjangkau**
+  - Reachable: `{S}`
+  - Removed rules (0): `[]`
+  - Added rules (0): `[]`
+  - Grammar (2 rules):
+    ```
+    S -> a S b | a b
+    ```
 
-Running 80 tests using 6 workers
+- **Phase 2: Hapus Aturan Tak Produktif**
+  - Productive: `S -> a b` => `S` productive.
+  - Removed rules (0): `[]`
+  - Added rules (0): `[]`
+  - Grammar (2 rules):
+    ```
+    S -> a S b | a b
+    ```
 
-  35 skipped
-  45 passed (1.5m)
-```
+- **Phase 3: Hapus Aturan ε**
+  - Nullable: None.
+  - `S` is NOT nullable, so no `S0` is added (even though `S` is on RHS).
+  - Removed rules (0): `[]`
+  - Added rules (0): `[]`
+  - Grammar (2 rules):
+    ```
+    S -> a S b | a b
+    ```
 
-Specs run in this suite:
-- `e2e/grammar-flow.spec.ts` (desktop and phone): matrix editing, 6 CNF phases walkthrough & hand derivation, CYK tester & English locale, CYK tester with opened CNF grammar (T-029), and axe accessibility scans.
+- **Phase 4: Hapus Aturan Unit**
+  - No unit rules.
+  - Removed rules (0): `[]`
+  - Added rules (0): `[]`
+  - Grammar (2 rules):
+    ```
+    S -> a S b | a b
+    ```
 
-### 4. Area Specs
-```
-pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-phone.spec.ts e2e/grammar-open-cnf.spec.ts e2e/grammar-cyk-limit.spec.ts
+- **Phase 5: Ganti Terminal pada Aturan Campuran**
+  - Replaces `a -> T_a`, `b -> T_b` in `S -> a S b` and `S -> a b`.
+  - Removed rules (2): `['S → a S b', 'S → a b']`
+  - Added rules (4): `['S → T_a S T_b', 'S → T_a T_b', 'T_a → a', 'T_b → b']`
+  - Grammar (4 rules):
+    ```
+    S -> T_a S T_b | T_a T_b
+    T_a -> a
+    T_b -> b
+    ```
 
-Running 26 tests using 6 workers
-
-  13 skipped
-  13 passed (27.1s)
-```
-
-Specs run:
-- `e2e/grammar-phone.spec.ts` (desktop and phone)
-- `e2e/grammar-open-cnf.spec.ts` (desktop and phone)
-- `e2e/grammar-cyk-limit.spec.ts` (desktop and phone)
+- **Phase 6: Pecah Aturan Panjang**
+  - Rule `S -> T_a S T_b` binarized to `S -> T_a X`, `X -> S T_b`.
+  - Removed rules (1): `['S → T_a S T_b']`
+  - Added rules (2): `['S → T_a X', 'X → S T_b']`
+  - Final Grammar (5 rules):
+    ```
+    S -> T_a T_b | T_a X
+    T_a -> a
+    T_b -> b
+    X -> S T_b
+    ```

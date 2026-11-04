@@ -1063,7 +1063,7 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 
 ## Task T-060 — CNF phases in the homework order, with message keys
 
-**Status:** todo (the owner approved the wireframe `design/screens/cnf-stepper-homework-order.md` on 2026-11-05; its two content questions were settled from the course slides the same day)
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-060-cnf-homework-order`
 
