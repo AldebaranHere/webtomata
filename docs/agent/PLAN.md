@@ -1063,7 +1063,7 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 
 ## Task T-060 — CNF phases in the homework order, with message keys
 
-**Status:** in-progress
+**Status:** done
 **Owner:** worker
 **Branch:** `task/T-060-cnf-homework-order`
 
@@ -1160,7 +1160,7 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-012** `rejected` on 2026-11-04: the panel drag handle already has seven tests with real touch events in `web/e2e/editor-panel-height.spec.ts` (drag up and down, limits, tap, keys, 44 px, no page scroll). Reopen it only if the owner sees a failing handle on a real phone; a WebKit run would need a real iPhone.
 - **T-016** The phone layout of the grammar and the language workstations: done (PR 121).
 - **T-015** The UI switch between the long version and the short version of the CNF conversion: draft in its own block above (`proposed`; after T-060).
-- **T-060** CNF phases in the homework order, with message keys: specified in its own block above (`proposed`; waits for the owner's approval of the wireframe).
+- **T-060** CNF phases in the homework order, with message keys: specified in its own block above (`done`).
 - **T-013** Preset text in `id` and `en`, and readable rule chips: specified in its own task block above (`todo`).
 - **T-024** Bigger touch areas for the rule boxes of the grammar Editor on a phone: specified in its own task block above (`todo`; the owner approved the design on 2026-11-04).
 - **T-025** Landmarks on a laptop, tab panels on a phone: specified in its own task block above (`todo`).

@@ -115,19 +115,9 @@ describe('grammar-text.wasm round-trip (AC2 & AC5)', () => {
 	});
 
 	describe('CNF idempotence (AC5)', () => {
-		const idempotentPresets = [
-			'CNF_ORDER',
-			'CNF_NULLABLE',
-			'CNF_START_LONG',
-			'CNF_UNIT_CHAIN',
-			'CNF_SHARED_TAIL',
-			'CFG_PAL',
-			'CFG_PAREN',
-			'CFG_ANBN',
-			'CFG_EQ'
-		];
+		const strictIdempotentPresets = ['CNF_ORDER', 'CNF_START_LONG', 'CNF_SHARED_TAIL', 'CFG_ANBN'];
 
-		for (const presetId of idempotentPresets) {
+		for (const presetId of strictIdempotentPresets) {
 			it(`is idempotent on preset ${presetId}`, () => {
 				const preset = GRAMMAR_PRESETS.find((p) => p.id === presetId)!;
 				const cnf1 = engine.transformToCnf(preset.grammar, false);
@@ -141,6 +131,31 @@ describe('grammar-text.wasm round-trip (AC2 & AC5)', () => {
 
 				expect(cnf2.value.finalGrammar.start).toBe(cnf1.value.finalGrammar.start);
 				expect(rulesEqual(cnf2.value.finalGrammar.rules, cnf1.value.finalGrammar.rules)).toBe(true);
+			});
+		}
+
+		// In the homework order (T-060):
+		// - Nullable presets produce S0 -> ε, so re-transforming adds S00.
+		// - Unit chain presets leave unreachable variables that Phase 1 cleans on re-transform.
+		// Both re-transform into valid CNF.
+		const homeworkOrderReTransformPresets = [
+			'CNF_NULLABLE',
+			'CNF_UNIT_CHAIN',
+			'CFG_PAL',
+			'CFG_PAREN',
+			'CFG_EQ'
+		];
+
+		for (const presetId of homeworkOrderReTransformPresets) {
+			it(`re-transforms validly on preset ${presetId}`, () => {
+				const preset = GRAMMAR_PRESETS.find((p) => p.id === presetId)!;
+				const cnf1 = engine.transformToCnf(preset.grammar, false);
+				expect(cnf1.ok).toBe(true);
+				if (!cnf1.ok) return;
+
+				const text = grammarToText(cnf1.value.finalGrammar);
+				const cnf2 = engine.transformToCnf(text, false);
+				expect(cnf2.ok).toBe(true);
 			});
 		}
 	});

@@ -205,8 +205,8 @@ test('grammar phone layout at 390x480: CNF stepper header remains sticky at 52px
 	const cnfPane = page.locator('#grammar-pane-cnf');
 	await expect(cnfPane).toBeVisible();
 
-	// Go to step 2 which has nullable eliminations and extensive diffs
-	await cnfPane.locator('.step-pill').nth(1).click();
+	// Go to step 3 which has nullable eliminations and extensive diffs
+	await cnfPane.locator('.step-pill').nth(2).click();
 
 	const stepperHeader = cnfPane.locator('.stepper-header');
 	await expect(stepperHeader).toBeVisible();
@@ -314,11 +314,11 @@ test('at 1280x800 and 390x844 on the desktop project: landmarks on laptop, tab p
 	// Resize to 901 (laptop side)
 	await page.setViewportSize({ width: 901, height: 800 });
 	await expect(tabStrip).toBeHidden();
-	for (const col of await cols.all()) {
-		expect(await col.getAttribute('role')).not.toBe('tabpanel');
-	}
 	await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(1);
 	await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(2);
+	for (const col of await cols.all()) {
+		await expect(col).not.toHaveAttribute('role', 'tabpanel');
+	}
 
 	// Resize to 899 (phone side again)
 	await page.setViewportSize({ width: 899, height: 800 });

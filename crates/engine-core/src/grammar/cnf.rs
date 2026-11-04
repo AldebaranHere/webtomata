@@ -14,8 +14,8 @@ use ts_rs::TS;
 #[cfg_attr(feature = "ts", ts(export))]
 pub struct CnfStepResult {
     pub phase: usize,
-    pub phase_name: String,
-    pub description: String,
+    pub phase_key: String,
+    pub note_key: Option<String>,
     pub grammar: Grammar,
     pub added_rules: Vec<Production>,
     pub removed_rules: Vec<Production>,
@@ -45,52 +45,54 @@ impl CnfTransformer {
         let mut steps = Vec::new();
         let mut current = grammar.clone();
 
-        // Phase 1: Isolate Start Symbol (S0 -> S)
-        let (p1_grammar, p1_added, p1_removed) = Self::phase1_isolate_start(&current);
+        // Phase 1: Remove Unreachable Rules
+        let (p1_grammar, p1_added, p1_removed) = Self::phase1_eliminate_unreachable(&current);
         steps.push(CnfStepResult {
             phase: 1,
-            phase_name: "Isolasi Simbol Awal".into(),
-            description:
-                "Membuat simbol awal baru S₀ jika simbol awal S muncul di ruas kanan (RHS).".into(),
+            phase_key: "grammar.cnf.phase_unreachable".into(),
+            note_key: None,
             grammar: p1_grammar.clone(),
             added_rules: p1_added,
             removed_rules: p1_removed,
         });
         current = p1_grammar;
 
-        // Phase 2: Eliminate ε-productions
-        let (p2_grammar, p2_added, p2_removed) = Self::phase2_eliminate_epsilon(&current)?;
+        // Phase 2: Remove Non-Productive Rules (and rules made unreachable by their removal)
+        let (p2_grammar, p2_added, p2_removed) = Self::phase2_eliminate_nonproductive(&current);
         steps.push(CnfStepResult {
             phase: 2,
-            phase_name: "Eliminasi Aturan ε (Nullable)".into(),
-            description: "Menghapus aturan kosong A → ε dan menambahkan variasi aturan yang menghilangkan variabel nullable."
-                .into(),
+            phase_key: "grammar.cnf.phase_nonproductive".into(),
+            note_key: None,
             grammar: p2_grammar.clone(),
             added_rules: p2_added,
             removed_rules: p2_removed,
         });
         current = p2_grammar;
 
-        // Phase 3: Eliminate Unit Productions (A -> B)
-        let (p3_grammar, p3_added, p3_removed) = Self::phase3_eliminate_unit(&current);
+        // Phase 3: Eliminate ε-productions and returning ε
+        let (p3_grammar, p3_added, p3_removed, p3_added_s0) =
+            Self::phase3_eliminate_epsilon(&current)?;
+        let p3_note = if p3_added_s0 {
+            Some("grammar.cnf.phase_epsilon.note".into())
+        } else {
+            None
+        };
         steps.push(CnfStepResult {
             phase: 3,
-            phase_name: "Eliminasi Aturan Unit (A → B)".into(),
-            description: "Menghapus rantai transisi unit antar variabel dan menggantikannya dengan aturan langsung."
-                .into(),
+            phase_key: "grammar.cnf.phase_epsilon".into(),
+            note_key: p3_note,
             grammar: p3_grammar.clone(),
             added_rules: p3_added,
             removed_rules: p3_removed,
         });
         current = p3_grammar;
 
-        // Phase 4: Eliminate Useless Symbols (Unproductive then Unreachable)
-        let (p4_grammar, p4_added, p4_removed) = Self::phase4_eliminate_useless(&current);
+        // Phase 4: Eliminate Unit Productions (A -> B)
+        let (p4_grammar, p4_added, p4_removed) = Self::phase4_eliminate_unit(&current);
         steps.push(CnfStepResult {
             phase: 4,
-            phase_name: "Eliminasi Simbol Tak Berguna (Useless)".into(),
-            description: "Menghapus simbol yang tidak menghasilkan terminal (unproductive) dan simbol yang tidak dapat dijangkau dari simbol awal (unreachable)."
-                .into(),
+            phase_key: "grammar.cnf.phase_unit".into(),
+            note_key: None,
             grammar: p4_grammar.clone(),
             added_rules: p4_added,
             removed_rules: p4_removed,
@@ -101,9 +103,8 @@ impl CnfTransformer {
         let (p5_grammar, p5_added, p5_removed) = Self::phase5_isolate_terminals(&current);
         steps.push(CnfStepResult {
             phase: 5,
-            phase_name: "Isolasi Terminal pada Aturan Campuran".into(),
-            description: "Menggantikan terminal pada aturan yang memiliki panjang ≥ 2 dengan variabel pembantu T_a → a."
-                .into(),
+            phase_key: "grammar.cnf.phase_mixed".into(),
+            note_key: None,
             grammar: p5_grammar.clone(),
             added_rules: p5_added,
             removed_rules: p5_removed,
@@ -115,9 +116,8 @@ impl CnfTransformer {
             Self::phase6_binarize_long(&current, share_helpers);
         steps.push(CnfStepResult {
             phase: 6,
-            phase_name: "Binarisasi Aturan Panjang (Panjang ≥ 3)".into(),
-            description: "Memecah aturan dengan ≥ 3 variabel menjadi aturan biner (A → B C) menggunakan variabel kaskade."
-                .into(),
+            phase_key: "grammar.cnf.phase_long".into(),
+            note_key: None,
             grammar: p6_grammar.clone(),
             added_rules: p6_added,
             removed_rules: p6_removed,
@@ -131,36 +131,152 @@ impl CnfTransformer {
         })
     }
 
-    /// Phase 1: If start symbol S appears on RHS of any rule, create S_0 -> S
-    fn phase1_isolate_start(grammar: &Grammar) -> (Grammar, Vec<Production>, Vec<Production>) {
-        let start_on_rhs = grammar.rules.iter().any(|r| {
-            r.body.iter().any(|sym| match sym {
-                Symbol::NonTerminal(nt) => nt == &grammar.start,
-                _ => false,
-            })
-        });
+    /// Phase 1: Eliminate unreachable variables and their rules.
+    fn phase1_eliminate_unreachable(
+        grammar: &Grammar,
+    ) -> (Grammar, Vec<Production>, Vec<Production>) {
+        let mut reachable: HashSet<String> = HashSet::new();
+        let mut queue = VecDeque::new();
 
-        if !start_on_rhs {
-            return (grammar.clone(), Vec::new(), Vec::new());
+        reachable.insert(grammar.start.clone());
+        queue.push_back(grammar.start.clone());
+
+        while let Some(curr) = queue.pop_front() {
+            for r in &grammar.rules {
+                if r.head == curr {
+                    for sym in &r.body {
+                        if let Symbol::NonTerminal(nt) = sym
+                            && reachable.insert(nt.clone())
+                        {
+                            queue.push_back(nt.clone());
+                        }
+                    }
+                }
+            }
         }
 
-        let new_start =
-            Self::fresh_variable_name(&grammar.variables(), &format!("{}0", grammar.start));
-        let new_rule = Production::new(
-            new_start.clone(),
-            vec![Symbol::NonTerminal(grammar.start.clone())],
-        );
+        let mut final_rules: Vec<Production> = grammar
+            .rules
+            .iter()
+            .filter(|r| {
+                reachable.contains(&r.head)
+                    && r.body.iter().all(|s| match s {
+                        Symbol::Terminal(_) => true,
+                        Symbol::NonTerminal(nt) => reachable.contains(nt),
+                    })
+            })
+            .cloned()
+            .collect();
 
-        let mut rules = vec![new_rule.clone()];
-        rules.extend(grammar.rules.clone());
+        Self::sort_productions(&mut final_rules, &grammar.start);
 
-        (Grammar::new(new_start, rules), vec![new_rule], Vec::new())
+        let removed_rules: Vec<Production> = grammar
+            .rules
+            .iter()
+            .filter(|r| !final_rules.contains(r))
+            .cloned()
+            .collect();
+
+        (
+            Grammar::new(grammar.start.clone(), final_rules),
+            Vec::new(),
+            removed_rules,
+        )
     }
 
-    /// Phase 2: Eliminate epsilon productions
-    fn phase2_eliminate_epsilon(
+    /// Phase 2: Eliminate non-productive variables, their rules, and variables made unreachable.
+    fn phase2_eliminate_nonproductive(
         grammar: &Grammar,
-    ) -> Result<(Grammar, Vec<Production>, Vec<Production>), GrammarError> {
+    ) -> (Grammar, Vec<Production>, Vec<Production>) {
+        // 1. Find productive variables (variables that can derive a terminal string)
+        let mut productive: HashSet<String> = HashSet::new();
+        let mut changed = true;
+
+        while changed {
+            changed = false;
+            for rule in &grammar.rules {
+                if productive.contains(&rule.head) {
+                    continue;
+                }
+                let body_is_productive = rule.body.iter().all(|s| match s {
+                    Symbol::Terminal(_) => true,
+                    Symbol::NonTerminal(nt) => productive.contains(nt),
+                });
+                if body_is_productive {
+                    productive.insert(rule.head.clone());
+                    changed = true;
+                }
+            }
+        }
+
+        // Filter out rules with unproductive symbols
+        let p_rules: Vec<Production> = grammar
+            .rules
+            .iter()
+            .filter(|r| {
+                productive.contains(&r.head)
+                    && r.body.iter().all(|s| match s {
+                        Symbol::Terminal(_) => true,
+                        Symbol::NonTerminal(nt) => productive.contains(nt),
+                    })
+            })
+            .cloned()
+            .collect();
+
+        // 2. Reachability pass to eliminate variables made unreachable by unproductive removal
+        let mut reachable: HashSet<String> = HashSet::new();
+        let mut queue = VecDeque::new();
+
+        if productive.contains(&grammar.start) {
+            reachable.insert(grammar.start.clone());
+            queue.push_back(grammar.start.clone());
+        }
+
+        while let Some(curr) = queue.pop_front() {
+            for r in &p_rules {
+                if r.head == curr {
+                    for sym in &r.body {
+                        if let Symbol::NonTerminal(nt) = sym
+                            && reachable.insert(nt.clone())
+                        {
+                            queue.push_back(nt.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut final_rules: Vec<Production> = p_rules
+            .into_iter()
+            .filter(|r| {
+                reachable.contains(&r.head)
+                    && r.body.iter().all(|s| match s {
+                        Symbol::Terminal(_) => true,
+                        Symbol::NonTerminal(nt) => reachable.contains(nt),
+                    })
+            })
+            .collect();
+
+        Self::sort_productions(&mut final_rules, &grammar.start);
+
+        let removed_rules: Vec<Production> = grammar
+            .rules
+            .iter()
+            .filter(|r| !final_rules.contains(r))
+            .cloned()
+            .collect();
+
+        (
+            Grammar::new(grammar.start.clone(), final_rules),
+            Vec::new(),
+            removed_rules,
+        )
+    }
+
+    /// Phase 3: Eliminate epsilon productions and apply returning ε if start is nullable.
+    fn phase3_eliminate_epsilon(
+        grammar: &Grammar,
+    ) -> Result<(Grammar, Vec<Production>, Vec<Production>, bool), GrammarError> {
         // 1. Find all nullable variables using fixed-point iteration
         let mut nullable: HashSet<String> = HashSet::new();
         let mut changed = true;
@@ -183,13 +299,12 @@ impl CnfTransformer {
             }
         }
 
+        let start_is_nullable = nullable.contains(&grammar.start);
         let mut new_rules_set: BTreeSet<Production> = BTreeSet::new();
-        let mut removed_rules = Vec::new();
 
         // 2. For each rule, generate all combinations omitting nullable non-terminals
         for rule in &grammar.rules {
             if rule.body.is_empty() {
-                removed_rules.push(rule.clone());
                 continue;
             }
 
@@ -211,7 +326,7 @@ impl CnfTransformer {
             // Cap subset combination explosion to avoid OOM
             if nullable_indices.len() > 10 {
                 return Err(GrammarError::BudgetExceeded(format!(
-                    "Aturan '{}' memiliki terlalu banyak variabel nullable (> 10)",
+                    "aturan '{}' memiliki terlalu banyak variabel nullable (> 10)",
                     rule
                 )));
             }
@@ -236,14 +351,29 @@ impl CnfTransformer {
             }
         }
 
-        // If the start symbol itself was nullable, preserve empty string via start -> ε
-        if nullable.contains(&grammar.start) {
-            new_rules_set.insert(Production::new(grammar.start.clone(), Vec::new()));
-        }
+        // Returning ε: if start symbol is nullable, add S0 -> S | ε
+        let final_start = if start_is_nullable {
+            let new_start =
+                Self::fresh_variable_name(&grammar.variables(), &format!("{}0", grammar.start));
+            new_rules_set.insert(Production::new(
+                new_start.clone(),
+                vec![Symbol::NonTerminal(grammar.start.clone())],
+            ));
+            new_rules_set.insert(Production::new(new_start.clone(), Vec::new()));
+            new_start
+        } else {
+            grammar.start.clone()
+        };
 
         let mut final_rules: Vec<Production> = new_rules_set.into_iter().collect();
-        // Sort stably: start rules first, then alphabetical by head
-        Self::sort_productions(&mut final_rules, &grammar.start);
+        Self::sort_productions(&mut final_rules, &final_start);
+
+        let removed_rules: Vec<Production> = grammar
+            .rules
+            .iter()
+            .filter(|r| !final_rules.contains(r))
+            .cloned()
+            .collect();
 
         let added_rules: Vec<Production> = final_rules
             .iter()
@@ -252,14 +382,15 @@ impl CnfTransformer {
             .collect();
 
         Ok((
-            Grammar::new(grammar.start.clone(), final_rules),
+            Grammar::new(final_start, final_rules),
             added_rules,
             removed_rules,
+            start_is_nullable,
         ))
     }
 
-    /// Phase 3: Eliminate unit productions (A -> B)
-    fn phase3_eliminate_unit(grammar: &Grammar) -> (Grammar, Vec<Production>, Vec<Production>) {
+    /// Phase 4: Eliminate unit productions (A -> B)
+    fn phase4_eliminate_unit(grammar: &Grammar) -> (Grammar, Vec<Production>, Vec<Production>) {
         let vars = grammar.variables();
 
         // 1. Build unit graph
@@ -333,94 +464,6 @@ impl CnfTransformer {
         (
             Grammar::new(grammar.start.clone(), final_rules),
             added_rules,
-            removed_rules,
-        )
-    }
-
-    /// Phase 4: Eliminate useless symbols (Unproductive then Unreachable)
-    fn phase4_eliminate_useless(grammar: &Grammar) -> (Grammar, Vec<Production>, Vec<Production>) {
-        // 4a. Find productive variables (variables that can derive a terminal string)
-        let mut productive: HashSet<String> = HashSet::new();
-        let mut changed = true;
-
-        while changed {
-            changed = false;
-            for rule in &grammar.rules {
-                if productive.contains(&rule.head) {
-                    continue;
-                }
-                let body_is_productive = rule.body.iter().all(|s| match s {
-                    Symbol::Terminal(_) => true,
-                    Symbol::NonTerminal(nt) => productive.contains(nt),
-                });
-                if body_is_productive {
-                    productive.insert(rule.head.clone());
-                    changed = true;
-                }
-            }
-        }
-
-        // Filter out rules with unproductive symbols
-        let p_rules: Vec<Production> = grammar
-            .rules
-            .iter()
-            .filter(|r| {
-                productive.contains(&r.head)
-                    && r.body.iter().all(|s| match s {
-                        Symbol::Terminal(_) => true,
-                        Symbol::NonTerminal(nt) => productive.contains(nt),
-                    })
-            })
-            .cloned()
-            .collect();
-
-        // 4b. Find reachable variables starting from grammar.start
-        let mut reachable: HashSet<String> = HashSet::new();
-        let mut queue = VecDeque::new();
-
-        if productive.contains(&grammar.start) {
-            reachable.insert(grammar.start.clone());
-            queue.push_back(grammar.start.clone());
-        }
-
-        while let Some(curr) = queue.pop_front() {
-            for r in &p_rules {
-                if r.head == curr {
-                    for sym in &r.body {
-                        if let Symbol::NonTerminal(nt) = sym {
-                            let newly_inserted = reachable.insert(nt.clone());
-                            if newly_inserted {
-                                queue.push_back(nt.clone());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        let mut final_rules: Vec<Production> = p_rules
-            .into_iter()
-            .filter(|r| {
-                reachable.contains(&r.head)
-                    && r.body.iter().all(|s| match s {
-                        Symbol::Terminal(_) => true,
-                        Symbol::NonTerminal(nt) => reachable.contains(nt),
-                    })
-            })
-            .collect();
-
-        Self::sort_productions(&mut final_rules, &grammar.start);
-
-        let removed_rules: Vec<Production> = grammar
-            .rules
-            .iter()
-            .filter(|r| !final_rules.contains(r))
-            .cloned()
-            .collect();
-
-        (
-            Grammar::new(grammar.start.clone(), final_rules),
-            Vec::new(),
             removed_rules,
         )
     }
