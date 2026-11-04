@@ -6,7 +6,8 @@
 - id: T-029
 - title: The CYK tester must space the symbols of a rule
 - branch: `task/T-029-cyk-text-spacing`
-- commits: `1665a38`
+- commits: `1665a38..c4cf6e9`
+- pull request: https://github.com/AldebaranHere/webtomata/pull/145
 - status: done
 
 ## What changed

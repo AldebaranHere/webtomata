@@ -1022,6 +1022,7 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 
 **Status:** done
 **Commit:** `1665a38`
+**PR:** #145
 **Owner:** worker
 **Branch:** `task/T-029-cyk-text-spacing`
 
