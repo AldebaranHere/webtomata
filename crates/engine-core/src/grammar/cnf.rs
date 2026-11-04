@@ -40,7 +40,7 @@ impl CnfTransformer {
 
     pub fn transform_with_options(
         grammar: &Grammar,
-        share_helpers: bool,
+        short_version: bool,
     ) -> Result<CnfTransformationTrace, GrammarError> {
         let mut steps = Vec::new();
         let mut current = grammar.clone();
@@ -113,7 +113,7 @@ impl CnfTransformer {
 
         // Phase 6: Binarize Long RHS Productions (length >= 3)
         let (p6_grammar, p6_added, p6_removed) =
-            Self::phase6_binarize_long(&current, share_helpers);
+            Self::phase6_binarize_long(&current, short_version);
         steps.push(CnfStepResult {
             phase: 6,
             phase_key: "grammar.cnf.phase_long".into(),
@@ -537,7 +537,7 @@ impl CnfTransformer {
     /// Phase 6: Binarize long rules (length >= 3)
     fn phase6_binarize_long(
         grammar: &Grammar,
-        share_helpers: bool,
+        short_version: bool,
     ) -> (Grammar, Vec<Production>, Vec<Production>) {
         let mut existing_vars = grammar.variables();
         let mut pair_map: BTreeMap<(String, String), String> = BTreeMap::new();
@@ -554,14 +554,14 @@ impl CnfTransformer {
             removed_rules.push(rule.clone());
             let mut current_body = rule.body.clone();
 
-            // Right-to-left reduction with caching of variable pairs (if share_helpers is enabled)
+            // Right-to-left reduction with caching of variable pairs (if short_version is enabled)
             while current_body.len() > 2 {
                 let n = current_body.len();
                 let sym1 = current_body[n - 2].to_string();
                 let sym2 = current_body[n - 1].to_string();
                 let pair_key = (sym1, sym2);
 
-                let helper_var = if share_helpers {
+                let helper_var = if short_version {
                     match pair_map.get(&pair_key) {
                         Some(existing_var) => existing_var.clone(),
                         None => {

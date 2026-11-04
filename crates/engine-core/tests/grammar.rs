@@ -335,7 +335,7 @@ fn test_cnf_preset_shared_tail() {
 
     // AC2: With true, the tail is shared:
     let trace_shared = CnfTransformer::transform_with_options(&grammar, true)
-        .expect("CNF transformation with share_helpers should succeed");
+        .expect("CNF transformation with short_version should succeed");
     assert_valid_cnf(&trace_shared.final_grammar);
     let s_binary_shared: Vec<_> = trace_shared
         .final_grammar
@@ -350,7 +350,7 @@ fn test_cnf_preset_shared_tail() {
     );
     assert_eq!(
         s_binary_shared[0].body[1], s_binary_shared[1].body[1],
-        "With share_helpers: true, the tail helper variable must be shared"
+        "With short_version: true, the tail helper variable must be shared"
     );
 
     // Both versions accept the same language {axyz, bxyz}
@@ -541,9 +541,9 @@ fn test_cnf_variable_deduplication_step6() {
         "Course default must produce separate helper rules"
     );
 
-    // Option share_helpers: true enables deduplication (behavior of commit a82bf0e)
+    // Option short_version: true enables deduplication (behavior of commit a82bf0e)
     let trace = CnfTransformer::transform_with_options(&grammar, true)
-        .expect("CNF transformation with share_helpers should succeed");
+        .expect("CNF transformation with short_version should succeed");
 
     assert!(
         CykParser::is_cnf(&trace.final_grammar),
@@ -568,7 +568,7 @@ fn test_cnf_variable_deduplication_step6() {
     assert_eq!(
         rules_with_ab.len(),
         1,
-        "Expected exactly 1 rule deriving AB with share_helpers: true, found: {:?}",
+        "Expected exactly 1 rule deriving AB with short_version: true, found: {:?}",
         rules_with_ab
     );
     let helper_var = &rules_with_ab[0].head;
@@ -586,7 +586,7 @@ fn test_cnf_variable_deduplication_step6() {
         });
         assert!(
             has_rule,
-            "Expected {} -> T_a X in final grammar with share_helpers: true:\n{}",
+            "Expected {} -> T_a X in final grammar with short_version: true:\n{}",
             head,
             trace.final_grammar.to_display_string()
         );

@@ -117,8 +117,8 @@ pub fn parse_grammar(grammar: &str) -> String {
 }
 
 #[wasm_bindgen(js_name = transformToCnf)]
-pub fn transform_to_cnf(grammar: &str, share_helpers: Option<bool>) -> String {
-    api::transform_to_cnf(grammar, share_helpers.unwrap_or(false))
+pub fn transform_to_cnf(grammar: &str, short_version: Option<bool>) -> String {
+    api::transform_to_cnf(grammar, short_version.unwrap_or(false))
 }
 
 #[wasm_bindgen(js_name = cykParse)]
