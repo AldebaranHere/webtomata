@@ -94,6 +94,8 @@
 	let isTransforming = $state<boolean>(false);
 	let errorMessage = $state<string | null>(null);
 
+	let isPhone = $state(false);
+
 	let parsedGrammar = $state<Grammar | null>(null);
 	let cnfTrace = $state<CnfTransformationTrace | null>(null);
 	let isLegendOpen = $state<boolean>(false);
@@ -213,8 +215,23 @@
 			}
 		};
 		window.addEventListener('click', closeMenu);
+
+		let mql: MediaQueryList | null = null;
+		let onMediaChange: ((e: MediaQueryListEvent) => void) | null = null;
+		if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+			mql = window.matchMedia('(max-width: 900px)');
+			isPhone = mql.matches;
+			onMediaChange = (e: MediaQueryListEvent) => {
+				isPhone = e.matches;
+			};
+			mql.addEventListener('change', onMediaChange);
+		}
+
 		return () => {
 			window.removeEventListener('click', closeMenu);
+			if (mql && onMediaChange) {
+				mql.removeEventListener('change', onMediaChange);
+			}
 		};
 	});
 
@@ -650,8 +667,8 @@
 	<div
 		class="col library-col"
 		id="grammar-pane-pustaka"
-		role="tabpanel"
-		aria-labelledby="grammar-tab-pustaka"
+		role={isPhone ? 'tabpanel' : 'complementary'}
+		aria-labelledby={isPhone ? 'grammar-tab-pustaka' : undefined}
 		aria-label={t('grammar.library_aria')}
 		hidden={phoneTab !== 'pustaka'}
 	>
@@ -757,8 +774,8 @@
 	<div
 		class="col editor-col"
 		id="grammar-pane-editor"
-		role="tabpanel"
-		aria-labelledby="grammar-tab-editor"
+		role={isPhone ? 'tabpanel' : 'region'}
+		aria-labelledby={isPhone ? 'grammar-tab-editor' : undefined}
 		aria-label={t('grammar.editor_aria')}
 		hidden={phoneTab !== 'editor'}
 	>
@@ -990,6 +1007,7 @@
 	<!-- Column 3: Processing & Transformation Tabs (CNF / CYK) -->
 	<div
 		class="col output-col"
+		role={isPhone ? undefined : 'region'}
 		aria-label={t('grammar.output_aria')}
 		hidden={phoneTab !== 'cnf' && phoneTab !== 'cyk'}
 	>

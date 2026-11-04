@@ -117,6 +117,8 @@
 	let copied = $state<boolean>(false);
 	let copyTimer: ReturnType<typeof setTimeout> | undefined;
 
+	let isPhone = $state(false);
+
 	let textareaRef = $state<HTMLTextAreaElement | null>(null);
 
 	function cleanTitle(name: string): string {
@@ -162,6 +164,23 @@
 			// ignore local storage errors
 		}
 		void runEnumeration();
+
+		let mql: MediaQueryList | null = null;
+		let onMediaChange: ((e: MediaQueryListEvent) => void) | null = null;
+		if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+			mql = window.matchMedia('(max-width: 900px)');
+			isPhone = mql.matches;
+			onMediaChange = (e: MediaQueryListEvent) => {
+				isPhone = e.matches;
+			};
+			mql.addEventListener('change', onMediaChange);
+		}
+
+		return () => {
+			if (mql && onMediaChange) {
+				mql.removeEventListener('change', onMediaChange);
+			}
+		};
 	});
 
 	function saveCustomLanguages(updated: CustomLanguage[]) {
@@ -440,8 +459,8 @@
 	<div
 		class="col library-col"
 		id="language-pane-pustaka"
-		role="tabpanel"
-		aria-labelledby="language-tab-pustaka"
+		role={isPhone ? 'tabpanel' : 'complementary'}
+		aria-labelledby={isPhone ? 'language-tab-pustaka' : undefined}
 		aria-label={t('language.library_aria')}
 		hidden={phoneTab !== 'pustaka'}
 	>
@@ -558,8 +577,8 @@
 	<div
 		class="col editor-col"
 		id="language-pane-editor"
-		role="tabpanel"
-		aria-labelledby="language-tab-editor"
+		role={isPhone ? 'tabpanel' : 'region'}
+		aria-labelledby={isPhone ? 'language-tab-editor' : undefined}
 		aria-label={t('language.editor_aria')}
 		hidden={phoneTab !== 'editor'}
 	>
@@ -703,8 +722,8 @@
 	<div
 		class="col output-col"
 		id="language-pane-hasil"
-		role="tabpanel"
-		aria-labelledby="language-tab-hasil"
+		role={isPhone ? 'tabpanel' : 'region'}
+		aria-labelledby={isPhone ? 'language-tab-hasil' : undefined}
 		aria-label={t('language.output_aria')}
 		hidden={phoneTab !== 'hasil'}
 	>

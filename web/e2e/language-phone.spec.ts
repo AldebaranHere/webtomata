@@ -43,6 +43,10 @@ for (const viewport of [
 		await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
 		const editorPane = page.locator('#language-pane-editor');
 		await expect(editorPane).toBeVisible();
+		await expect(editorPane).toHaveAttribute('role', 'tabpanel');
+		await expect(editorPane).toHaveAttribute('aria-labelledby', 'language-tab-editor');
+		await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(0);
+		await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(0);
 
 		// AC5: Language, Editor tab: formula box (4 rows) is above toolbar and fully visible
 		const formulaTextarea = editorPane.locator('.formula-textarea');
@@ -61,6 +65,10 @@ for (const viewport of [
 		const pustakaPane = page.locator('#language-pane-pustaka');
 		await expect(pustakaPane).toBeVisible();
 		await expect(editorPane).toBeHidden();
+		await expect(pustakaPane).toHaveAttribute('role', 'tabpanel');
+		await expect(pustakaPane).toHaveAttribute('aria-labelledby', 'language-tab-pustaka');
+		await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(0);
+		await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(0);
 
 		// Tab 2: Hasil
 		await tabs.nth(2).click();
@@ -68,6 +76,10 @@ for (const viewport of [
 		const hasilPane = page.locator('#language-pane-hasil');
 		await expect(hasilPane).toBeVisible();
 		await expect(pustakaPane).toBeHidden();
+		await expect(hasilPane).toHaveAttribute('role', 'tabpanel');
+		await expect(hasilPane).toHaveAttribute('aria-labelledby', 'language-tab-hasil');
+		await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(0);
+		await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(0);
 
 		// Control row is one compact row of three columns sharing the same y
 		const controlFields = hasilPane.locator('.control-row .control-field');
@@ -190,4 +202,91 @@ test('at 1280x800 on the desktop project, language workstation shows splitters a
 	// AC9: Tab strip hidden on desktop
 	const tabStrip = page.locator('.workstation-phone-tabs');
 	await expect(tabStrip).toBeHidden();
+});
+
+test('at 1280x800 and 390x844 on the desktop project: landmarks on laptop, tab panels on phone, and resize across 900px', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await openLanguage(page);
+
+	// AC1: at 1280x800: no element has role="tabpanel" among the three columns; exactly one complementary and two region landmarks, each with its name; tab strip not visible
+	const tabStrip = page.locator('.workstation-phone-tabs');
+	await expect(tabStrip).toBeHidden();
+
+	const cols = page.locator('.workstation > .col');
+	await expect(cols).toHaveCount(3);
+	for (const col of await cols.all()) {
+		expect(await col.getAttribute('role')).not.toBe('tabpanel');
+	}
+
+	const complementary = page.locator('.workstation > .col[role="complementary"]');
+	await expect(complementary).toHaveCount(1);
+	await expect(complementary).toHaveAttribute('aria-label', /bahasa|language/i);
+	expect(await complementary.getAttribute('aria-labelledby')).toBeNull();
+
+	const regions = page.locator('.workstation > .col[role="region"]');
+	await expect(regions).toHaveCount(2);
+	await expect(regions.nth(0)).toHaveAttribute('aria-label', /editor/i);
+	expect(await regions.nth(0).getAttribute('aria-labelledby')).toBeNull();
+	await expect(regions.nth(1)).toHaveAttribute(
+		'aria-label',
+		/hasil|proper ordering|enumeration|output/i
+	);
+	expect(await regions.nth(1).getAttribute('aria-labelledby')).toBeNull();
+
+	await expectNoAxeViolations(page);
+
+	// AC3: roles change when the window is resized across 900 px, without a reload (tested at both sides, 900 and 901)
+	// Resize to 900 (phone side)
+	await page.setViewportSize({ width: 900, height: 800 });
+	await expect(tabStrip).toBeVisible();
+
+	// AC2: on phone, no column is a landmark
+	await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(0);
+	await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(0);
+
+	// Shown column has role="tabpanel" and its aria-labelledby points to its tab (default is editor)
+	const activeEditorCol = page.locator('#language-pane-editor');
+	await expect(activeEditorCol).toHaveAttribute('role', 'tabpanel');
+	await expect(activeEditorCol).toHaveAttribute('aria-labelledby', 'language-tab-editor');
+
+	// Resize to 901 (laptop side)
+	await page.setViewportSize({ width: 901, height: 800 });
+	await expect(tabStrip).toBeHidden();
+	for (const col of await cols.all()) {
+		expect(await col.getAttribute('role')).not.toBe('tabpanel');
+	}
+	await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(1);
+	await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(2);
+
+	// Resize to 899 (phone side again)
+	await page.setViewportSize({ width: 899, height: 800 });
+	await expect(tabStrip).toBeVisible();
+	await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(0);
+	await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(0);
+	await expect(activeEditorCol).toHaveAttribute('role', 'tabpanel');
+
+	// Resize back to 1280
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await expect(tabStrip).toBeHidden();
+	await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(1);
+	await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(2);
+});
+
+test('on the desktop project, language preset titles respect locale', async ({ page }) => {
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await openLanguage(page);
+
+	// Switch interface to English
+	await page.locator('button[lang="en"]').click();
+
+	// Preset in library shows its English title "Finite Set {ab, bc}"
+	const finitePreset = page.locator('.item-btn', { hasText: 'Finite Set {ab, bc}' });
+	await expect(finitePreset).toBeVisible();
+
+	// Switch back to Indonesian
+	await page.locator('button[lang="id"]').click();
+	const finitePresetId = page.locator('.item-btn', { hasText: 'Himpunan Hingga {ab, bc}' });
+	await expect(finitePresetId).toBeVisible();
 });
