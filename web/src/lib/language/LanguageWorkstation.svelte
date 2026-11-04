@@ -91,8 +91,13 @@
 		{ id: 'hasil', labelKey: 'workstation.tab_results' }
 	];
 
+	const activePreset = $derived(PRESETS.find((p) => p.id === selectedId));
 	const activeTitle = $derived(
-		PRESETS.find((p) => p.id === selectedId)?.name ??
+		(activePreset
+			? getLocale() === 'en'
+				? activePreset.nameEn
+				: activePreset.nameId
+			: undefined) ??
 			customLanguages.find((c) => c.id === selectedId)?.name ??
 			''
 	);
@@ -460,7 +465,9 @@
 						>
 							<div class="item-head">
 								<span class="item-id">{preset.id}</span>
-								<span class="item-name">{cleanTitle(preset.name)}</span>
+								<span class="item-name"
+									>{cleanTitle(getLocale() === 'en' ? preset.nameEn : preset.nameId)}</span
+								>
 							</div>
 							<div class="item-formula">{preset.formula}</div>
 							<div class="item-desc">

@@ -19,9 +19,24 @@ describe('GRAMMAR_PRESETS', () => {
 
 	it('does not contain any course homework or fasilkom references', () => {
 		for (const preset of GRAMMAR_PRESETS) {
-			expect(preset.title).not.toMatch(/hw05|fasilkom|homework/i);
-			expect(preset.description).not.toMatch(/hw05|fasilkom|homework/i);
+			expect(preset.titleId).not.toMatch(/hw05|fasilkom|homework/i);
+			expect(preset.titleEn).not.toMatch(/hw05|fasilkom|homework/i);
+			expect(preset.descriptionId).not.toMatch(/hw05|fasilkom|homework/i);
+			expect(preset.descriptionEn).not.toMatch(/hw05|fasilkom|homework/i);
 			expect(preset.id).not.toMatch(/hw05|fasilkom/i);
+		}
+	});
+
+	it('provides non-empty, distinct id and en text for each preset (AC1)', () => {
+		for (const preset of GRAMMAR_PRESETS) {
+			expect(preset.titleId.trim().length).toBeGreaterThan(0);
+			expect(preset.titleEn.trim().length).toBeGreaterThan(0);
+			expect(preset.descriptionId.trim().length).toBeGreaterThan(0);
+			expect(preset.descriptionEn.trim().length).toBeGreaterThan(0);
+
+			// En text must not equal Id text unless the text has no letters other than math symbols
+			expect(preset.titleEn).not.toEqual(preset.titleId);
+			expect(preset.descriptionEn).not.toEqual(preset.descriptionId);
 		}
 	});
 

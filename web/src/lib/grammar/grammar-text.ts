@@ -1,4 +1,4 @@
-import type { Grammar } from '#lib/engine/types.ts';
+import type { Grammar, Production } from '#lib/engine/types.ts';
 
 /**
  * Turns a Grammar model into canonical text format:
@@ -49,4 +49,34 @@ export function nextCustomId(existing: Array<{ id: string }>): string {
 		n++;
 	}
 	return `G${n}`;
+}
+
+/**
+ * Formats a production rule for display on chips/steppers:
+ * - head → body with one space between each body symbol
+ * - Empty body is displayed as λ
+ */
+export function formatRuleDisplay(rule: Production): string {
+	const bodyStr = rule.body.length === 0 ? 'λ' : rule.body.map((s) => s.value).join(' ');
+	return `${rule.head} → ${bodyStr}`;
+}
+
+/**
+ * Computes the title for opening a grammar result as a new custom grammar:
+ * "<baseTitle> (CNF)", or "<baseTitle> (CNF <n>)" if that title already exists.
+ */
+export function computeCnfTitle(
+	baseTitle: string,
+	existingGrammars: Array<{ title: string }>
+): string {
+	const firstCandidate = `${baseTitle} (CNF)`;
+	const existingTitles = new Set(existingGrammars.map((c) => c.title));
+	if (!existingTitles.has(firstCandidate)) {
+		return firstCandidate;
+	}
+	let counter = 2;
+	while (existingTitles.has(`${baseTitle} (CNF ${counter})`)) {
+		counter++;
+	}
+	return `${baseTitle} (CNF ${counter})`;
 }

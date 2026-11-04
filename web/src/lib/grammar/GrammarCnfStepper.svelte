@@ -1,7 +1,8 @@
 <script lang="ts">
-	import type { CnfStepResult, CnfTransformationTrace, Production } from '#lib/engine/types.ts';
+	import type { CnfStepResult, CnfTransformationTrace } from '#lib/engine/types.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import GrammarMathDisplay from './GrammarMathDisplay.svelte';
+	import { formatRuleDisplay } from './grammar-text.ts';
 
 	let {
 		trace,
@@ -15,14 +16,6 @@
 
 	const step = $derived<CnfStepResult | undefined>(trace.steps[currentStepIdx]);
 	const totalSteps = $derived(trace.steps.length);
-
-	function formatRule(rule: Production): string {
-		const bodyStr =
-			rule.body.length === 0
-				? 'λ'
-				: rule.body.map((s) => (s.type === 'terminal' ? s.value : s.value)).join('');
-		return `${rule.head} → ${bodyStr}`;
-	}
 
 	function goToStep(idx: number) {
 		if (idx >= 0 && idx < totalSteps) {
@@ -87,8 +80,8 @@
 								{t('grammar.diff_removed')} ({step.removedRules.length}):
 							</div>
 							<div class="diff-rules">
-								{#each step.removedRules as r (formatRule(r))}
-									<span class="diff-pill rule-removed">{formatRule(r)}</span>
+								{#each step.removedRules as r (formatRuleDisplay(r))}
+									<span class="diff-pill rule-removed">{formatRuleDisplay(r)}</span>
 								{/each}
 							</div>
 						</div>
@@ -98,8 +91,8 @@
 						<div class="diff-group added">
 							<div class="diff-label">{t('grammar.diff_added')} ({step.addedRules.length}):</div>
 							<div class="diff-rules">
-								{#each step.addedRules as r (formatRule(r))}
-									<span class="diff-pill rule-added">{formatRule(r)}</span>
+								{#each step.addedRules as r (formatRuleDisplay(r))}
+									<span class="diff-pill rule-added">{formatRuleDisplay(r)}</span>
 								{/each}
 							</div>
 						</div>
