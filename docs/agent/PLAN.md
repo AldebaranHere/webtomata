@@ -815,7 +815,7 @@ Expected: all pass. Paste the real output into `REPORT.md`.
 
 ## Task T-013 — Preset text in `id` and `en`, and readable rule chips
 
-**Status:** todo (written on 2026-11-04; the owner approves it by merging the PR that adds it)
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-013-preset-text-and-rule-chips`
 
