@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" font-family="system-ui, sans-serif" font-size="11">
+  <rect width="900" height="470" fill="#ffffff"/>
+  <g fill="none" stroke="#9ca3af" stroke-width="1">
+    <!-- laptop output column -->
+    <rect x="20" y="60" width="400" height="390" rx="8"/>
+    <rect x="30" y="70" width="190" height="28" fill="#dbeafe" stroke="#2563eb"/>
+    <rect x="225" y="70" width="140" height="28"/>
+    <rect x="30" y="108" width="240" height="30" rx="4"/>
+    <line x1="150" y1="108" x2="150" y2="138"/>
+    <rect x="30" y="108" width="120" height="30" rx="4" fill="#dbeafe" stroke="#2563eb"/>
+    <circle cx="44" cy="165" r="12"/><circle cx="76" cy="165" r="12"/><circle cx="108" cy="165" r="12" fill="#2563eb" stroke="#2563eb"/>
+    <circle cx="140" cy="165" r="12"/><circle cx="172" cy="165" r="12"/><circle cx="204" cy="165" r="12"/>
+    <rect x="30" y="190" width="380" height="250" rx="6"/>
+    <rect x="40" y="200" width="46" height="18" rx="9" fill="#dbeafe" stroke="#2563eb"/>
+    <rect x="40" y="300" width="360" height="40" rx="4" fill="#fef3c7" stroke="#b45309" stroke-dasharray="4 3"/>
+    <rect x="40" y="352" width="110" height="20" rx="10" fill="#fee2e2" stroke="#b91c1c"/>
+    <rect x="40" y="392" width="110" height="20" rx="10" fill="#dcfce7" stroke="#15803d"/>
+    <rect x="156" y="392" width="110" height="20" rx="10" fill="#dcfce7" stroke="#15803d"/>
+    <!-- phone -->
+    <rect x="450" y="60" width="250" height="390" rx="8"/>
+    <rect x="460" y="70" width="230" height="44" rx="4" fill="#dbeafe" stroke="#2563eb"/>
+    <rect x="460" y="122" width="230" height="44" rx="4"/>
+    <line x1="575" y1="122" x2="575" y2="166"/>
+    <rect x="460" y="122" width="115" height="44" rx="4" fill="#dbeafe" stroke="#2563eb"/>
+    <circle cx="481" cy="200" r="16"/><circle cx="519" cy="200" r="16"/><circle cx="557" cy="200" r="16" fill="#2563eb" stroke="#2563eb"/>
+    <circle cx="595" cy="200" r="16"/><circle cx="633" cy="200" r="16"/><circle cx="671" cy="200" r="16"/>
+    <rect x="460" y="228" width="230" height="212" rx="6"/>
+    <rect x="470" y="238" width="46" height="18" rx="9" fill="#dbeafe" stroke="#2563eb"/>
+  </g>
+  <g fill="#1f2937">
+    <text x="20" y="28" font-size="14" font-weight="600">Stepper CNF: urutan tugas kuliah dan tombol versi (laptop dan HP)</text>
+    <text x="20" y="46" fill="#6b7280">Wireframe, belum disetujui. Kotak oranye = catatan yang muncul di Fase 3.</text>
+    <text x="40" y="89">Transformasi CNF (6 Fase)</text><text x="235" y="89" fill="#6b7280">Uji String (CYK)</text>
+    <text x="42" y="127" fill="#2563eb">Versi panjang ✓</text><text x="168" y="127">Versi ringkas</text>
+    <text x="40" y="169">1</text><text x="72" y="169">2</text><text x="104" y="169" fill="#ffffff">3</text><text x="136" y="169">4</text><text x="168" y="169">5</text><text x="200" y="169">6</text>
+    <text x="250" y="169">‹ Sebelumnya   3 / 6   Selanjutnya ›</text>
+    <text x="46" y="213" font-size="10">Fase 3</text>
+    <text x="40" y="240" font-size="14" font-weight="600">Hapus Aturan ε</text>
+    <text x="40" y="260" fill="#4b5563">Menghapus aturan A → ε dan menambah variasi aturan yang</text>
+    <text x="40" y="274" fill="#4b5563">menghilangkan variabel nullable.</text>
+    <text x="48" y="318" fill="#92400e">Simbol awal S dapat menghasilkan ε (nullable): ditambahkan</text>
+    <text x="48" y="332" fill="#92400e">simbol awal baru S₀ dengan S₀ → S | ε.</text>
+    <text x="40" y="348" font-size="10" fill="#6b7280">Aturan Dihapus (1):</text>
+    <text x="50" y="366" fill="#991b1b">B → λ</text>
+    <text x="40" y="388" font-size="10" fill="#6b7280">Aturan Ditambahkan (3):</text>
+    <text x="50" y="406" fill="#166534">S₀ → λ</text><text x="166" y="406" fill="#166534">B → b</text>
+    <text x="40" y="436" font-size="10" fill="#6b7280">Tata bahasa setelah fase ini: n aturan, dalam notasi matematika</text>
+    <text x="470" y="97" font-size="10" fill="#1f2937">Transformasi CNF (6 Fase)</text>
+    <text x="475" y="149" fill="#2563eb">Versi panjang ✓</text><text x="595" y="149">Versi ringkas</text>
+    <text x="477" y="204">1</text><text x="515" y="204">2</text><text x="553" y="204" fill="#ffffff">3</text><text x="591" y="204">4</text><text x="629" y="204">5</text><text x="667" y="204">6</text>
+    <text x="476" y="251" font-size="10">Fase 3</text>
+    <text x="470" y="278" font-size="13" font-weight="600">Hapus Aturan ε</text>
+    <text x="470" y="298" fill="#4b5563" font-size="10">penjelasan, catatan S₀, chip aturan ...</text>
+    <text x="450" y="468" fill="#6b7280" font-size="10">Semua tombol 44 px. Tombol versi selebar kolom di HP.</text>
+    <text x="440" y="60" fill="#6b7280" font-size="10" text-anchor="end">kolom hasil 420 px</text>
+  </g>
+</svg>

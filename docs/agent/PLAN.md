@@ -4,7 +4,7 @@
 > `todo` means ready: every field is written and the human approved it. Several tasks can be `todo` at the same time. The worker does one task at a time: the one that the human names in the start prompt ("Do task T-xxx"). The worker sets it to `in-progress` in the first commit of its own PR and to `done` in the last. The planner does not open a pull request only to change a status.
 > The blank task template is in `PLAN-TEMPLATE.md`.
 
-**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time.
+**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 and T-015 (CNF homework order, then the toggle) are `proposed` until the owner approves `design/screens/cnf-stepper-homework-order.md`.
 
 Status legend: `proposed` | `todo` | `in-progress` | `blocked` | `done` | `rejected`
 
@@ -1018,6 +1018,111 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 
 ---
 
+## Task T-029 — The CYK tester must space the symbols of a rule
+
+**Status:** todo
+**Owner:** worker
+**Branch:** `task/T-029-cyk-text-spacing`
+
+**Goal:** `GrammarCykTester.svelte` builds the grammar text for the engine with its own code that joins the symbols of a rule body with no space (`.join('')`). A rule `S → T_a T_b` becomes `S -> T_aT_b`, which the parser reads as one symbol, so CYK answers "the grammar must be in CNF". The planner reproduced it on 2026-11-05 through the engine: `S -> T_aT_b` fails and `S -> T_a T_b` is accepted (found by the worker in T-010). It breaks the main flow: convert to CNF, open the result as a grammar (T-023), test a string; every CNF result that has a helper variable `T_a` fails in CYK.
+
+**Scope (in):**
+- `web/src/lib/grammar/GrammarCykTester.svelte`: delete the local `grammarText` builder and use `grammarToText(grammar)` from `grammar-text.ts` (one space between symbols, `ε` for an empty body, start symbol first). Keep the empty-state behavior that depends on `grammarText` (line 85 today).
+- One new e2e test in `web/e2e/grammar-flow.spec.ts` (add it; do not change the existing tests): open the preset `CNF_UNIT_CHAIN` (`S → A`, `A → B`, `B → C | b b`, `C → c C | c`; language `{bb} ∪ c⁺`), open its CNF result as a new grammar (see `grammar-open-cnf.spec.ts` for the selectors), go to the CYK tab and test `bb` (accepted), `c` (accepted), `ccc` (accepted), `b` (rejected), `bc` (rejected). The helper variables are `T_b` and `T_c` (names may differ), which is why it failed.
+
+**Non-goals (out):**
+- No change to the engine, to the parser, to the CYK length limit (T-019) or to any message. Do not change `grammarToText`.
+
+**Files expected to touch:** `GrammarCykTester.svelte`, `web/e2e/grammar-flow.spec.ts`, `docs/agent/REPORT.md`.
+
+**Design reference:** none.
+
+**Acceptance criteria:**
+- AC1: the new test passes; the existing grammar specs pass unchanged.
+- AC2: deliberate break: put the `.join('')` builder back; the new test fails with the "CNF" error. Show it, then restore.
+- AC3: the CYK tab of a grammar typed by hand (no helper variables) behaves as before (the T-010 tests prove it).
+
+**Verification:**
+```
+pnpm check && pnpm lint && pnpm format:check && pnpm check:strings
+pnpm build
+pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-flow.spec.ts --repeat-each=5
+pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-phone.spec.ts e2e/grammar-open-cnf.spec.ts e2e/grammar-cyk-limit.spec.ts
+```
+Expected: all pass. Do not run the full suite locally. Paste the real output into `REPORT.md`, and name the specs you ran.
+
+**Rollback:** `git revert <sha>`.
+
+**Depends on:** none (T-010 and T-023 are merged).
+
+**Notes for worker:** Before you change anything, write the new test and see it fail with the CNF error, so you know it tests the bug.
+
+---
+
+## Task T-060 — CNF phases in the homework order, with message keys
+
+**Status:** proposed (waits for the owner to approve the wireframe `design/screens/cnf-stepper-homework-order.md`; its two content questions were settled from the course slides on 2026-11-05; then it becomes `todo`)
+**Owner:** worker
+**Branch:** `task/T-060-cnf-homework-order`
+
+**Goal:** The six phases of the CNF stepper follow the six stages of the course homework: (1) unreachable rules, (2) non-productive rules, (3) ε-rules, (4) unit rules, (5) mixed rules, (6) long right-hand sides. Today they are: start symbol, ε-rules, unit rules, useless symbols, terminals, long rules. Also, the engine returns Indonesian sentences for the phase names and descriptions; they become message keys, translated in the UI.
+
+**Scope (in):**
+- `crates/engine-core/src/grammar/cnf.rs`: new phase order as in the design table. Phase 1 removes unreachable variables and their rules; phase 2 removes non-productive variables and every rule that uses them, **and the variables that this removal made unreachable** (the trace says so; for the four grammars of the 2026 homework this changes nothing); phase 3 is the existing ε-removal followed by the course slides' "returning ε" step: if the start symbol is nullable, add a new start symbol `S₀` with `S₀ → S | ε` (whether or not `S` is on a right-hand side), and show the note; the old phase 1 (`S₀ → S` whenever `S` is on a right-hand side) is removed; phases 4, 5 and 6 are the existing unit, mixed and long-rule phases, unchanged in behavior and in the rules they report. The `share_helpers` option stays as it is (T-015 uses it).
+- The step result carries `phase_key` (a message key, for example `grammar.cnf.phase_unreachable`) and no `phase_name` or `description` text. A parameter list is allowed if a phase needs one. Regenerate the TypeScript types.
+- `web/src/lib/grammar/GrammarCnfStepper.svelte`: show `t(key + '.title')` and `t(key + '.desc')`, and the new note of phase 3 (a key too) when `S₀` was added. Use the existing visual design; no new layout.
+- `id.ts` and `en.ts`: the six titles and descriptions and the note, from the design table (Indonesian terms new to the glossary go in `docs/glossary.md` with `TODO(review)`).
+- Engine tests: the existing CNF tests that name the old order are changed to the new order, each with a hand-derived expectation (see below). Add a test for each of: phase 2 removing a variable that becomes unreachable; `S₀` when the start symbol is nullable and is on a right-hand side; `S₀` when it is nullable and on no right-hand side; no `S₀` when it is not nullable, also when it is on a right-hand side.
+- `web/e2e/grammar-flow.spec.ts` (T-010) and `grammar-open-cnf.spec.ts`: update the phase titles, chips and rule counts of the six-phase test to the new order with a new hand derivation (the same test grammar). Other e2e specs that read phase titles: `grep -rn "Isolasi Simbol Awal\|Tak Berguna\|phaseName" web`.
+- The CNF presets in `presets.ts` keep their grammars. If a preset's description names a phase number, update it (T-013 text; `Id` and `En`).
+
+**Non-goals (out):**
+- No toggle (T-015). No change to the CYK, to the parser, to `GrammarError` sentences (T-028), or to the six round buttons and chip styles. No change to the final CNF grammars except `S₀`: it is now added when the start symbol is nullable, and no longer when it is only on a right-hand side (state each case in the report where a final grammar changes).
+
+**Files expected to touch:** `cnf.rs` and its tests, `crates/engine-core/tests/*` that read phases, generated TypeScript types, `GrammarCnfStepper.svelte`, `id.ts`, `en.ts`, `docs/glossary.md`, `grammar-flow.spec.ts`, `grammar-open-cnf.spec.ts`, `docs/agent/REPORT.md`.
+
+**Design reference:** `design/screens/cnf-stepper-homework-order.md` and `.svg`.
+
+**Acceptance criteria:**
+- AC1: for the grammar of the T-010 flow test and for two more that the worker chooses (one with a variable that becomes unreachable only after phase 2, one where the empty string is not in the language), the six phase results equal the worker's hand derivation from the homework text, written in `REPORT.md` before the tests run. If the engine disagrees, stop and report.
+- AC2: the final grammar is in CNF and generates the same language as the original, checked by the existing property test (`proptest`) on random grammars, if there is one (if not, add one).
+- AC3: no Indonesian sentence remains in `cnf.rs` (`grep -n '"[A-Z][a-z]* ' crates/engine-core/src/grammar/cnf.rs` shows none outside tests and comments); `check:strings` passes; both locales show their own titles.
+- AC4: deliberate breaks, each shown failing, then restored: swap phases 1 and 2 in the engine (a test fails); always add `S₀`, or never (the `S₀` tests fail); remove one key from `en.ts` (a test or `check:strings` fails).
+- AC5: the T-010 test, updated, passes 5 times on both projects.
+
+**Verification:**
+```
+cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+pnpm build:wasm
+pnpm check && pnpm lint && pnpm format:check && pnpm check:strings
+pnpm build && pnpm size
+pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-flow.spec.ts e2e/grammar-open-cnf.spec.ts --repeat-each=5
+pnpm --filter web exec playwright test --project=desktop --project=phone e2e/grammar-phone.spec.ts e2e/grammar-cyk-limit.spec.ts
+```
+Expected: all pass. Do not run the full suite locally. Paste the real output into `REPORT.md`, and name the specs you ran. The wasm size must stay under 250 KB gzip.
+
+**Rollback:** `git revert <sha>`. Saved grammars are plain text and do not depend on the phases.
+
+**Depends on:** T-029 done and merged (both touch the grammar flow tests); the owner's approval of the wireframe.
+
+**Notes for worker:** Ask the planner if a stage of the homework text is unclear; do not guess. This changes what a student reports for homework, so the hand derivation matters more than the code.
+
+---
+
+## Task T-015 — Toggle "versi panjang / versi ringkas" in the CNF stepper
+
+**Status:** proposed (needs T-060 done and the owner's approval of the design; the spec is a draft)
+**Owner:** worker
+**Branch:** `task/T-015-cnf-version-toggle`
+
+**Goal:** A toggle in the stepper header switches between the long version (the default: one `T_a → a` per terminal, a chain of helper variables for each long rule) and the short version (a terminal that already has `A → a` reuses `A`; identical helper variables are shared). See `design/screens/cnf-stepper-homework-order.md`.
+
+**Scope (in), draft:** the engine option for phase 5 (reuse an existing `A → a`; phase 6 already has `share_helpers`), the wasm call with the option, the segmented control (`role="radiogroup"`) in `GrammarCnfStepper.svelte`, the choice kept on the device (`localStorage`), `id` and `en` strings, tests with hand derivations for both versions, e2e and axe. The full spec is written when T-060 is merged.
+
+**Depends on:** T-060 done and merged.
+
+---
+
 ## Planner task P-003 — Wireframe of the grammar rule rows on a phone
 
 **Status:** done (approved by the owner on 2026-11-04, option B; it became task T-024)
@@ -1034,12 +1139,12 @@ Write `design/screens/grammar-workstation.md`, `design/screens/language-workstat
 
 **Added on 2026-11-02, after the owner's phone test:** the two workstations are not usable on a phone. Both stack their three areas as small boxes with their own scroll bars, so a student sees about one item of the library, one row of the grammar, or only the heading of the CNF phase; in the language workstation the results are below the settings and off the screen. P-001 therefore also proposes a phone layout for both (the proposal is in `design/screens/workstation-phone-layout.md`: one area at a time with a tab strip at the top, like the panel tabs of the FSM editor). The owner approves it before T-016.
 
-## Planner task P-002 — Wireframe of the CNF "versi kuliah / versi ringkas" switch
+## Planner task P-002 — Wireframe of the CNF "versi panjang / versi ringkas" switch
 
-**Status:** proposed (after P-001; the owner answered the first questions on 2026-11-04, see below)
+**Status:** drawn on 2026-11-05 in `design/screens/cnf-stepper-homework-order.md` and `.svg`; waits for the owner's approval of the wireframe (the stage order and the start-symbol rule were settled from the course slides on the same day). It also changes the phase order (the owner agreed on 2026-11-05: follow the homework). Tasks: T-060 (order and message keys), then T-015 (the toggle).
 **Owner:** planner
 
-**Owner's answers (2026-11-04):** the course version is the default; a toggle switches to a "minimized" version with reused rules (one version at a time, not side by side). The engine's six phases follow the course's homework text for CNF (report the grammar after each stage: unreachable rules, non-productive rules, epsilon rules, unit rules, mixed rules, long right-hand sides). Still to draw and ask: where the toggle sits (in the stepper header is the planner's pick), and what exactly "minimized" does (shared helper variables only, or also reuse of an existing `A → a` rule; see the note below).
+**Owner's answers (2026-11-04):** the long version is the default; a toggle switches to a "minimized" version with reused rules (one version at a time, not side by side). The engine's six phases follow the course's homework text for CNF (report the grammar after each stage: unreachable rules, non-productive rules, epsilon rules, unit rules, mixed rules, long right-hand sides). Still to draw and ask: where the toggle sits (in the stepper header is the planner's pick), and what exactly "minimized" does (shared helper variables only, or also reuse of an existing `A → a` rule; see the note below).
 
 The owner's idea (2026-11-02): the CNF conversion shows a verbose version that follows the course (no sharing) and a minimized version, with a toggle. The planner draws it and the owner approves it before T-015. Open points for the owner at that time: is "minimized" only shared helper variables, or also reuse of an existing `A → a` rule for a terminal (the slide mentions it)? Are the two versions shown one at a time, or side by side? **Found by the report of T-004:** phase 5 always reuses one `T_c` variable for each terminal across the whole grammar, even when `share_helpers` is false. That is the idea of the slide's note ("Ta can take A instead") only in part, so it matters for what "minimized" means.
 
@@ -1052,14 +1157,15 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-011** e2e and axe tests for the language workstation and the switcher: specified in its own task block above (`todo`).
 - **T-012** `rejected` on 2026-11-04: the panel drag handle already has seven tests with real touch events in `web/e2e/editor-panel-height.spec.ts` (drag up and down, limits, tap, keys, 44 px, no page scroll). Reopen it only if the owner sees a failing handle on a real phone; a WebKit run would need a real iPhone.
 - **T-016** The phone layout of the grammar and the language workstations: done (PR 121).
-- **T-015** The UI switch between the course version and the minimized version of the CNF conversion (needs P-002 approved, and T-014 done).
+- **T-015** The UI switch between the long version and the short version of the CNF conversion: draft in its own block above (`proposed`; after T-060).
+- **T-060** CNF phases in the homework order, with message keys: specified in its own block above (`proposed`; waits for the owner's approval of the wireframe).
 - **T-013** Preset text in `id` and `en`, and readable rule chips: specified in its own task block above (`todo`).
 - **T-024** Bigger touch areas for the rule boxes of the grammar Editor on a phone: specified in its own task block above (`todo`; the owner approved the design on 2026-11-04).
 - **T-025** Landmarks on a laptop, tab panels on a phone: specified in its own task block above (`todo`).
 - **T-019** One limit and one translated message for the length of a CYK string: specified in its own task block above (`todo`).
 - **T-017** The two local-reference tests keep only finite automata: specified in its own task block above (`todo`).
 - **T-028** The grammar engine's errors carry Indonesian sentences. `GrammarError` has `Display` with Indonesian text, and `api.invalid_grammar` and `api.cyk_failed` pass it as `detail`, which the grammar UI shows as it is, also in English; for a key without `detail` it shows the raw key. This breaks principle 6 of `CLAUDE.md`. Make the parser, the CNF transformer and CYK return typed errors with a message key and parameters, and translate them in the UI. Larger than T-019 (found while specifying T-019); needs its own spec and a test for every error.
-- **T-029** (proposed) Grammar parser / CYK handling for space-delimited symbols in CNF derived rule text. `GrammarCykTester.svelte` reconstructs grammar text for CYK parsing by concatenating RHS symbols without spaces (`${rule.lhs} -> ${rule.rhs.join('')}`). For multi-character helper variables like `T_a`, this produces strings such as `T_aT_b`, which `GrammarParser` reads as a single variable token rather than two separate variables, causing a non-CNF error in CYK. Space-separating symbols or passing the `Grammar` structure directly to CYK avoids tokenizer collisions.
+- **T-029** The CYK tester joins rule symbols with no space, so every CNF result with a helper variable fails in CYK: specified in its own block above (`todo`; found by the worker in T-010 and reproduced by the planner).
 
 **B. Grammar additions** (a wireframe the owner approves comes first for T-020)
 - **T-020** Multi-string test for grammars, like the FSM test list, using the CYK parser.
