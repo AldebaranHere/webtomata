@@ -45,6 +45,10 @@ for (const viewport of [
 		const editorPane = page.locator('#grammar-pane-editor');
 		await expect(editorPane).toBeVisible();
 		await expect(editorPane).not.toHaveAttribute('hidden');
+		await expect(editorPane).toHaveAttribute('role', 'tabpanel');
+		await expect(editorPane).toHaveAttribute('aria-labelledby', 'grammar-tab-editor');
+		await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(0);
+		await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(0);
 
 		// AC1: Tapping each tab shows its area and hides the others
 		// Tab 0: Pustaka
@@ -54,6 +58,10 @@ for (const viewport of [
 		const pustakaPane = page.locator('#grammar-pane-pustaka');
 		await expect(pustakaPane).toBeVisible();
 		await expect(editorPane).toBeHidden();
+		await expect(pustakaPane).toHaveAttribute('role', 'tabpanel');
+		await expect(pustakaPane).toHaveAttribute('aria-labelledby', 'grammar-tab-pustaka');
+		await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(0);
+		await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(0);
 
 		// Tab 2: CNF
 		await tabs.nth(2).click();
@@ -61,6 +69,10 @@ for (const viewport of [
 		const cnfPane = page.locator('#grammar-pane-cnf');
 		await expect(cnfPane).toBeVisible();
 		await expect(pustakaPane).toBeHidden();
+		await expect(cnfPane).toHaveAttribute('role', 'tabpanel');
+		await expect(cnfPane).toHaveAttribute('aria-labelledby', 'grammar-tab-cnf');
+		await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(0);
+		await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(0);
 
 		// AC3: In CNF tab, title of phase and first chips are visible without scrolling
 		const phaseTitle = cnfPane.locator('.step-title');
@@ -88,6 +100,10 @@ for (const viewport of [
 		const cykPane = page.locator('#grammar-pane-cyk');
 		await expect(cykPane).toBeVisible();
 		await expect(cnfPane).toBeHidden();
+		await expect(cykPane).toHaveAttribute('role', 'tabpanel');
+		await expect(cykPane).toHaveAttribute('aria-labelledby', 'grammar-tab-cyk');
+		await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(0);
+		await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(0);
 
 		// AC2: No element other than .table-scroll has vertical scroll of its own
 		const verticalScrollers = await page.evaluate(() => {
@@ -249,4 +265,94 @@ test('at 1280x800 on the desktop project, grammar workstation shows splitters, n
 	// AC12: "Ubah ke CNF" button hidden on desktop
 	const shortcutBtn = page.locator('.btn-convert-cnf');
 	await expect(shortcutBtn).toBeHidden();
+});
+
+test('at 1280x800 and 390x844 on the desktop project: landmarks on laptop, tab panels on phone, and resize across 900px', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await openGrammar(page);
+
+	// AC1: at 1280x800: no element has role="tabpanel" among the three columns; exactly one complementary and two region landmarks, each with its name; tab strip not visible
+	const tabStrip = page.locator('.workstation-phone-tabs');
+	await expect(tabStrip).toBeHidden();
+
+	const cols = page.locator('.workstation > .col');
+	await expect(cols).toHaveCount(3);
+	for (const col of await cols.all()) {
+		expect(await col.getAttribute('role')).not.toBe('tabpanel');
+	}
+
+	const complementary = page.locator('.workstation > .col[role="complementary"]');
+	await expect(complementary).toHaveCount(1);
+	await expect(complementary).toHaveAttribute('aria-label', /tata bahasa|grammar/i);
+	expect(await complementary.getAttribute('aria-labelledby')).toBeNull();
+
+	const regions = page.locator('.workstation > .col[role="region"]');
+	await expect(regions).toHaveCount(2);
+	await expect(regions.nth(0)).toHaveAttribute('aria-label', /editor/i);
+	expect(await regions.nth(0).getAttribute('aria-labelledby')).toBeNull();
+	await expect(regions.nth(1)).toHaveAttribute('aria-label', /pemrosesan|processing|hasil/i);
+	expect(await regions.nth(1).getAttribute('aria-labelledby')).toBeNull();
+
+	await expectNoAxeViolations(page);
+
+	// AC3: roles change when the window is resized across 900 px, without a reload (tested at both sides, 900 and 901)
+	// Resize to 900 (phone side)
+	await page.setViewportSize({ width: 900, height: 800 });
+	await expect(tabStrip).toBeVisible();
+
+	// AC2: on phone, no column is a landmark
+	await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(0);
+	await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(0);
+
+	// Shown column has role="tabpanel" and its aria-labelledby points to its tab (default is editor)
+	const activeEditorCol = page.locator('#grammar-pane-editor');
+	await expect(activeEditorCol).toHaveAttribute('role', 'tabpanel');
+	await expect(activeEditorCol).toHaveAttribute('aria-labelledby', 'grammar-tab-editor');
+
+	// Resize to 901 (laptop side)
+	await page.setViewportSize({ width: 901, height: 800 });
+	await expect(tabStrip).toBeHidden();
+	for (const col of await cols.all()) {
+		expect(await col.getAttribute('role')).not.toBe('tabpanel');
+	}
+	await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(1);
+	await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(2);
+
+	// Resize to 899 (phone side again)
+	await page.setViewportSize({ width: 899, height: 800 });
+	await expect(tabStrip).toBeVisible();
+	await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(0);
+	await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(0);
+	await expect(activeEditorCol).toHaveAttribute('role', 'tabpanel');
+
+	// Resize back to 1280
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await expect(tabStrip).toBeHidden();
+	await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(1);
+	await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(2);
+});
+
+test('on the desktop project, grammar preset titles and custom titles respect locale', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await openGrammar(page);
+
+	// Switch interface to English
+	await page.locator('button[lang="en"]').click();
+
+	// Preset in library shows its English title
+	const palPreset = page.locator('.preset-card', { hasText: 'Palindromes {a, b}' });
+	await expect(palPreset).toBeVisible();
+
+	// Create a new grammar
+	await page.locator('.btn-new').click();
+	const editorHeader = page.locator('#grammar-pane-editor .col-header');
+	await expect(editorHeader.locator('.active-item-title')).toHaveText(/^Grammar G\d+$/);
+
+	// Switch back to Indonesian
+	await page.locator('button[lang="id"]').click();
+	await expect(editorHeader.locator('.active-item-title')).toHaveText(/^Grammar G\d+$/);
 });

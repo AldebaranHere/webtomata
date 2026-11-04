@@ -42,6 +42,10 @@ test('grammar phone layout on WebKit phone: tab navigation, shortcut, and axe', 
 	await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
 	const editorPane = page.locator('#grammar-pane-editor');
 	await expect(editorPane).toBeVisible();
+	await expect(editorPane).toHaveAttribute('role', 'tabpanel');
+	await expect(editorPane).toHaveAttribute('aria-labelledby', 'grammar-tab-editor');
+	await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(0);
+	await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(0);
 
 	// Shortcut to CNF
 	const shortcutBtn = editorPane.locator('.btn-convert-cnf');
@@ -50,6 +54,10 @@ test('grammar phone layout on WebKit phone: tab navigation, shortcut, and axe', 
 	await expect(tabs.nth(2)).toHaveAttribute('aria-selected', 'true');
 	const cnfPane = page.locator('#grammar-pane-cnf');
 	await expect(cnfPane).toBeVisible();
+	await expect(cnfPane).toHaveAttribute('role', 'tabpanel');
+	await expect(cnfPane).toHaveAttribute('aria-labelledby', 'grammar-tab-cnf');
+	await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(0);
+	await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(0);
 
 	// Step 6 has "Buka sebagai tata bahasa baru"
 	const stepPills = cnfPane.locator('.step-pill');
@@ -79,11 +87,19 @@ test('language phone layout on WebKit phone: tab navigation and axe', async ({ p
 	await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
 	const editorPane = page.locator('#language-pane-editor');
 	await expect(editorPane).toBeVisible();
+	await expect(editorPane).toHaveAttribute('role', 'tabpanel');
+	await expect(editorPane).toHaveAttribute('aria-labelledby', 'language-tab-editor');
+	await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(0);
+	await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(0);
 
 	// Jump to Pustaka and select preset
 	await tabs.nth(0).click();
 	const pustakaPane = page.locator('#language-pane-pustaka');
 	await expect(pustakaPane).toBeVisible();
+	await expect(pustakaPane).toHaveAttribute('role', 'tabpanel');
+	await expect(pustakaPane).toHaveAttribute('aria-labelledby', 'language-tab-pustaka');
+	await expect(page.locator('.workstation > .col[role="complementary"]')).toHaveCount(0);
+	await expect(page.locator('.workstation > .col[role="region"]')).toHaveCount(0);
 
 	const firstPreset = pustakaPane.locator('.item-btn').first();
 	await firstPreset.click();
