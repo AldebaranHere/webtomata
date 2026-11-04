@@ -14,6 +14,14 @@ Format:
 
 ---
 
+## 2026-11-04 — Rule rows on touch screens (T-024), and three tasks specified
+- Decider: owner (design and CNF/PDA answers); planner (specs)
+- Context: The planner measured the rule matrix of the grammar Editor, found that a row can be deleted only by right-click, and proposed a phone layout (P-003). The owner also answered the open questions for the CNF switch and the PDA.
+- Decision: (1) T-024: option B (alternatives flow in one line, like the course notation), applied at width ≤ 900 px and on `pointer: coarse` screens, with a 44 px "×" that deletes without asking. (2) T-010 (grammar flow e2e) and T-011 (language workstation and switcher e2e) are specified; expected results are derived by hand, and an engine disagreement stops the task. (3) T-012 is `rejected`: the drag handle already has seven real-touch tests in `editor-panel-height.spec.ts`. (4) CNF switch (P-002): the course version is the default, a toggle switches to a minimized version with reused rules, one version at a time. (5) PDA: Rich's and the slides' notation, deterministic and non-deterministic, a step budget with a "stopped" result and a partial trace.
+- Alternatives considered: option A (stacked alternatives, easier to tap, reads less like the textbook); a phone-only layout by width (leaves landscape tablets with small targets).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-024, T-010, T-011, T-012, P-002, backlog C), `design/screens/grammar-rule-rows-phone.md` and `.svg`
+
 ## 2026-11-04 — The worker does not run the full e2e suite on its machine
 - Decider: planner (the owner asked whether the worker could shard the suite like CI)
 - Context: CI runs the e2e suite in four shards on four machines (about 5 minutes); the worker ran the whole suite on one laptop under WSL, which takes much longer, and sharding on one machine does not add speed.
