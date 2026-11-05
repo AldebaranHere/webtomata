@@ -14,6 +14,16 @@ Format:
 
 ---
 
+## 2026-11-05 — PDA simulation engine, trace ranking, and peak configuration tracking (task T-031)
+- Decider: worker
+- Context: PDA execution requires breadth-first simulation with a single computation trace, budget safety, and measurement of peak configurations alive in the queue for homework assessment.
+- Decision: Implemented level-by-level BFS in `crates/engine-core/src/pda_simulate.rs` dropping duplicate configurations across and within levels, halting at the first level with an accepting configuration. Rejected traces select the best final configuration ranked by (conditions satisfied > position > creation order) with priority-ordered diagnostic failure messages (`input_left` > `not_accepting_state` > `stack_not_empty`). Added `StopReason::MaxStack` and default budgets (`max_steps: 10_000`, `max_configurations: 20_000`, `max_stack: 500`) with measured worst-case resident memory delta of ~37.8 MB (well below 50 MB).
+- Alternatives considered: Eagerly returning on first accepting config mid-level before finishing the level (rejected: would skew peak_configurations count across levels); ranking rejected traces solely by distance without considering stack status.
+- Reversible? yes
+- Affects: `crates/engine-core/src/pda_simulate.rs`, `stop.rs`, `api.rs`, `ts.rs`, `crates/engine-wasm/src/lib.rs`, `web/src/lib/engine/handlers.ts`, `protocol.ts`, `docs/decisions/0035-pda-simulation.md`
+
+---
+
 ## 2026-11-05 — The PDA is specified from the slides (T-030 to T-038)
 - Decider: owner (approved the decisions and the breakdown); planner (specs)
 - Context: The owner asked whether the PDA gets the same pairs of conversions as the FSM and a non-deterministic version. The planner read the PDA slides (Slide12 and Slide13, three semesters), the HW06 text and the owner's sample machines. The newer Slide12 says that JFLAP's bottom-of-stack symbol must be ignored (the grader is built without it) and that machines are built "per the concept taught".

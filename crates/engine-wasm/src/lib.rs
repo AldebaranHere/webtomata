@@ -31,6 +31,11 @@ pub fn pda_determinism(pda_json: &str) -> String {
     api::pda_determinism(pda_json)
 }
 
+#[wasm_bindgen(js_name = simulatePda)]
+pub fn simulate_pda(pda_json: &str, input: &str, budget_json: Option<String>) -> String {
+    api::simulate_pda(pda_json, input, budget_json.as_deref())
+}
+
 #[wasm_bindgen]
 pub fn validate(machine: &str) -> String {
     api::validate(machine)

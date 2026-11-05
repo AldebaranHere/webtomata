@@ -114,4 +114,6 @@ Added in the grammar and language workstations (`TODO(review)`): Tata bahasa beb
 
 Added in the PDA model (`TODO(review)`): pushdown automaton / PDA (mesin pushdown automaton / PDA), deterministic PDA / DPDA (DPDA), nondeterministic PDA / NDPDA (NDPDA), stack (stack), push (push), pop (pop), simbol stack (stack symbol), alfabet stack (stack alphabet), transisi bersaing (competing transitions), penanda bawah stack (bottom marker).
 
+Added in PDA simulation (`TODO(review)`): konfigurasi puncak (peak configurations), pencarian melebar (breadth-first search), batas kedalaman stack (maximum stack depth budget).
+
 

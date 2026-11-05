@@ -9,6 +9,8 @@ pub enum StopReason {
     MaxSteps,
     /// Too many state entries in the trace (simulation).
     MaxConfigurations,
+    /// The stack grew deeper than the budget (PDA simulation).
+    MaxStack,
     /// Too many states in the machine being built (conversions).
     MaxStates,
     /// Too many pairs of state sets explored (equivalence).
