@@ -135,6 +135,12 @@ Rule (for DPDA): Error `pda.accepting_state_free_move { state }` for any transit
 - Since stack starts empty, this transition can never fire.
 - **Verdict**: Warning `pda.pop_never_pushed { from: 0, symbol: "Z" }`.
 
+### Pop-Never-Pushed via Unreachable Push
+- Transition 1: $(0, a, [Y] \to [Z], 0)$ pushes $Z$ but requires popping $Y$. Nothing pushes $Y$.
+- Transition 2: $(0, a, [Z] \to [], 1)$ pops $Z$.
+- Since stack starts empty and $Y$ cannot be pushed, Transition 1 can never fire, and $Z$ can never be pushed onto the stack.
+- **Verdict**: Warnings `pda.pop_never_pushed { from: 0, symbol: "Z" }` and `pda.pop_never_pushed { from: 0, symbol: "Y" }`.
+
 ---
 
 ## 2. Size Measurement
@@ -250,6 +256,46 @@ thread 'accepting_state_free_move_case' panicked at crates/engine-core/tests/pda
 F1 must report accepting_state_free_move for state 1: []
 ```
 - **Restored**: Accepting state free move check restored.
+
+### Break 5: Delete `transitions.sort_unstable()` in `Pda::new`
+- **Change**: Deleted `transitions.sort_unstable()` in `Pda::new`, preserving arbitrary / shuffled input order of transitions.
+- **Failing Output**:
+```
+running 8 tests
+test bottom_marker_pop_never_pushed ... ok
+test accepting_state_free_move_case ... ok
+test m1_validation_and_determinism ... ok
+test m2_validation_and_determinism ... ok
+test pop_never_pushed_symbol_pushed_by_unreachable_pop ... ok
+test prefix_rule_cases ... ok
+test structural_issues ... ok
+test prop_determinism_symmetry_and_order_independence ... FAILED
+
+failures:
+
+---- prop_determinism_symmetry_and_order_independence stdout ----
+thread 'prop_determinism_symmetry_and_order_independence' (585745) panicked at crates/engine-core/tests/pda_validate.rs:290:1:
+Test failed: assertion failed: `(left == right)` 
+  left: `[(PdaTransition { from: StateId(3), read: Some(SymbolId(0)), pop: [], push: [], to: StateId(0) }, PdaTransition { from: StateId(3), read: None, pop: [], push: [], to: StateId(0) })]`,
+ right: `[(PdaTransition { from: StateId(3), read: None, pop: [], push: [], to: StateId(0) }, PdaTransition { from: StateId(3), read: Some(SymbolId(0)), pop: [], push: [], to: StateId(0) })]` at crates/engine-core/tests/pda_validate.rs:327.
+minimal failing input: transitions = [
+    PdaTransition {
+        from: StateId(3),
+        read: Some(SymbolId(0)),
+        pop: [],
+        push: [],
+        to: StateId(0),
+    },
+    PdaTransition {
+        from: StateId(3),
+        read: None,
+        pop: [],
+        push: [],
+        to: StateId(0),
+    },
+], seed = 4298176319142747660
+```
+- **Restored**: `transitions.sort_unstable();` restored in `Pda::new`.
 
 ---
 

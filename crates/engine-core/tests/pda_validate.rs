@@ -217,50 +217,115 @@ fn structural_issues() {
     );
 }
 
-prop_compose! {
-    fn arb_random_pda()(
-        num_transitions in 0usize..10,
-    ) -> (Pda, Vec<PdaTransition>) {
-        let states = vec![StateId(0), StateId(1)];
-        let input = Alphabet::new(vec!["a".to_string(), "b".to_string()]).unwrap();
-        let stack = Alphabet::new(vec!["X".to_string(), "Y".to_string()]).unwrap();
-        let start = Some(StateId(0));
-        let accepting = vec![StateId(1)];
-        let mut transitions = Vec::new();
-        for i in 0..num_transitions {
-            let from = StateId((i % 2) as u32);
-            let to = StateId(((i + 1) % 2) as u32);
-            let read = if i % 3 == 0 { None } else { Some(SymbolId((i % 2) as u16)) };
-            let pop = if i % 2 == 0 { vec![] } else { vec![SymbolId(0)] };
-            let push = if i % 4 == 0 { vec![SymbolId(1)] } else { vec![] };
-            transitions.push(PdaTransition { from, read, pop, push, to });
-        }
-        let pda = Pda::new(PdaKind::Ndpda, input, stack, states, start, accepting, transitions.clone()).unwrap();
-        (pda, transitions)
+#[test]
+fn pop_never_pushed_symbol_pushed_by_unreachable_pop() {
+    // Z is pushed only by a transition that pops Y, and nothing pushes Y.
+    // Therefore Z can never appear on the stack, and popping Z must warn pop_never_pushed.
+    let json = r#"{"schemaVersion":1,"kind":"ndpda","inputAlphabet":["a"],"stackAlphabet":["Y","Z"],"states":[0,1],"start":0,"accepting":[1],"transitions":[{"from":0,"read":"a","pop":["Y"],"push":["Z"],"to":0},{"from":0,"read":"a","pop":["Z"],"push":[],"to":1}]}"#;
+    let pda = Pda::from_json(json).unwrap();
+    let issues = validate_pda(&pda);
+    assert!(
+        issues.iter().any(|i| i.severity == Severity::Warning
+            && i.message.key == "pda.pop_never_pushed"
+            && int(i, "from") == 0
+            && text(i, "symbol") == "Z"),
+        "Must warn pda.pop_never_pushed for symbol Z: {issues:?}"
+    );
+    assert!(
+        issues.iter().any(|i| i.severity == Severity::Warning
+            && i.message.key == "pda.pop_never_pushed"
+            && int(i, "from") == 0
+            && text(i, "symbol") == "Y"),
+        "Must warn pda.pop_never_pushed for symbol Y: {issues:?}"
+    );
+}
+
+fn shuffle_transitions(vec: &mut [PdaTransition], mut seed: u64) {
+    for i in (1..vec.len()).rev() {
+        seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
+        let j = (seed >> 33) as usize % (i + 1);
+        vec.swap(i, j);
     }
+}
+
+fn naive_reference_competition(
+    transitions: &[PdaTransition],
+) -> Vec<(PdaTransition, PdaTransition)> {
+    let mut sorted = transitions.to_vec();
+    sorted.sort_unstable();
+    let mut competing = Vec::new();
+    let n = sorted.len();
+    for i in 0..n {
+        for j in (i + 1)..n {
+            let t1 = &sorted[i];
+            let t2 = &sorted[j];
+            if t1.from == t2.from {
+                let read_competes = t1.read == t2.read || t1.read.is_none() || t2.read.is_none();
+                let pop_competes = (t1.pop.len() <= t2.pop.len() && t2.pop.starts_with(&t1.pop))
+                    || (t2.pop.len() <= t1.pop.len() && t1.pop.starts_with(&t2.pop));
+                if read_competes && pop_competes {
+                    competing.push((t1.clone(), t2.clone()));
+                }
+            }
+        }
+    }
+    competing
+}
+
+fn arb_transition() -> impl Strategy<Value = PdaTransition> {
+    (
+        (0u32..4).prop_map(StateId),
+        prop_oneof![Just(None), (0u16..2).prop_map(|s| Some(SymbolId(s)))],
+        prop::collection::vec((0u16..2).prop_map(SymbolId), 0..=3),
+        prop::collection::vec((0u16..2).prop_map(SymbolId), 0..=3),
+        (0u32..4).prop_map(StateId),
+    )
+        .prop_map(|(from, read, pop, push, to)| PdaTransition {
+            from,
+            read,
+            pop,
+            push,
+            to,
+        })
 }
 
 proptest! {
     #[test]
-    fn prop_determinism_symmetry_and_order_independence((pda, transitions) in arb_random_pda()) {
+    fn prop_determinism_symmetry_and_order_independence(
+        transitions in prop::collection::vec(arb_transition(), 2..=12),
+        seed in any::<u64>(),
+    ) {
+        let states = vec![StateId(0), StateId(1), StateId(2), StateId(3)];
+        let input = Alphabet::new(vec!["a".to_string(), "b".to_string()]).unwrap();
+        let stack = Alphabet::new(vec!["X".to_string(), "Y".to_string()]).unwrap();
+        let start = Some(StateId(0));
+        let accepting = vec![StateId(0), StateId(1)];
+
+        let reference = naive_reference_competition(&transitions);
+
+        let mut shuffled = transitions;
+        shuffle_transitions(&mut shuffled, seed);
+
+        let pda = Pda::new(
+            PdaKind::Dpda,
+            input,
+            stack,
+            states,
+            start,
+            accepting,
+            shuffled,
+        ).unwrap();
+
         let comp = determinism(&pda);
         for c in &comp {
             prop_assert!(c.first < c.second);
         }
 
-        // Reversed transitions in Pda::new should result in identical determinism output
-        let mut rev_trans = transitions;
-        rev_trans.reverse();
-        let pda_rev = Pda::new(
-            pda.kind,
-            pda.input.clone(),
-            pda.stack.clone(),
-            pda.states.clone(),
-            pda.start,
-            pda.accepting.clone(),
-            rev_trans
-        ).unwrap();
-        let comp_rev = determinism(&pda_rev);
-        prop_assert_eq!(comp, comp_rev);
+        let engine_pairs: Vec<(PdaTransition, PdaTransition)> = comp
+            .iter()
+            .map(|c| (pda.transitions[c.first].clone(), pda.transitions[c.second].clone()))
+            .collect();
+
+        prop_assert_eq!(engine_pairs, reference);
     }
 }

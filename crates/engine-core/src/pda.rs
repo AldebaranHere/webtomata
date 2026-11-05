@@ -7,12 +7,12 @@
 //! - Competing transitions define non-determinism; a DPDA has no competing pairs.
 
 use crate::fsm::{Alphabet, MAX_STATES, MAX_TRANSITIONS, StateId, SymbolId, limit_exceeded};
+use crate::json::MAX_JSON_BYTES;
 use crate::message::Message;
 use crate::validate::{Issue, MAX_ISSUES, Severity};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashSet, VecDeque};
 
-pub const MAX_JSON_BYTES: usize = 1024 * 1024;
 pub const MAX_PDA_STRING: usize = 64;
 const SCHEMA_VERSION: u32 = 1;
 
