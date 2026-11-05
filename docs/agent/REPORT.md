@@ -360,6 +360,9 @@ ok   wasm _app/immutable/workers/assets/engine_wasm_bg-D_n5XNay.wasm: 229.0 KB g
 
 ## 4. Summary & Non-Goals Confirmed
 
+- **PR:** #159 (https://github.com/AldebaranHere/webtomata/pull/159)
+- **Work Commit:** `b446940` (`feat(engine): convert CFG to PDA bottom-up with step trace`)
+- **Status in PLAN.md:** `done`
 - Bottom-up CFG-to-PDA conversion implemented strictly following course Slide13 page 8 (`CFGtoPDAbottomup`).
 - Transitions emitted in trace order: shifts for sorted terminals, reduces for distinct rules in grammar order (with reversed RHS popped top-first), and accept transition last.
 - Shared alphabet construction and validation helper `prepare_cfg_pda_context` preserved error precedence identically to T-034: input `Alphabet::new`, then name-clash check (`pda.cfg.symbol_clash`), then stack `Alphabet::new`.
