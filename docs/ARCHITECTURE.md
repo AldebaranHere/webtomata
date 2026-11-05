@@ -51,7 +51,7 @@ The machine that the user edits is a **document** (`web/src/lib/editor/`): plain
 
 - **Commands** are plain data (`addState`, `moveState`, `addTransition`, `removeSymbol`, `batch`, and so on). `applyCommand(doc, command)` is a pure function that gives a new document or an error message; it never throws, and a refused command changes nothing.
 - **History** (`createHistory`) keeps earlier versions of the document, so undo gives back exactly the earlier one. One gesture is one step: commands with the same `coalesce` key merge, and `seal()` ends the group. Undo covers document edits only (not selection, pan or zoom). The depth is 200 steps.
-- **Files** (`serializeDocument`, `parseDocumentText`) are read strictly, with a size limit and no unknown fields. `documentFromJff` and `jffLayout` move names and places to and from a JFLAP file.
+- **Files** (`serializeDocument`, `parseDocumentText`) are read strictly, with a size limit and no unknown fields. `documentFromJff` and `jffLayout` move names and places to and from a JFLAP file (FA `<type>fa</type>` and PDA `<type>pda</type>`).
 - See ADR 0017 for the decisions, and `docs/ux/editor-interactions.md` (U3, not written yet) for how the editor uses the commands.
 
 ## Trust boundary

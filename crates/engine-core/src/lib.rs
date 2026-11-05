@@ -28,6 +28,7 @@ mod ts;
 mod validate;
 mod xor;
 
+pub use api::{export_jff, export_pda_jff, import_jff, import_pda_jff};
 pub use determinize::{Conversion, ConversionBudget, determinize};
 pub use equivalence::{Counterexample, Equivalence, EquivalenceBudget, equivalent};
 pub use fsm::{
@@ -35,7 +36,7 @@ pub use fsm::{
     SymbolId, Transition,
 };
 pub use fsm_regex::{Extraction, FsmToRegexBudget, fsm_to_regex};
-pub use jff::{Jff, JffState, MAX_JFF_BYTES, parse_jff, to_jff};
+pub use jff::{Jff, JffState, MAX_JFF_BYTES, PdaJff, parse_jff, parse_pda_jff, to_jff, to_pda_jff};
 pub use json::MAX_JSON_BYTES;
 pub use message::{Message, Param};
 pub use minimize::{Minimization, MinimizeBudget, minimize};

@@ -14,6 +14,16 @@ Format:
 
 ---
 
+## 2026-11-05 — Pushdown automaton (PDA) JFLAP .jff import and export (task T-032)
+- Decider: worker
+- Context: Fasilkom UI students and lecturers exchange PDA files with JFLAP (`<type>pda</type>`). JFLAP reads pop/push strings top-first (one char per symbol) and implicitly adds a bottom marker `Z` that our course simulator ignores (Slide12).
+- Decision: Implemented `parse_pda_jff` and `to_pda_jff` in `crates/engine-core/src/jff.rs`, sharing state parsing and XML escaping helpers with the FSM implementation without altering FSM behavior. Pop and push strings serialize and parse top-first character-by-character. Multi-character `<read>` labels are refused with `jff.pda_read_not_single { label, from, to }`. PDAs containing multi-character stack or input symbols (e.g. `S0` from CFG conversions) cannot be exported and fail with `jff.symbol_not_single_character { symbol }`. Imported PDAs default to `ndpda`. Machines relying on JFLAP's implicit bottom marker import without modification, trigger `pda.pop_never_pushed` validation warnings, and reject on an empty stack.
+- Alternatives considered: Decomposing multi-character read labels into intermediate states like FSMs (rejected: alters stack semantics without knowing JFLAP PDA behavior); automatically injecting a bottom marker on import (rejected: contradicts course Slide12 rules).
+- Reversible? yes
+- Affects: `crates/engine-core/src/jff.rs`, `lib.rs`, `api.rs`, `ts.rs`, `crates/engine-wasm/src/lib.rs`, `web/src/lib/engine/protocol.ts`, `handlers.ts`, `docs/decisions/0036-pda-jff.md`
+
+---
+
 ## 2026-11-05 — PDA simulation engine, trace ranking, and peak configuration tracking (task T-031)
 - Decider: worker
 - Context: PDA execution requires breadth-first simulation with a single computation trace, budget safety, and measurement of peak configurations alive in the queue for homework assessment.

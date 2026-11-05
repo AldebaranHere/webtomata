@@ -400,6 +400,23 @@ pub fn export_jff(machine_json: &str, layout_json: &str) -> String {
     finish(run())
 }
 
+/// Reads a PDA JFLAP file: the machine and the layout of its states.
+pub fn import_pda_jff(xml: &str) -> String {
+    finish(crate::parse_pda_jff(xml))
+}
+
+/// Writes a PDA JFLAP file. `layout_json` is a JSON list of `{id, name, x, y}`.
+pub fn export_pda_jff(pda_json: &str, layout_json: &str) -> String {
+    let run = || -> Result<String, Message> {
+        let pda = pda_model(pda_json)?;
+        too_long(layout_json, "layout bytes", MAX_JSON_BYTES)?;
+        let layout: Vec<JffState> =
+            serde_json::from_str(layout_json).map_err(|_| Message::new("api.invalid_layout"))?;
+        crate::to_pda_jff(&pda, &layout)
+    };
+    finish(run())
+}
+
 /// What `enumerate_language` returns: strings in proper order and inferred alphabet.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]

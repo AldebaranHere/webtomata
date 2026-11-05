@@ -27,6 +27,7 @@ import type {
 	CnfTransformationTrace,
 	CykResult,
 	Pda,
+	PdaJff,
 	Competition,
 	PdaBudget,
 	PdaSimulationReport,
@@ -119,6 +120,8 @@ export interface EngineApi {
 		input: string,
 		budget?: Partial<PdaBudget>
 	): EngineResult<PdaSimulationReport>;
+	importPdaJff(xml: string): EngineResult<PdaJff>;
+	exportPdaJff(pda: Pda, layout: JffState[]): EngineResult<string>;
 }
 
 export type EngineMethod = keyof EngineApi;
@@ -152,7 +155,9 @@ export const METHODS = [
 	'loadPda',
 	'validatePda',
 	'pdaDeterminism',
-	'simulatePda'
+	'simulatePda',
+	'importPdaJff',
+	'exportPdaJff'
 ] as const satisfies readonly EngineMethod[];
 
 /** A method that is missing from `METHODS` makes this a type error. */
