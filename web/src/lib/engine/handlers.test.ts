@@ -311,6 +311,46 @@ describe('every method reaches the engine', () => {
 			}
 		});
 	});
+
+	it('converts a CFG to a PDA bottom-up', () => {
+		const res = call('cfgToPdaBottomup', 'S -> a S b | a b');
+		expect(res).toEqual({
+			ok: true,
+			value: {
+				pda: {
+					schemaVersion: 1,
+					kind: 'ndpda',
+					inputAlphabet: ['a', 'b'],
+					stackAlphabet: ['S', 'a', 'b'],
+					states: [0, 1],
+					start: 0,
+					accepting: [1],
+					transitions: [
+						{ from: 0, read: null, pop: ['S'], push: [], to: 1 },
+						{ from: 0, read: null, pop: ['b', 'S', 'a'], push: ['S'], to: 0 },
+						{ from: 0, read: null, pop: ['b', 'a'], push: ['S'], to: 0 },
+						{ from: 0, read: 'a', pop: [], push: ['a'], to: 0 },
+						{ from: 0, read: 'b', pop: [], push: ['b'], to: 0 }
+					]
+				},
+				states: [
+					{ id: 0, name: 'p' },
+					{ id: 1, name: 'q' }
+				],
+				steps: expect.arrayContaining([
+					expect.objectContaining({
+						message: { key: 'cfg_pda.bottom_up.shift', params: { symbol: 'a' } }
+					}),
+					expect.objectContaining({
+						message: { key: 'cfg_pda.bottom_up.reduce', params: { rule: 'S -> aSb' } }
+					}),
+					expect.objectContaining({
+						message: { key: 'cfg_pda.bottom_up.accept', params: {} }
+					})
+				])
+			}
+		});
+	});
 });
 
 describe('a call that the engine cannot answer', () => {

@@ -38,6 +38,7 @@ export interface Wasm {
 	importPdaJff(xml: string): string;
 	exportPdaJff(pda: string, layout: string): string;
 	cfgToPdaTopdown(grammar: string): string;
+	cfgToPdaBottomup(grammar: string): string;
 }
 
 export type Handlers = {
@@ -113,7 +114,8 @@ export function createHandlers(wasm: Wasm): Handlers {
 		simulatePda: (pda, input, budget) => wasm.simulatePda(text(pda), input, optional(budget)),
 		importPdaJff: (xml) => wasm.importPdaJff(xml),
 		exportPdaJff: (pda, layout) => wasm.exportPdaJff(text(pda), text(layout)),
-		cfgToPdaTopdown: (grammar) => wasm.cfgToPdaTopdown(grammar)
+		cfgToPdaTopdown: (grammar) => wasm.cfgToPdaTopdown(grammar),
+		cfgToPdaBottomup: (grammar) => wasm.cfgToPdaBottomup(grammar)
 	};
 }
 

@@ -334,6 +334,10 @@ export const id = {
 	'cfg_pda.top_down.start': 'Awali dengan push simbol awal ke stack.',
 	'cfg_pda.top_down.rule': 'Aturan {rule}: pop variabel dan push ruas kanan.',
 	'cfg_pda.top_down.terminal': 'Terminal "{symbol}": baca dan pop terminal yang cocok.',
+	'cfg_pda.bottom_up.shift': 'Geser terminal "{symbol}": baca dan push ke stack.',
+	'cfg_pda.bottom_up.reduce':
+		'Reduksi aturan {rule}: pop ruas kanan terbalik dan push variabel kepala.',
+	'cfg_pda.bottom_up.accept': 'Transisi terima: pop simbol awal ke state terima.',
 	// TODO(review): the wording of the test strings is a draft until the feedback guide (U4).
 	'test.title': 'Uji banyak string',
 	'test.add_label': 'Tambah string',
