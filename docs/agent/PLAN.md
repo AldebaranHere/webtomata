@@ -4,7 +4,7 @@
 > `todo` means ready: every field is written and the human approved it. Several tasks can be `todo` at the same time. The worker does one task at a time: the one that the human names in the start prompt ("Do task T-xxx"). The worker sets it to `in-progress` in the first commit of its own PR and to `done` in the last. The planner does not open a pull request only to change a status.
 > The blank task template is in `PLAN-TEMPLATE.md`.
 
-**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 (CNF phases in the homework order, after T-029 is merged) is `todo` since the owner approved `design/screens/cnf-stepper-homework-order.md`; T-060 is merged (PR 147). Written on 2026-11-05 after it: T-015 (`todo`: the "versi panjang / versi ringkas" toggle).
+**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 (CNF phases in the homework order, after T-029 is merged) is `todo` since the owner approved `design/screens/cnf-stepper-homework-order.md`; T-060 is merged (PR 147). Written on 2026-11-05 after it: T-015 (`todo`: the "versi panjang / versi ringkas" toggle). Written on 2026-11-05 after T-015 merged: T-030, then T-031 (`todo`, the PDA engine: model and validation, then simulation; one after the other, they touch the same engine files). T-032 and T-034 to T-038 are `proposed` drafts; the full specs are written when the one before is merged.
 
 Status legend: `proposed` | `todo` | `in-progress` | `blocked` | `done` | `rejected`
 
@@ -1176,6 +1176,216 @@ Expected: all pass. Do not run the full suite locally. Paste real output into `R
 
 ---
 
+## Task T-030 — PDA data model, JSON, validation and the determinism check
+
+**Status:** todo
+**Owner:** worker
+**Branch:** `task/T-030-pda-model`
+
+**Goal:** The engine gets a pushdown automaton (PDA) as plain data, in the notation of the course slides (Slide12 and Slide13, the same as Rich): a transition `((q1, c, γ1), (q2, γ2))` reads `c` (or nothing), pops the string `γ1` from the top of the stack, and pushes the string `γ2`. The machine is non-deterministic by default (NDPDA); a deterministic PDA (DPDA) is the special case where no two transitions compete. This task adds the model, the versioned JSON file, the validation, and a function that lists the competing transitions. It does not run the machine (T-031), read `.jff` (T-032), or draw it (T-033). See ADR 0034 (written in this task) and `docs/agent/DECISIONS.md` (2026-11-05, PDA decisions).
+
+**Decisions already made (do not reopen; ask the planner if one looks wrong):**
+- **Stack and acceptance** (Slide12): the stack starts **empty**; the engine adds no bottom marker (JFLAP adds one, but the course grader is built without it; a machine pushes its own marker if it wants one). A run accepts when it reaches a configuration `(q, ε, ε)` with `q` accepting: input used up, stack empty, accepting state. There is only this acceptance rule; no setting for "final state only".
+- **Strings, top first.** `pop` and `push` are lists of stack symbols. The first element is the top of the stack. Popping `[a, b]` needs `a` on top and `b` under it; pushing `[a, S, b]` leaves `a` on top. A transition with `pop = []` does **not** check the stack and does **not** mean "empty stack" (Slide12 says so explicitly).
+- **Symbols have names.** Both alphabets use the existing `Alphabet` (names of up to 32 characters, interned as `SymbolId`), so the stack alphabet can hold `Z0`, `S0`, `T_a`. Reuse `Alphabet` and `SymbolId` for both alphabets; no new id type (a transition names its fields `read`, `pop` and `push`, so the two are not mixed).
+- **Declared kind.** `kind` is `"dpda"` or `"ndpda"`, like `dfsm` and `ndfsm` for the FSM. For a `dpda`, competing transitions are errors; for an `ndpda` they are fine.
+- **The end marker `$` is an ordinary input symbol.** The homework languages end with `$` and the machine must read it. The engine has no special handling.
+
+**Scope (in):**
+- `crates/engine-core/src/pda.rs` (one file for the model, the JSON and the validation; split only if it passes about 600 lines): `Pda { kind, input: Alphabet, stack: Alphabet, states, start, accepting, transitions }`, `PdaKind { Dpda, Ndpda }`, `PdaTransition { from, read: Option<SymbolId>, pop: Vec<SymbolId>, push: Vec<SymbolId>, to }`. `Pda::new` checks every reference and every limit, then sorts the states, the accepting states and the transitions (by `from`, `read` with ε first, `pop`, `push`, `to`) so that equal machines are equal values. Limits: reuse `MAX_STATES`, `MAX_SYMBOLS`, `MAX_TRANSITIONS`; add `MAX_PDA_STRING = 64` for the length of one `pop` or `push` list. Use `limit_exceeded` messages as the FSM does.
+- JSON, `"schemaVersion": 1`, input untrusted (size limit `MAX_JSON_BYTES`, `deny_unknown_fields`, nothing panics, a future schema version gives a clear message, same pattern as `json.rs`):
+  `{"schemaVersion":1,"kind":"ndpda","inputAlphabet":["a","b"],"stackAlphabet":["a","b"],"states":[0,1],"start":0,"accepting":[1],"transitions":[{"from":0,"read":"a","pop":[],"push":["a"],"to":0}]}`
+  `read` is `null` for ε; `pop` and `push` are arrays of stack symbol names, top first. `Pda::from_json` and `Pda::to_json`; writing then reading gives the same machine.
+- `validate_pda(&Pda) -> Vec<Issue>` (reuse `Issue` and `Severity`, fixed order, capped at `MAX_ISSUES`): errors `pda.no_start_state`; warnings `pda.no_accepting_state`, `pda.unreachable_state` (reachable by the transition graph alone, ignoring the stack), `pda.duplicate_transition`, and `pda.pop_never_pushed { from, symbol }` (a transition pops a stack symbol that no transition ever pushes, so it can never fire because the stack starts empty; this is what happens with a machine written for JFLAP's bottom marker `Z`). For `kind = dpda` only: error `pda.competing_transitions { from, first, second }` for every competing pair, and error `pda.accepting_state_free_move { state }` for a transition out of an accepting state that reads nothing **and** pops nothing (Slide12, DPDA rule 2).
+- `determinism(&Pda) -> Vec<Competition>`, where `Competition { from, first, second }` holds two indices into the sorted transition list. Two different transitions of the same state **compete** iff (their `read` symbols are equal, or at least one of them is ε) **and** (one `pop` list is a prefix of the other, an empty list being a prefix of every list). This is the course's definition: a transition that pops nothing competes with the others "assuming an empty stack", and a transition that reads nothing competes "assuming the input is used up". An empty list means deterministic.
+- API (`api.rs`): `load_pda(json)`, `validate_pda(json)`, `pda_determinism(json)`, each returning the same JSON envelope as the FSM functions. The same three in `crates/engine-wasm/src/lib.rs`, in `web/src/lib/engine/handlers.ts` and `protocol.ts`, typed, with the TypeScript types generated by `ts-rs` (`Pda`, `PdaTransition`, `Competition`) in `ts.rs`.
+- Message keys: every new key (`pda.*`) gets an `id` and an `en` text if the repo has a test that requires it for engine keys (check how `machine.unknown_state` is covered with `grep`; follow the same rule). Indonesian: the slides keep "stack", "push" and "pop" in English inside Indonesian sentences; do the same and add the terms to `docs/glossary.md` with `TODO(review)`.
+- `docs/decisions/0034-pda-data-model.md` (the decisions above and why) and a short PDA section in `docs/notation.md`: the formal form `((q1, c, γ1), (q2, γ2))`, the diagram label `c / γ1 / γ2`, "leftmost is the top".
+- Tests, written first, with the hand derivations below.
+
+**Non-goals (out):**
+- No simulation (T-031), no `.jff` (T-032), no editor or any UI (T-033), no conversion (T-034 to T-037).
+- No conversion from an NDPDA to a DPDA: it does not exist in general (some context-free languages have no DPDA). The engine only reports whether a machine is deterministic and which transitions compete.
+- No bottom marker, no acceptance setting, no multi-stack PDA.
+- Do not add sample machines that solve the languages of the current homework (HW06: `aⁱbʲcᵏdᵐ$`, `3#a(w) = 4#b(w)`, `aⁱbʲ$ : i ≤ j ≤ 2i`, and so on). Use only the machines below.
+
+**Files expected to touch:** `crates/engine-core/src/pda.rs` (new), `lib.rs`, `api.rs`, `ts.rs`, `crates/engine-core/tests/pda_json.rs` and `pda_validate.rs` (new), `crates/engine-wasm/src/lib.rs`, `web/src/lib/engine/handlers.ts`, `protocol.ts`, the generated types, `id.ts` and `en.ts` (only if needed), `docs/glossary.md`, `docs/notation.md`, `docs/decisions/0034-pda-data-model.md`, `docs/agent/REPORT.md`.
+
+**Design reference:** none (no screen). Slides: `REFERENCES/PACIL-TBA/REGU-GENAP-2526/Slide12 PDA1_2201.pdf`, pages 16 to 24 (read them; the folder is private, so quote nothing from it in a commit).
+
+**Hand derivations the planner has done (the worker redoes them in `REPORT.md` before the tests run; if the engine disagrees, stop and report):**
+- *M1, a DPDA for `aⁿbⁿ` (n ≥ 0).* Input alphabet `a, b`; stack alphabet `a`; states `0` (start, accepting) and `1` (accepting); transitions `(0, a, [] → [a], 0)`, `(0, b, [a] → [], 1)`, `(1, b, [a] → [], 1)`. `determinism` is empty. `validate` as `dpda` has no issue.
+- *M2, an NDPDA for `wwᴿ` over `{a, b}`.* Input `a, b`; stack `a, b`; states `0` (start) and `1` (accepting); transitions `(0, a, [] → [a], 0)`, `(0, b, [] → [b], 0)`, `(0, ε, [] → [], 1)`, `(1, a, [a] → [], 1)`, `(1, b, [b] → [], 1)`. `determinism` lists exactly two competing pairs, both at state `0`, both with the ε-transition (it competes with the `a`-push and with the `b`-push; the two pushes do not compete, and the two pops at state `1` do not compete). Declared `dpda`, `validate` gives two `pda.competing_transitions` errors; declared `ndpda`, none.
+- *Prefix rule.* At one state, `(a, pop [a])` and `(a, pop [a, b])` compete (same read, `[a]` is a prefix of `[a, b]`); `(a, pop [a])` and `(a, pop [b])` do not; `(a, pop [a])` and `(b, pop [a])` do not; `(ε, pop [a])` and `(b, pop [a, b])` do.
+- *Accepting state, free move.* A machine whose accepting state `1` has `(1, ε, [] → [x], 1)`: as `dpda`, one error `pda.accepting_state_free_move`; with `(1, ε, [x] → [], 1)` instead (it pops), no error.
+- *JFLAP bottom marker.* A machine with `(0, ε, [Z] → [S, Z], 1)` and no transition that pushes `Z`: one warning `pda.pop_never_pushed` with symbol `Z`.
+
+**Acceptance criteria:**
+- AC1: the JSON of M1 and M2 round-trips; a file with an unknown field, a missing field, `schemaVersion: 2`, an unknown stack symbol, a `pop` of 65 symbols, or a size over the limit gives a message key and never panics.
+- AC2: M1, M2 and the prefix, free-move and bottom-marker cases above give exactly the results written above.
+- AC3: `proptest` on random small PDAs: `to_json` then `from_json` is the identity; `determinism` is symmetric (the pair `(i, j)` appears once, with `i < j`) and its result does not depend on the order in which the transitions were given.
+- AC4: deliberate breaks, each shown failing, then restored: compare only the `read` symbols (ignore the pop prefix); treat an ε read as not competing; test the pop prefix in one direction only; drop the accepting-state rule.
+- AC5: `wasm` stays under 250 KB gzip and the initial JS of every route under 170 KB (`pnpm size`).
+
+**Verification:**
+```
+cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+pnpm build:wasm
+pnpm check && pnpm lint && pnpm format:check && pnpm check:strings && pnpm check:tokens
+pnpm --filter web exec vitest run
+pnpm build && pnpm size
+```
+Expected: all pass. No e2e (no UI). Paste real output into `REPORT.md`.
+
+**Rollback:** `git revert <sha>`. Nothing reads the new code yet.
+
+**Depends on:** none.
+
+**Notes for worker:** One new file for the model, the JSON and the validation: keep it simple and in one place. Reuse what the FSM has (`Alphabet`, `Issue`, the limit messages, the JSON pattern). If a decision above looks wrong to you, stop and ask the planner.
+
+---
+
+## Task T-031 — PDA simulation: breadth-first, stack trace, peak configurations
+
+**Status:** todo (starts after T-030 is merged)
+**Owner:** worker
+**Branch:** `task/T-031-pda-simulation`
+
+**Goal:** Run a PDA on an input string, as in the course: breadth-first over configurations `(state, remaining input, stack)`, with a step budget, a trace of one computation, and the largest number of configurations that were alive at the same time. The homework grades a machine "by how low a level of non-determinism it performs, counted by the simulator as the largest number of contents in the BFS queue"; the number this task returns is our version of that count. See ADR 0035.
+
+**Scope (in):**
+- `crates/engine-core/src/pda_simulate.rs`: `simulate_pda(&Pda, &[SymbolId], PdaBudget) -> Result<PdaSimulation, Message>`. An error message (not a result) for an input symbol outside the input alphabet or a missing start state (`pda.sim.no_start_state`, `pda.sim.unknown_symbol`).
+- **Semantics (Slide12):** a configuration is `(q, i, stack)`, `i` the number of symbols read, the stack kept top first. The start is `(start, 0, [])`. A transition `(q, c, γ1 → γ2, r)` applies to `(q, i, s)` iff `c` is ε or equals `input[i]`, and `γ1` is a prefix of `s`; the result is `(r, i + (c ≠ ε), γ2 ++ s[len(γ1)..])`. The run accepts iff some reachable configuration is `(q, len(input), [])` with `q` accepting. Pop of `[]` fires on any stack (not only an empty one).
+- **Breadth-first by levels:** level 0 is the start; level `k + 1` holds every configuration reached by applying one transition to a configuration of level `k`, in a fixed order (parent order, then transition order). A configuration that was already seen at an earlier or the same level is dropped (so a loop that changes nothing ends; a loop that grows the stack is stopped by the budget). The run stops at the first level that contains an accepting configuration.
+- `peak_configurations`: the largest number of configurations held by one level (after dropping repeats). A DPDA gives 1 for every input. The result also has `explored` (all configurations created). State in the ADR that the count may differ from the server grader's own count, which the planner has not seen.
+- Budget `PdaBudget { max_steps (levels, default 10 000), max_configurations (all created, default 20 000), max_stack (symbols on one stack, default 500) }`, camelCase JSON, `deny_unknown_fields`; add `StopReason::MaxStack` and its TypeScript type. The defaults must keep the worst case near 20 MB of memory (20 000 configurations of 500 symbols of 2 bytes): measure it and write the number in the report; change a default only with the planner's approval. On overflow the result is `Stopped { reason, partial_trace, peak_configurations, explored }`, never a loop or a panic.
+- **The trace shows one computation.** A step is `{ position, symbol (the symbol read, or null), transition (index into the sorted transition list, or null for the first step), state, stack (top first), message }`. For an accepted run it is the path from the start to the first accepting configuration found. For a rejected run it is the path to the **best** final configuration (a configuration from which no transition leads to a new configuration): rank configurations by how many of the three conditions hold (input used up, accepting state, stack empty), then by larger `position`, then by earlier creation; the last step's message says what failed, in this order of priority: `pda.sim.input_left { left }`, `pda.sim.not_accepting_state`, `pda.sim.stack_not_empty { depth }`. For a stopped run it is the path to the best configuration so far. Other message keys: `pda.sim.start`, `pda.sim.move`, `pda.sim.accepted`.
+- API (`api.rs`, wasm, `handlers.ts`, `protocol.ts`, types by `ts-rs`): `simulate_pda(machine_json, input, budget_json)` returning the same envelope as `simulate`. The input is tokenized by the input alphabet (`Alphabet::tokenize`).
+- `id` and `en` texts for the new keys under the same rule as T-030; glossary terms with `TODO(review)`; `docs/decisions/0035-pda-simulation.md`.
+- Tests, written first, with the hand derivations below.
+
+**Non-goals (out):**
+- No UI, no `.jff`, no step-by-step playback controls (T-033 and T-038). No NDPDA to DPDA conversion. No second acceptance mode. No change to the FSM simulator except the new `StopReason`.
+
+**Files expected to touch:** `pda_simulate.rs` (new), `stop.rs`, `lib.rs`, `api.rs`, `ts.rs`, `crates/engine-core/tests/pda_simulate.rs` (new), `crates/engine-wasm/src/lib.rs`, `handlers.ts`, `protocol.ts`, the generated types, `id.ts`, `en.ts`, `docs/glossary.md`, `docs/decisions/0035-pda-simulation.md`, `docs/agent/REPORT.md`.
+
+**Design reference:** none (no screen). Slides: Slide12, pages 3 to 6 and 16 to 19.
+
+**Hand derivations the planner has done (the worker redoes them in `REPORT.md` before the tests run; machines M1 and M2 are those of T-030):**
+- *M1 (`aⁿbⁿ`):* `ε` accepted (state `0` is accepting, the stack is empty); `ab` and `aabb` accepted; `a` rejected, last message `stack_not_empty` (depth 1: after `a` the configuration is `(0, 1, [a])`); `aab` rejected, `stack_not_empty` (state `1`, stack `[a]`); `b` rejected, `input_left` (left 1; nothing can fire on the first configuration); `abb` rejected, `input_left` (left 1: the best configuration is `(1, 2, [])`). `peak_configurations` is 1 for all of them.
+- *M2 (`wwᴿ`), input `aa`:* level 0 `{(0,0,[])}`; level 1 `{(0,1,[a]), (1,0,[])}`; level 2 `{(0,2,[a,a]), (1,1,[a])}` (the configuration `(1,0,[])` has no move); level 3 reaches `(1,2,[])`, which is accepting. Accepted; `peak_configurations` = 2; the trace has 4 steps: `(0,0,[])`, `(0,1,[a])`, `(1,1,[a])`, `(1,2,[])`, using the transitions `a`-push, ε, `a`-pop.
+- *M2, input `ab`:* level 1 `{(0,1,[a]), (1,0,[])}`; level 2 `{(0,2,[b,a]), (1,1,[a])}`; level 3 `{(1,2,[b,a])}` (from `(1,1,[a])` the symbol `b` cannot pop `b`); no accepting configuration and no further move. Rejected; the trace ends at `(1,2,[b,a])` with `stack_not_empty { depth: 2 }`; `peak_configurations` = 2 (levels hold 1, 2, 2, 1).
+- *Loops:* a machine with `(0, ε, [] → [], 0)` and no accepting state, input `ε`: finishes, rejected, one step (the repeat is dropped). A machine with `(0, ε, [] → [x], 0)`: with `maxStack: 5` the result is `Stopped(MaxStack)`; with `maxSteps: 3` `Stopped(MaxSteps)`; with `maxConfigurations: 3` `Stopped(MaxConfigurations)`; each has a non-empty `partialTrace`.
+
+**Acceptance criteria:**
+- AC1: M1, M2 and the loop cases give exactly the results above (verdict, last message, trace length, `peak_configurations`).
+- AC2: `proptest`: for random `w` over `{a, b}` up to length 10, M2 accepts iff `w = wᴿ` and `|w|` is even; M1 accepts iff `w = aⁿbⁿ`; every returned trace is a legal computation (each step applies the transition it names; the first step is the start; an accepted trace ends in an accepting configuration).
+- AC3: determinism of the output: the same machine and input give the same trace and the same numbers on every run.
+- AC4: deliberate breaks, each shown failing, then restored: treat `pop = []` as "stack empty" (M2 fails); drop the repeated-configuration check (the no-change loop does not end); count the peak before dropping repeats (a test on a machine with a repeat fails); accept at the first accepting state regardless of the stack (`a` is wrongly accepted).
+- AC5: `wasm` under 250 KB gzip, initial JS under 170 KB (`pnpm size`); the memory estimate of the default budget is in the report.
+
+**Verification:**
+```
+cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+pnpm build:wasm
+pnpm check && pnpm lint && pnpm format:check && pnpm check:strings && pnpm check:tokens
+pnpm --filter web exec vitest run
+pnpm build && pnpm size
+```
+Expected: all pass. Paste real output into `REPORT.md`.
+
+**Rollback:** `git revert <sha>`.
+
+**Depends on:** T-030 done and merged.
+
+**Notes for worker:** The order inside a level must be fixed (parent order, then the sorted transition order) or the traces change between runs. If the planner's derivation and the engine disagree, stop and report.
+
+---
+
+## Task T-032 — PDA `.jff` import and export (draft)
+
+**Status:** proposed (the full spec is written after T-031 is merged)
+**Owner:** worker
+**Branch:** `task/T-032-pda-jff`
+
+**Goal:** Read and write JFLAP files with `<type>pda</type>`. The existing FSM code in `jff.rs` is the pattern.
+
+**Draft decisions:** each character of a `<pop>` or `<push>` text is one stack symbol, the first character is the top (JFLAP's own rule; the owner's sample machines and `pda_cfg_anbn_LL.jff` agree); an empty tag is ε or an empty list; `<read>` is empty or one input symbol. Export fails with a clear message key if a stack or input symbol has more than one character (JFLAP cannot hold it). Import ignores JFLAP's bottom marker, as the course does; a machine written for it (a first transition that pops a symbol nobody pushes, as in JFLAP's own CFG conversion) imports with the `pda.pop_never_pushed` warning of T-030. The `.jff` has no acceptance setting, so nothing is stored. The three sample machines in `REFERENCES/JFF-FILES/TBA12PDA/` must import (they start with `ε, [] → [Z0]`); they stay private, so the worker writes small fixtures of its own.
+
+**Depends on:** T-030, T-031.
+
+---
+
+## Task T-034 — CFG to PDA, top-down (draft)
+
+**Status:** proposed (the full spec is written after T-032 is merged)
+**Owner:** worker
+**Branch:** `task/T-034-cfg-to-pda-topdown`
+
+**Goal:** The slides' `CFGtoPDAtopdown` (Slide13, page 4), with a step trace: states `p` and `q` (`p` start, `q` accepting), the stack alphabet is the variables and the terminals, and `Δ` holds `((p, ε, ε), (q, S))`, `((q, ε, X), (q, γ1…γn))` for every rule `X → γ1…γn` (an ε-rule pushes nothing), and `((q, c, c), (q, ε))` for every terminal `c`. Engine only: `cfg_to_pda_topdown(grammar_text, budget)` returning the PDA and a trace; the state names `p` and `q` come back as plain data for the UI document. The step trace has one step for the first transition, one for each rule and one for each terminal.
+
+**Draft test plan:** equivalence by simulation, not by structure: for the grammar `S → aSb | ab` (the owner's `cfg_anbn.jff`) and two more small grammars (one with an ε-rule, one with two variables), every string over the alphabet up to length 8 is accepted by the PDA (T-031) iff the grammar generates it (the existing CNF and CYK code, with the empty string handled). The owner's JFLAP conversion (`pda_cfg_anbn_LL.jff`) differs in bookkeeping (it uses JFLAP's bottom marker `Z`), so it is **not** compared structure for structure.
+
+**Depends on:** T-030, T-031.
+
+---
+
+## Task T-035 — CFG to PDA, bottom-up (draft)
+
+**Status:** proposed (after T-034)
+**Owner:** worker
+**Branch:** `task/T-035-cfg-to-pda-bottomup`
+
+**Goal:** The slides' `CFGtoPDAbottomup` (Slide13, page 8): one state `p`, a second accepting state `q`; shift `((p, c, ε), (p, c))` for every terminal; reduce `((p, ε, (γ1…γn)ᴿ), (p, X))` for every rule `X → γ1…γn` (the right-hand side reversed, because the top of the stack is `γn`); and `((p, ε, S), (q, ε))`. Same shape and tests as T-034. Note for the full spec: an ε-rule gives `((p, ε, ε), (p, X))`, which can push forever; the budget of T-031 stops it, and the test with an ε-rule uses short inputs and a small budget.
+
+**Depends on:** T-034.
+
+---
+
+## Task T-036 — PDA to restricted normal form, with a trace (draft)
+
+**Status:** proposed (the full spec is written after T-035 is merged)
+**Owner:** worker
+**Branch:** `task/T-036-pda-to-rnf`
+
+**Goal:** The slides' conversion to restricted normal form (Slide13, pages 13 to 19): a new start state `s'` that only pushes `#`; a single accepting state `a` reached from every old accepting state by `((qk, ε, #), (a, ε))`; every transition pops exactly one symbol (a multi-pop `γ1…γn` becomes `n` single-pop transitions through `n − 1` new states; a transition that pops nothing becomes one transition for every symbol of `Γ ∪ {#}`, popping that symbol and pushing it back). Engine only, one step per rewritten transition. Test: the slides' own example, a PDA for `wcwᴿ` (`w ∈ {a, b}*`): three non-pop transitions from `s` become nine single-pop transitions (Slide13, page 19); the result accepts the same strings as the original (T-031).
+
+**Depends on:** T-031.
+
+---
+
+## Task T-037 — PDA in restricted normal form to CFG (draft)
+
+**Status:** proposed (after T-036)
+**Owner:** worker
+**Branch:** `task/T-037-pda-to-cfg`
+
+**Goal:** The slides' `PDAtoCFG` (Slide13, pages 20 to 27): one variable `<q, A, p>` for every pair of states and stack symbol, `S → <s, #, a>`, `<w, ε, w> → ε`, and the rules of steps S4 (A) and (B). The slides' own example (`wcwᴿ`) is the oracle: the algorithm produces 76 rules, and 16 remain after removing the unreachable and non-productive ones (T-060's phases 1 and 2 do that cleanup). The variable names must be readable by the grammar parser (the T-026 lesson); the full spec fixes them. A property test chains T-034 → T-036 → T-037: for small grammars, the grammar that comes back generates the same strings (CYK up to length 6).
+
+**Depends on:** T-036.
+
+---
+
+## Task T-038 — Conversions and simulation panel for the PDA (draft)
+
+**Status:** proposed (after P-004 is approved and T-033, T-034, T-035, T-037 are merged)
+**Owner:** worker
+
+**Goal:** In the PDA editor, a panel that plays the simulation of T-031 (stack drawn, one step at a time, the peak number shown) and shows the traces of T-034 to T-037. A wireframe the owner approves comes first (planner task P-005, to be written after P-004).
+
+**Depends on:** P-004, T-033, T-034, T-035, T-037.
+
+---
+
+## Planner task P-004 — Wireframe of the PDA editor
+
+**Status:** to do (after T-032 is merged, so the wireframe can rely on real machine data)
+**Owner:** planner
+
+Draw `design/screens/pda-editor.md` and `.svg`: the diagram with the label `c / γ1 / γ2` (Rich's notation and the slides'; JFLAP shows `c, γ1; γ2`, which we do not use), a transition table with the same three columns, the formal definition, the "deterministic or not" badge with the list of competing pairs, and the panel tabs of the FSM editor. The owner approves it before T-033.
+
+---
+
 ## Planner task P-003 — Wireframe of the grammar rule rows on a phone
 
 **Status:** done (approved by the owner on 2026-11-04, option B; it became task T-024)
@@ -1227,12 +1437,16 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 
 **C. The PDA** (each step has its own ADR; a wireframe the owner approves comes first for T-033)
 Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's and the slides' (not Sipser's); the PDA is non-deterministic as well as deterministic (the course homework uses both); every run has a step budget, like the FSM engine, and ends as "stopped" with the partial trace.
-- **T-030** PDA data model, JSON schema and validation. **Before it is dispatched, the planner and the owner decide three things**, from the two JFLAP conversions that the owner saved in `REFERENCES/JFF-FILES/CFG-EXAMPLE/`: (1) JFLAP writes whole strings in `pop` and `push` (for example `pop="bSa"`), so the model must allow a string and not one symbol; (2) JFLAP's own output starts with a bottom marker `Z` and pops it at the end, while the autograder notes say the stack starts empty and `Z` is ignored; (3) the acceptance mode (final state, empty stack, input used up).
-- **T-031** PDA simulation with a stack trace and budgets.
-- **T-032** PDA `.jff` import and export (`<type>pda</type>`).
-- **T-033** PDA editor.
-- **T-034** CFG to PDA, top-down (the "LL" item of JFLAP), with a step trace. Test against the owner's JFLAP result (`pda_cfg_anbn_LL.jff`): compare the structure (states, transitions), not the names or positions. The worker writes its own small fixture; `REFERENCES/` stays out of git.
-- **T-035** CFG to PDA, bottom-up (the "LR" item of JFLAP), with a step trace. Same method with `pda_cfg_anbn_LR.jff`.
+- **T-030** PDA data model, JSON, validation and the determinism check: specified in its own block above (`todo`). The three questions are settled from the slides (2026-11-05): the stack starts empty, one acceptance rule (input used up, stack empty, accepting state), `pop` and `push` are lists of named symbols, top first.
+- **T-031** PDA simulation, breadth-first, with a stack trace, budgets and the peak number of configurations: specified in its own block above (`todo`; after T-030).
+- **T-032** PDA `.jff` import and export: draft above (`proposed`).
+- **T-033** PDA editor: after P-004 (wireframe) is approved and T-032 is merged.
+- **T-034** CFG to PDA, top-down (slides, `CFGtoPDAtopdown`): draft above (`proposed`). Tested by language equivalence, not by structure against JFLAP's file.
+- **T-035** CFG to PDA, bottom-up (slides, shift and reduce): draft above (`proposed`).
+- **T-036** PDA to restricted normal form, with a trace: draft above (`proposed`).
+- **T-037** PDA in restricted normal form to CFG: draft above (`proposed`). The slides' example `wcwᴿ` is the oracle (76 rules, 16 after cleanup).
+- **T-038** Conversions and simulation panel for the PDA: draft above (`proposed`; after P-004, P-005 and T-033).
+- **P-004** Wireframe of the PDA editor: planner task above (after T-032).
 
 **E. Turing machines** (after C; the owner names each step; each has an ADR, differential tests on the owner's `.jff` files, and an approved wireframe before any editor)
 - **T-040** TM, one tape: data model, JSON schema, validation.
