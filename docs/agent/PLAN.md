@@ -1306,7 +1306,7 @@ Expected: all pass. Paste real output into `REPORT.md`.
 
 ## Task T-032 — PDA `.jff` import and export
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-032-pda-jff`
 
