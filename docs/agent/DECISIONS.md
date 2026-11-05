@@ -14,6 +14,16 @@ Format:
 
 ---
 
+## 2026-11-05 — The PDA is specified from the slides (T-030 to T-038)
+- Decider: owner (approved the decisions and the breakdown); planner (specs)
+- Context: The owner asked whether the PDA gets the same pairs of conversions as the FSM and a non-deterministic version. The planner read the PDA slides (Slide12 and Slide13, three semesters), the HW06 text and the owner's sample machines. The newer Slide12 says that JFLAP's bottom-of-stack symbol must be ignored (the grader is built without it) and that machines are built "per the concept taught".
+- Decision: (1) The stack starts empty; the engine adds no marker. (2) One acceptance rule, from the slides: input used up, stack empty, accepting state; no "final state only" mode (the grader does not use it); a rejection says which condition failed. (3) `pop` and `push` are lists of named stack symbols, top first; a transition that pops nothing does not check the stack. (4) The PDA is non-deterministic by default; a DPDA is the case where no two transitions compete (same read or one reads nothing, and one pop is a prefix of the other, from the slides); there is no NDPDA to DPDA conversion because none exists in general. (5) The simulator is breadth-first and returns the peak number of configurations, because the homework grades non-determinism that way; our count may differ from the server's. (6) `.jff` export refuses stack or input symbols longer than one character; import ignores JFLAP's marker. (7) Conversions follow the slides: CFG to PDA top-down and bottom-up, PDA to restricted normal form, then to CFG (new tasks T-036 and T-037); the oracle is language equivalence by simulation, not JFLAP's file, and for T-037 the slides' own example. (8) Sample machines never solve the languages of the current homework.
+- Alternatives considered: a second acceptance mode for JFLAP files (dropped: code is a cost and the grader does not use it); single-character stack symbols (rejected: the slides use `id` and our variables are named `S0`, `T_a`).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-030 to T-038, P-004)
+
+---
+
 ## 2026-11-05 — T-060 merged; T-015 (the toggle) specified
 - Decider: owner (accepted T-060 as built); planner (what "versi ringkas" means)
 - Context: T-060 (PR 147) put the six phases in the homework order. The owner accepted that unit-rule removal can leave unreachable variables in the final grammar (the homework order has no cleanup stage after it; Rich's textbook leaves them too), and that opening a nullable CNF result as a new grammar adds a second `S₀` (the slide rule "add `S₀` when the start symbol is nullable").
