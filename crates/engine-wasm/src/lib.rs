@@ -166,6 +166,11 @@ pub fn cfg_to_pda_bottomup(grammar: &str) -> String {
     api::cfg_to_pda_bottomup(grammar)
 }
 
+#[wasm_bindgen(js_name = pdaToRnf)]
+pub fn pda_to_rnf(pda: &str) -> String {
+    api::pda_to_rnf(pda)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -274,6 +279,16 @@ mod tests {
     #[test]
     fn cfg_to_pda_bottomup_answers_in_envelope() {
         let answer = cfg_to_pda_bottomup("S -> a S b | a b");
+        assert!(answer.contains(r#""ok":true"#), "{answer}");
+        assert!(answer.contains(r#""steps""#), "{answer}");
+        assert!(answer.contains(r#""pda""#), "{answer}");
+    }
+
+    #[wasm_bindgen_test]
+    #[test]
+    fn pda_to_rnf_answers_in_envelope() {
+        let pda = r#"{"schemaVersion":1,"kind":"ndpda","inputAlphabet":["a","b"],"stackAlphabet":["a"],"states":[0,1],"start":0,"accepting":[1],"transitions":[{"from":0,"read":"a","pop":[],"push":["a"],"to":1}]}"#;
+        let answer = pda_to_rnf(pda);
         assert!(answer.contains(r#""ok":true"#), "{answer}");
         assert!(answer.contains(r#""steps""#), "{answer}");
         assert!(answer.contains(r#""pda""#), "{answer}");

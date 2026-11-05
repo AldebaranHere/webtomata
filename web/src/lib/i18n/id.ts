@@ -338,6 +338,15 @@ export const id = {
 	'cfg_pda.bottom_up.reduce':
 		'Reduksi aturan {rule}: pop ruas kanan terbalik dan push variabel kepala.',
 	'cfg_pda.bottom_up.accept': 'Transisi terima: pop simbol awal ke state terima.',
+	'pda.rnf.start':
+		"Awali dengan transisi dari start state baru s' yang mem-push marker # ke stack.",
+	'pda.rnf.accept': 'Transisi terima dari state {state}: pop marker # ke accepting state baru a.',
+	'pda.rnf.split':
+		'Pecah transisi dari state {from} ke {to} yang mem-pop {pops} simbol menjadi rantai transisi ber-pop satu.',
+	'pda.rnf.expand':
+		'Perluas transisi tanpa pop dari state {from} ke {to} untuk setiap simbol stack.',
+	'pda.rnf.no_start_state': 'PDA belum punya start state.',
+	'pda.rnf.marker_clash': 'Simbol stack "{symbol}" bentrok dengan marker dasar stack #.',
 	// TODO(review): the wording of the test strings is a draft until the feedback guide (U4).
 	'test.title': 'Uji banyak string',
 	'test.add_label': 'Tambah string',

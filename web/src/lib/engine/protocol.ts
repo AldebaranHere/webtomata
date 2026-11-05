@@ -32,6 +32,7 @@ import type {
 	PdaBudget,
 	PdaSimulationReport,
 	CfgToPda,
+	RnfResult,
 	StopReason,
 	ViaMachineBudget
 } from './types.ts';
@@ -125,6 +126,7 @@ export interface EngineApi {
 	exportPdaJff(pda: Pda, layout: JffState[]): EngineResult<string>;
 	cfgToPdaTopdown(grammar: string): EngineResult<CfgToPda>;
 	cfgToPdaBottomup(grammar: string): EngineResult<CfgToPda>;
+	pdaToRnf(pda: Pda): EngineResult<RnfResult>;
 }
 
 export type EngineMethod = keyof EngineApi;
@@ -162,7 +164,8 @@ export const METHODS = [
 	'importPdaJff',
 	'exportPdaJff',
 	'cfgToPdaTopdown',
-	'cfgToPdaBottomup'
+	'cfgToPdaBottomup',
+	'pdaToRnf'
 ] as const satisfies readonly EngineMethod[];
 
 /** A method that is missing from `METHODS` makes this a type error. */
