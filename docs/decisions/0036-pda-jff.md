@@ -40,3 +40,4 @@ JFLAP PDA files have the following characteristics:
 - Students can import JFLAP PDAs into WebTomata and export single-character PDAs back to JFLAP.
 - Clear diagnostics warn students when imported machines rely on JFLAP's implicit bottom marker.
 - Safety boundaries (`MAX_JFF_BYTES`, `MAX_STATES`, `MAX_PDA_STRING`) prevent memory exhaustion or panics on arbitrary or malformed input.
+

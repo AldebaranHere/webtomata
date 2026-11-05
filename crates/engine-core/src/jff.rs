@@ -18,6 +18,7 @@ use std::fmt::Write;
 use std::str::FromStr;
 
 pub const MAX_JFF_BYTES: usize = 1024 * 1024;
+const MAX_JFF_NODES: u32 = 200_000;
 
 /// A state as the file describes it. Names and positions belong to the UI, not to the machine.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -54,6 +55,46 @@ fn limit_exceeded(what: &str, limit: usize) -> Message {
     Message::new("machine.limit_exceeded")
         .with("what", what)
         .with("limit", limit)
+}
+
+fn parse_document(xml: &str) -> Result<Document<'_>, Message> {
+    if xml.len() > MAX_JFF_BYTES {
+        return Err(limit_exceeded("bytes", MAX_JFF_BYTES));
+    }
+    let options = ParsingOptions {
+        allow_dtd: false,
+        nodes_limit: MAX_JFF_NODES,
+        entity_resolver: None,
+    };
+    Document::parse_with_options(xml, options).map_err(|e| {
+        let at = e.pos();
+        Message::new("jff.xml_invalid")
+            .with("line", at.row)
+            .with("column", at.col)
+    })
+}
+
+fn invalid_structure(doc: &Document, element: &str, node: Node) -> Message {
+    Message::new("jff.invalid_structure")
+        .with("element", element)
+        .with("line", doc.text_pos_at(node.range().start).row)
+}
+
+fn check_structure_and_type<'a, 'i>(
+    doc: &'a Document<'i>,
+    expected_type: &str,
+) -> Result<Node<'a, 'i>, Message> {
+    let root = doc.root_element();
+    if root.tag_name().name() != "structure" {
+        return Err(invalid_structure(doc, "structure", root));
+    }
+    let kind = child(root, "type").ok_or_else(|| invalid_structure(doc, "type", root))?;
+    let kind = kind.text().unwrap_or("").trim();
+    if kind != expected_type {
+        let shown: String = kind.chars().take(32).collect();
+        return Err(Message::new("jff.unsupported_type").with("type", shown));
+    }
+    child(root, "automaton").ok_or_else(|| invalid_structure(doc, "automaton", root))
 }
 
 fn child<'a, 'i>(node: Node<'a, 'i>, name: &str) -> Option<Node<'a, 'i>> {
@@ -140,37 +181,9 @@ fn read_states<'a, 'i>(
 
 /// Reads a `.jff` file of type `fa`.
 pub fn parse_jff(xml: &str) -> Result<Jff, Message> {
-    if xml.len() > MAX_JFF_BYTES {
-        return Err(limit_exceeded("bytes", MAX_JFF_BYTES));
-    }
-    let options = ParsingOptions {
-        allow_dtd: false,
-        nodes_limit: 200_000,
-        entity_resolver: None,
-    };
-    let doc = Document::parse_with_options(xml, options).map_err(|e| {
-        let at = e.pos();
-        Message::new("jff.xml_invalid")
-            .with("line", at.row)
-            .with("column", at.col)
-    })?;
-    let bad = |element: &str, node: Node| {
-        Message::new("jff.invalid_structure")
-            .with("element", element)
-            .with("line", doc.text_pos_at(node.range().start).row)
-    };
-
-    let root = doc.root_element();
-    if root.tag_name().name() != "structure" {
-        return Err(bad("structure", root));
-    }
-    let kind = child(root, "type").ok_or_else(|| bad("type", root))?;
-    let kind = kind.text().unwrap_or("").trim();
-    if kind != "fa" {
-        let shown: String = kind.chars().take(32).collect();
-        return Err(Message::new("jff.unsupported_type").with("type", shown));
-    }
-    let automaton = child(root, "automaton").ok_or_else(|| bad("automaton", root))?;
+    let doc = parse_document(xml)?;
+    let bad = |element: &str, node: Node| invalid_structure(&doc, element, node);
+    let automaton = check_structure_and_type(&doc, "fa")?;
 
     // States.
     let ParsedStates {
@@ -297,18 +310,15 @@ fn escape(text: &str) -> String {
     out
 }
 
-/// Writes a `.jff` file. `layout` gives names and positions; a state with no entry gets the
-/// name `q<id>` and a place on a grid. Returns an error message if a symbol has more than one
-/// character, because JFLAP cannot hold it. Symbols that no transition reads are not written.
-pub fn to_jff(fsm: &Fsm, layout: &[JffState]) -> Result<String, Message> {
-    if let Some(symbol) = fsm.alphabet.names().iter().find(|n| n.chars().count() != 1) {
-        return Err(Message::new("jff.symbol_not_single_character").with("symbol", symbol.as_str()));
-    }
+fn write_states(
+    out: &mut String,
+    states: &[StateId],
+    start: Option<StateId>,
+    accepting: &[StateId],
+    layout: &[JffState],
+) {
     let given: HashMap<StateId, &JffState> = layout.iter().map(|s| (s.id, s)).collect();
-    let mut out = String::from(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<structure>\n\t<type>fa</type>\n\t<automaton>\n",
-    );
-    for (i, &id) in fsm.states.iter().enumerate() {
+    for (i, &id) in states.iter().enumerate() {
         let (name, x, y) = match given.get(&id) {
             Some(s) if s.x.is_finite() && s.y.is_finite() => (s.name.clone(), s.x, s.y),
             other => (
@@ -323,14 +333,27 @@ pub fn to_jff(fsm: &Fsm, layout: &[JffState]) -> Result<String, Message> {
             id.0,
             escape(&name)
         );
-        if fsm.start == Some(id) {
+        if start == Some(id) {
             out.push_str("\t\t\t<initial/>\n");
         }
-        if fsm.accepting.binary_search(&id).is_ok() {
+        if accepting.binary_search(&id).is_ok() {
             out.push_str("\t\t\t<final/>\n");
         }
         out.push_str("\t\t</state>\n");
     }
+}
+
+/// Writes a `.jff` file. `layout` gives names and positions; a state with no entry gets the
+/// name `q<id>` and a place on a grid. Returns an error message if a symbol has more than one
+/// character, because JFLAP cannot hold it. Symbols that no transition reads are not written.
+pub fn to_jff(fsm: &Fsm, layout: &[JffState]) -> Result<String, Message> {
+    if let Some(symbol) = fsm.alphabet.names().iter().find(|n| n.chars().count() != 1) {
+        return Err(Message::new("jff.symbol_not_single_character").with("symbol", symbol.as_str()));
+    }
+    let mut out = String::from(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<structure>\n\t<type>fa</type>\n\t<automaton>\n",
+    );
+    write_states(&mut out, &fsm.states, fsm.start, &fsm.accepting, layout);
     for t in &fsm.transitions {
         let _ = write!(
             out,
@@ -351,37 +374,9 @@ pub fn to_jff(fsm: &Fsm, layout: &[JffState]) -> Result<String, Message> {
 
 /// Reads a `.jff` file of type `pda`.
 pub fn parse_pda_jff(xml: &str) -> Result<PdaJff, Message> {
-    if xml.len() > MAX_JFF_BYTES {
-        return Err(limit_exceeded("bytes", MAX_JFF_BYTES));
-    }
-    let options = ParsingOptions {
-        allow_dtd: false,
-        nodes_limit: 200_000,
-        entity_resolver: None,
-    };
-    let doc = Document::parse_with_options(xml, options).map_err(|e| {
-        let at = e.pos();
-        Message::new("jff.xml_invalid")
-            .with("line", at.row)
-            .with("column", at.col)
-    })?;
-    let bad = |element: &str, node: Node| {
-        Message::new("jff.invalid_structure")
-            .with("element", element)
-            .with("line", doc.text_pos_at(node.range().start).row)
-    };
-
-    let root = doc.root_element();
-    if root.tag_name().name() != "structure" {
-        return Err(bad("structure", root));
-    }
-    let kind = child(root, "type").ok_or_else(|| bad("type", root))?;
-    let kind = kind.text().unwrap_or("").trim();
-    if kind != "pda" {
-        let shown: String = kind.chars().take(32).collect();
-        return Err(Message::new("jff.unsupported_type").with("type", shown));
-    }
-    let automaton = child(root, "automaton").ok_or_else(|| bad("automaton", root))?;
+    let doc = parse_document(xml)?;
+    let bad = |element: &str, node: Node| invalid_structure(&doc, element, node);
+    let automaton = check_structure_and_type(&doc, "pda")?;
 
     let ParsedStates {
         mut states,
@@ -451,24 +446,30 @@ pub fn parse_pda_jff(xml: &str) -> Result<PdaJff, Message> {
     let input_alphabet = Alphabet::new(input_chars.into_iter().map(|c| c.to_string()).collect())?;
     let stack_alphabet = Alphabet::new(stack_chars.into_iter().map(|c| c.to_string()).collect())?;
 
-    let transitions = raw_transitions
-        .into_iter()
-        .map(|t| PdaTransition {
+    let mut transitions = Vec::with_capacity(raw_transitions.len());
+    for t in raw_transitions {
+        let mut pop = Vec::with_capacity(t.pop.len());
+        for c in t.pop {
+            let id = stack_alphabet.id(&c.to_string()).ok_or_else(|| {
+                Message::new("machine.unknown_symbol").with("symbol", c.to_string())
+            })?;
+            pop.push(id);
+        }
+        let mut push = Vec::with_capacity(t.push.len());
+        for c in t.push {
+            let id = stack_alphabet.id(&c.to_string()).ok_or_else(|| {
+                Message::new("machine.unknown_symbol").with("symbol", c.to_string())
+            })?;
+            push.push(id);
+        }
+        transitions.push(PdaTransition {
             from: t.from,
             to: t.to,
             read: t.read.and_then(|c| input_alphabet.id(&c.to_string())),
-            pop: t
-                .pop
-                .into_iter()
-                .map(|c| stack_alphabet.id(&c.to_string()).unwrap())
-                .collect(),
-            push: t
-                .push
-                .into_iter()
-                .map(|c| stack_alphabet.id(&c.to_string()).unwrap())
-                .collect(),
-        })
-        .collect();
+            pop,
+            push,
+        });
+    }
 
     states.sort_by_key(|s| s.id);
     let state_ids = states.iter().map(|s| s.id).collect();
@@ -496,33 +497,10 @@ pub fn to_pda_jff(pda: &Pda, layout: &[JffState]) -> Result<String, Message> {
     if let Some(symbol) = pda.stack.names().iter().find(|n| n.chars().count() != 1) {
         return Err(Message::new("jff.symbol_not_single_character").with("symbol", symbol.as_str()));
     }
-    let given: HashMap<StateId, &JffState> = layout.iter().map(|s| (s.id, s)).collect();
     let mut out = String::from(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<structure>\n\t<type>pda</type>\n\t<automaton>\n",
     );
-    for (i, &id) in pda.states.iter().enumerate() {
-        let (name, x, y) = match given.get(&id) {
-            Some(s) if s.x.is_finite() && s.y.is_finite() => (s.name.clone(), s.x, s.y),
-            other => (
-                other.map_or_else(|| format!("q{}", id.0), |s| s.name.clone()),
-                100.0 + 130.0 * (i % 6) as f64,
-                100.0 + 130.0 * (i / 6) as f64,
-            ),
-        };
-        let _ = write!(
-            out,
-            "\t\t<state id=\"{}\" name=\"{}\">\n\t\t\t<x>{x:.1}</x>\n\t\t\t<y>{y:.1}</y>\n",
-            id.0,
-            escape(&name)
-        );
-        if pda.start == Some(id) {
-            out.push_str("\t\t\t<initial/>\n");
-        }
-        if pda.accepting.binary_search(&id).is_ok() {
-            out.push_str("\t\t\t<final/>\n");
-        }
-        out.push_str("\t\t</state>\n");
-    }
+    write_states(&mut out, &pda.states, pda.start, &pda.accepting, layout);
     for t in &pda.transitions {
         let _ = write!(
             out,
@@ -540,7 +518,10 @@ pub fn to_pda_jff(pda: &Pda, layout: &[JffState]) -> Result<String, Message> {
         } else {
             out.push_str("\t\t\t<pop>");
             for &sym in &t.pop {
-                out.push_str(&escape(pda.stack.name(sym).unwrap()));
+                let name = pda.stack.name(sym).ok_or_else(|| {
+                    Message::new("machine.unknown_symbol").with("symbol", u32::from(sym.0))
+                })?;
+                out.push_str(&escape(name));
             }
             out.push_str("</pop>\n");
         }
@@ -549,7 +530,10 @@ pub fn to_pda_jff(pda: &Pda, layout: &[JffState]) -> Result<String, Message> {
         } else {
             out.push_str("\t\t\t<push>");
             for &sym in &t.push {
-                out.push_str(&escape(pda.stack.name(sym).unwrap()));
+                let name = pda.stack.name(sym).ok_or_else(|| {
+                    Message::new("machine.unknown_symbol").with("symbol", u32::from(sym.0))
+                })?;
+                out.push_str(&escape(name));
             }
             out.push_str("</push>\n");
         }

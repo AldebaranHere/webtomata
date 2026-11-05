@@ -482,4 +482,22 @@ ok   wasm _app/immutable/workers/assets/engine_wasm_bg-DR_66Wes.wasm: 224.3 KB g
 - **Work Commit:** `cd1327f` (`feat(engine): add pushdown automaton JFF import and export`)
 - **Status in PLAN.md:** `done`
 
+---
+
+## 8. Post-PR Refactoring (Deduplication & Panic Elimination)
+
+Following PR review feedback for PR #155:
+1. **XML Document & Header Deduplication**:
+   - Extracted `parse_document(xml)` with `MAX_JFF_NODES: u32 = 200_000` constant and size limit validation.
+   - Extracted `invalid_structure(doc, element, node)` and `check_structure_and_type(doc, expected_type)`.
+2. **State Serialization Deduplication**:
+   - Extracted `write_states(out, states, start, accepting, layout)` shared by `to_jff` and `to_pda_jff` guaranteeing byte-for-byte identical output.
+3. **Panic Elimination on Alphabet Lookups**:
+   - Replaced all `.unwrap()` lookups on `stack_alphabet.id(...)` in `parse_pda_jff` and `pda.stack.name(...)` in `to_pda_jff` with `?` returning `Message::new("machine.unknown_symbol")`.
+4. **Code Delta**:
+   - In `crates/engine-core/src/jff.rs`: 116 lines removed, 100 added (net 16 lines fewer).
+   - Zero panicking `.unwrap()` calls remain in `jff.rs`.
+   - All 22 FSM tests in `tests/jff.rs` and all 17 PDA tests in `tests/pda_jff.rs` pass cleanly.
+
+
 
