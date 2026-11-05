@@ -472,3 +472,14 @@ ok   wasm _app/immutable/workers/assets/engine_wasm_bg-DR_66Wes.wasm: 224.3 KB g
 - [x] **AC5:** All 7 deliberate breaks and 2 property test breaks demonstrated failure with real test outputs and were restored.
 - [x] **AC6:** Wasm (`224.3 KB` vs limit `250.0 KB`) and initial JS (`79.9 KB` vs limit `170.0 KB`) remain within size budgets.
 
+---
+
+## 7. Pull Request
+
+- **PR:** [#155](https://github.com/AldebaranHere/webtomata/pull/155)
+- **Branch:** `task/T-032-pda-jff`
+- **Base:** `staging`
+- **Work Commit:** `cd1327f` (`feat(engine): add pushdown automaton JFF import and export`)
+- **Status in PLAN.md:** `done`
+
+

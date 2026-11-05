@@ -1307,6 +1307,8 @@ Expected: all pass. Paste real output into `REPORT.md`.
 ## Task T-032 — PDA `.jff` import and export
 
 **Status:** done
+**Commit:** `cd1327f`
+**PR:** #155
 **Owner:** worker
 **Branch:** `task/T-032-pda-jff`
 
