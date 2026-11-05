@@ -15,6 +15,17 @@ Format:
 
 ---
 
+## 2026-11-06 — PDA in restricted normal form to CFG conversion with step trace (task T-037)
+
+- Decider: worker
+- Context: The course lecture (Slide13, pages 20 to 27) teaches `PDAtoCFG`, the second stage of converting a PDA to a context-free grammar by building a rule for the start state, ε-rules `<q, ε, q> → ε` for every active state `q ≠ s'`, and rules for transitions that push nothing (case A) or push `n ≥ 1` stack symbols (case B).
+- Decision: Implemented `pda_to_cfg` in `crates/engine-core/src/pda_cfg.rs` with `MAX_PDA_CFG_RULES = 20_000`, API endpoint `pda_to_cfg`, WASM export `pdaToCfg`, and worker RPC `pdaToCfg`. Validates the six RNF input conditions in order via `rnf_shape_error` (`pda_cfg.no_start_state`, `pda_cfg.bad_start`, `pda_cfg.not_one_accepting`, `pda_cfg.bad_accept`, `pda_cfg.not_single_pop`, `pda_cfg.terminal_not_readable`), checks the exact rule count in `u64` using `checked_pow` and `checked_add` against `MAX_PDA_CFG_RULES` before building any rule (`machine.limit_exceeded`), formats variables as `V_{from}g{k}p{to}` (`k` is the decimal stack `SymbolId` or `e` for `ε`) so they round-trip through `grammarToText` and `GrammarParser::parse`, and returns the uncleaned `Grammar` along with sorted `CfgVariable` metadata and `PdaCfgStep` trace steps.
+- Alternatives considered: Using `<q,γ,p>` directly as the `Grammar` non-terminal name (rejected: `GrammarParser` strips `<…>` brackets while `grammarToText` emits names without brackets, causing `0,a,3` to be re-parsed as terminals); simplifying unreachable/non-productive rules inside `pda_to_cfg` (rejected: the slides show the full 76-rule grammar first and leave cleanup to the CNF phases).
+- Reversible? yes
+- Affects: `crates/engine-core/src/pda_cfg.rs`, `lib.rs`, `api.rs`, `ts.rs`, `crates/engine-core/tests/pda_cfg.rs`, `crates/engine-wasm/src/lib.rs`, `web/src/lib/engine/protocol.ts`, `handlers.ts`, `handlers.test.ts`, `web/src/lib/i18n/id.ts`, `en.ts`, `docs/decisions/0040-pda-to-cfg.md`, `docs/glossary.md`, `docs/ARCHITECTURE.md`
+
+---
+
 ## 2026-11-06 — PDA to restricted normal form (RNF) conversion with step trace (task T-036)
 
 - Decider: worker

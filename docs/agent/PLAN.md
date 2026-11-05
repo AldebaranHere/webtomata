@@ -1788,7 +1788,7 @@ Run the AC3 proptest with `PROPTEST_CASES=1000` three times in a row and paste t
 
 ## Task T-037 — PDA in restricted normal form to CFG, with a trace
 
-**Status:** in-progress
+**Status:** done
 **Owner:** worker
 **Branch:** `task/T-037-pda-to-cfg`
 
@@ -1952,7 +1952,7 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-034** CFG to PDA, top-down (slides, `CFGtoPDAtopdown`): specified in its own block above (`todo`, since 2026-11-05; T-032 is merged). Tested by language equivalence, not by structure against JFLAP's file.
 - **T-035** CFG to PDA, bottom-up (slides, shift and reduce): specified in its own block above (`todo`, since 2026-11-05; T-034 is merged).
 - **T-036** PDA to restricted normal form, with a trace: specified in its own block above (`done`, PR 161).
-- **T-037** PDA in restricted normal form to CFG, with a trace: specified in its own block above (`todo`, since 2026-11-06; T-036 is merged). The slides' example `wcwᴿ` is the oracle (76 rules, 15 after cleanup).
+- **T-037** PDA in restricted normal form to CFG, with a trace: specified in its own block above (`done`). The slides' example `wcwᴿ` is the oracle (76 rules, 15 after cleanup).
 - **T-038** Conversions and simulation panel for the PDA: draft above (`proposed`; after P-004, P-005 and T-033).
 - **P-004** Wireframe of the PDA editor: planner task above (after T-032).
 
