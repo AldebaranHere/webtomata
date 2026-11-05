@@ -53,8 +53,8 @@ describe('grammar-text.wasm round-trip (AC2 & AC5)', () => {
 			});
 
 			it(`round-trips CNF result of preset ${preset.id}`, () => {
-				for (const shareHelpers of [false, true]) {
-					const cnfRes = engine.transformToCnf(preset.grammar, shareHelpers);
+				for (const shortVersion of [false, true]) {
+					const cnfRes = engine.transformToCnf(preset.grammar, shortVersion);
 					expect(cnfRes.ok).toBe(true);
 					if (!cnfRes.ok) return;
 

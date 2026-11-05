@@ -911,6 +911,9 @@ export const id = {
 	'grammar.btn_prev_step': 'Sebelumnya',
 	'grammar.btn_next_step': 'Selanjutnya',
 	'grammar.step_phase': 'Fase',
+	'grammar.cnf.version.aria': 'Versi konversi CNF',
+	'grammar.cnf.version.long': 'Versi panjang',
+	'grammar.cnf.version.short': 'Versi ringkas',
 	'grammar.cnf.phase_unreachable.title': 'Hapus Aturan Tak Terjangkau',
 	'grammar.cnf.phase_unreachable.desc':
 		'Menghapus variabel yang tidak dapat dijangkau dari simbol awal, beserta aturannya.',
@@ -928,9 +931,13 @@ export const id = {
 	'grammar.cnf.phase_mixed.title': 'Ganti Terminal pada Aturan Campuran',
 	'grammar.cnf.phase_mixed.desc':
 		'Menggantikan terminal pada aturan yang memiliki panjang ≥ 2 dengan variabel pembantu T_a → a.',
+	'grammar.cnf.phase_mixed.note_short':
+		'Versi ringkas: terminal yang sudah punya variabel dengan satu aturan A → a memakai variabel itu, tanpa T_a baru.',
 	'grammar.cnf.phase_long.title': 'Pecah Aturan Panjang',
 	'grammar.cnf.phase_long.desc':
 		'Memecah aturan dengan ≥ 3 simbol menjadi aturan biner (A → B C) menggunakan variabel kaskade.',
+	'grammar.cnf.phase_long.note_short':
+		'Versi ringkas: variabel pembantu yang sama dipakai bersama oleh beberapa aturan.',
 	'grammar.diff_removed': 'Aturan Dihapus',
 	'grammar.diff_added': 'Aturan Ditambahkan',
 	'grammar.state_after_step': 'Tata Bahasa Setelah Fase Ini',

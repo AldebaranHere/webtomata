@@ -914,6 +914,9 @@ export const en: Record<MessageKey, string> = {
 	'grammar.btn_prev_step': 'Previous',
 	'grammar.btn_next_step': 'Next',
 	'grammar.step_phase': 'Phase',
+	'grammar.cnf.version.aria': 'CNF conversion version',
+	'grammar.cnf.version.long': 'Long version',
+	'grammar.cnf.version.short': 'Short version',
 	'grammar.cnf.phase_unreachable.title': 'Remove Unreachable Rules',
 	'grammar.cnf.phase_unreachable.desc':
 		'Removes variables that cannot be reached from the start symbol, and their rules.',
@@ -931,9 +934,13 @@ export const en: Record<MessageKey, string> = {
 	'grammar.cnf.phase_mixed.title': 'Replace Terminals in Mixed Rules',
 	'grammar.cnf.phase_mixed.desc':
 		'Replaces terminals in rules of length ≥ 2 with helper variables T_a → a.',
+	'grammar.cnf.phase_mixed.note_short':
+		'Short version: a terminal with an existing variable whose only rule is A → a reuses that variable, with no new T_a.',
 	'grammar.cnf.phase_long.title': 'Split Long Rules',
 	'grammar.cnf.phase_long.desc':
 		'Splits rules with ≥ 3 symbols into binary rules (A → B C) using cascaded helper variables.',
+	'grammar.cnf.phase_long.note_short':
+		'Short version: identical helper variables are shared between rules.',
 	'grammar.diff_removed': 'Rules Removed',
 	'grammar.diff_added': 'Rules Added',
 	'grammar.state_after_step': 'Grammar After This Phase',
