@@ -564,3 +564,14 @@ ok   wasm _app/immutable/workers/assets/engine_wasm_bg-C8jNeVC0.wasm: 220.9 KB g
 - **Size Comparison**:
   - WASM binary: 217.7 KB gzip (before) $\to$ **220.9 KB gzip** (after) (budget: 250 KB).
   - Largest initial JS page (`sandbox.html`): 117.7 KB gzip (before) $\to$ **118.0 KB gzip** (after) (budget: 170 KB).
+
+---
+
+## 5. Pull Request
+
+- **PR**: [#153](https://github.com/AldebaranHere/webtomata/pull/153)
+- **Branch**: `task/T-031-pda-simulation`
+- **Base**: `staging`
+- **Work Commit**: `770ed0e` (`feat(engine): add pushdown automaton breadth-first simulation and stack trace`)
+- **Status in PLAN.md**: `done`
+
