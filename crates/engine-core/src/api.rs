@@ -511,3 +511,14 @@ pub fn cyk_parse(grammar_text: &str, input_word: &str) -> String {
     };
     finish(run())
 }
+
+/// Converts a context-free grammar to an equivalent PDA top-down.
+pub fn cfg_to_pda_topdown(grammar_text: &str) -> String {
+    let run = || -> Result<crate::cfg_pda::CfgToPda, Message> {
+        too_long(grammar_text, "grammar characters", 8192)?;
+        let grammar = crate::grammar::GrammarParser::parse(grammar_text)
+            .map_err(|e| Message::new("api.invalid_grammar").with("detail", e.to_string()))?;
+        crate::cfg_pda::cfg_to_pda_topdown(&grammar)
+    };
+    finish(run())
+}

@@ -14,6 +14,16 @@ Format:
 
 ---
 
+## 2026-11-05 — CFG to PDA top-down conversion with step trace (task T-034)
+- Decider: worker
+- Context: The course lecture (Slide13, page 4) teaches `CFGtoPDAtopdown`, translating a context-free grammar into a 2-state non-deterministic PDA with an empty initial stack and trace steps.
+- Decision: Implemented in `crates/engine-core/src/cfg_pda.rs` with API endpoint `cfg_to_pda_topdown`. Emits 3 types of transitions: start transition pushing the start variable to stack; rule transitions popping head and pushing RHS top-first (ε-rules push empty); and terminal transitions reading and popping matching terminals. Input alphabet is sorted terminals, and stack alphabet is a single unified list of variables and terminals sorted in byte order. Duplicate rules are merged to prevent duplicate transition warnings. Symbol name collisions between variables and terminals are rejected with `pda.cfg.symbol_clash`. Step traces are emitted in linear order with wire transitions and localized message keys.
+- Alternatives considered: Pre-normalizing the grammar before conversion (rejected: students need to inspect their exact unmodified rules); separate variable and terminal stack alphabet partitions (rejected: byte-order sorted unified list preserves canonical ordering).
+- Reversible? yes
+- Affects: `crates/engine-core/src/cfg_pda.rs`, `lib.rs`, `api.rs`, `ts.rs`, `crates/engine-wasm/src/lib.rs`, `web/src/lib/engine/protocol.ts`, `handlers.ts`, `docs/decisions/0037-cfg-to-pda-topdown.md`
+
+---
+
 ## 2026-11-05 — Pushdown automaton (PDA) JFLAP .jff import and export (task T-032)
 - Decider: worker
 - Context: Fasilkom UI students and lecturers exchange PDA files with JFLAP (`<type>pda</type>`). JFLAP reads pop/push strings top-first (one char per symbol) and implicitly adds a bottom marker `Z` that our course simulator ignores (Slide12).

@@ -330,6 +330,10 @@ export const id = {
 	'pda.sim.start': 'Mulai',
 	'pda.sim.move': 'Transisi',
 	'pda.sim.accepted': 'Diterima',
+	'pda.cfg.symbol_clash': 'Simbol "{symbol}" dipakai sebagai variabel dan terminal sekaligus.',
+	'cfg_pda.top_down.start': 'Awali dengan push simbol awal ke stack.',
+	'cfg_pda.top_down.rule': 'Aturan {rule}: pop variabel dan push ruas kanan.',
+	'cfg_pda.top_down.terminal': 'Terminal "{symbol}": baca dan pop terminal yang cocok.',
 	// TODO(review): the wording of the test strings is a draft until the feedback guide (U4).
 	'test.title': 'Uji banyak string',
 	'test.add_label': 'Tambah string',

@@ -7,6 +7,7 @@
 use crate::api::{
     self, EnumerateReport, EquivalenceReport, PdaSimulationReport, RegexOutcome, SimulationReport,
 };
+use crate::cfg_pda::{CfgPdaStep, CfgToPda, StateName};
 use crate::grammar::{
     CnfStepResult, CnfTransformationTrace, CykResult, Grammar, Production, Symbol,
 };
@@ -183,6 +184,11 @@ fn samples() -> Vec<(&'static str, &'static str, String)> {
                 &layout,
             ),
         ),
+        (
+            "sampleCfgToPdaTopdown",
+            "CfgToPda",
+            api::cfg_to_pda_topdown("S -> a S b | a b"),
+        ),
     ]
 }
 
@@ -256,6 +262,9 @@ pub fn declarations() -> String {
         PdaSimulation,
         PdaSimulationReport,
         PdaJff,
+        StateName,
+        CfgPdaStep,
+        CfgToPda,
     );
 
     // The envelope of every API function (see `api`).

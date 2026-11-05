@@ -156,6 +156,11 @@ pub fn cyk_parse(grammar: &str, input_word: &str) -> String {
     api::cyk_parse(grammar, input_word)
 }
 
+#[wasm_bindgen(js_name = cfgToPdaTopdown)]
+pub fn cfg_to_pda_topdown(grammar: &str) -> String {
+    api::cfg_to_pda_topdown(grammar)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -249,5 +254,14 @@ mod tests {
         let answer = cyk_parse(cnf, "ab");
         assert!(answer.contains(r#""ok":true"#), "{answer}");
         assert!(answer.contains(r#""accepted":true"#), "{answer}");
+    }
+
+    #[wasm_bindgen_test]
+    #[test]
+    fn cfg_to_pda_topdown_answers_in_envelope() {
+        let answer = cfg_to_pda_topdown("S -> a S b | a b");
+        assert!(answer.contains(r#""ok":true"#), "{answer}");
+        assert!(answer.contains(r#""steps""#), "{answer}");
+        assert!(answer.contains(r#""pda""#), "{answer}");
     }
 }

@@ -59,6 +59,9 @@ fn the_types_match_the_json() {
         "CnfStepResult",
         "CnfTransformationTrace",
         "CykResult",
+        "StateName",
+        "CfgPdaStep",
+        "CfgToPda",
     ] {
         assert!(
             text.contains(&format!("export type {name} =")),
