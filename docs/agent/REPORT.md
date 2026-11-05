@@ -403,65 +403,102 @@ test result: FAILED. 9 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; 
 
 ---
 
+### 2.3 PR 161 Review Fix: Transition Count Pre-Check Before Step 5 and `to_wire` Error Handling
+
+1. **Test written first (`test_f5_transitions_limit_precheck_is_fast`):**
+   - Crafted a 1-state PDA with `20 × 255 = 5,100` pop-nothing transitions (differing by `push: vec![SymbolId(i), SymbolId(j)]`) and a stack alphabet of `255` symbols (`|Γ'| = 256`).
+   - Expanding all pop-nothing transitions in Step 5 would allocate `5,100 × 256 = 1,305,600` transitions and wire copies before hitting `MAX_TRANSITIONS` (`100,000`).
+   - **Before fix (failing on `< 50ms` timing assertion at `2.696657374s`):**
+
+```text
+running 1 test
+crafted 5100x256 expansion elapsed: 2.696657374s
+
+thread 'test_f5_transitions_limit_precheck_is_fast' (772231) panicked at crates/engine-core/tests/pda_rnf.rs:718:5:
+expected pre-check to return in < 50ms without building 1.3M transitions, took 2.696657374s
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test test_f5_transitions_limit_precheck_is_fast ... FAILED
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 2.71s
+```
+
+2. **Fix applied:**
+   - Pre-computed `1 + accepting states + single-pop transitions + sum(multi-pop lengths) + (pop-nothing transitions × |Γ'|)` using `usize::checked_add` and `usize::checked_mul` right before Step 5, returning `limit_exceeded("transitions", MAX_TRANSITIONS)` immediately if it overflows or exceeds `MAX_TRANSITIONS` (`100_000`), while keeping the end check intact.
+   - Replaced `unwrap_or_default()` in `to_wire` with `Result<PdaWireTransition, Message>` returning `Message::new("machine.unknown_symbol")`.
+   - **After fix (passing in `503.437µs`, ~5,350× faster):**
+
+```text
+running 1 test
+crafted 5100x256 expansion elapsed: 503.437µs
+test test_f5_transitions_limit_precheck_is_fast ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+```
+
+---
+
 ## 3. Property Tests: 3 Runs of `PROPTEST_CASES=1000 cargo test --test pda_rnf`
 
 ```text
-=== Run 1 ===
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
-     Running tests/pda_rnf.rs (target/debug/deps/pda_rnf-ebae4131aa135941)
+=== PROPTEST_CASES=1000 Run 1 ===
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.07s
+     Running tests/pda_rnf.rs (target/debug/deps/pda_rnf-affb0f455492b0e1)
 
-running 11 tests
-test test_ac2_f1_language_equivalence ... ok
-test test_ac2_f2_language_equivalence ... ok
+running 12 tests
 test test_ac4_max_id_is_a_limit_message ... ok
-test test_fixture_f1_structure ... ok
 test test_fixture_f2_structure ... ok
+test test_fixture_f1_structure ... ok
 test test_fixture_f3_structure ... ok
 test test_fixture_f4_small_cases ... ok
+test test_f5_transitions_limit_precheck_is_fast ... ok
 test test_fixture_f5_errors ... ok
+test test_ac2_f2_language_equivalence ... ok
 test test_ac4_ids_near_top_of_u32_never_panic ... ok
+test test_ac2_f1_language_equivalence ... ok
 test test_ac4_arbitrary_text_never_panics ... ok
 test test_ac3_proptest_random_pdas ... ok
 
-test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.97s
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.37s
 
-=== Run 2 ===
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
-     Running tests/pda_rnf.rs (target/debug/deps/pda_rnf-ebae4131aa135941)
+=== PROPTEST_CASES=1000 Run 2 ===
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/pda_rnf.rs (target/debug/deps/pda_rnf-affb0f455492b0e1)
 
-running 11 tests
-test test_ac2_f1_language_equivalence ... ok
-test test_ac2_f2_language_equivalence ... ok
+running 12 tests
 test test_ac4_max_id_is_a_limit_message ... ok
 test test_fixture_f1_structure ... ok
 test test_fixture_f2_structure ... ok
-test test_fixture_f3_structure ... ok
 test test_fixture_f4_small_cases ... ok
+test test_fixture_f3_structure ... ok
+test test_f5_transitions_limit_precheck_is_fast ... ok
 test test_fixture_f5_errors ... ok
-test test_ac4_ids_near_top_of_u32_never_panic ... ok
-test test_ac4_arbitrary_text_never_panics ... ok
-test test_ac3_proptest_random_pdas ... ok
-
-test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.27s
-
-=== Run 3 ===
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
-     Running tests/pda_rnf.rs (target/debug/deps/pda_rnf-ebae4131aa135941)
-
-running 11 tests
-test test_ac2_f1_language_equivalence ... ok
 test test_ac2_f2_language_equivalence ... ok
-test test_ac4_max_id_is_a_limit_message ... ok
-test test_fixture_f1_structure ... ok
-test test_fixture_f2_structure ... ok
-test test_fixture_f3_structure ... ok
-test test_fixture_f4_small_cases ... ok
-test test_fixture_f5_errors ... ok
 test test_ac4_ids_near_top_of_u32_never_panic ... ok
+test test_ac2_f1_language_equivalence ... ok
 test test_ac4_arbitrary_text_never_panics ... ok
 test test_ac3_proptest_random_pdas ... ok
 
-test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.57s
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.85s
+
+=== PROPTEST_CASES=1000 Run 3 ===
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/pda_rnf.rs (target/debug/deps/pda_rnf-affb0f455492b0e1)
+
+running 12 tests
+test test_ac4_max_id_is_a_limit_message ... ok
+test test_fixture_f2_structure ... ok
+test test_fixture_f1_structure ... ok
+test test_fixture_f3_structure ... ok
+test test_fixture_f4_small_cases ... ok
+test test_f5_transitions_limit_precheck_is_fast ... ok
+test test_fixture_f5_errors ... ok
+test test_ac2_f2_language_equivalence ... ok
+test test_ac4_ids_near_top_of_u32_never_panic ... ok
+test test_ac2_f1_language_equivalence ... ok
+test test_ac4_arbitrary_text_never_panics ... ok
+test test_ac3_proptest_random_pdas ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.06s
 ```
 
 ---

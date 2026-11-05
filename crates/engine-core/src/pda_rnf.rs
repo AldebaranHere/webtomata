@@ -25,22 +25,43 @@ pub struct RnfResult {
     pub steps: Vec<RnfStep>,
 }
 
-fn to_wire(t: &PdaTransition, input: &Alphabet, stack: &Alphabet) -> PdaWireTransition {
-    PdaWireTransition {
-        from: t.from.0,
-        read: t.read.and_then(|sym| input.name(sym)).map(str::to_owned),
-        pop: t
-            .pop
-            .iter()
-            .map(|&sym| stack.name(sym).unwrap_or_default().to_owned())
-            .collect(),
-        push: t
-            .push
-            .iter()
-            .map(|&sym| stack.name(sym).unwrap_or_default().to_owned())
-            .collect(),
-        to: t.to.0,
+fn to_wire(
+    t: &PdaTransition,
+    input: &Alphabet,
+    stack: &Alphabet,
+) -> Result<PdaWireTransition, Message> {
+    let read = match t.read {
+        Some(sym) => Some(
+            input
+                .name(sym)
+                .ok_or_else(|| {
+                    Message::new("machine.unknown_symbol").with("symbol", sym.0.to_string())
+                })?
+                .to_owned(),
+        ),
+        None => None,
+    };
+    let mut pop = Vec::with_capacity(t.pop.len());
+    for &sym in &t.pop {
+        let name = stack.name(sym).ok_or_else(|| {
+            Message::new("machine.unknown_symbol").with("symbol", sym.0.to_string())
+        })?;
+        pop.push(name.to_owned());
     }
+    let mut push = Vec::with_capacity(t.push.len());
+    for &sym in &t.push {
+        let name = stack.name(sym).ok_or_else(|| {
+            Message::new("machine.unknown_symbol").with("symbol", sym.0.to_string())
+        })?;
+        push.push(name.to_owned());
+    }
+    Ok(PdaWireTransition {
+        from: t.from.0,
+        read,
+        pop,
+        push,
+        to: t.to.0,
+    })
 }
 
 /// Converts a PDA to restricted normal form (RNF) with an incremental step trace.
@@ -102,7 +123,7 @@ pub fn pda_to_rnf(pda: &Pda) -> Result<RnfResult, Message> {
         push: vec![marker_id],
         to: orig_start,
     };
-    let start_wire = to_wire(&start_transition, &new_input, &new_stack);
+    let start_wire = to_wire(&start_transition, &new_input, &new_stack)?;
     steps.push(RnfStep {
         removed: None,
         added: vec![start_wire],
@@ -119,7 +140,7 @@ pub fn pda_to_rnf(pda: &Pda) -> Result<RnfResult, Message> {
             push: Vec::new(),
             to: a,
         };
-        let accept_wire = to_wire(&accept_trans, &new_input, &new_stack);
+        let accept_wire = to_wire(&accept_trans, &new_input, &new_stack)?;
         steps.push(RnfStep {
             removed: None,
             added: vec![accept_wire],
@@ -161,7 +182,7 @@ pub fn pda_to_rnf(pda: &Pda) -> Result<RnfResult, Message> {
                     push: Vec::new(),
                     to: v_state,
                 };
-                split_wires.push(to_wire(&trans, &new_input, &new_stack));
+                split_wires.push(to_wire(&trans, &new_input, &new_stack)?);
                 split_trans.push(trans);
                 prev_state = v_state;
             }
@@ -174,11 +195,11 @@ pub fn pda_to_rnf(pda: &Pda) -> Result<RnfResult, Message> {
                 push: t.push.clone(),
                 to: t.to,
             };
-            split_wires.push(to_wire(&last_trans, &new_input, &new_stack));
+            split_wires.push(to_wire(&last_trans, &new_input, &new_stack)?);
             split_trans.push(last_trans);
 
             steps.push(RnfStep {
-                removed: Some(to_wire(t, &new_input, &new_stack)),
+                removed: Some(to_wire(t, &new_input, &new_stack)?),
                 added: split_wires,
                 message: Message::new("pda.rnf.split")
                     .with("from", t.from.0)
@@ -187,6 +208,30 @@ pub fn pda_to_rnf(pda: &Pda) -> Result<RnfResult, Message> {
             });
             all_transitions.extend(split_trans);
         }
+    }
+
+    // Pre-check result transition count before building expanded transitions in step 5
+    let single_pop_count = pda.transitions.iter().filter(|t| t.pop.len() == 1).count();
+    let pop_nothing_count = pda.transitions.iter().filter(|t| t.pop.is_empty()).count();
+    let mut multi_pop_sum = 0usize;
+    for t in &pda.transitions {
+        if t.pop.len() >= 2 {
+            multi_pop_sum = multi_pop_sum
+                .checked_add(t.pop.len())
+                .ok_or_else(|| limit_exceeded("transitions", MAX_TRANSITIONS))?;
+        }
+    }
+    let expanded_count = pop_nothing_count
+        .checked_mul(new_stack.len())
+        .ok_or_else(|| limit_exceeded("transitions", MAX_TRANSITIONS))?;
+    let total_transitions = 1usize
+        .checked_add(pda.accepting.len())
+        .and_then(|n| n.checked_add(single_pop_count))
+        .and_then(|n| n.checked_add(multi_pop_sum))
+        .and_then(|n| n.checked_add(expanded_count))
+        .ok_or_else(|| limit_exceeded("transitions", MAX_TRANSITIONS))?;
+    if total_transitions > MAX_TRANSITIONS {
+        return Err(limit_exceeded("transitions", MAX_TRANSITIONS));
     }
 
     // 4 (d). Step 5: Expand pop-nothing transitions (pop.len() == 0)
@@ -207,12 +252,12 @@ pub fn pda_to_rnf(pda: &Pda) -> Result<RnfResult, Message> {
                     push,
                     to: t.to,
                 };
-                expand_wires.push(to_wire(&trans, &new_input, &new_stack));
+                expand_wires.push(to_wire(&trans, &new_input, &new_stack)?);
                 expand_trans.push(trans);
             }
 
             steps.push(RnfStep {
-                removed: Some(to_wire(t, &new_input, &new_stack)),
+                removed: Some(to_wire(t, &new_input, &new_stack)?),
                 added: expand_wires,
                 message: Message::new("pda.rnf.expand")
                     .with("from", t.from.0)

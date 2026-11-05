@@ -674,3 +674,49 @@ fn test_ac4_max_id_is_a_limit_message() {
     let err = pda_to_rnf(&pda).unwrap_err();
     assert_eq!(err.key, "machine.limit_exceeded");
 }
+
+/// 5,100 pop-nothing transitions with 255 stack symbols would expand to 5,100 × 256 = 1,305,600
+/// transitions (> MAX_TRANSITIONS = 100,000). The pre-check before step 5 rejects it in a few
+/// milliseconds without allocating the expanded transitions.
+#[test]
+fn test_f5_transitions_limit_precheck_is_fast() {
+    let syms: Vec<String> = (0..255).map(|i| format!("S{i}")).collect();
+    let mut transitions = Vec::with_capacity(20 * 255);
+    for i in 0u16..20 {
+        for j in 0u16..255 {
+            transitions.push(engine_core::pda::PdaTransition {
+                from: StateId(0),
+                read: None,
+                pop: Vec::new(),
+                push: vec![SymbolId(i), SymbolId(j)],
+                to: StateId(0),
+            });
+        }
+    }
+    let pda = Pda::new(
+        PdaKind::Ndpda,
+        Alphabet::new(vec!["a".to_string()]).unwrap(),
+        Alphabet::new(syms).unwrap(),
+        vec![StateId(0)],
+        Some(StateId(0)),
+        vec![],
+        transitions,
+    )
+    .unwrap();
+
+    let start = std::time::Instant::now();
+    let err = pda_to_rnf(&pda).unwrap_err();
+    let elapsed = start.elapsed();
+    println!("crafted 5100x256 expansion elapsed: {elapsed:?}");
+
+    assert_eq!(err.key, "machine.limit_exceeded");
+    assert_eq!(
+        err.params.get("what"),
+        Some(&Param::Text("transitions".to_string()))
+    );
+    assert_eq!(err.params.get("limit"), Some(&Param::Int(100_000)));
+    assert!(
+        elapsed < std::time::Duration::from_millis(50),
+        "expected pre-check to return in < 50ms without building 1.3M transitions, took {elapsed:?}"
+    );
+}
