@@ -1249,7 +1249,7 @@ Expected: all pass. No e2e (no UI). Paste real output into `REPORT.md`.
 
 ## Task T-031 — PDA simulation: breadth-first, stack trace, peak configurations
 
-**Status:** todo (starts after T-030 is merged)
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-031-pda-simulation`
 
