@@ -333,6 +333,16 @@ export const en: Record<MessageKey, string> = {
 	'cfg_pda.bottom_up.shift': 'Shift terminal "{symbol}": read and push onto the stack.',
 	'cfg_pda.bottom_up.reduce': 'Reduce rule {rule}: pop reversed right-hand side and push variable.',
 	'cfg_pda.bottom_up.accept': 'Accept transition: pop start symbol to accepting state.',
+	'pda.rnf.start':
+		"Start with a transition from the new start state s' pushing marker # to the stack.",
+	'pda.rnf.accept':
+		'Accept transition from state {state}: pop marker # to the new accepting state a.',
+	'pda.rnf.split':
+		'Split transition from state {from} to {to} popping {pops} symbols into a chain of single-pop transitions.',
+	'pda.rnf.expand':
+		'Expand pop-nothing transition from state {from} to {to} for every stack symbol.',
+	'pda.rnf.no_start_state': 'The PDA does not have a start state.',
+	'pda.rnf.marker_clash': 'Stack symbol "{symbol}" clashes with the bottom marker #.',
 	'test.title': 'Test many strings',
 	'test.add_label': 'Add a string',
 	'test.add_button': 'Add',

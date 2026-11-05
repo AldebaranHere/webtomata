@@ -351,6 +351,49 @@ describe('every method reaches the engine', () => {
 			}
 		});
 	});
+
+	it('converts a PDA to restricted normal form (RNF)', () => {
+		const m1: Pda = {
+			schemaVersion: 1,
+			kind: 'ndpda',
+			inputAlphabet: ['a', 'b', 'c'],
+			stackAlphabet: ['a', 'b'],
+			states: [0, 1],
+			start: 0,
+			accepting: [1],
+			transitions: [
+				{ from: 0, read: 'a', pop: [], push: ['a'], to: 0 },
+				{ from: 0, read: 'b', pop: [], push: ['b'], to: 0 },
+				{ from: 0, read: 'c', pop: [], push: [], to: 1 },
+				{ from: 1, read: 'a', pop: ['a'], push: [], to: 1 },
+				{ from: 1, read: 'b', pop: ['b'], push: [], to: 1 }
+			]
+		};
+
+		const result = call('pdaToRnf', m1);
+		expect(result).toEqual({
+			ok: true,
+			value: {
+				pda: expect.objectContaining({
+					start: 2,
+					accepting: [3],
+					stackAlphabet: ['a', 'b', '#']
+				}),
+				newStates: [
+					{ id: 2, name: "s'" },
+					{ id: 3, name: 'a' }
+				],
+				steps: expect.arrayContaining([
+					expect.objectContaining({
+						message: { key: 'pda.rnf.start', params: {} }
+					}),
+					expect.objectContaining({
+						message: { key: 'pda.rnf.accept', params: { state: 1 } }
+					})
+				])
+			}
+		});
+	});
 });
 
 describe('a call that the engine cannot answer', () => {

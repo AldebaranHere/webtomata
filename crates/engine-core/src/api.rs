@@ -533,3 +533,12 @@ pub fn cfg_to_pda_bottomup(grammar_text: &str) -> String {
     };
     finish(run())
 }
+
+/// Converts a PDA to restricted normal form (RNF) with an incremental step trace.
+pub fn pda_to_rnf(pda_json: &str) -> String {
+    let run = || -> Result<crate::pda_rnf::RnfResult, Message> {
+        let pda = pda_model(pda_json)?;
+        crate::pda_rnf::pda_to_rnf(&pda)
+    };
+    finish(run())
+}

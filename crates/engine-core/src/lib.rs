@@ -16,6 +16,7 @@ mod minimize;
 mod nondeterminism;
 mod operations;
 pub mod pda;
+pub mod pda_rnf;
 pub mod pda_simulate;
 mod regex;
 mod regex_fsm;
@@ -47,6 +48,7 @@ pub use operations::{Intersection, Operation, add_trap_state, complement, inters
 pub use pda::{
     Competition, MAX_PDA_STRING, Pda, PdaKind, PdaTransition, determinism, validate_pda,
 };
+pub use pda_rnf::{RnfResult, RnfStep, pda_to_rnf};
 pub use pda_simulate::{PdaBudget, PdaSimulation, PdaStep, simulate_pda};
 pub use regex::{MAX_REGEX_CHARS, MAX_REGEX_DEPTH, Regex, parse_regex};
 pub use regex_fsm::{Compiled, RegexBudget, regex_to_fsm};
