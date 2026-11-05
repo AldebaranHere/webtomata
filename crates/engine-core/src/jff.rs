@@ -10,6 +10,7 @@
 
 use crate::fsm::{Alphabet, Fsm, FsmKind, MAX_STATES, StateId, Transition};
 use crate::message::Message;
+use crate::pda::{MAX_PDA_STRING, Pda, PdaKind, PdaTransition};
 use roxmltree::{Document, Node, ParsingOptions};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -17,6 +18,7 @@ use std::fmt::Write;
 use std::str::FromStr;
 
 pub const MAX_JFF_BYTES: usize = 1024 * 1024;
+const MAX_JFF_NODES: u32 = 200_000;
 
 /// A state as the file describes it. Names and positions belong to the UI, not to the machine.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -41,10 +43,58 @@ pub struct Jff {
     pub notes: Vec<Message>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct PdaJff {
+    #[cfg_attr(feature = "ts", ts(as = "crate::pda::PdaWire"))]
+    pub pda: Pda,
+    pub states: Vec<JffState>,
+}
+
 fn limit_exceeded(what: &str, limit: usize) -> Message {
     Message::new("machine.limit_exceeded")
         .with("what", what)
         .with("limit", limit)
+}
+
+fn parse_document(xml: &str) -> Result<Document<'_>, Message> {
+    if xml.len() > MAX_JFF_BYTES {
+        return Err(limit_exceeded("bytes", MAX_JFF_BYTES));
+    }
+    let options = ParsingOptions {
+        allow_dtd: false,
+        nodes_limit: MAX_JFF_NODES,
+        entity_resolver: None,
+    };
+    Document::parse_with_options(xml, options).map_err(|e| {
+        let at = e.pos();
+        Message::new("jff.xml_invalid")
+            .with("line", at.row)
+            .with("column", at.col)
+    })
+}
+
+fn invalid_structure(doc: &Document, element: &str, node: Node) -> Message {
+    Message::new("jff.invalid_structure")
+        .with("element", element)
+        .with("line", doc.text_pos_at(node.range().start).row)
+}
+
+fn check_structure_and_type<'a, 'i>(
+    doc: &'a Document<'i>,
+    expected_type: &str,
+) -> Result<Node<'a, 'i>, Message> {
+    let root = doc.root_element();
+    if root.tag_name().name() != "structure" {
+        return Err(invalid_structure(doc, "structure", root));
+    }
+    let kind = child(root, "type").ok_or_else(|| invalid_structure(doc, "type", root))?;
+    let kind = kind.text().unwrap_or("").trim();
+    if kind != expected_type {
+        let shown: String = kind.chars().take(32).collect();
+        return Err(Message::new("jff.unsupported_type").with("type", shown));
+    }
+    child(root, "automaton").ok_or_else(|| invalid_structure(doc, "automaton", root))
 }
 
 fn child<'a, 'i>(node: Node<'a, 'i>, name: &str) -> Option<Node<'a, 'i>> {
@@ -81,41 +131,16 @@ fn coordinate(node: Node, name: &str, bad: &dyn Fn(&str, Node) -> Message) -> Re
     }
 }
 
-/// Reads a `.jff` file of type `fa`.
-pub fn parse_jff(xml: &str) -> Result<Jff, Message> {
-    if xml.len() > MAX_JFF_BYTES {
-        return Err(limit_exceeded("bytes", MAX_JFF_BYTES));
-    }
-    let options = ParsingOptions {
-        allow_dtd: false,
-        nodes_limit: 200_000,
-        entity_resolver: None,
-    };
-    let doc = Document::parse_with_options(xml, options).map_err(|e| {
-        let at = e.pos();
-        Message::new("jff.xml_invalid")
-            .with("line", at.row)
-            .with("column", at.col)
-    })?;
-    let bad = |element: &str, node: Node| {
-        Message::new("jff.invalid_structure")
-            .with("element", element)
-            .with("line", doc.text_pos_at(node.range().start).row)
-    };
+struct ParsedStates {
+    states: Vec<JffState>,
+    starts: Vec<StateId>,
+    accepting: Vec<StateId>,
+}
 
-    let root = doc.root_element();
-    if root.tag_name().name() != "structure" {
-        return Err(bad("structure", root));
-    }
-    let kind = child(root, "type").ok_or_else(|| bad("type", root))?;
-    let kind = kind.text().unwrap_or("").trim();
-    if kind != "fa" {
-        let shown: String = kind.chars().take(32).collect();
-        return Err(Message::new("jff.unsupported_type").with("type", shown));
-    }
-    let automaton = child(root, "automaton").ok_or_else(|| bad("automaton", root))?;
-
-    // States.
+fn read_states<'a, 'i>(
+    automaton: Node<'a, 'i>,
+    bad: &dyn Fn(&str, Node) -> Message,
+) -> Result<ParsedStates, Message> {
     let mut states: Vec<JffState> = Vec::new();
     let mut starts = Vec::new();
     let mut accepting = Vec::new();
@@ -134,8 +159,8 @@ pub fn parse_jff(xml: &str) -> Result<Jff, Message> {
         states.push(JffState {
             id,
             name,
-            x: coordinate(node, "x", &bad)?,
-            y: coordinate(node, "y", &bad)?,
+            x: coordinate(node, "x", bad)?,
+            y: coordinate(node, "y", bad)?,
         });
         if child(node, "initial").is_some() {
             starts.push(id);
@@ -147,6 +172,25 @@ pub fn parse_jff(xml: &str) -> Result<Jff, Message> {
     if starts.len() > 1 {
         return Err(Message::new("jff.multiple_initial_states"));
     }
+    Ok(ParsedStates {
+        states,
+        starts,
+        accepting,
+    })
+}
+
+/// Reads a `.jff` file of type `fa`.
+pub fn parse_jff(xml: &str) -> Result<Jff, Message> {
+    let doc = parse_document(xml)?;
+    let bad = |element: &str, node: Node| invalid_structure(&doc, element, node);
+    let automaton = check_structure_and_type(&doc, "fa")?;
+
+    // States.
+    let ParsedStates {
+        mut states,
+        starts,
+        accepting,
+    } = read_states(automaton, &bad)?;
 
     // Transitions. A label of several characters becomes a chain through new states.
     let mut next_id = states
@@ -266,18 +310,15 @@ fn escape(text: &str) -> String {
     out
 }
 
-/// Writes a `.jff` file. `layout` gives names and positions; a state with no entry gets the
-/// name `q<id>` and a place on a grid. Returns an error message if a symbol has more than one
-/// character, because JFLAP cannot hold it. Symbols that no transition reads are not written.
-pub fn to_jff(fsm: &Fsm, layout: &[JffState]) -> Result<String, Message> {
-    if let Some(symbol) = fsm.alphabet.names().iter().find(|n| n.chars().count() != 1) {
-        return Err(Message::new("jff.symbol_not_single_character").with("symbol", symbol.as_str()));
-    }
+fn write_states(
+    out: &mut String,
+    states: &[StateId],
+    start: Option<StateId>,
+    accepting: &[StateId],
+    layout: &[JffState],
+) {
     let given: HashMap<StateId, &JffState> = layout.iter().map(|s| (s.id, s)).collect();
-    let mut out = String::from(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<structure>\n\t<type>fa</type>\n\t<automaton>\n",
-    );
-    for (i, &id) in fsm.states.iter().enumerate() {
+    for (i, &id) in states.iter().enumerate() {
         let (name, x, y) = match given.get(&id) {
             Some(s) if s.x.is_finite() && s.y.is_finite() => (s.name.clone(), s.x, s.y),
             other => (
@@ -292,14 +333,27 @@ pub fn to_jff(fsm: &Fsm, layout: &[JffState]) -> Result<String, Message> {
             id.0,
             escape(&name)
         );
-        if fsm.start == Some(id) {
+        if start == Some(id) {
             out.push_str("\t\t\t<initial/>\n");
         }
-        if fsm.accepting.binary_search(&id).is_ok() {
+        if accepting.binary_search(&id).is_ok() {
             out.push_str("\t\t\t<final/>\n");
         }
         out.push_str("\t\t</state>\n");
     }
+}
+
+/// Writes a `.jff` file. `layout` gives names and positions; a state with no entry gets the
+/// name `q<id>` and a place on a grid. Returns an error message if a symbol has more than one
+/// character, because JFLAP cannot hold it. Symbols that no transition reads are not written.
+pub fn to_jff(fsm: &Fsm, layout: &[JffState]) -> Result<String, Message> {
+    if let Some(symbol) = fsm.alphabet.names().iter().find(|n| n.chars().count() != 1) {
+        return Err(Message::new("jff.symbol_not_single_character").with("symbol", symbol.as_str()));
+    }
+    let mut out = String::from(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<structure>\n\t<type>fa</type>\n\t<automaton>\n",
+    );
+    write_states(&mut out, &fsm.states, fsm.start, &fsm.accepting, layout);
     for t in &fsm.transitions {
         let _ = write!(
             out,
@@ -311,6 +365,177 @@ pub fn to_jff(fsm: &Fsm, layout: &[JffState]) -> Result<String, Message> {
                 let _ = writeln!(out, "\t\t\t<read>{}</read>", escape(symbol));
             }
             None => out.push_str("\t\t\t<read/>\n"),
+        }
+        out.push_str("\t\t</transition>\n");
+    }
+    out.push_str("\t</automaton>\n</structure>\n");
+    Ok(out)
+}
+
+/// Reads a `.jff` file of type `pda`.
+pub fn parse_pda_jff(xml: &str) -> Result<PdaJff, Message> {
+    let doc = parse_document(xml)?;
+    let bad = |element: &str, node: Node| invalid_structure(&doc, element, node);
+    let automaton = check_structure_and_type(&doc, "pda")?;
+
+    let ParsedStates {
+        mut states,
+        starts,
+        accepting,
+    } = read_states(automaton, &bad)?;
+
+    struct RawTransition {
+        from: StateId,
+        to: StateId,
+        read: Option<char>,
+        pop: Vec<char>,
+        push: Vec<char>,
+    }
+
+    let mut raw_transitions = Vec::new();
+    let mut input_chars = BTreeSet::new();
+    let mut stack_chars = BTreeSet::new();
+
+    for node in children(automaton, "transition") {
+        let from = StateId(number(node, "from", &bad)?);
+        let to = StateId(number(node, "to", &bad)?);
+        let read_node = child(node, "read").ok_or_else(|| bad("read", node))?;
+        let read_chars: Vec<char> = read_node.text().unwrap_or("").chars().collect();
+        let read = match read_chars.as_slice() {
+            [] => None,
+            [c] => {
+                input_chars.insert(*c);
+                Some(*c)
+            }
+            _ => {
+                let label: String = read_chars.into_iter().collect();
+                return Err(Message::new("jff.pda_read_not_single")
+                    .with("label", label)
+                    .with("from", from.0)
+                    .with("to", to.0));
+            }
+        };
+
+        let pop_node = child(node, "pop").ok_or_else(|| bad("pop", node))?;
+        let pop_chars: Vec<char> = pop_node.text().unwrap_or("").chars().collect();
+        if pop_chars.len() > MAX_PDA_STRING {
+            return Err(limit_exceeded("pda_string", MAX_PDA_STRING));
+        }
+        for &c in &pop_chars {
+            stack_chars.insert(c);
+        }
+
+        let push_node = child(node, "push").ok_or_else(|| bad("push", node))?;
+        let push_chars: Vec<char> = push_node.text().unwrap_or("").chars().collect();
+        if push_chars.len() > MAX_PDA_STRING {
+            return Err(limit_exceeded("pda_string", MAX_PDA_STRING));
+        }
+        for &c in &push_chars {
+            stack_chars.insert(c);
+        }
+
+        raw_transitions.push(RawTransition {
+            from,
+            to,
+            read,
+            pop: pop_chars,
+            push: push_chars,
+        });
+    }
+
+    let input_alphabet = Alphabet::new(input_chars.into_iter().map(|c| c.to_string()).collect())?;
+    let stack_alphabet = Alphabet::new(stack_chars.into_iter().map(|c| c.to_string()).collect())?;
+
+    let mut transitions = Vec::with_capacity(raw_transitions.len());
+    for t in raw_transitions {
+        let mut pop = Vec::with_capacity(t.pop.len());
+        for c in t.pop {
+            let id = stack_alphabet.id(&c.to_string()).ok_or_else(|| {
+                Message::new("machine.unknown_symbol").with("symbol", c.to_string())
+            })?;
+            pop.push(id);
+        }
+        let mut push = Vec::with_capacity(t.push.len());
+        for c in t.push {
+            let id = stack_alphabet.id(&c.to_string()).ok_or_else(|| {
+                Message::new("machine.unknown_symbol").with("symbol", c.to_string())
+            })?;
+            push.push(id);
+        }
+        transitions.push(PdaTransition {
+            from: t.from,
+            to: t.to,
+            read: t.read.and_then(|c| input_alphabet.id(&c.to_string())),
+            pop,
+            push,
+        });
+    }
+
+    states.sort_by_key(|s| s.id);
+    let state_ids = states.iter().map(|s| s.id).collect();
+
+    let pda = Pda::new(
+        PdaKind::Ndpda,
+        input_alphabet,
+        stack_alphabet,
+        state_ids,
+        starts.first().copied(),
+        accepting,
+        transitions,
+    )?;
+
+    Ok(PdaJff { pda, states })
+}
+
+/// Writes a PDA `.jff` file. `layout` gives names and positions; a state with no entry gets the
+/// name `q<id>` and a place on a grid. Returns an error message if an input symbol or a stack symbol
+/// has more than one character, because JFLAP cannot hold it.
+pub fn to_pda_jff(pda: &Pda, layout: &[JffState]) -> Result<String, Message> {
+    if let Some(symbol) = pda.input.names().iter().find(|n| n.chars().count() != 1) {
+        return Err(Message::new("jff.symbol_not_single_character").with("symbol", symbol.as_str()));
+    }
+    if let Some(symbol) = pda.stack.names().iter().find(|n| n.chars().count() != 1) {
+        return Err(Message::new("jff.symbol_not_single_character").with("symbol", symbol.as_str()));
+    }
+    let mut out = String::from(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<structure>\n\t<type>pda</type>\n\t<automaton>\n",
+    );
+    write_states(&mut out, &pda.states, pda.start, &pda.accepting, layout);
+    for t in &pda.transitions {
+        let _ = write!(
+            out,
+            "\t\t<transition>\n\t\t\t<from>{}</from>\n\t\t\t<to>{}</to>\n",
+            t.from.0, t.to.0
+        );
+        match t.read.and_then(|s| pda.input.name(s)) {
+            Some(symbol) => {
+                let _ = writeln!(out, "\t\t\t<read>{}</read>", escape(symbol));
+            }
+            None => out.push_str("\t\t\t<read/>\n"),
+        }
+        if t.pop.is_empty() {
+            out.push_str("\t\t\t<pop/>\n");
+        } else {
+            out.push_str("\t\t\t<pop>");
+            for &sym in &t.pop {
+                let name = pda.stack.name(sym).ok_or_else(|| {
+                    Message::new("machine.unknown_symbol").with("symbol", u32::from(sym.0))
+                })?;
+                out.push_str(&escape(name));
+            }
+            out.push_str("</pop>\n");
+        }
+        if t.push.is_empty() {
+            out.push_str("\t\t\t<push/>\n");
+        } else {
+            out.push_str("\t\t\t<push>");
+            for &sym in &t.push {
+                let name = pda.stack.name(sym).ok_or_else(|| {
+                    Message::new("machine.unknown_symbol").with("symbol", u32::from(sym.0))
+                })?;
+                out.push_str(&escape(name));
+            }
+            out.push_str("</push>\n");
         }
         out.push_str("\t\t</transition>\n");
     }

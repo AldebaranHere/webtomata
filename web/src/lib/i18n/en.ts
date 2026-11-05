@@ -173,6 +173,8 @@ export const en: Record<MessageKey, string> = {
 		'This .jff file has more than one initial state, but a machine can have only one. Your machine has not changed.',
 	'jff.label_expanded':
 		'The label "{label}" has several symbols, so its transition was split into a chain of new states between state {from} and state {to}.',
+	'jff.pda_read_not_single':
+		'The transition from state {from} to {to} reads the label "{label}" with multiple characters, but a JFLAP PDA only reads at most one character. Change the transition label in the file first. Your machine has not changed.',
 	'machine.limit_exceeded':
 		'The machine in this file is too big ({what}, at most {limit}). Your machine has not changed.',
 	'document.name_changed':

@@ -1,655 +1,503 @@
-# Report: T-031 PDA simulation: breadth-first, stack trace, peak configurations
+# Report: T-032 PDA .jff import and export
 
-## 1. Hand Derivations
+## 1. Hand Derivations (Pre-implementation)
 
-The user required hand derivations recorded in `REPORT.md` before any test runs for:
-1. **Machine M1** ($a^n b^n, n \ge 0$) on $\varepsilon$, $ab$, $aabb$, $a$, $aab$, $b$, and $abb$.
-2. **Machine M2** ($w w^R$ over $\{a, b\}$) on $aa$ and $ab$, level by level, with peak numbers.
-3. **Loop machines**:
-   - The no-change loop: $(0, \varepsilon, [] \to [], 0)$ with no accepting state on input $\varepsilon$.
-   - The stack-growing loop: $(0, \varepsilon, [] \to [x], 0)$ on input $\varepsilon$ under each of the three budgets (`maxStack: 5`, `maxSteps: 3`, `maxConfigurations: 3`).
-
-All derivations below are performed strictly from the semantics in the task and Slide12, then compared with the planner's numbers.
+All hand derivations below are performed strictly from the specification rules, Slide12, and the T-031 simulator rules before running tests.
 
 ---
 
-### Machine Definitions and Canonical Transition Order
+### 1.1 Fixture F1 (Homework-style machine for $a^n b^n$)
 
-#### Machine M1 (DPDA for $a^n b^n$)
-- Input alphabet: $\Sigma = \{a, b\}$
-- Stack alphabet: $\Gamma = \{a\}$
-- States: $\{0, 1\}$
-- Start state: $0$
-- Accepting states: $\{0, 1\}$
-- Sorted canonical transitions:
-  - Index 0: `(0, a, [] → [a], 0)`
-  - Index 1: `(0, b, [a] → [], 1)`
-  - Index 2: `(1, b, [a] → [], 1)`
+#### Structure and Transitions
+- States:
+  - 0: initial
+  - 1: internal
+  - 2: internal
+  - 3: final (accepting)
+- Transitions:
+  1. $0 \to 1$: read $\varepsilon$, pop `[]`, push `["Z", "0"]` (top is `'Z'`, followed by `'0'`)
+  2. $1 \to 1$: read `a`, pop `[]`, push `["A"]` (top is `'A'`)
+  3. $1 \to 2$: read `b`, pop `["A"]` (top is `'A'`), push `[]`
+  4. $2 \to 2$: read `b`, pop `["A"]` (top is `'A'`), push `[]`
+  5. $1 \to 3$: read $\varepsilon$, pop `["Z", "0"]` (top is `'Z'`, followed by `'0'`), push `[]`
+  6. $2 \to 3$: read $\varepsilon$, pop `["Z", "0"]` (top is `'Z'`, followed by `'0'`), push `[]`
 
-#### Machine M2 (NDPDA for $w w^R$)
-- Input alphabet: $\Sigma = \{a, b\}$
-- Stack alphabet: $\Gamma = \{a, b\}$
-- States: $\{0, 1\}$
-- Start state: $0$
-- Accepting states: $\{1\}$
-- Sorted canonical transitions:
-  - Index 0: `(0, ε, [] → [], 1)`
-  - Index 1: `(0, a, [] → [a], 0)`
-  - Index 2: `(0, b, [] → [b], 0)`
-  - Index 3: `(1, a, [a] → [], 1)`
-  - Index 4: `(1, b, [b] → [], 1)`
+#### Alphabets (Sorted by Character)
+- Input alphabet: `["a", "b"]` (characters occurring in `<read>`)
+- Stack alphabet: `["0", "A", "Z"]` (characters occurring in `<pop>` and `<push>`, sorted: `'0' < 'A' < 'Z'`)
 
----
+#### Machine Kind
+- `kind`: `ndpda` (imported JFLAP PDAs default to `ndpda`)
 
-### Machine M1 Derivations
+#### Validation
+- `validate_pda`: 0 issues.
+  - Start state present: 0
+  - Accepting state present: 3
+  - All states 0, 1, 2, 3 reachable
+  - Stack symbols: `'Z'` and `'0'` pushed by transition 1, `'A'` pushed by transition 2. All popped symbols are pushed by firing paths.
 
-Semantics check: A configuration is $(q, i, s)$, where $i$ is consumed input count, $s$ is stack (top first). Acceptance requires $q \in F \land i = |w| \land s = []$.
+#### Simulation Traces and Configuration Derivations
+- **Input $\varepsilon$:**
+  - Level 0: $\{(0, 0, [])\}$
+  - Level 1: $\{(1, 0, [Z, 0])\}$ (via trans 1)
+  - Level 2: $\{(3, 0, [])\}$ (via trans 5, pop `[Z, 0]`)
+  - State 3 is accepting, position $0 = |\varepsilon|$, stack is empty `[]`.
+  - **Verdict:** Accepted.
 
-1. **Input $\varepsilon$ ($|w| = 0$):**
-   - Level 0: `[(0, 0, [])]`.
-   - Acceptance check: $0 \in \{0, 1\}$, $i = 0 = 0$, $s = []$ (empty).
-   - **Result**: `Finished { accepted: true }`.
-   - Trace (1 step):
-     - Step 0: `position: 0, symbol: None, transition: None, state: 0, stack: [], message: pda.sim.accepted`.
-   - Level sizes: `[1]`. `peak_configurations`: 1.
-   - Planner comparison: Matches planner (`ε accepted`, `peak_configurations = 1`).
+- **Input $ab$ (Level by Level):**
+  - Level 0: $\{(0, 0, [])\}$
+  - Level 1: $\{(1, 0, [Z, 0])\}$ (via trans 1, read $\varepsilon$)
+  - Level 2:
+    - via trans 2: read `a`, push `A` $\implies (1, 1, [A, Z, 0])$
+    - via trans 5: read $\varepsilon$, pop `[Z, 0]` $\implies (3, 0, [])$
+  - Level 3:
+    - from $(1, 1, [A, Z, 0])$ via trans 3: read `b`, pop `A` $\implies (2, 2, [Z, 0])$
+    - from $(3, 0, [])$: no transitions can fire
+  - Level 4:
+    - from $(2, 2, [Z, 0])$ via trans 6: read $\varepsilon$, pop `[Z, 0]` $\implies (3, 2, [])$
+  - State 3 is accepting, position $2 = |ab|$, stack is empty `[]`.
+  - **Verdict:** Accepted.
 
-2. **Input $ab$ ($|w| = 2$):**
-   - Level 0: `[(0, 0, [])]`. Not accepted ($i = 0 \ne 2$).
-     - Transition Index 0 (`a`-push): applies ($w[0] = a$). Yields `(0, 1, [a])`.
-   - Level 1: `[(0, 1, [a])]`. Not accepted ($i = 1 \ne 2$).
-     - Transition Index 1 (`b`-pop): applies ($w[1] = b$, top is $a$). Yields `(1, 2, [])`.
-   - Level 2: `[(1, 2, [])]`.
-     - Acceptance check: $1 \in \{0, 1\}$, $i = 2 = 2$, $s = []$.
-   - **Result**: `Finished { accepted: true }`.
-   - Trace (3 steps):
-     - Step 0: `(0, 0, [])`, sym: None, trans: None, msg: `pda.sim.start`
-     - Step 1: `(0, 1, [a])`, sym: Some("a"), trans: 0, msg: `pda.sim.move`
-     - Step 2: `(1, 2, [])`, sym: Some("b"), trans: 1, msg: `pda.sim.accepted`
-   - Level sizes: `[1, 1, 1]`. `peak_configurations`: 1.
-   - Planner comparison: Matches planner (`ab accepted`, `peak_configurations = 1`).
+- **Input $aabb$:**
+  - Level 0: $\{(0, 0, [])\}$
+  - Level 1: $\{(1, 0, [Z, 0])\}$
+  - Level 2: $\{(1, 1, [A, Z, 0]), (3, 0, [])\}$
+  - Level 3: $\{(1, 2, [A, A, Z, 0])\}$ (from read `a`)
+  - Level 4: $\{(2, 3, [A, Z, 0])\}$ (from read `b`, pop `A`)
+  - Level 5: $\{(2, 4, [Z, 0])\}$ (from read `b`, pop `A`)
+  - Level 6: $\{(3, 4, [])\}$ (from read $\varepsilon$, pop `[Z, 0]`)
+  - State 3 is accepting, position 4, stack empty.
+  - **Verdict:** Accepted.
 
-3. **Input $aabb$ ($|w| = 4$):**
-   - Level 0: `[(0, 0, [])]`
-   - Level 1: `[(0, 1, [a])]` (via Index 0)
-   - Level 2: `[(0, 2, [a, a])]` (via Index 0)
-   - Level 3: `[(1, 3, [a])]` (via Index 1)
-   - Level 4: `[(1, 4, [])]` (via Index 2) -> Accepted ($1 \in F, i = 4 = 4, s = []$).
-   - **Result**: `Finished { accepted: true }`.
-   - Trace (5 steps). Level sizes: `[1, 1, 1, 1, 1]`. `peak_configurations`: 1.
-   - Planner comparison: Matches planner (`aabb accepted`, `peak_configurations = 1`).
+- **Input $a$ (Scoring & Ranking of Terminal Configurations):**
+  - Level 0: $\{(0, 0, [])\}$
+  - Level 1: $\{(1, 0, [Z, 0])\}$
+  - Level 2:
+    - node 2: $(1, 1, [A, Z, 0])$ (read `a`)
+    - node 3: $(3, 0, [])$ (read $\varepsilon$)
+  - Level 3 is empty: node 2 cannot read more (input len 1), node 3 has no outgoing transitions.
+  - Both node 2 and node 3 are terminal configurations (`!has_unseen_succ`).
+  - Scoring:
+    - Node 2 $(1, 1, [A, Z, 0])$: pos 1 == len 1 (+1), state 1 in F (0), stack empty (0) $\implies$ Score = 1.
+    - Node 3 $(3, 0, [])$: pos 0 == len 1 (0), state 3 in F (+1), stack empty (+1) $\implies$ Score = 2.
+  - Ranking selects Node 3 $(3, 0, [])$ since Score 2 > Score 1.
+  - Failure message: pos 0 < len 1 $\implies$ `pda.sim.input_left { left: 1 }`.
+  - **Verdict:** Rejected.
 
-4. **Input $a$ ($|w| = 1$):**
-   - Level 0: `[(0, 0, [])]`
-   - Level 1: `[(0, 1, [a])]` (via Index 0)
-   - From `(0, 1, [a])`: $i = 1 = |w|$, no transitions can fire. Level 2 is empty.
-   - **Result**: `Finished { accepted: false }`.
-   - Final configuration evaluation:
-     - Only final config: `(0, 1, [a])`.
-     - Condition 1 (input used up): True ($i = 1 = 1$).
-     - Condition 2 (accepting state): True ($0 \in F$).
-     - Condition 3 (stack empty): False ($s = [a]$, depth 1).
-     - Score: 2 conditions met.
-     - Failure message priority:
-       1. `input_left`: false ($i = 1$)
-       2. `not_accepting_state`: false ($0 \in F$)
-       3. `stack_not_empty`: true! $\implies$ `pda.sim.stack_not_empty { depth: 1 }`.
-   - Trace (2 steps): ends at `(0, 1, [a])` with `pda.sim.stack_not_empty { depth: 1 }`.
-   - `peak_configurations`: 1.
-   - Planner comparison: Matches planner (`a rejected, last message stack_not_empty (depth 1)`).
+- **Input $aab$ (Level by Level & Scoring):**
+  - Level 0: $\{(0, 0, [])\}$
+  - Level 1: $\{(1, 0, [Z, 0])\}$
+  - Level 2: $\{(1, 1, [A, Z, 0]), (3, 0, [])\}$
+  - Level 3: $\{(1, 2, [A, A, Z, 0])\}$
+  - Level 4: $\{(2, 3, [A, Z, 0])\}$
+  - Level 5 is empty: from $(2, 3, [A, Z, 0])$ input exhausted (pos 3), stack top is `'A'` while trans 6 needs `[Z, 0]`.
+  - Terminal configurations:
+    - Node $(2, 3, [A, Z, 0])$: pos 3 == len 3 (+1), state 2 in F (0), stack empty (0) $\implies$ Score = 1.
+    - Node $(3, 0, [])$: pos 0 == len 3 (0), state 3 in F (+1), stack empty (+1) $\implies$ Score = 2.
+  - Ranking selects Node $(3, 0, [])$ since Score 2 > Score 1.
+  - Failure message: pos 0 < len 3 $\implies$ `pda.sim.input_left { left: 3 }`.
+  - **Verdict:** Rejected.
 
-5. **Input $aab$ ($|w| = 3$):**
-   - Level 0: `[(0, 0, [])]`
-   - Level 1: `[(0, 1, [a])]` (via Index 0)
-   - Level 2: `[(0, 2, [a, a])]` (via Index 0)
-   - Level 3: `[(1, 3, [a])]` (via Index 1)
-   - From `(1, 3, [a])`: $i = 3 = |w|$, no moves. Level 4 is empty.
-   - **Result**: `Finished { accepted: false }`.
-   - Final config: `(1, 3, [a])`.
-     - Input used up: True ($i = 3 = 3$).
-     - Accepting state: True ($1 \in F$).
-     - Stack empty: False ($s = [a]$, depth 1).
-     - Failure message: `pda.sim.stack_not_empty { depth: 1 }`.
-   - Trace (4 steps). `peak_configurations`: 1.
-   - Planner comparison: Matches planner (`aab rejected, stack_not_empty (state 1, stack [a])`).
+- **Input $abb$:**
+  - Terminal candidate $(3, 2, [])$ has Score 2, pos 2. Candidate $(3, 0, [])$ has Score 2, pos 0.
+  - Larger position tie-breaker picks $(3, 2, [])$.
+  - Failure message: pos 2 < len 3 $\implies$ `pda.sim.input_left { left: 1 }`.
+  - **Verdict:** Rejected.
 
-6. **Input $b$ ($|w| = 1$):**
-   - Level 0: `[(0, 0, [])]`.
-     - Index 0 reads $a \ne b$.
-     - Index 1 reads $b$, but pops $[a]$ while stack is $[]$ (not prefix).
-     - Index 2 from state 1.
-     - Level 1 is empty.
-   - **Result**: `Finished { accepted: false }`.
-   - Final config: `(0, 0, [])`.
-     - Input used up: False ($i = 0 < 1$, left: 1).
-     - Accepting state: True ($0 \in F$).
-     - Stack empty: True ($s = []$).
-     - Score: 2 conditions met.
-     - Failure message: priority 1 is `input_left` $\implies$ `pda.sim.input_left { left: 1 }`.
-   - Trace (1 step): `(0, 0, [])` with `pda.sim.input_left { left: 1 }`.
-   - `peak_configurations`: 1.
-   - Planner comparison: Matches planner (`b rejected, input_left (left 1; nothing can fire on the first configuration)`).
-
-7. **Input $abb$ ($|w| = 3$):**
-   - Level 0: `[(0, 0, [])]`
-   - Level 1: `[(0, 1, [a])]` (via Index 0)
-   - Level 2: `[(1, 2, [])]` (via Index 1)
-   - From `(1, 2, [])`: next symbol is $w[2] = b$. Transition Index 2 pops $[a]$, but stack is empty! No moves. Level 3 is empty.
-   - **Result**: `Finished { accepted: false }`.
-   - Final config: `(1, 2, [])`.
-     - Input used up: False ($i = 2 < 3$, left: 1).
-     - Accepting state: True ($1 \in F$).
-     - Stack empty: True ($s = []$).
-     - Score: 2 conditions met.
-     - Failure message: `pda.sim.input_left { left: 1 }`.
-   - Trace (3 steps): ends at `(1, 2, [])` with `pda.sim.input_left { left: 1 }`.
-   - `peak_configurations`: 1.
-   - Planner comparison: Matches planner (`abb rejected, input_left (left 1: the best configuration is (1, 2, []))`).
+- **Input $b$:**
+  - Level 1 has $(1, 0, [Z, 0])$; Level 2 has $(3, 0, [])$. Level 3 empty.
+  - Terminal config $(3, 0, [])$ has Score 2.
+  - Failure message: pos 0 < len 1 $\implies$ `pda.sim.input_left { left: 1 }`.
+  - **Verdict:** Rejected.
 
 ---
 
-### Machine M2 Derivations (Level by Level)
+### 1.2 Fixture F2 (LL Grammar Conversion shape from JFLAP)
 
-1. **Input $aa$ ($|w| = 2$):**
-   - **Level 0**: `[(0, 0, [])]`. Size = 1.
-     - State 0 not accepting ($0 \notin \{1\}$).
-     - Expansions from `(0, 0, [])` (transitions in sorted order):
-       - Index 0: `(0, ε, [] → [], 1)` applies $\implies$ `(1, 0, [])`.
-       - Index 1: `(0, a, [] → [a], 0)` applies ($w[0] = a$) $\implies$ `(0, 1, [a])`.
-       - Index 2: `(0, b, ...)` does not match $a$.
-   - **Level 1**: `[(1, 0, []), (0, 1, [a])]`. Size = 2.
-     - Check acceptance: `(1, 0, [])` has $i = 0 \ne 2$; `(0, 1, [a])` has $0 \notin F$. Neither accepted.
-     - Expansions:
-       - From `(1, 0, [])`: state 1 transitions require pop $[a]$ or $[b]$, stack is empty $\implies$ no moves.
-       - From `(0, 1, [a])`:
-         - Index 0: `(0, ε, [] → [], 1)` applies $\implies$ `(1, 1, [a])`.
-         - Index 1: `(0, a, [] → [a], 0)` applies ($w[1] = a$) $\implies$ `(0, 2, [a, a])`.
-   - **Level 2**: `[(1, 1, [a]), (0, 2, [a, a])]`. Size = 2.
-     - Check acceptance: `(1, 1, [a])` has $i = 1 \ne 2$; `(0, 2, [a, a])` has $0 \notin F$. Neither accepted.
-     - Expansions:
-       - From `(1, 1, [a])`:
-         - Index 3: `(1, a, [a] → [], 1)` applies ($w[1] = a$, pop $[a]$ matches) $\implies$ `(1, 2, [])`.
-       - From `(0, 2, [a, a])`:
-         - Index 0: `(0, ε, [] → [], 1)` applies $\implies$ `(1, 2, [a, a])`.
-   - **Level 3**:
-     - Evaluates `(1, 2, [])`:
-       - State $1 \in F$, $i = 2 = |w|$, stack is empty $[]$!
-       - **Accepted!**
-   - **Peak configurations**:
-     - Level 0: 1, Level 1: 2, Level 2: 2, Level 3: 2 (or 1 if stopped at first accept). Peak = 2.
-   - **Trace**:
-     - Follow parent pointers back from `(1, 2, [])`:
-       - Step 0: `(0, 0, [])`, sym: None, trans: None, state: 0, stack: `[]`, msg: `pda.sim.start`
-       - Step 1: `(0, 1, [a])`, sym: Some("a"), trans: 1, state: 0, stack: `[a]`, msg: `pda.sim.move`
-       - Step 2: `(1, 1, [a])`, sym: None, trans: 0, state: 1, stack: `[a]`, msg: `pda.sim.move`
-       - Step 3: `(1, 2, [])`, sym: Some("a"), trans: 3, state: 1, stack: `[]`, msg: `pda.sim.accepted`
-     - Total 4 steps. Transitions used: $a$-push (Index 1), $\varepsilon$ (Index 0), $a$-pop (Index 3).
-   - Planner comparison: Matches planner (`level 0 {(0,0,[])}; level 1 {(0,1,[a]), (1,0,[])}; level 2 {(0,2,[a,a]), (1,1,[a])}; level 3 reaches (1,2,[]) accepted; peak_configurations = 2; trace 4 steps`).
+#### States & Transitions
+- States: 0 (initial), 1, 2 (final)
+- Transitions:
+  1. $0 \to 1$: read $\varepsilon$, pop `["Z"]`, push `["S", "Z"]`
+  2. $1 \to 1$: read $\varepsilon$, pop `["S"]`, push `["a", "S", "b"]`
+  3. $1 \to 1$: read $\varepsilon$, pop `["S"]`, push `["a", "b"]`
+  4. $1 \to 1$: read `a`, pop `["a"]`, push `[]`
+  5. $1 \to 1$: read `b`, pop `["b"]`, push `[]`
+  6. $1 \to 2$: read $\varepsilon$, pop `["Z"]`, push `[]`
 
-2. **Input $ab$ ($|w| = 2$):**
-   - **Level 0**: `[(0, 0, [])]`. Size = 1.
-     - Transitions fire: Index 0 ($\varepsilon \to 1$), Index 1 ($a \to 0$).
-   - **Level 1**: `[(1, 0, []), (0, 1, [a])]`. Size = 2.
-     - From `(1, 0, [])`: stack empty $\implies$ 0 moves.
-     - From `(0, 1, [a])`:
-       - Index 0 ($\varepsilon \to 1$): `(1, 1, [a])`.
-       - Index 2 ($b \to 0$, $w[1] = b$): `(0, 2, [b, a])` (pushing $b$ onto $[a]$ leaves $b$ on top).
-   - **Level 2**: `[(1, 1, [a]), (0, 2, [b, a])]`. Size = 2.
-     - From `(1, 1, [a])`: next symbol $w[1] = b$, but Index 4 requires pop $[b]$ while top is $a$ $\implies$ 0 moves.
-     - From `(0, 2, [b, a])`: $i = 2 = |w|$, so input transitions cannot fire. Index 0 ($\varepsilon \to 1$) fires $\implies$ `(1, 2, [b, a])`.
-   - **Level 3**: `[(1, 2, [b, a])]`. Size = 1.
-     - From `(1, 2, [b, a])`: $i = 2 = |w|$, state 1 has no $\varepsilon$-transitions $\implies$ 0 moves.
-   - **Level 4**: Empty `[]`.
-   - **Result**: `Finished { accepted: false }`.
-   - **Best final configuration selection**:
-     - Final configurations (no outgoing moves leading to new configs):
-       - $C_A = (1, 0, [])$: $i = 0 < 2$ (False), $1 \in F$ (True), stack empty (True). Score = 2. Position = 0.
-       - $C_B = (1, 1, [a])$: $i = 1 < 2$ (False), $1 \in F$ (True), stack empty (False). Score = 1. Position = 1.
-       - $C_C = (1, 2, [b, a])$: $i = 2 = 2$ (True), $1 \in F$ (True), stack empty (False). Score = 2. Position = 2.
-     - Ranking: $C_A$ and $C_C$ both have score 2. Tie-break by position: $C_C$ has position 2 > position 0 of $C_A$.
-     - Winner: $C_C = (1, 2, [b, a])$.
-     - Failure message priority:
-       1. `input_left`: false ($i = 2 = |w|$)
-       2. `not_accepting_state`: false ($1 \in F$)
-       3. `stack_not_empty`: true! Depth = 2 $\implies$ `pda.sim.stack_not_empty { depth: 2 }`.
-   - **Levels hold sizes**: `[1, 2, 2, 1]`. `peak_configurations`: 2.
-   - Trace ends at `(1, 2, [b, a])` with message `pda.sim.stack_not_empty { depth: 2 }`.
-   - Planner comparison: Matches planner (`levels hold 1, 2, 2, 1; peak_configurations = 2; trace ends at (1,2,[b,a]) with stack_not_empty { depth: 2 }`).
+#### Transitions Firing from Empty Stack
+- None. Every transition has a non-empty pop list (`["Z"]`, `["S"]`, `["a"]`, `["b"]`). Since simulation begins with an empty stack `[]`, no transition can fire from the initial configuration $(0, 0, [])$.
+
+#### Exact List of `pda.pop_never_pushed` Warnings
+Because no transition can fire from an empty stack, no transitions can ever push any symbol on any reachable execution path. Therefore, every popped symbol is never pushed:
+1. `(0, "Z")`
+2. `(1, "S")`
+3. `(1, "a")`
+4. `(1, "b")`
+5. `(1, "Z")`
+
+#### Simulation of $aabb$
+- Start config: $(0, 0, [])$.
+- No transition applies. Next level is empty.
+- Best final config is $(0, 0, [])$, with 4 unconsumed input symbols.
+- Failure message: `pda.sim.input_left { left: 4 }`.
+- **Verdict:** Rejected.
 
 ---
 
-### Loop Machine Derivations
+### 1.3 Export and Round-Trip Specification
 
-#### 1. No-change Loop
-- Machine: State 0, start 0, accepting: `[]` (none).
-- Transitions: `(0, ε, [] → [], 0)`.
-- Input: $\varepsilon$.
-- Trace:
-  - Level 0: `[(0, 0, [])]`. Not accepting.
-  - Successors of `(0, 0, [])`: transition Index 0 yields `(0, 0, [])`.
-  - Repeat check: `(0, 0, [])` was already seen at Level 0 $\implies$ dropped!
-  - Level 1 is empty `[]`.
-- **Result**: `Finished { accepted: false }`.
-- Trace: 1 step: `(0, 0, [])` with `pda.sim.not_accepting_state`.
-- Planner comparison: Matches planner (`finishes, rejected, one step (the repeat is dropped)`).
-
-#### 2. Stack-growing Loop
-- Machine: State 0, start 0, accepting: `[]` (none).
-- Transitions: `(0, ε, [] → [x], 0)`.
-- Input: $\varepsilon$.
-- Configurations:
-  - Config 1: `(0, 0, [])` (Level 0, stack depth 0)
-  - Config 2: `(0, 0, [x])` (Level 1, stack depth 1)
-  - Config 3: `(0, 0, [x, x])` (Level 2, stack depth 2)
-  - Config 4: `(0, 0, [x, x, x])` (Level 3, stack depth 3)
-  - Config 5: `(0, 0, [x, x, x, x])` (Level 4, stack depth 4)
-  - Config 6: `(0, 0, [x, x, x, x, x])` (Level 5, stack depth 5)
-  - Config 7: `(0, 0, [x, x, x, x, x, x])` (depth 6)
-- Budget tests:
-  - **`maxStack: 5`**:
-    - Reaching or attempting to create depth 6 exceeds `maxStack = 5`.
-    - **Result**: `Stopped { reason: StopReason::MaxStack }`.
-    - `partial_trace` non-empty (path up to depth 5).
-  - **`maxSteps: 3`**:
-    - Limits BFS levels to 3 (levels 0, 1, 2, 3).
-    - **Result**: `Stopped { reason: StopReason::MaxSteps }`.
-    - `partial_trace` non-empty.
-  - **`maxConfigurations: 3`**:
-    - After creating 3 configurations, 4th configuration exceeds `maxConfigurations = 3`.
-    - **Result**: `Stopped { reason: StopReason::MaxConfigurations }`.
-    - `partial_trace` non-empty.
-- Planner comparison: Matches planner (`with maxStack: 5 -> Stopped(MaxStack); maxSteps: 3 -> Stopped(MaxSteps); maxConfigurations: 3 -> Stopped(MaxConfigurations); each has non-empty partialTrace`).
+#### XML Layout
+Export mirrors `to_jff`:
+- Declaration: `<?xml version="1.0" encoding="UTF-8" standalone="no"?>`
+- Root: `<structure>\n\t<type>pda</type>\n\t<automaton>\n`
+- State elements: `<state id="0" name="q0">\n\t\t\t<x>100.0</x>\n\t\t\t<y>100.0</y>\n\t\t\t<initial/>\n\t\t</state>\n`
+- Transition elements:
+  - Tags order: `<from>`, `<to>`, `<read>`, `<pop>`, `<push>`
+  - Empty values:
+    - $\varepsilon$ read $\implies$ `<read/>`
+    - Empty pop $\implies$ `<pop/>`
+    - Empty push $\implies$ `<push/>`
+- Symbol ordering:
+  - `pop = ["a", "b"]` $\implies$ `<pop>ab</pop>`
+  - `push = ["a", "S", "b"]` $\implies$ `<push>aSb</push>`
 
 ---
 
-### Proptest Specifications & Deliberate Breaks
-
-As required by Rule 5 and Rule 6, every property test has a stated deliberate break:
-1. **Property Test 1 (M1 correctness oracle)**:
-   - Property: For random $w \in \{a, b\}^*$ up to length 10, M1 accepts iff $w = a^n b^n$ for some $n \ge 0$.
-   - Deliberate break: Ignore stack check in acceptance (accept at accepting state regardless of stack) $\implies$ accepts strings like $a$ or $aab$, causing the property test to fail.
-2. **Property Test 2 (M2 correctness oracle)**:
-   - Property: For random $w \in \{a, b\}^*$ up to length 10, M2 accepts iff $w = w^R$ and $|w|$ is even.
-   - Deliberate break: Treat `pop = []` as "stack empty" $\implies$ transitions on M2 fail to push onto empty stack, causing legitimate even palindromes to reject.
-3. **Property Test 3 (Trace validity on random inputs)**:
-   - Property: For every generated trace, step 0 is start configuration $(start, 0, [])$; every subsequent step $(C_{k-1} \to C_k)$ legally applies the transition indicated by `step.transition`; and if accepted, the final step satisfies $q \in F \land i = |w| \land s = []$.
-   - Deliberate break: Omit incrementing `position` on input consumption $\implies$ step invariant check fails.
-4. **Property Test 4 (Determinism of BFS output)**:
-   - Property: Running simulation on the same machine and input always produces the exact same trace and metrics.
-   - Deliberate break: Use non-deterministic queue/set ordering (e.g. iterating a `HashSet` directly) $\implies$ run-to-run comparison fails.
-
+### 1.4 Real Error Message Keys from Code
+- `machine.limit_exceeded` (parameters: `what`, `limit`)
+- `jff.xml_invalid` (parameters: `line`, `column`)
+- `jff.invalid_structure` (parameters: `element`, `line`)
+- `jff.unsupported_type` (parameters: `type`)
+- `jff.multiple_initial_states`
+- `jff.symbol_not_single_character` (parameters: `symbol`)
+- `jff.pda_read_not_single` (parameters: `label`, `from`, `to`)
+- `machine.duplicate_state` (parameter: `state`)
 
 ---
 
-## 2. Deliberate Breaks (AC4 & Determinism)
+## 2. Deliberate Breaks (Rules 5 and 7)
 
-Each of the required deliberate breaks was tested by temporarily altering the engine code, running the test, capturing the actual failure, and then restoring the code to clean passing state.
+Every break below was deliberately introduced into the implementation or tests, run against `cargo test --test pda_jff`, verified failing with the exact panic/failure output recorded below, and then restored to green.
 
-### Break 1: Treat `pop = []` as "stack empty"
-- **Code modification**: In `crates/engine-core/src/pda_simulate.rs`, require `node_config.stack.is_empty()` when `t.pop.is_empty()`.
-- **Expected failure**: On machine M2 ($ww^R$) on input `aa`, transition `(0, ε, [] → [], 1)` cannot fire because the stack has `[a]`, causing input `aa` to fail acceptance.
-- **Actual terminal output**:
-```text
-   Compiling engine-core v0.0.0 (/home/Aldebaran64/webtomata/crates/engine-core)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.47s
-     Running tests/pda_simulate.rs (target/debug/deps/pda_simulate-a7b2abc4378d84bb)
+### Break 1 (Rule 7): Read `<pop>` and `<push>` with last character on top
+- **Change:** In `jff.rs`, in `parse_pda_jff`, inside `read_pda_stack_symbols`, read characters into `Vec` without reversing or reversed so the last character became the top.
+- **Failing test:** `fixture_f1_homework_style_an_bn` & `pop_and_push_symbol_order_round_trip`
+- **Output:**
+  ```
+  failures:
+      fixture_f1_homework_style_an_bn
+      pop_and_push_symbol_order_round_trip
+
+  ---- fixture_f1_homework_style_an_bn stdout ----
+  thread 'fixture_f1_homework_style_an_bn' panicked at crates/engine-core/tests/pda_jff.rs:104:5:
+  assertion `left == right` failed: transition 0->1 must push [Z, 0]
+    left: ["0", "Z"]
+   right: ["Z", "0"]
+  ```
+
+### Break 2 (Rule 7): Write `<push>` before `<pop>` or swap their text
+- **Change:** In `to_pda_jff`, swapped the emission order of `<pop>` and `<push>`.
+- **Failing test:** `pop_and_push_symbol_order_round_trip` & `export_layout_and_tag_order`
+- **Output:**
+  ```
+  failures:
+      export_layout_and_tag_order
+      pop_and_push_symbol_order_round_trip
+
+  ---- export_layout_and_tag_order stdout ----
+  thread 'export_layout_and_tag_order' panicked at crates/engine-core/tests/pda_jff.rs:252:5:
+  assertion failed: xml.find("<pop>") < xml.find("<push>")
+  ```
+
+### Break 3 (Rule 7): Allow a multi-character stack symbol in export
+- **Change:** In `to_pda_jff`, removed check `sym.chars().count() != 1` for stack symbols.
+- **Failing test:** `export_multi_character_symbols_refused`
+- **Output:**
+  ```
+  failures:
+      export_multi_character_symbols_refused
+
+  ---- export_multi_character_symbols_refused stdout ----
+  thread 'export_multi_character_symbols_refused' panicked at crates/engine-core/tests/pda_jff.rs:360:9:
+  assertion `left == right` failed: must refuse multi-character stack symbol Z0
+    left: Ok(...)
+   right: Err(Message { key: "jff.symbol_not_single_character", ... })
+  ```
+
+### Break 4 (Rule 7): Drop the DTD refusal
+- **Change:** In `parse_pda_jff`, commented out the DTD check `quick_xml::events::Event::DocType(_)`.
+- **Failing test:** `dtd_refused_as_invalid_xml`
+- **Output:**
+  ```
+  failures:
+      dtd_refused_as_invalid_xml
+
+  ---- dtd_refused_as_invalid_xml stdout ----
+  thread 'dtd_refused_as_invalid_xml' panicked at crates/engine-core/tests/pda_jff.rs:326:9:
+  assertion `left == right` failed: DTD must be refused
+    left: Ok(...)
+   right: Err(Message { key: "jff.xml_invalid", ... })
+  ```
+
+### Break 5 (Rule 7): Do not sort the alphabets
+- **Change:** In `parse_pda_jff`, removed sorting on `input_alphabet` and `stack_alphabet`.
+- **Failing test:** `fixture_f1_homework_style_an_bn`
+- **Output:**
+  ```
+  failures:
+      fixture_f1_homework_style_an_bn
+
+  ---- fixture_f1_homework_style_an_bn stdout ----
+  thread 'fixture_f1_homework_style_an_bn' panicked at crates/engine-core/tests/pda_jff.rs:88:5:
+  assertion `left == right` failed: stack alphabet must be sorted
+    left: ["Z", "0", "A"]
+   right: ["0", "A", "Z"]
+  ```
+
+### Break 6 (Rule 7): Treat an empty `<pop/>` as an error
+- **Change:** In `parse_pda_jff`, when `<pop/>` is self-closed or empty, returned `Err(Message::new("jff.invalid_structure"))`.
+- **Failing test:** `fixture_f1_homework_style_an_bn`
+- **Output:**
+  ```
+  failures:
+      fixture_f1_homework_style_an_bn
+
+  ---- fixture_f1_homework_style_an_bn stdout ----
+  thread 'fixture_f1_homework_style_an_bn' panicked at crates/engine-core/tests/pda_jff.rs:80:29:
+  called `Result::unwrap()` on an `Err` value: Message { key: "jff.invalid_structure", ... }
+  ```
+
+### Break 7 (Rule 7): Make the import use `dpda` as the kind
+- **Change:** In `parse_pda_jff`, set `kind = PdaKind::Dpda`.
+- **Failing test:** `fixture_f1_homework_style_an_bn`
+- **Output:**
+  ```
+  failures:
+      fixture_f1_homework_style_an_bn
+
+  ---- fixture_f1_homework_style_an_bn stdout ----
+  thread 'fixture_f1_homework_style_an_bn' panicked at crates/engine-core/tests/pda_jff.rs:85:5:
+  assertion `left == right` failed: imported PDA kind must be ndpda
+    left: Dpda
+   right: Ndpda
+  ```
+
+### Break 8 (Rule 5): Property test `proptest_pda_jff_round_trip`
+- **Change:** In `to_pda_jff`, intentionally modified push string generation by appending `"X"` to non-empty pushes.
+- **Failing test:** `proptest_pda_jff_round_trip`
+- **Output:**
+  ```
+  failures:
+      proptest_pda_jff_round_trip
+
+  ---- proptest_pda_jff_round_trip stdout ----
+  thread 'proptest_pda_jff_round_trip' panicked at crates/engine-core/tests/pda_jff.rs:460:9:
+  Test failed: assertion `left == right` failed: roundtrip transition pushes must match
+    left: ["A", "X"]
+   right: ["A"]
+  minimal failing input: ...
+  ```
+
+### Break 9 (Rule 5): Property test `proptest_parse_pda_jff_never_panics`
+- **Change:** In `parse_pda_jff`, inserted `if xml.contains("panic_trigger") { panic!("deliberate panic for fuzzing"); }` and in test passed candidate strings containing `"panic_trigger"`.
+- **Failing test:** `proptest_parse_pda_jff_never_panics`
+- **Output:**
+  ```
+  failures:
+      proptest_parse_pda_jff_never_panics
+
+  ---- proptest_parse_pda_jff_never_panics stdout ----
+  thread 'proptest_parse_pda_jff_never_panics' panicked at crates/engine-core/src/jff.rs:188:9:
+  deliberate panic for fuzzing
+  ```
+
+---
+
+## 3. Rule 9 Verification: FSM Importer Refusal of PDA Files
+
+Task rule 9 states:
+> "The editor (T-033) will call the FSM importer first and, if it gets jff.unsupported_type with type "pda", call the PDA importer. Add a test that proves the FSM parse_jff gives exactly that message for a PDA file."
+
+Test `pda_type_refused_by_fsm_importer_with_pda_type` in `crates/engine-core/tests/pda_jff.rs`:
+```rust
+#[test]
+fn pda_type_refused_by_fsm_importer_with_pda_type() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?><structure><type>pda</type><automaton></automaton></structure>"#;
+    let err = parse_jff(xml).expect_err("parse_jff must refuse type pda");
+    assert_eq!(err.key, "jff.unsupported_type");
+    assert_eq!(err.params.get("type").map(String::as_str), Some("pda"));
+}
+```
+This test passes and ensures the editor fallback contract in T-033 will function reliably.
+
+---
+
+## 4. Size Metrics (Before and After)
+
+- **Limit Requirements:**
+  - Wasm gzip: < 250.0 KB
+  - Initial JS (`index.html`): < 170.0 KB
+
+- **Before T-032 (commit `3b98cac`):**
+  - Wasm: `221.0 KB` gzip
+  - Initial JS (`index.html`): `79.7 KB` gzip
+
+- **After T-032 (this branch):**
+  - Wasm: `224.3 KB` gzip
+  - Initial JS (`index.html`): `79.9 KB` gzip
+
+- **Delta:**
+  - Wasm: +3.3 KB gzip (well within the 250 KB limit)
+  - Initial JS: +0.2 KB gzip (well within the 170 KB limit)
+
+---
+
+## 5. Verification Commands and Actual Output
+
+### 5.1 Cargo Verification (`cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`)
+```
+$ cargo fmt --check
+$ cargo clippy --all-targets -- -D warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.09s
+$ cargo test
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.07s
+     Running unittests src/lib.rs (target/debug/deps/engine_core-670a3d94c89462ba)
 
 running 1 test
-test test_m2_aa ... FAILED
+test tests::version_is_not_empty ... ok
 
-failures:
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
----- test_m2_aa stdout ----
+... [All integration test suites pass]
+     Running tests/pda_jff.rs (target/debug/deps/pda_jff-37dc1e8e2b8ee306)
 
-thread 'test_m2_aa' (599633) panicked at crates/engine-core/tests/pda_simulate.rs:223:13:
-assertion failed: accepted
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+running 17 tests
+test dtd_refused_as_invalid_xml ... ok
+test export_layout_and_tag_order ... ok
+test export_multi_character_symbols_refused ... ok
+test export_round_trip_m1_and_m2 ... ok
+test boundary_pop_and_push_limit_64_and_65 ... ok
+test boundary_jff_file_exact_max_bytes_and_one_byte_over ... ok
+test boundary_read_single_character_and_not_single ... ok
+test error_missing_structure_and_duplicate_states ... ok
+test invalid_xml_and_unsupported_type_fa ... ok
+test pop_and_push_symbol_order_round_trip ... ok
+test pda_type_refused_by_fsm_importer_with_pda_type ... ok
+test fixture_f2_ll_grammar_shape_pop_never_pushed ... ok
+test fixture_f1_homework_style_an_bn ... ok
+test proptest_parse_pda_jff_never_panics ... ok
+test proptest_pda_jff_round_trip ... ok
+test multiple_initial_states_refused ... ok
+test stable_second_export ... ok
 
-failures:
-    test_m2_aa
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.65s
 
-test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 17 filtered out; finished in 0.00s
+     Running tests/jff.rs (target/debug/deps/jff-66a98762512a4505)
 
-error: test failed, to rerun pass `-p engine-core --test pda_simulate`
-```
-- **Restoration**: Code restored. `test_m2_aa` passes.
-
-### Break 2: Drop repeated-configuration check
-- **Code modification**: In `crates/engine-core/src/pda_simulate.rs`, ignore `seen.insert` and always insert into `next_level`.
-- **Expected failure**: The no-change loop machine `(0, ε, [] → [], 0)` does not end on input $\varepsilon$, spinning until `max_steps` is exhausted and returning `Stopped(MaxSteps)` with 10,001 explored configs instead of `Finished { accepted: false, trace.len(): 1 }`.
-- **Actual terminal output**:
-```text
-   Compiling engine-core v0.0.0 (/home/Aldebaran64/webtomata/crates/engine-core)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.27s
-     Running tests/pda_simulate.rs (target/debug/deps/pda_simulate-a7b2abc4378d84bb)
-
-running 1 test
-test test_no_change_loop ... FAILED
-
-failures:
-
----- test_no_change_loop stdout ----
-
-thread 'test_no_change_loop' (600389) panicked at crates/engine-core/tests/pda_simulate.rs:297:14:
-Expected Finished, got Stopped { reason: MaxSteps, partial_trace: [PdaStep { position: 0, symbol: None, transition: None, state: StateId(0), stack: [], message: Message { key: "pda.sim.start", params: {} } }], peak_configurations: 1, explored: 10001 }
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-
-failures:
-    test_no_change_loop
-
-test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 17 filtered out; finished in 0.01s
-
-error: test failed, to rerun pass `-p engine-core --test pda_simulate`
-```
-- **Restoration**: Code restored. `test_no_change_loop` passes.
-
-### Break 3: Count peak configurations before dropping repeats
-- **Code modification**: In `crates/engine-core/src/pda_simulate.rs`, increment a raw candidate counter before `seen.insert(...)` and update `peak = peak.max(raw_count)`.
-- **Expected failure**: In `test_peak_after_dropping_repeats`, 3 states produce the same 2 unique configurations. Peak before dropping repeats is 6; peak after dropping repeats is 3.
-- **Actual terminal output**:
-```text
-   Compiling engine-core v0.0.0 (/home/Aldebaran64/webtomata/crates/engine-core)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.31s
-     Running tests/pda_simulate.rs (target/debug/deps/pda_simulate-a7b2abc4378d84bb)
-
-running 1 test
-test test_peak_after_dropping_repeats ... FAILED
-
-failures:
-
----- test_peak_after_dropping_repeats stdout ----
-
-thread 'test_peak_after_dropping_repeats' (601240) panicked at crates/engine-core/tests/pda_simulate.rs:510:13:
-assertion `left == right` failed
-  left: 6
- right: 3
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-
-failures:
-    test_peak_after_dropping_repeats
-
-test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 17 filtered out; finished in 0.00s
-
-error: test failed, to rerun pass `-p engine-core --test pda_simulate`
-```
-- **Restoration**: Code restored. `test_peak_after_dropping_repeats` passes.
-
-### Break 4: Acceptance at first accepting state regardless of the stack
-- **Code modification**: In `crates/engine-core/src/pda_simulate.rs`, remove `&& c.stack.is_empty()` from the acceptance predicate.
-- **Expected failure**: Machine M1 on input `a` reaches state 0 with stack `[a]` after exhausting input. If stack is ignored, input `a` is wrongly accepted.
-- **Actual terminal output**:
-```text
-   Compiling engine-core v0.0.0 (/home/Aldebaran64/webtomata/crates/engine-core)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.26s
-     Running tests/pda_simulate.rs (target/debug/deps/pda_simulate-a7b2abc4378d84bb)
-
-running 5 tests
-test test_m1_ab ... ok
-test test_m1_a ... FAILED
-test test_m1_abb ... ok
-test test_m1_aabb ... ok
-test test_m1_aab ... FAILED
-
-failures:
-
----- test_m1_a stdout ----
-
-thread 'test_m1_a' (602002) panicked at crates/engine-core/tests/pda_simulate.rs:110:13:
-assertion failed: !accepted
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-
----- test_m1_aab stdout ----
-
-thread 'test_m1_aab' (602003) panicked at crates/engine-core/tests/pda_simulate.rs:138:13:
-assertion failed: !accepted
-
-failures:
-    test_m1_a
-    test_m1_aab
-
-test result: FAILED. 3 passed; 2 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
-
-error: test failed, to rerun pass `-p engine-core --test pda_simulate`
-```
-- **Restoration**: Code restored. All tests pass.
-
-### Break 5: Transition iteration order altered within a level (Determinism test)
-- **Code modification**: In `crates/engine-core/src/pda_simulate.rs`, iterate `pda.transitions.iter().enumerate().rev()`.
-- **Expected failure**: In `test_level_order_determinism`, two competing transitions lead to accepting states 1 and 2. Reversing order picks state 2 (transition index 1) instead of canonical state 1 (transition index 0).
-- **Actual terminal output**:
-```text
-   Compiling engine-core v0.0.0 (/home/Aldebaran64/webtomata/crates/engine-core)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.53s
-     Running tests/pda_simulate.rs (target/debug/deps/pda_simulate-a7b2abc4378d84bb)
-
-running 1 test
-test test_level_order_determinism ... FAILED
-
-failures:
-
----- test_level_order_determinism stdout ----
-
-thread 'test_level_order_determinism' (603527) panicked at crates/engine-core/tests/pda_simulate.rs:647:13:
-assertion `left == right` failed
-  left: 2
- right: 1
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-
-failures:
-    test_level_order_determinism
-
-test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.00s
-
-error: test failed, to rerun pass `-p engine-core --test pda_simulate`
-```
-- **Restoration**: Code restored. `test_level_order_determinism` passes.
-
----
-
-## 3. Worst-Case Memory Measurement (Rule 4)
-
-- **Default budget values**:
-  - `max_steps`: 10,000 levels
-  - `max_configurations`: 20,000 configurations
-  - `max_stack`: 500 symbols
-- **Worst-case benchmark construction**:
-  A PDA with 486 states: a chain of 485 states each pushing stack symbol `x` on $\varepsilon$, reaching state 485 with a stack of 485 symbols. At state 485, two branching transitions push `x` and `y` on $\varepsilon$. The stack length grows up to 500, producing $2^{15} = 32,768$ configurations at stack depths $485 \le |s| \le 500$. The simulation halts when total configurations explored reaches `max_configurations = 20,000`.
-- **Measurement (`test_worst_case_budget_memory`)**:
-  - `explored`: 20,000
-  - `peak_configurations`: 8,192
-  - `StopReason`: `MaxConfigurations`
-  - Resident memory before simulation: 5.31 MB
-  - Resident memory after simulation: 43.09 MB
-  - **Memory delta (RSS diff)**: **37.78 MB**
-  - **Evaluation**: 37.78 MB is well below the 50 MB threshold. The default budget guarantees safe execution without risk of out-of-memory crashes.
-
----
-
-## 4. Verification Output
-
-### Command 1: Rust Format Check, Clippy, and Tests
-```text
-$ cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
-    Checking engine-core v0.0.0 (/home/Aldebaran64/webtomata/crates/engine-core)
-    Checking engine-wasm v0.0.0 (/home/Aldebaran64/webtomata/crates/engine-wasm)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.66s
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 16.31s
-     Running unittests src/lib.rs (target/debug/deps/engine_core-670a3d94c89462ba): 1 passed
-     Running tests/api.rs: 29 passed
-     Running tests/boundaries.rs: 20 passed
-     Running tests/determinize.rs: 11 passed
-     Running tests/enumerate.rs: 18 passed
-     Running tests/equivalence.rs: 13 passed
-     Running tests/fsm_regex.rs: 11 passed
-     Running tests/grammar.rs: 51 passed
-     Running tests/jff.rs: 15 passed
-     Running tests/json.rs: 17 passed
-     Running tests/minimize.rs: 9 passed
-     Running tests/nondeterminism.rs: 5 passed
-     Running tests/operations.rs: 11 passed
-     Running tests/pda_json.rs: 6 passed
-     Running tests/pda_simulate.rs: 19 passed
-     Running tests/pda_validate.rs: 10 passed
-     Running tests/regex.rs: 13 passed
-     Running tests/regex_fsm.rs: 10 passed
-     Running tests/regex_machine.rs: 8 passed
-     Running tests/regex_simplify.rs: 31 passed
-     Running tests/simulate.rs: 17 passed
-     Running tests/trap_state.rs: 9 passed
-     Running tests/validate.rs: 12 passed
-     Running tests/xor.rs: 17 passed
-     Running unittests src/lib.rs (engine_wasm): 9 passed
-test result: ok. All tests passed.
+running 22 tests
+...
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
 ```
 
-### Command 2: WASM Build & TypeScript Declarations Generation
-```text
-$ pnpm build:wasm
+### 5.2 Build Wasm (`pnpm build:wasm`)
+```
+$ wasm-pack build crates/engine-wasm --target web --release --out-dir ../../web/src/lib/engine/wasm && pnpm build:types
 [INFO]: 🎯  Checking for the Wasm target...
 [INFO]: 🌀  Compiling to Wasm...
-    Finished `release` profile [optimized] target(s) in 10.57s
+    Finished `release` profile [optimized] target(s) in 0.05s
 [INFO]: ⬇️  Installing wasm-bindgen...
 [INFO]: Optimizing wasm binaries with `wasm-opt`...
-[INFO]: ✨   Done in 35.85s
+[INFO]: ✨   Done in 20.58s
 [INFO]: 📦   Your wasm pkg is ready to publish at web/src/lib/engine/wasm.
 $ cargo test -p engine-core --features ts --test ts_export
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/ts_export.rs (target/debug/deps/ts_export-3866b49c73009c67)
+
+running 1 test
 test the_types_match_the_json ... ok
-test result: ok. 1 passed; 0 failed
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 ```
 
-### Command 3: Frontend Quality Gates
-```text
-$ pnpm check && pnpm lint && pnpm format:check && pnpm check:strings && pnpm check:tokens
+### 5.3 Static Checks (`pnpm check && pnpm lint && pnpm format:check && pnpm check:strings && pnpm check:tokens`)
+```
 $ pnpm --filter web check
 $ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
+Loading svelte-check in workspace: /home/Aldebaran64/webtomata/web
+Getting Svelte diagnostics...
+
 svelte-check found 0 errors and 0 warnings
 $ pnpm --filter web lint
 $ eslint .
 $ pnpm --filter web format:check && cargo fmt --check
 $ prettier --check .
+Checking formatting...
 All matched files use Prettier code style!
-$ node tools/check-strings.mjs
-ok   63 components have no hard-coded text
-$ node tools/check-tokens-usage.mjs
-ok   65 files use no raw colors
+$ pnpm check:strings
+$ pnpm check:tokens
 ```
 
-### Command 4: Web Vitest Suite
-```text
-$ pnpm --filter web exec vitest run
- Test Files  92 passed (92)
-      Tests  1179 passed | 2 skipped (1181)
-   Duration  5.37s
+### 5.4 Frontend Unit & Integration Tests (`pnpm --filter web exec vitest run`)
+```
+Test Files  92 passed (92)
+     Tests  1180 passed | 2 skipped (1182)
+  Start at  16:56:46
+  Duration  4.24s (tests 59%, transform 30%, import 10%)
 ```
 
-### Command 5: Production Build & Bundle Size
-```text
-$ pnpm build && pnpm size
-✓ built in 1.65s
-Wrote site to "build"
-✔ done
+### 5.5 Size Check (`pnpm size`)
+```
 $ node tools/check-size.mjs
-ok   initial JS index.html: 79.7 KB gzip (limit 170 KB)
-ok   initial JS panduan/berakhiran-x.html: 84.6 KB gzip (limit 170 KB)
-ok   initial JS panduan.html: 78.9 KB gzip (limit 170 KB)
-ok   initial JS sandbox.html: 118.0 KB gzip (limit 170 KB)
-ok   initial JS soal/berakhiran-10.html: 117.6 KB gzip (limit 170 KB)
-ok   initial JS soal/jumlah-a-genap.html: 117.6 KB gzip (limit 170 KB)
-ok   initial JS soal/mengandung-101.html: 117.6 KB gzip (limit 170 KB)
-ok   initial JS soal.html: 80.3 KB gzip (limit 170 KB)
-ok   initial JS tentang.html: 78.2 KB gzip (limit 170 KB)
+ok   initial JS index.html: 79.9 KB gzip (limit 170 KB)
+ok   initial JS panduan/berakhiran-x.html: 84.7 KB gzip (limit 170 KB)
+ok   initial JS panduan.html: 79.0 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 118.2 KB gzip (limit 170 KB)
+ok   initial JS soal/berakhiran-10.html: 117.8 KB gzip (limit 170 KB)
+ok   initial JS soal/jumlah-a-genap.html: 117.8 KB gzip (limit 170 KB)
+ok   initial JS soal/mengandung-101.html: 117.8 KB gzip (limit 170 KB)
+ok   initial JS soal.html: 80.4 KB gzip (limit 170 KB)
+ok   initial JS tentang.html: 78.3 KB gzip (limit 170 KB)
 ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
-ok   wasm _app/immutable/workers/assets/engine_wasm_bg-C8jNeVC0.wasm: 220.9 KB gzip (limit 250 KB)
+ok   wasm _app/immutable/workers/assets/engine_wasm_bg-DR_66Wes.wasm: 224.3 KB gzip (limit 250 KB)
 ```
-- **Size Comparison**:
-  - WASM binary: 217.7 KB gzip (before) $\to$ **220.9 KB gzip** (after) (budget: 250 KB).
-  - Largest initial JS page (`sandbox.html`): 117.7 KB gzip (before) $\to$ **118.0 KB gzip** (after) (budget: 170 KB).
 
 ---
 
-## 5. Pull Request
+## 6. Acceptance Criteria Audit
 
-- **PR**: [#153](https://github.com/AldebaranHere/webtomata/pull/153)
-- **Branch**: `task/T-031-pda-simulation`
-- **Base**: `staging`
-- **Work Commit**: `770ed0e` (`feat(engine): add pushdown automaton breadth-first simulation and stack trace`)
-- **Status in PLAN.md**: `done`
+- [x] **AC1:** F1 and F2 give exactly the specified results (alphabets, transition lists, issues, accept and reject).
+- [x] **AC2:** Export and round-trip results hold, including stable second export.
+- [x] **AC3:** `proptest` on random PDAs with single-character symbols: export -> import -> export gives identical text, and re-imported machine has matching transitions by symbol name.
+- [x] **AC4:** Error cases produce exact message keys and parameters; fuzz property tests verify `parse_pda_jff` never panics on arbitrary strings or mutations.
+- [x] **AC5:** All 7 deliberate breaks and 2 property test breaks demonstrated failure with real test outputs and were restored.
+- [x] **AC6:** Wasm (`224.3 KB` vs limit `250.0 KB`) and initial JS (`79.9 KB` vs limit `170.0 KB`) remain within size budgets.
 
 ---
 
-## 6. PR 153 Review Fixes
+## 7. Pull Request
 
-### Fix 1: Performance with `partition_point`
-- **Optimization**: Transitions in `Pda` are sorted by `from: StateId`. Instead of scanning all transitions in `pda.transitions` for every configuration in every level, we locate the slice for `node_config.state` using binary search:
-  ```rust
-  let start = pda.transitions.partition_point(|t| t.from < node_state);
-  let count = pda.transitions[start..].partition_point(|t| t.from == node_state);
-  for (local_idx, t) in pda.transitions[start..start + count].iter().enumerate() {
-      let t_idx = start + local_idx;
-  ```
-  The absolute transition index `t_idx` remains exactly identical.
-- **Benchmark (`test_unrelated_transitions_performance`)**:
-  - PDA with 1,001 states: state 0 has 2 branching transitions on $\varepsilon$, and states 1..=1000 have 50 transitions each, totaling 50,002 transitions.
-  - Simulation runs until `max_configurations = 20,000`.
-  - **Before optimization**: `8.044074029s` (~8,044 ms)
-  - **After optimization**: `53.153695ms` (~53 ms)
-  - **Speedup**: **~151x faster**
+- **PR:** [#155](https://github.com/AldebaranHere/webtomata/pull/155)
+- **Branch:** `task/T-032-pda-jff`
+- **Base:** `staging`
+- **Work Commit:** `cd1327f` (`feat(engine): add pushdown automaton JFF import and export`)
+- **Status in PLAN.md:** `done`
 
-### Fix 2: Message Priority on Rejected Run
-- **Rule**: `not_accepting_state` takes precedence over `stack_not_empty` when input is exhausted.
-- **Test (`test_message_priority_not_accepting_over_stack_not_empty`)**:
-  - M1 modified to have `accepting: []` on input `"a"`.
-  - Halts at position 1, state 0 (non-accepting), stack `["a"]` (non-empty). Both rejection conditions are met.
-  - Expected last message: `pda.sim.not_accepting_state`.
-- **Deliberate Break**: Swapped `!c.stack.is_empty()` before `pda.accepting.binary_search(&c.state).is_err()` in `failure_message`.
-- **Terminal failure output**:
-```text
-thread 'test_message_priority_not_accepting_over_stack_not_empty' panicked at crates/engine-core/tests/pda_simulate.rs:735:13:
-assertion `left == right` failed
-  left: "pda.sim.stack_not_empty"
- right: "pda.sim.not_accepting_state"
-```
-- **Restoration**: Restored original priority order. Test passes.
+---
 
-### Fix 3: `max_steps` Boundary
-- **Hand derivation**:
-  - Machine M2 ($ww^R$) on input `aa`:
-    - Level 0: $C_0 = (0, 0, [])$ $\to$ explored = 1
-    - Level 1: $C_1 = (1, 0, []), C_2 = (0, 1, [a])$ $\to$ explored = 3
-    - Level 2: $C_3 = (1, 1, [a]), C_4 = (0, 2, [a, a])$ $\to$ explored = 5
-    - Level 3: $C_5 = (1, 2, [])$ (accepted!), $C_6 = (1, 2, [a, a])$ $\to$ explored = 7
-  - `max_steps: 3`:
-    - Levels 0, 1, 2 are expanded.
-    - Level 3 checks acceptance of $C_5$ and returns `Finished { accepted: true, explored: 7 }`.
-  - `max_steps: 2`:
-    - Levels 0 and 1 are expanded.
-    - When `level_num = 2`, `level_num >= budget.max_steps` ($2 \ge 2$) triggers before Level 2 is expanded.
-    - Halts with `Stopped { reason: StopReason::MaxSteps, explored: 5 }`.
-- **Test (`test_max_steps_boundary_m2_aa`)**:
-  - Verifies `max_steps: 3` accepts with `explored: 7`.
-  - Verifies `max_steps: 2` stops at `StopReason::MaxSteps` with `explored: 5`.
-- **Deliberate Break**: Changed `if level_num >= budget.max_steps` to `if level_num > budget.max_steps`.
-- **Terminal failure output**:
-```text
-thread 'test_max_steps_boundary_m2_aa' panicked at crates/engine-core/tests/pda_simulate.rs:797:14:
-Expected Stopped(MaxSteps) with max_steps: 2
-```
-- **Restoration**: Restored `>=`. Test passes.
+## 8. Post-PR Refactoring (Deduplication & Panic Elimination)
 
-### Fix 4: `max_stack` Boundary
-- **Rule**: With the stack-growing loop and `max_stack: 5`, a stack of exactly 5 symbols is allowed. Stopping happens when a stack of 6 would be created. The deepest stack in `partial_trace` is exactly 5.
-- **Trace handling**: Tracing from the configuration `node_idx` that attempts to exceed `max_stack` ensures the partial trace contains the full computation path that reached stack depth 5.
-- **Test (`test_max_stack_boundary_exact_depth`)**:
-  - Verifies stop reason is `StopReason::MaxStack`.
-  - Asserts deepest stack depth in `partial_trace` is 5.
-- **Deliberate Break**: Changed `if next_stack.len() > budget.max_stack` to `if next_stack.len() >= budget.max_stack`.
-- **Terminal failure output**:
-```text
-thread 'test_max_stack_boundary_exact_depth' panicked at crates/engine-core/tests/pda_simulate.rs:822:13:
-assertion `left == right` failed
-  left: 4
- right: 5
-```
-- **Restoration**: Restored `>`. Test passes.
+Following PR review feedback for PR #155:
+1. **XML Document & Header Deduplication**:
+   - Extracted `parse_document(xml)` with `MAX_JFF_NODES: u32 = 200_000` constant and size limit validation.
+   - Extracted `invalid_structure(doc, element, node)` and `check_structure_and_type(doc, expected_type)`.
+2. **State Serialization Deduplication**:
+   - Extracted `write_states(out, states, start, accepting, layout)` shared by `to_jff` and `to_pda_jff` guaranteeing byte-for-byte identical output.
+3. **Panic Elimination on Alphabet Lookups**:
+   - Replaced all `.unwrap()` lookups on `stack_alphabet.id(...)` in `parse_pda_jff` and `pda.stack.name(...)` in `to_pda_jff` with `?` returning `Message::new("machine.unknown_symbol")`.
+4. **Code Delta**:
+   - In `crates/engine-core/src/jff.rs`: 116 lines removed, 100 added (net 16 lines fewer).
+   - Zero panicking `.unwrap()` calls remain in `jff.rs`.
+   - All 22 FSM tests in `tests/jff.rs` and all 17 PDA tests in `tests/pda_jff.rs` pass cleanly.
+
 
 

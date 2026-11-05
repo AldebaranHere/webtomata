@@ -121,6 +121,16 @@ pub fn export_jff(machine: &str, layout: &str) -> String {
     api::export_jff(machine, layout)
 }
 
+#[wasm_bindgen(js_name = importPdaJff)]
+pub fn import_pda_jff(xml: &str) -> String {
+    api::import_pda_jff(xml)
+}
+
+#[wasm_bindgen(js_name = exportPdaJff)]
+pub fn export_pda_jff(pda: &str, layout: &str) -> String {
+    api::export_pda_jff(pda, layout)
+}
+
 #[wasm_bindgen(js_name = enumerateLanguage)]
 pub fn enumerate_language(
     expr: &str,

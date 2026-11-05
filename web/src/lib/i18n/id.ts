@@ -172,6 +172,8 @@ export const id = {
 		'File .jff ini punya lebih dari satu state awal, padahal sebuah mesin hanya boleh punya satu. Mesinmu tidak berubah.',
 	'jff.label_expanded':
 		'Label "{label}" terdiri dari beberapa simbol, jadi transisinya dipecah menjadi rangkaian state baru antara state {from} dan state {to}.',
+	'jff.pda_read_not_single':
+		'Transisi dari state {from} ke {to} membaca label "{label}" yang terdiri dari beberapa karakter, padahal PDA JFLAP hanya membaca paling banyak satu karakter. Ubah label transisi di file terlebih dahulu. Mesinmu tidak berubah.',
 	'machine.limit_exceeded':
 		'Mesin di file ini terlalu besar ({what}, paling banyak {limit}). Mesinmu tidak berubah.',
 	'document.name_changed':

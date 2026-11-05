@@ -16,9 +16,9 @@ use crate::pda_simulate::{PdaBudget, PdaSimulation, PdaStep};
 use crate::{
     Budget, Change, Compiled, Conversion, ConversionBudget, ConversionStep, Counterexample,
     Equivalence, EquivalenceBudget, FsmKind, FsmToRegexBudget, Intersection, Issue, Jff, JffState,
-    Label, Message, Minimization, MinimizeBudget, Nondeterminism, Operation, Param, RegexBudget,
-    Severity, SimplifyBudget, Simulation, StateId, Step, StopReason, SymbolId, Transition,
-    ViaMachineBudget, Witness, Xor,
+    Label, Message, Minimization, MinimizeBudget, Nondeterminism, Operation, Param, PdaJff,
+    RegexBudget, Severity, SimplifyBudget, Simulation, StateId, Step, StopReason, SymbolId,
+    Transition, ViaMachineBudget, Witness, Xor,
 };
 use ts_rs::{Config, TS};
 
@@ -168,6 +168,21 @@ fn samples() -> Vec<(&'static str, &'static str, String)> {
                 None,
             ),
         ),
+        (
+            "sampleImportPdaJff",
+            "PdaJff",
+            api::import_pda_jff(
+                r#"<?xml version="1.0"?><structure><type>pda</type><automaton><state id="0" name="q0"><x>10.0</x><y>20.0</y><initial/></state><state id="1" name="q1"><x>30.0</x><y>20.0</y><final/></state><transition><from>0</from><to>1</to><read>a</read><pop/><push>a</push></transition></automaton></structure>"#,
+            ),
+        ),
+        (
+            "sampleExportPdaJff",
+            "string",
+            api::export_pda_jff(
+                r#"{"schemaVersion":1,"kind":"ndpda","inputAlphabet":["a","b"],"stackAlphabet":["a"],"states":[0,1],"start":0,"accepting":[1],"transitions":[{"from":0,"read":"a","pop":[],"push":["a"],"to":1}]}"#,
+                &layout,
+            ),
+        ),
     ]
 }
 
@@ -240,6 +255,7 @@ pub fn declarations() -> String {
         PdaStep,
         PdaSimulation,
         PdaSimulationReport,
+        PdaJff,
     );
 
     // The envelope of every API function (see `api`).

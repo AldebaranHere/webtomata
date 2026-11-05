@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import init, * as wasm from './wasm/engine_wasm.js';
 import { createHandlers, run } from './handlers.ts';
 import type { Handlers } from './handlers.ts';
-import type { Machine, Pda } from './types.ts';
+import type { Machine, Pda, PdaJff } from './types.ts';
 
 const even: Machine = {
 	schemaVersion: 1,
@@ -239,6 +239,42 @@ describe('every method reaches the engine', () => {
 					explored: 3
 				}
 			}
+		});
+	});
+
+	it('imports and exports a PDA in JFF format', () => {
+		const m1: Pda = {
+			schemaVersion: 1,
+			kind: 'dpda',
+			inputAlphabet: ['a', 'b'],
+			stackAlphabet: ['a'],
+			states: [0, 1],
+			start: 0,
+			accepting: [0, 1],
+			transitions: [
+				{ from: 0, read: 'a', pop: [], push: ['a'], to: 0 },
+				{ from: 0, read: 'b', pop: ['a'], push: [], to: 1 },
+				{ from: 1, read: 'b', pop: ['a'], push: [], to: 1 }
+			]
+		};
+
+		const exported = call('exportPdaJff', m1, [{ id: 0, name: 'q0', x: 100, y: 100 }]);
+		expect(exported).toEqual({ ok: true, value: expect.stringContaining('<type>pda</type>') });
+
+		const xml = (exported as { value: string }).value;
+		const imported = call('importPdaJff', xml);
+		expect(imported).toEqual({
+			ok: true,
+			value: {
+				pda: {
+					...m1,
+					kind: 'ndpda'
+				},
+				states: [
+					{ id: 0, name: 'q0', x: 100, y: 100 },
+					{ id: 1, name: 'q1', x: 230, y: 100 }
+				]
+			} satisfies PdaJff
 		});
 	});
 });
