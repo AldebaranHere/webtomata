@@ -4,7 +4,7 @@
 > `todo` means ready: every field is written and the human approved it. Several tasks can be `todo` at the same time. The worker does one task at a time: the one that the human names in the start prompt ("Do task T-xxx"). The worker sets it to `in-progress` in the first commit of its own PR and to `done` in the last. The planner does not open a pull request only to change a status.
 > The blank task template is in `PLAN-TEMPLATE.md`.
 
-**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 (CNF phases in the homework order, after T-029 is merged) is `todo` since the owner approved `design/screens/cnf-stepper-homework-order.md`; T-060 is merged (PR 147). Written on 2026-11-05 after it: T-015 (`todo`: the "versi panjang / versi ringkas" toggle). Written on 2026-11-05 after T-015 merged: T-030, then T-031 (`todo`, the PDA engine: model and validation, then simulation; one after the other, they touch the same engine files). T-032 and T-034 to T-038 are `proposed` drafts; the full specs are written when the one before is merged.
+**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 (CNF phases in the homework order, after T-029 is merged) is `todo` since the owner approved `design/screens/cnf-stepper-homework-order.md`; T-060 is merged (PR 147). Written on 2026-11-05 after it: T-015 (`todo`: the "versi panjang / versi ringkas" toggle). Written on 2026-11-05 after T-015 merged: T-030, then T-031 (`todo`, the PDA engine: model and validation, then simulation; one after the other, they touch the same engine files). T-032 is `todo` since 2026-11-05 (T-031 merged); T-034 to T-038 are `proposed` drafts; the full specs are written when the one before is merged.
 
 Status legend: `proposed` | `todo` | `in-progress` | `blocked` | `done` | `rejected`
 
@@ -1304,17 +1304,73 @@ Expected: all pass. Paste real output into `REPORT.md`.
 
 ---
 
-## Task T-032 — PDA `.jff` import and export (draft)
+## Task T-032 — PDA `.jff` import and export
 
-**Status:** proposed (the full spec is written after T-031 is merged)
+**Status:** todo
 **Owner:** worker
 **Branch:** `task/T-032-pda-jff`
 
-**Goal:** Read and write JFLAP files with `<type>pda</type>`. The existing FSM code in `jff.rs` is the pattern.
+**Goal:** Read and write JFLAP files with `<type>pda</type>`, next to the finite-automaton code in `jff.rs`. A student can then bring a PDA from JFLAP into WebTomata and take one back, as with FSMs. This is engine only: no screen, no file picker (T-033 wires the editor).
 
-**Draft decisions:** each character of a `<pop>` or `<push>` text is one stack symbol, the first character is the top (JFLAP's own rule; the owner's sample machines and `pda_cfg_anbn_LL.jff` agree); an empty tag is ε or an empty list; `<read>` is empty or one input symbol. Export fails with a clear message key if a stack or input symbol has more than one character (JFLAP cannot hold it). Import ignores JFLAP's bottom marker, as the course does; a machine written for it (a first transition that pops a symbol nobody pushes, as in JFLAP's own CFG conversion) imports with the `pda.pop_never_pushed` warning of T-030. The `.jff` has no acceptance setting, so nothing is stored. The three sample machines in `REFERENCES/JFF-FILES/TBA12PDA/` must import (they start with `ε, [] → [Z0]`); they stay private, so the worker writes small fixtures of its own.
+**What a JFLAP PDA file looks like (checked on six real files by the planner; the files are private, so the worker builds its own fixtures):**
+- `<structure><type>pda</type><automaton>` with `<state id name>` (`<x>`, `<y>`, `<initial/>`, `<final/>`) and `<transition>` elements in the order `<from>`, `<to>`, `<read>`, `<pop>`, `<push>`. An empty or self-closed `<read/>`, `<pop/>` or `<push/>` is ε or an empty list. There are comments (`<!--The list of states.-->`) and `&#13;` after the lines; both must be accepted.
+- `<read>` has zero or one character in every file. `<pop>` and `<push>` have zero to seven characters. JFLAP reads a `<pop>` or `<push>` text **one character per stack symbol**, the first character on top: `pop="Z0"` pops `Z` and then `0`; `push="AAAAAZ0"` pushes seven symbols and leaves `A` on top. This is the same order as our `pop` and `push` lists (T-030).
+- The file has no alphabet, no acceptance setting and no "deterministic" mark. JFLAP puts its own bottom-of-stack symbol on the stack when it runs; the course grader does not (Slide12), and neither do we.
+- Homework machines start with a transition `ε, [] → Z0` and finish by popping `Z0`; machines that JFLAP made itself from a grammar (the "LL" and "LR" conversions) pop a `Z` that nothing pushes first.
 
-**Depends on:** T-030, T-031.
+**Decisions (the planner made them from the above; do not reopen, ask if one looks wrong):**
+1. **Import.** Each character of a `<pop>` or `<push>` text is one stack symbol, first character on top. The input alphabet is the sorted set of characters that appear in `<read>`; the stack alphabet is the sorted set of characters that appear in `<pop>` and `<push>` (sorted by character, like the FSM import). The machine's `kind` is always `ndpda` (the file does not say; the editor lets the student switch to `dpda`). Each of `<from>`, `<to>`, `<read>`, `<pop>`, `<push>` must be present (empty is allowed); a missing one gives `jff.invalid_structure` with the element name, as in the FSM import.
+2. **A `<read>` of more than one character is refused** with a new message key `jff.pda_read_not_single { label, from, to }`. (The FSM import expands such a label into a chain of states, because JFLAP reads FA labels one character at a time. For a PDA the planner does not know what JFLAP does, and no real file has it, so we do not guess. This can be relaxed later.)
+3. **No bottom marker is added or removed.** A machine written for JFLAP's marker imports as it is; T-030's `pda.pop_never_pushed` warning tells the student, and the machine will not accept in our simulator. This is the course's own rule (Slide12). State it in the ADR and add a test (below).
+4. **Export** writes the same shape that JFLAP writes (`<from>`, `<to>`, `<read>`, `<pop>`, `<push>` in this order; `<read/>`, `<pop/>`, `<push/>` for ε and empty lists; `<initial/>`, `<final/>`; names and positions from the layout, as `to_jff` does). If an input symbol or a stack symbol has more than one character, export fails with the existing key `jff.symbol_not_single_character { symbol }` (JFLAP cannot hold it). This also means a PDA produced by the conversions of T-034 and T-035 cannot be exported when the grammar has variables like `S0`; say so in the ADR. Symbols that no transition uses are not written; `kind` is not written.
+5. **Same safety rules as the FSM code:** `MAX_JFF_BYTES`, DTDs refused, the node limit, and every problem comes back as a message, never a panic.
+6. **One file.** Add the PDA code to `jff.rs` and share the helpers (`child`, `children`, `number`, `coordinate`, the state reader, `escape`, `xml_char`) instead of copying them; split the file only if it passes about 600 lines. The FSM behavior does not change.
+
+**Scope (in):**
+- `parse_pda_jff(xml) -> Result<PdaJff, Message>` and `to_pda_jff(&Pda, &[JffState]) -> Result<String, Message>`, with `PdaJff { pda, states }` (TypeScript `PdaJff`, the machine typed as `Pda` like `Jff` types its machine as `Machine`). A file with another `<type>` gives `jff.unsupported_type { type }`; the FSM `parse_jff` already gives that message for a `pda` file, and the editor (T-033) uses it to pick the right importer.
+- API: `import_pda_jff(xml)` and `export_pda_jff(pda_json, layout_json)`, same envelope as `import_jff` and `export_jff`; the same two in `crates/engine-wasm/src/lib.rs`, `web/src/lib/engine/handlers.ts` and `protocol.ts`, typed.
+- Message keys: the new `jff.pda_read_not_single` gets `id` and `en` texts under the same rule as the other `jff.*` keys (check how they are covered with `grep`). No new Indonesian terms are expected; if one is, add it to `docs/glossary.md` with `TODO(review)`.
+- `docs/decisions/0036-pda-jff.md` (the decisions above) and one line in the place of the docs that describes the `.jff` support.
+- Tests, written first, with the fixtures and derivations below.
+
+**Non-goals (out):**
+- No UI, no file picker, no drag and drop (T-033). No Turing machine `.jff`. No emulation of JFLAP's bottom marker, no acceptance setting. No chain expansion of long `<read>` labels. No change to the FSM import or export except sharing helpers.
+- Do not copy any text from the files in `REFERENCES/` into a commit: they are private, and the three homework machines are a student's own answers. If you have them, you may open one to see the shape of a file; write your own fixtures.
+
+**Files expected to touch:** `crates/engine-core/src/jff.rs`, `lib.rs`, `api.rs`, `ts.rs`, `crates/engine-core/tests/pda_jff.rs` (new), `crates/engine-wasm/src/lib.rs`, `handlers.ts`, `protocol.ts`, `handlers.test.ts`, the generated types, `id.ts` and `en.ts` (for the new key), `docs/decisions/0036-pda-jff.md`, the docs line, `docs/agent/REPORT.md`.
+
+**Design reference:** none (no screen). Slides: Slide12, pages 16 to 19 and 23 (the note on JFLAP).
+
+**Fixtures and hand derivations (the planner derived them; the worker redoes them in `REPORT.md` before any test runs; if the engine disagrees, stop and report):**
+- *F1, a homework-style file for `aⁿbⁿ`.* States `0` (initial), `1`, `2`, `3` (final). Transitions, as `from → to, read, pop, push`: `0→1, ε, "", "Z0"`; `1→1, a, "", "A"`; `1→2, b, "A", ""`; `2→2, b, "A", ""`; `1→3, ε, "Z0", ""`; `2→3, ε, "Z0", ""`. Write it in JFLAP's layout, with comments, with `&#13;` after the lines, and with `<pop/>` and `<push/>` self-closed. Import gives: input alphabet `["a","b"]`, stack alphabet `["0","A","Z"]` (sorted by character), `kind` `ndpda`, six transitions; `0→1` pushes `[Z, 0]` (`Z` on top). `validate_pda` gives no issue. Simulation (T-031): `ε`, `ab` and `aabb` are accepted; `a`, `aab`, `abb` and `b` are rejected.
+- *F2, a file as JFLAP converts a grammar (the "LL" shape).* States `0` (initial), `1`, `2` (final); transitions `0→1, ε, "Z", "SZ"`; `1→1, ε, "S", "aSb"`; `1→1, ε, "S", "ab"`; `1→1, a, "a", ""`; `1→1, b, "b", ""`; `1→2, ε, "Z", ""`. Import works; `validate_pda` gives five warnings `pda.pop_never_pushed`, one for each `(from, symbol)` pair: `(0, Z)`, `(1, S)`, `(1, a)`, `(1, b)`, `(1, Z)`. With an empty stack at the start no transition can ever fire (each one pops something that only a transition that cannot fire pushes), so no symbol is ever pushed; T-030 reports each pair once. Simulation of `aabb` is **rejected** at the first configuration (`input_left`, 4 symbols), which documents the course rule that the grader has no bottom marker.
+- *Export of M1 and M2 of T-030* (give them state names and positions): `import_pda_jff(export_pda_jff(m))` equals `m` except `kind` (becomes `ndpda`) and the alphabets (only symbols that some transition uses, sorted by character); a second export gives the identical text. M2's ε-guess transition is written as `<read/><pop/><push/>`.
+- *Pop and push order:* a transition with `pop = [a, b]` is written `<pop>ab</pop>`; `push = [a, S, b]` is written `<push>aSb</push>`; reading them back gives the same lists. A swapped order must fail a test.
+- *Errors:* a file with `<type>fa</type>` gives `jff.unsupported_type` (`type: "fa"`); a `<read>ab</read>` gives `jff.pda_read_not_single` (`label: "ab"`); a transition without `<pop>` gives `jff.invalid_structure` (`element: "pop"`); two `<initial/>` states give `jff.multiple_initial_states`; a DTD, bytes over the limit, and malformed XML give the same messages as the FSM import. Export of a machine with the stack symbol `Z0`, or the input symbol `num`, gives `jff.symbol_not_single_character` with that symbol.
+
+**Acceptance criteria:**
+- AC1: F1 and F2 give exactly the results above (alphabets, transition lists, issues, accept and reject).
+- AC2: the export and round-trip results above hold, including the stable second export.
+- AC3: `proptest` on random PDAs whose symbols are single characters: `export` then `import` then `export` gives identical text, and the re-imported machine has the same transitions (by symbol names) as the original.
+- AC4: the error cases above give exactly those message keys and parameters, and nothing panics on random bytes (`proptest` with arbitrary strings fed to `parse_pda_jff`).
+- AC5: deliberate breaks, each shown failing, then restored: read `<pop>` and `<push>` with the last character on top (F1 and the order test fail); write `<push>` before `<pop>` or swap their text (the round trip fails); allow a multi-character stack symbol in export (the error test fails); drop the DTD refusal (its test fails); do not sort the alphabets (the alphabet order assertion fails).
+- AC6: `wasm` stays under 250 KB gzip and the initial JS under 170 KB (`pnpm size`); report the wasm size before and after.
+
+**Verification:**
+```
+cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+pnpm build:wasm
+pnpm check && pnpm lint && pnpm format:check && pnpm check:strings && pnpm check:tokens
+pnpm --filter web exec vitest run
+pnpm build && pnpm size
+```
+Expected: all pass. No e2e (no UI). Paste real output into `REPORT.md`.
+
+**Rollback:** `git revert <sha>`. Nothing reads the new code yet.
+
+**Depends on:** T-030 and T-031 done and merged (both are).
+
+**Notes for worker:** Share the helpers with the FSM code, do not copy them. Quote constants and message keys from the code in your summary, not from memory. If a derivation above disagrees with the engine, stop and report.
 
 ---
 
@@ -1441,7 +1497,7 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's and the slides' (not Sipser's); the PDA is non-deterministic as well as deterministic (the course homework uses both); every run has a step budget, like the FSM engine, and ends as "stopped" with the partial trace.
 - **T-030** PDA data model, JSON, validation and the determinism check: specified in its own block above (`todo`). The three questions are settled from the slides (2026-11-05): the stack starts empty, one acceptance rule (input used up, stack empty, accepting state), `pop` and `push` are lists of named symbols, top first.
 - **T-031** PDA simulation, breadth-first, with a stack trace, budgets and the peak number of configurations: specified in its own block above (`todo`; after T-030).
-- **T-032** PDA `.jff` import and export: draft above (`proposed`).
+- **T-032** PDA `.jff` import and export: specified in its own block above (`todo`; T-030 and T-031 are merged).
 - **T-033** PDA editor: after P-004 (wireframe) is approved and T-032 is merged.
 - **T-034** CFG to PDA, top-down (slides, `CFGtoPDAtopdown`): draft above (`proposed`). Tested by language equivalence, not by structure against JFLAP's file.
 - **T-035** CFG to PDA, bottom-up (slides, shift and reduce): draft above (`proposed`).
