@@ -30,7 +30,7 @@ mod validate;
 mod xor;
 
 pub use api::{export_jff, export_pda_jff, import_jff, import_pda_jff};
-pub use cfg_pda::{CfgPdaStep, CfgToPda, StateName, cfg_to_pda_topdown};
+pub use cfg_pda::{CfgPdaStep, CfgToPda, StateName, cfg_to_pda_bottomup, cfg_to_pda_topdown};
 pub use determinize::{Conversion, ConversionBudget, determinize};
 pub use equivalence::{Counterexample, Equivalence, EquivalenceBudget, equivalent};
 pub use fsm::{

@@ -124,6 +124,7 @@ export interface EngineApi {
 	importPdaJff(xml: string): EngineResult<PdaJff>;
 	exportPdaJff(pda: Pda, layout: JffState[]): EngineResult<string>;
 	cfgToPdaTopdown(grammar: string): EngineResult<CfgToPda>;
+	cfgToPdaBottomup(grammar: string): EngineResult<CfgToPda>;
 }
 
 export type EngineMethod = keyof EngineApi;
@@ -160,7 +161,8 @@ export const METHODS = [
 	'simulatePda',
 	'importPdaJff',
 	'exportPdaJff',
-	'cfgToPdaTopdown'
+	'cfgToPdaTopdown',
+	'cfgToPdaBottomup'
 ] as const satisfies readonly EngineMethod[];
 
 /** A method that is missing from `METHODS` makes this a type error. */

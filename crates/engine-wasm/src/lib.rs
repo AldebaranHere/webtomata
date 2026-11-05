@@ -161,6 +161,11 @@ pub fn cfg_to_pda_topdown(grammar: &str) -> String {
     api::cfg_to_pda_topdown(grammar)
 }
 
+#[wasm_bindgen(js_name = cfgToPdaBottomup)]
+pub fn cfg_to_pda_bottomup(grammar: &str) -> String {
+    api::cfg_to_pda_bottomup(grammar)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -260,6 +265,15 @@ mod tests {
     #[test]
     fn cfg_to_pda_topdown_answers_in_envelope() {
         let answer = cfg_to_pda_topdown("S -> a S b | a b");
+        assert!(answer.contains(r#""ok":true"#), "{answer}");
+        assert!(answer.contains(r#""steps""#), "{answer}");
+        assert!(answer.contains(r#""pda""#), "{answer}");
+    }
+
+    #[wasm_bindgen_test]
+    #[test]
+    fn cfg_to_pda_bottomup_answers_in_envelope() {
+        let answer = cfg_to_pda_bottomup("S -> a S b | a b");
         assert!(answer.contains(r#""ok":true"#), "{answer}");
         assert!(answer.contains(r#""steps""#), "{answer}");
         assert!(answer.contains(r#""pda""#), "{answer}");

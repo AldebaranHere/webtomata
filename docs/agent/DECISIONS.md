@@ -14,6 +14,16 @@ Format:
 
 ---
 
+## 2026-11-05 — CFG to PDA bottom-up conversion with step trace (task T-035)
+- Decider: worker
+- Context: The course lecture (Slide13, page 8) teaches `CFGtoPDAbottomup`, constructing an equivalent 2-state non-deterministic PDA with an empty initial stack that parses by shift-reduce moves and step traces.
+- Decision: Implemented `cfg_to_pda_bottomup` in `crates/engine-core/src/cfg_pda.rs` with API endpoint `cfg_to_pda_bottomup`. Shares alphabet building, state definitions, clash checks (`pda.cfg.symbol_clash`), and rule deduplication with T-034. Adds shift transitions reading terminals and pushing them, reduce transitions popping reversed rule bodies top-first and pushing the head variable, and accept transition popping the start variable to the accepting state. For grammars without ε-rules, simulations terminate as `Finished` with bounded stack depth; for grammars with ε-rules, non-language strings can exhaust budgets and terminate `Stopped` (`max_stack` or `max_configurations`).
+- Alternatives considered: Separate modules for top-down and bottom-up (rejected: 80% shared validation logic fits cleanly in one compact module under 400 lines); pop list in forward grammar order (rejected: Slide13 page 8 specifies top-of-stack first, matching the reversed push order of shifts).
+- Reversible? yes
+- Affects: `crates/engine-core/src/cfg_pda.rs`, `lib.rs`, `api.rs`, `crates/engine-wasm/src/lib.rs`, `web/src/lib/engine/protocol.ts`, `handlers.ts`, `docs/decisions/0038-cfg-to-pda-bottomup.md`, `docs/ARCHITECTURE.md`
+
+---
+
 ## 2026-11-05 — CFG to PDA top-down conversion with step trace (task T-034)
 - Decider: worker
 - Context: The course lecture (Slide13, page 4) teaches `CFGtoPDAtopdown`, translating a context-free grammar into a 2-state non-deterministic PDA with an empty initial stack and trace steps.
