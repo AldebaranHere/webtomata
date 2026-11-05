@@ -31,6 +31,9 @@ export interface Wasm {
 	parseGrammar(grammar: string): string;
 	transformToCnf(grammar: string, short_version?: boolean): string;
 	cykParse(grammar: string, input_word: string): string;
+	loadPda(json: string): string;
+	validatePda(pda: string): string;
+	pdaDeterminism(pda: string): string;
 }
 
 export type Handlers = {
@@ -99,7 +102,10 @@ export function createHandlers(wasm: Wasm): Handlers {
 			wasm.enumerateLanguage(expr, minLength, maxCount, optional(env)),
 		parseGrammar: (grammar) => wasm.parseGrammar(grammar),
 		transformToCnf: (grammar, shortVersion = false) => wasm.transformToCnf(grammar, shortVersion),
-		cykParse: (grammar, inputWord) => wasm.cykParse(grammar, inputWord)
+		cykParse: (grammar, inputWord) => wasm.cykParse(grammar, inputWord),
+		loadPda: (json) => wasm.loadPda(json),
+		validatePda: (pda) => wasm.validatePda(text(pda)),
+		pdaDeterminism: (pda) => wasm.pdaDeterminism(text(pda))
 	};
 }
 

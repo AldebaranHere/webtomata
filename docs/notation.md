@@ -21,3 +21,12 @@ The engine reads Rich's syntax (textbook section 6.1, rules 1 to 8) and writes i
 Only `∪` is accepted for union. The UI offers buttons for `∪`, `ε` and `∅`, and a small note that other tools write union differently: JFLAP uses `+` (and `!` for ε), and programming languages use `|`. Here `+` always means "one or more".
 
 The slides draw union as `∪` and the empty string as `ε` (checked by the owner on 2026-10-24; the text extraction of the PDFs loses these glyphs). TODO(review): confirm the Rich transition notation (Δ, yields) against the book.
+
+## Pushdown automata (PDA)
+
+The PDA model follows the course slides (Slide12, Slide13) and Elaine Rich (Chapter 12):
+- **Formal transition**: `((q1, c, γ1), (q2, γ2))`, meaning in state `q1`, reading input `c` (or $\varepsilon$) and popping stack string `γ1`, transition to state `q2` and push stack string `γ2`.
+- **Diagram transition label**: `c / γ1 / γ2` (input read `/` string popped `/` string pushed). An empty list or $\varepsilon$ is written as $\varepsilon$.
+- **Stack order**: string lists for `pop` and `push` are ordered top-first ("leftmost is the top"). Popping `[a, b]` requires `a` at the top and `b` immediately beneath it; pushing `[a, b]` leaves `a` at the top of the stack.
+- **Empty stack start**: the stack starts empty (no default bottom marker $Z$). A transition with `pop = []` requires no symbols and checks nothing on the stack.
+

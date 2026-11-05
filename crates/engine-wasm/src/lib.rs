@@ -16,6 +16,21 @@ pub fn load_machine(json: &str) -> String {
     api::load_machine(json)
 }
 
+#[wasm_bindgen(js_name = loadPda)]
+pub fn load_pda(json: &str) -> String {
+    api::load_pda(json)
+}
+
+#[wasm_bindgen(js_name = validatePda)]
+pub fn validate_pda(pda_json: &str) -> String {
+    api::validate_pda(pda_json)
+}
+
+#[wasm_bindgen(js_name = pdaDeterminism)]
+pub fn pda_determinism(pda_json: &str) -> String {
+    api::pda_determinism(pda_json)
+}
+
 #[wasm_bindgen]
 pub fn validate(machine: &str) -> String {
     api::validate(machine)
