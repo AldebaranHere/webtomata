@@ -1050,6 +1050,82 @@ fn test_hand_derivation_r3b_truly_identical() {
 }
 
 #[test]
+fn test_phase5_tie_rule_first_by_name() {
+    let input = r#"
+        S -> a P Q
+        P -> a
+        Q -> a
+    "#;
+    let grammar = GrammarParser::parse(input).expect("Should parse tie grammar");
+
+    // Long version: creates T_a -> a, so S -> T_a P Q
+    let trace_long =
+        CnfTransformer::transform_with_options(&grammar, false).expect("Long CNF should succeed");
+    let p5_long = &trace_long.steps[4];
+    assert!(p5_long.grammar.rules.contains(&Production::new(
+        "S",
+        vec![
+            Symbol::NonTerminal("T_a".into()),
+            Symbol::NonTerminal("P".into()),
+            Symbol::NonTerminal("Q".into()),
+        ],
+    )));
+    assert_eq!(p5_long.note_key, None);
+
+    // Short version: candidates for 'a' are P and Q (both have single rule V -> a).
+    // In name order, 'P' < 'Q'. Tie rule requires first by name, which is P.
+    let trace_short =
+        CnfTransformer::transform_with_options(&grammar, true).expect("Short CNF should succeed");
+    let p5_short = &trace_short.steps[4];
+    assert_eq!(
+        p5_short.note_key,
+        Some("grammar.cnf.phase_mixed.note_short".into())
+    );
+
+    // Assert S -> P P Q is present
+    assert!(
+        p5_short.grammar.rules.contains(&Production::new(
+            "S",
+            vec![
+                Symbol::NonTerminal("P".into()),
+                Symbol::NonTerminal("P".into()),
+                Symbol::NonTerminal("Q".into()),
+            ],
+        )),
+        "Phase 5 short version must reuse P (first in name order P < Q), yielding S -> P P Q"
+    );
+
+    // Assert S -> Q P Q is NOT present
+    assert!(
+        !p5_short.grammar.rules.contains(&Production::new(
+            "S",
+            vec![
+                Symbol::NonTerminal("Q".into()),
+                Symbol::NonTerminal("P".into()),
+                Symbol::NonTerminal("Q".into()),
+            ],
+        )),
+        "Phase 5 short version must NOT reuse Q (which is second/last in name order)"
+    );
+
+    // Phase 6 binarization: S -> P P Q becomes S -> P X, X -> P Q
+    let p6_short = &trace_short.steps[5];
+    assert!(p6_short.grammar.rules.contains(&Production::new(
+        "S",
+        vec![
+            Symbol::NonTerminal("P".into()),
+            Symbol::NonTerminal("X".into())
+        ],
+    )));
+    assert_valid_cnf(&trace_short.final_grammar);
+    let cyk = |g: &Grammar, w: &str| CykParser::parse(g, w).unwrap().accepted;
+    assert!(cyk(&trace_short.final_grammar, "aaa"));
+    assert!(!cyk(&trace_short.final_grammar, "a"));
+    assert!(!cyk(&trace_short.final_grammar, "aa"));
+    assert!(!cyk(&trace_short.final_grammar, "aaaa"));
+}
+
+#[test]
 fn test_hand_derivation_unreachable_after_phase2() {
     let input = r#"
         S -> A B | c

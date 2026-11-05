@@ -249,6 +249,26 @@ Rules of length $\ge 3$ entering Phase 6:
 
 ---
 
+### Grammar R_tie: Phase 5 Tie Rule (First by Name Order)
+- **Rules**:
+  - $S \to a P Q$
+  - $P \to a$
+  - $Q \to a$
+- **Language**: $\{a^3\}$ ($S \implies a P Q \implies a a a$).
+- **Variables**: $\{S, P, Q\}$, alphabet $\{a\}$.
+- **Phase 5 check**:
+  - Candidates for terminal $a$: both $P$ and $Q$ have exactly 1 production in the grammar entering Phase 5, and that production is $\to a$.
+  - In alphabetical name order, $P < Q$.
+  - Tie rule: "If several variables qualify, take the first by name order" $\implies P$.
+  - Terminal $a$ in $S \to a P Q$ is replaced by $P$, yielding $S \to P P Q$.
+  - No $T_a$ is created. $Q$ is preserved as $Q \to a$ but not reused for terminal replacement.
+  - Phase 5 note `grammar.cnf.phase_mixed.note_short` is set.
+- **Phase 6 check**:
+  - $S \to P P Q$ is binarized to $S \to P X$, $X \to P Q$.
+  - Final rules: $S \to P X$, $X \to P Q$, $P \to a$, $Q \to a$. Accepts $a^3$.
+
+---
+
 ## 2. Deliberate Breaks (AC6)
 
 Each deliberate break was introduced one at a time, verified to fail with exact failure output, and immediately restored.
@@ -379,6 +399,37 @@ AssertionError: expected [ 'app.name', 'app.privacy', …(857) ] to deeply equal
 - Expected: "grammar.cnf.version.aria"
 ```
 - **Restoration**: Restored `'grammar.cnf.version.aria'` in `en.ts`. Both `pnpm check` and `vitest run src/lib/i18n` pass (`ok`).
+
+---
+
+### Break 5: Change Phase 5 tie rule from first by name to last by name (test_phase5_tie_rule_first_by_name fails)
+- **Change**: In `crates/engine-core/src/grammar/cnf.rs`, changed `candidates.into_iter().next()` (first by alphabetical name order) to `candidates.into_iter().next_back()` (last by alphabetical name order).
+- **Command**: `cargo test -p engine-core --test grammar test_phase5_tie_rule_first_by_name`
+- **Output**:
+```
+   Compiling engine-core v0.0.0 (/home/Aldebaran64/webtomata/crates/engine-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.35s
+     Running tests/grammar.rs (target/debug/deps/grammar-55e09d754fbe5e9c)
+
+running 1 test
+test test_phase5_tie_rule_first_by_name ... FAILED
+
+failures:
+
+---- test_phase5_tie_rule_first_by_name stdout ----
+
+thread 'test_phase5_tie_rule_first_by_name' (552934) panicked at crates/engine-core/tests/grammar.rs:1086:5:
+Phase 5 short version must reuse P (first in name order P < Q), yielding S -> P P Q
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+failures:
+    test_phase5_tie_rule_first_by_name
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 29 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p engine-core --test grammar`
+```
+- **Restoration**: Restored `candidates.into_iter().next()` (first by name order). Test passes (`ok`).
 
 ---
 
