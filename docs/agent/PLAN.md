@@ -1788,7 +1788,7 @@ Run the AC3 proptest with `PROPTEST_CASES=1000` three times in a row and paste t
 
 ## Task T-037 — PDA in restricted normal form to CFG, with a trace
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-037-pda-to-cfg`
 
