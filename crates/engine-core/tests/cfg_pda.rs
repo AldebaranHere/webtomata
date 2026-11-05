@@ -529,13 +529,42 @@ fn arb_grammar() -> impl Strategy<Value = Grammar> {
 }
 
 fn has_left_recursion(grammar: &Grammar) -> bool {
+    let mut nullable = std::collections::BTreeSet::new();
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for r in &grammar.rules {
+            if !nullable.contains(r.head.as_str()) {
+                let all_nullable = r.body.iter().all(|sym| match sym {
+                    Symbol::NonTerminal(nt) => nullable.contains(nt.as_str()),
+                    Symbol::Terminal(_) => false,
+                });
+                if all_nullable {
+                    nullable.insert(r.head.as_str());
+                    changed = true;
+                }
+            }
+        }
+    }
+
     let mut adj: std::collections::BTreeMap<&str, std::collections::BTreeSet<&str>> =
         std::collections::BTreeMap::new();
     for r in &grammar.rules {
-        if let Some(Symbol::NonTerminal(nt)) = r.body.first() {
-            adj.entry(&r.head).or_default().insert(nt);
+        for sym in &r.body {
+            match sym {
+                Symbol::NonTerminal(nt) => {
+                    adj.entry(r.head.as_str()).or_default().insert(nt.as_str());
+                    if !nullable.contains(nt.as_str()) {
+                        break;
+                    }
+                }
+                Symbol::Terminal(_) => {
+                    break;
+                }
+            }
         }
     }
+
     for start in adj.keys() {
         let mut visited = std::collections::BTreeSet::new();
         let mut stack = vec![*start];
@@ -553,6 +582,30 @@ fn has_left_recursion(grammar: &Grammar) -> bool {
         }
     }
     false
+}
+
+#[test]
+fn test_has_left_recursion_nullable_aware() {
+    // Counterexample from review: S -> Aa ; A -> BSa ; B -> ε
+    let grammar_left_rec = GrammarParser::parse("S -> A a\nA -> B S a\nB -> ε").unwrap();
+    assert!(
+        has_left_recursion(&grammar_left_rec),
+        "Expected left recursion via nullable B"
+    );
+
+    // Plain non-left-recursive grammar: S -> a S b | a b
+    let grammar_non_rec = GrammarParser::parse("S -> a S b | a b").unwrap();
+    assert!(
+        !has_left_recursion(&grammar_non_rec),
+        "S -> a S b | a b must not be detected as left recursive"
+    );
+
+    // Direct left recursion: S -> S a | b
+    let grammar_direct = GrammarParser::parse("S -> S a | b").unwrap();
+    assert!(
+        has_left_recursion(&grammar_direct),
+        "S -> S a | b is directly left recursive"
+    );
 }
 
 proptest! {
@@ -621,8 +674,8 @@ proptest! {
 
                     for s in &test_strings {
                         let cyk_expected = CykParser::parse(&cnf_trace.final_grammar, s)
-                            .map(|res| res.accepted)
-                            .unwrap_or(false);
+                            .expect("CYK parse must succeed")
+                            .accepted;
 
                         let (pda_accepted, pda_stopped) = match conv.pda.input.tokenize(s) {
                             Err(_) => (false, false),

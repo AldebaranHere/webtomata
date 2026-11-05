@@ -436,5 +436,30 @@ ok   wasm _app/immutable/workers/assets/engine_wasm_bg-lENq6a09.wasm: 228.0 KB g
 - Conversion algorithm executes strictly Slide13 page 4: 1 start transition, 1 transition per distinct production rule, 1 transition per terminal symbol.
 - No grammar normalization is performed; duplicate production rules merged; symbol clashes between variables and terminals correctly rejected with `pda.cfg.symbol_clash`.
 - Top-down push sequence preserves top-first order (`[γ1, ..., γn]`).
-- All 14 tests in `crates/engine-core/tests/cfg_pda.rs` passed cleanly, including two-oracle agreement test on 511 strings and proptests.
+- All 15 tests in `crates/engine-core/tests/cfg_pda.rs` passed cleanly, including two-oracle agreement test on 511 strings and proptests.
+
+---
+
+## 5. Review Fixes (PR 157 Review)
+
+### 5.1 Fix 1: Nullable-Aware Left Recursion Detection & CYK Oracle Failure
+- **Problem**: `has_left_recursion` previously only inspected the first symbol `r.body.first()`. Grammars with left recursion through nullable variables (such as `S -> A a ; A -> B S a ; B -> ε`, where $B \Rightarrow \varepsilon$ produces the derivation $S \Rightarrow A a \Rightarrow B S a \Rightarrow S a a$) were not identified as left-recursive. Consequently, the non-left-recursive branch budget gate (`skipped <= total / 2`) fired when BFS configuration trees stopped on non-language strings.
+- **Implementation**:
+  1. Fixed-point nullable computation: iteratively computes all non-terminals that can derive $\varepsilon$.
+  2. Directed left-corner graph: for each rule $X \to \gamma_1\dots\gamma_n$, inspects each $\gamma_i$; if $\gamma_i$ is a non-terminal, adds directed edge $X \to \gamma_i$ and continues only if $\gamma_i$ is nullable. Stops at first non-nullable non-terminal or any terminal.
+  3. Cycle check: searches for directed cycles from each node.
+  4. Added unit test `test_has_left_recursion_nullable_aware` verifying counterexample `S -> A a\nA -> B S a\nB -> ε` (returns `true`), plain non-left-recursive grammar `S -> a S b | a b` (returns `false`), and direct left recursion `S -> S a | b` (returns `true`).
+  5. CYK oracle assertion: replaced `.unwrap_or(false)` with `.expect("CYK parse must succeed").accepted`, ensuring CYK parse failures fail the test immediately.
+- **Verification (3 Consecutive Runs with `PROPTEST_CASES=1000`)**:
+  - Run 1:
+    `test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 40.45s`
+  - Run 2:
+    `test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 40.62s`
+  - Run 3:
+    `test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 54.38s`
+
+### 5.2 Fix 2: Elimination of `.expect(...)` in Non-Test Code
+- **Problem**: `crates/engine-core/src/cfg_pda.rs` had five `.expect(...)` calls on symbol lookups (`start_id`, `head_id`, `sym_id`, `read_id`, `pop_id`).
+- **Implementation**: Replaced each `.expect(...)` with `.ok_or_else(|| Message::new("machine.unknown_symbol").with("symbol", <name>))?`.
+- **Result**: Zero `.unwrap()` or `.expect()` calls remain in `crates/engine-core/src/cfg_pda.rs`. All error handling routes cleanly through `Result<_, Message>` using `?`.
 

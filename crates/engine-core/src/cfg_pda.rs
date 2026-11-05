@@ -77,9 +77,9 @@ pub fn cfg_to_pda_topdown(grammar: &Grammar) -> Result<CfgToPda, Message> {
     let mut steps = Vec::new();
 
     // Step 1: Start transition: ((p, ε, ε), (q, S))
-    let start_id = stack
-        .id(&grammar.start)
-        .expect("start variable is in stack alphabet");
+    let start_id = stack.id(&grammar.start).ok_or_else(|| {
+        Message::new("machine.unknown_symbol").with("symbol", grammar.start.clone())
+    })?;
     transitions.push(PdaTransition {
         from: p,
         read: None,
@@ -110,9 +110,9 @@ pub fn cfg_to_pda_topdown(grammar: &Grammar) -> Result<CfgToPda, Message> {
             return Err(limit_exceeded("pda_string", MAX_PDA_STRING));
         }
 
-        let head_id = stack
-            .id(&rule.head)
-            .expect("rule head is in stack alphabet");
+        let head_id = stack.id(&rule.head).ok_or_else(|| {
+            Message::new("machine.unknown_symbol").with("symbol", rule.head.clone())
+        })?;
 
         let mut push_ids = Vec::with_capacity(rule.body.len());
         let mut push_names = Vec::with_capacity(rule.body.len());
@@ -122,7 +122,9 @@ pub fn cfg_to_pda_topdown(grammar: &Grammar) -> Result<CfgToPda, Message> {
                 Symbol::Terminal(c) => c.to_string(),
                 Symbol::NonTerminal(nt) => nt.clone(),
             };
-            let sym_id = stack.id(&name).expect("symbol is in stack alphabet");
+            let sym_id = stack.id(&name).ok_or_else(|| {
+                Message::new("machine.unknown_symbol").with("symbol", name.clone())
+            })?;
             push_ids.push(sym_id);
             push_names.push(name);
         }
@@ -149,8 +151,12 @@ pub fn cfg_to_pda_topdown(grammar: &Grammar) -> Result<CfgToPda, Message> {
     // Step 3: Terminal transitions: ((q, c, c), (q, ε))
     for c in terminals {
         let term_str = c.to_string();
-        let read_id = input.id(&term_str).expect("terminal is in input alphabet");
-        let pop_id = stack.id(&term_str).expect("terminal is in stack alphabet");
+        let read_id = input.id(&term_str).ok_or_else(|| {
+            Message::new("machine.unknown_symbol").with("symbol", term_str.clone())
+        })?;
+        let pop_id = stack.id(&term_str).ok_or_else(|| {
+            Message::new("machine.unknown_symbol").with("symbol", term_str.clone())
+        })?;
 
         transitions.push(PdaTransition {
             from: q,
