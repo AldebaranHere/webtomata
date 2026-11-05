@@ -1544,7 +1544,7 @@ Run the two proptests of AC3 with `PROPTEST_CASES=1000` three times in a row and
 
 ## Task T-036 — PDA to restricted normal form, with a trace
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-036-pda-to-rnf`
 
