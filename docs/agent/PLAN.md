@@ -4,7 +4,7 @@
 > `todo` means ready: every field is written and the human approved it. Several tasks can be `todo` at the same time. The worker does one task at a time: the one that the human names in the start prompt ("Do task T-xxx"). The worker sets it to `in-progress` in the first commit of its own PR and to `done` in the last. The planner does not open a pull request only to change a status.
 > The blank task template is in `PLAN-TEMPLATE.md`.
 
-**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 (CNF phases in the homework order, after T-029 is merged) is `todo` since the owner approved `design/screens/cnf-stepper-homework-order.md`; T-060 is merged (PR 147). Written on 2026-11-05 after it: T-015 (`todo`: the "versi panjang / versi ringkas" toggle). Written on 2026-11-05 after T-015 merged: T-030, then T-031 (`todo`, the PDA engine: model and validation, then simulation; one after the other, they touch the same engine files). T-032 is `todo` since 2026-11-05 (T-031 merged); T-034 to T-038 are `proposed` drafts; the full specs are written when the one before is merged.
+**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 (CNF phases in the homework order, after T-029 is merged) is `todo` since the owner approved `design/screens/cnf-stepper-homework-order.md`; T-060 is merged (PR 147). Written on 2026-11-05 after it: T-015 (`todo`: the "versi panjang / versi ringkas" toggle). Written on 2026-11-05 after T-015 merged: T-030, then T-031 (`todo`, the PDA engine: model and validation, then simulation; one after the other, they touch the same engine files). T-032 is `todo` since 2026-11-05 (T-031 merged) and T-034 too (T-032 merged); T-035 to T-038 are `proposed` drafts; the full specs are written when the one before is merged.
 
 Status legend: `proposed` | `todo` | `in-progress` | `blocked` | `done` | `rejected`
 
@@ -1376,17 +1376,84 @@ Expected: all pass. No e2e (no UI). Paste real output into `REPORT.md`.
 
 ---
 
-## Task T-034 — CFG to PDA, top-down (draft)
+## Task T-034 — CFG to PDA, top-down
 
-**Status:** proposed (the full spec is written after T-032 is merged)
+**Status:** todo
 **Owner:** worker
 **Branch:** `task/T-034-cfg-to-pda-topdown`
 
-**Goal:** The slides' `CFGtoPDAtopdown` (Slide13, page 4), with a step trace: states `p` and `q` (`p` start, `q` accepting), the stack alphabet is the variables and the terminals, and `Δ` holds `((p, ε, ε), (q, S))`, `((q, ε, X), (q, γ1…γn))` for every rule `X → γ1…γn` (an ε-rule pushes nothing), and `((q, c, c), (q, ε))` for every terminal `c`. Engine only: `cfg_to_pda_topdown(grammar_text, budget)` returning the PDA and a trace; the state names `p` and `q` come back as plain data for the UI document. The step trace has one step for the first transition, one for each rule and one for each terminal.
+**Goal:** The slides' `CFGtoPDAtopdown` (Slide13, page 4), with a step trace. From a context-free grammar the engine builds a PDA with two states, `p` (start) and `q` (accepting), that accepts the same strings. The student sees the PDA and one trace step for every transition that the algorithm adds. Engine only: no screen (T-033 is the editor, T-038 the panel).
 
-**Draft test plan:** equivalence by simulation, not by structure: for the grammar `S → aSb | ab` (the owner's `cfg_anbn.jff`) and two more small grammars (one with an ε-rule, one with two variables), every string over the alphabet up to length 8 is accepted by the PDA (T-031) iff the grammar generates it (the existing CNF and CYK code, with the empty string handled). The owner's JFLAP conversion (`pda_cfg_anbn_LL.jff`) differs in bookkeeping (it uses JFLAP's bottom marker `Z`), so it is **not** compared structure for structure.
+**The algorithm (Slide13, page 4; the rule order below is the order of the trace):**
+1. `((p, ε, ε), (q, S))`: from `p` to `q`, read nothing, pop nothing, push the start variable.
+2. For every rule `X → γ1…γn`: `((q, ε, X), (q, γ1…γn))`: pop `X`, push the right-hand side with `γ1` on top. An ε-rule (`n = 0`) pushes nothing. This matches our `push` order (top first, T-030): `push = [γ1, …, γn]`.
+3. For every terminal `c`: `((q, c, c), (q, ε))`: read `c`, pop `c`, push nothing.
 
-**Depends on:** T-030, T-031.
+The PDA accepts when the input is used up, the stack is empty and the state is `q` (T-030, T-031). The stack starts empty: step 1 puts `S` on it.
+
+**Decisions (the planner made them from the slides and the code; do not reopen, ask if one looks wrong):**
+1. **Input.** The grammar text is parsed with the existing `GrammarParser` (same 8192-character limit and the same `api.invalid_grammar` message as `transform_to_cnf`). A grammar that has an ε-rule, a unit rule, a long right-hand side or unreachable variables is **not** normalized first: the algorithm works on any CFG, and the point of the trace is that the student sees their own rules.
+2. **Alphabets.** The input alphabet is the sorted terminals of the grammar (`Grammar::terminals`, each one a one-character name). The stack alphabet is every variable (`Grammar::variables`, so the start variable is in it even when it has no rule) and every terminal, as names, **sorted by name** (byte order, so `S` before `a`). A variable name can have several characters (`S0`, `T_a`, `<Expr>`): the stack alphabet allows that.
+3. **States.** `p` is `StateId(0)` and `q` is `StateId(1)`. The result carries the names as plain data: `states: [{ id: 0, name: "p" }, { id: 1, name: "q" }]`. `start` is `p`, `accepting` is `[q]`, `kind` is always `ndpda` (a conversion result is not asked to be deterministic).
+4. **Name clash is refused.** The parser accepts a bracketed variable such as `<a>` or `[a]`; its name `a` is then also a terminal name, and one stack symbol cannot be both. If a variable name equals a terminal, return `pda.cfg.symbol_clash { symbol }` (the symbol is the name). No other check is needed: a name that the stack alphabet cannot hold (whitespace, `ε`) comes back as the `machine.invalid_symbol` message of `Alphabet::new`, a rule body longer than `MAX_PDA_STRING` (64) as the `machine.limit_exceeded` message of `Pda::new` (`what: "pda_string"`, `limit: 64`). Do not add new keys for these.
+5. **Duplicate rules are merged.** `S -> a | a` is one rule: two identical transitions would give `pda.duplicate_transition` (T-030). A rule is a duplicate when its head and its body are equal to those of an earlier rule; the first one stays and gets the trace step. This is the only change to the student's rule list.
+6. **No budget.** The construction has one step for the first transition, one for each distinct rule and one for each terminal: it is linear and cannot loop. The API takes only the grammar text. (A grammar that makes the *simulation* loop, such as `S -> S a | b`, is a matter for T-031's budget; see F4.)
+7. **Trace.** `steps: Vec<CfgPdaStep>`, in the order above (first transition; rules in grammar order, after merging duplicates; terminals sorted by character). Each step has the new `transition` in the wire form `PdaTransition` (names, as in `Pda` JSON: `from`, `read`, `pop`, `push`, `to`) and a `message` with a key and parameters; the engine writes no sentences. Keys: `cfg_pda.top_down.start` (no parameters), `cfg_pda.top_down.rule { rule }` where `rule` is the production as `Production`'s `Display` gives it (`S -> aSb`, `S -> ε`), and `cfg_pda.top_down.terminal { symbol }`. The final `pda` has the transitions in the sorted order that `Pda::new` gives them, so steps and transitions are matched by value, not by index.
+
+**Scope (in):**
+- New `crates/engine-core/src/cfg_pda.rs` (a new file; do not grow `pda.rs`): `cfg_to_pda_topdown(&Grammar) -> Result<CfgToPda, Message>` with `CfgToPda { pda: Pda, states: Vec<StateName>, steps: Vec<CfgPdaStep> }`. `StateName { id, name }` is new and small (the editor will fold it into its document; do not reuse `JffState`, which carries canvas positions). Export the types to TypeScript like the other results (`ts.rs`).
+- API: `cfg_to_pda_topdown(grammar_text)` in `api.rs` (same envelope as `transform_to_cnf`; a parse failure is `api.invalid_grammar`), the same in `crates/engine-wasm/src/lib.rs`, `web/src/lib/engine/handlers.ts` and `protocol.ts`, typed, with a handler test like the one for `transform_to_cnf`.
+- Message keys `cfg_pda.top_down.start`, `.rule`, `.terminal` and `pda.cfg.symbol_clash` get `id` and `en` texts, under the same coverage rule as the other `pda.*` and `grammar.*` keys (use `grep` to see how those are covered, and what `pnpm check:strings` demands). Indonesian terms come from `docs/glossary.md` (stack, rule, variable, terminal); if one is missing, add it with `TODO(review)` and say so in the report.
+- `docs/decisions/0037-cfg-to-pda-topdown.md` (decisions 1 to 7, and the note that a PDA from a grammar with multi-character variables cannot be exported to JFLAP: `jff.symbol_not_single_character`, T-032) and one line in the docs where the engine's conversions are listed.
+- Tests, written first, from the fixtures below.
+
+**Non-goals (out):**
+- No UI, no panel, no button (T-033, T-038). No bottom-up conversion (T-035), no PDA to grammar (T-036, T-037). No normalization of the grammar first. No structure comparison with JFLAP's own conversion (`pda_cfg_anbn_LL.jff` uses JFLAP's bottom marker `Z`, which we do not have). No minimizing or tidying of the resulting PDA. No new budget type.
+- Do not copy text from `REFERENCES/` into a commit.
+
+**Files expected to touch:** `crates/engine-core/src/cfg_pda.rs` (new), `lib.rs`, `api.rs`, `ts.rs`, `crates/engine-core/tests/cfg_pda.rs` (new), `crates/engine-wasm/src/lib.rs`, `web/src/lib/engine/handlers.ts`, `protocol.ts`, `handlers.test.ts`, the generated types, `id.ts` and `en.ts`, `docs/decisions/0037-cfg-to-pda-topdown.md`, the docs line, `docs/agent/REPORT.md`.
+
+**Design reference:** none (no screen). Slides: Slide13, page 4.
+
+**Fixtures and hand derivations (the planner derived them; the worker redoes them in `REPORT.md` before any test runs; if the engine disagrees, stop and report):**
+
+- *F1, `S -> aSb | ab` (the language `aⁿbⁿ`, `n ≥ 1`).* Input alphabet `["a","b"]`; stack alphabet `["S","a","b"]`. `states` `[p, q]`, `start` `p`, `accepting` `[q]`, `kind` `ndpda`. Five steps and five transitions, as `from → to, read, pop, push`:
+  1. `p → q, ε, [], [S]` (start)
+  2. `q → q, ε, [S], [a, S, b]` (rule `S -> aSb`)
+  3. `q → q, ε, [S], [a, b]` (rule `S -> ab`)
+  4. `q → q, a, [a], []` (terminal `a`)
+  5. `q → q, b, [b], []` (terminal `b`)
+
+  The messages are `start`, `rule { rule: "S -> aSb" }`, `rule { rule: "S -> ab" }`, `terminal { symbol: "a" }`, `terminal { symbol: "b" }`. `validate_pda` gives no issue. A run of `aabb` by hand: `(p, aabb, [])`, transition 1 gives `(q, aabb, [S])`; the accepting path is: rule 2 gives `[a, S, b]`, read `a` gives `[S, b]`, rule 3 gives `[a, b, b]`, read `a` gives `[b, b]`, read `b` gives `[b]`, read `b` gives `[]` with the input used up in `q`: **accepted**. Rejected: `ε` (the stack is `[S]` after step 1, never empty with the input used up), `a`, `b`, `aab`, `abb`, `ba`. `pda_determinism` reports one competition: transitions 2 and 3 (same state, both read ε, equal pops).
+- *F2, `S -> aSb | ε`.* Three rules → one start, two rules, two terminals: five steps. The ε-rule is `q → q, ε, [S], []` and its message is `rule { rule: "S -> ε" }`. The language is `aⁿbⁿ`, `n ≥ 0`: **`ε` is accepted** (by hand: `[S]`, then the ε-rule empties the stack in `q` with the input used up).
+- *F3, two variables: `S -> AB`, `A -> aA | a`, `B -> bB | b` (the language `aⁱbʲ`, `i, j ≥ 1`).* Input alphabet `["a","b"]`; stack alphabet `["A","B","S","a","b"]`. Eight transitions: start, five rules (`S -> AB` pushes `[A, B]`; `A -> aA` pushes `[a, A]`; `A -> a` pushes `[a]`; `B -> bB` pushes `[b, B]`; `B -> b` pushes `[b]`), two terminals. `A` is on top of `B`, so the `a`s are read first.
+- *F4, left recursion: `S -> S a | b` (the language `b aⁿ`).* The conversion is fine (one start, two rules, two terminals: five transitions; `S -> S a` pushes `[S, a]`). The simulator, for the input `ab` and the budget `{ maxSteps: 10000, maxConfigurations: 20000, maxStack: 20 }`, gives `Stopped` with reason `max_stack` (the `S` branch grows by one symbol at each level, and the `b` branch dies on the first symbol); the input `baa` is accepted. This documents that top-down parsing with a left-recursive grammar needs the budget.
+- *F5, other cases.* `S -> a | a` gives three transitions (start, one rule, one terminal) and three steps: the duplicate is merged. A grammar whose start variable has no rule cannot be written in the text format; the parser's own error stands. `S -> a<a>` (variable `a` and terminal `a`) gives `pda.cfg.symbol_clash { symbol: "a" }`. A rule with a right-hand side of 65 symbols gives `machine.limit_exceeded` with `what: "pda_string"`. A variable named `S0` (`S0 -> aS0b | ab`) works: the stack alphabet is `["S0","a","b"]`, the rule transition pushes `[a, S0, b]`, and `export_pda_jff` of the result gives `jff.symbol_not_single_character { symbol: "S0" }`. For F1 the export works, and importing it again gives the same transitions by name.
+- *Equivalence by simulation (the main test).* For F1, F2, F3: every string over `{a, b}` of length 0 to 8 (511 strings) is accepted by the PDA (T-031, default budget) iff it is in the language. Two oracles, which must agree with each other and with the PDA: (a) a short hand-written predicate for each language (`aⁿbⁿ`, `n ≥ 1`; `aⁿbⁿ`, `n ≥ 0`; `a⁺b⁺`); (b) the existing code: `CnfTransformer::transform` on the grammar, then `CykParser::parse` on the final grammar (it handles `ε`). A test that the two oracles agree on all 511 strings comes first, so a wrong oracle is found before it can hide a wrong PDA.
+
+**Acceptance criteria:**
+- AC1: F1 to F5 give exactly the alphabets, states, transitions, steps, messages and issues above.
+- AC2: the equivalence test for F1, F2, F3 passes with both oracles, and the F4 budget case gives `Stopped` / `max_stack`.
+- AC3: `proptest`: for random small grammars (one to three variables out of `S`, `A`, `B`, one to four rules each, bodies of zero to three symbols from `{a, b, S, A, B}`), the conversion either succeeds or gives one of the messages of decision 4; when it succeeds, `validate_pda` has no issue **other than** `pda.pop_never_pushed` (it can appear for a variable or terminal that only an unreachable rule pushes), the number of steps equals `1 + distinct rules + terminals`, and the PDA accepts every string up to length 5 that the CNF and CYK oracle accepts and rejects every one that it rejects (when the simulation says `Stopped` for a left-recursive case, skip that string and count the skips; the test fails if more than half are skipped).
+- AC4: the error cases in F5 give exactly those keys and parameters; nothing panics on arbitrary text (`proptest` with arbitrary strings fed to the API function).
+- AC5: deliberate breaks, each shown failing, then restored: push the right-hand side reversed (F1 and the equivalence test fail); drop the ε-rule transition (F2 fails: `ε` is rejected); do not add the terminal transitions (everything is rejected); make `p` accepting too (the F1 `ε` rejection fails); keep duplicate rules (the F5 duplicate test fails); do not sort the stack alphabet (the F1 order assertion fails).
+- AC6: `wasm` stays under 250 KB gzip and the initial JS under 170 KB (`pnpm size`); report the wasm size before and after.
+
+**Verification:**
+```
+cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+pnpm build:wasm
+pnpm check && pnpm lint && pnpm format:check && pnpm check:strings && pnpm check:tokens
+pnpm --filter web exec vitest run
+pnpm build && pnpm size
+```
+Expected: all pass. No e2e (no UI). Paste real output into `REPORT.md`.
+
+**Rollback:** `git revert <sha>`. Nothing reads the new code yet.
+
+**Depends on:** T-030 and T-031 (merged), T-032 (merged; used only by the F5 export test).
+
+**Notes for worker:** The equivalence test is the contract: it is what makes the conversion trustworthy, so write it first and look at it fail on a broken conversion before you write the conversion. Quote constants and message keys from the code in your summary, not from memory. If a derivation above disagrees with the engine, stop and report.
 
 ---
 
@@ -1501,7 +1568,7 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-031** PDA simulation, breadth-first, with a stack trace, budgets and the peak number of configurations: specified in its own block above (`todo`; after T-030).
 - **T-032** PDA `.jff` import and export: specified in its own block above (`todo`; T-030 and T-031 are merged).
 - **T-033** PDA editor: after P-004 (wireframe) is approved and T-032 is merged.
-- **T-034** CFG to PDA, top-down (slides, `CFGtoPDAtopdown`): draft above (`proposed`). Tested by language equivalence, not by structure against JFLAP's file.
+- **T-034** CFG to PDA, top-down (slides, `CFGtoPDAtopdown`): specified in its own block above (`todo`, since 2026-11-05; T-032 is merged). Tested by language equivalence, not by structure against JFLAP's file.
 - **T-035** CFG to PDA, bottom-up (slides, shift and reduce): draft above (`proposed`).
 - **T-036** PDA to restricted normal form, with a trace: draft above (`proposed`).
 - **T-037** PDA in restricted normal form to CFG: draft above (`proposed`). The slides' example `wcwᴿ` is the oracle (76 rules, 16 after cleanup).
