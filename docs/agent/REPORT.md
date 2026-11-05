@@ -575,3 +575,81 @@ ok   wasm _app/immutable/workers/assets/engine_wasm_bg-C8jNeVC0.wasm: 220.9 KB g
 - **Work Commit**: `770ed0e` (`feat(engine): add pushdown automaton breadth-first simulation and stack trace`)
 - **Status in PLAN.md**: `done`
 
+---
+
+## 6. PR 153 Review Fixes
+
+### Fix 1: Performance with `partition_point`
+- **Optimization**: Transitions in `Pda` are sorted by `from: StateId`. Instead of scanning all transitions in `pda.transitions` for every configuration in every level, we locate the slice for `node_config.state` using binary search:
+  ```rust
+  let start = pda.transitions.partition_point(|t| t.from < node_state);
+  let count = pda.transitions[start..].partition_point(|t| t.from == node_state);
+  for (local_idx, t) in pda.transitions[start..start + count].iter().enumerate() {
+      let t_idx = start + local_idx;
+  ```
+  The absolute transition index `t_idx` remains exactly identical.
+- **Benchmark (`test_unrelated_transitions_performance`)**:
+  - PDA with 1,001 states: state 0 has 2 branching transitions on $\varepsilon$, and states 1..=1000 have 50 transitions each, totaling 50,002 transitions.
+  - Simulation runs until `max_configurations = 20,000`.
+  - **Before optimization**: `8.044074029s` (~8,044 ms)
+  - **After optimization**: `53.153695ms` (~53 ms)
+  - **Speedup**: **~151x faster**
+
+### Fix 2: Message Priority on Rejected Run
+- **Rule**: `not_accepting_state` takes precedence over `stack_not_empty` when input is exhausted.
+- **Test (`test_message_priority_not_accepting_over_stack_not_empty`)**:
+  - M1 modified to have `accepting: []` on input `"a"`.
+  - Halts at position 1, state 0 (non-accepting), stack `["a"]` (non-empty). Both rejection conditions are met.
+  - Expected last message: `pda.sim.not_accepting_state`.
+- **Deliberate Break**: Swapped `!c.stack.is_empty()` before `pda.accepting.binary_search(&c.state).is_err()` in `failure_message`.
+- **Terminal failure output**:
+```text
+thread 'test_message_priority_not_accepting_over_stack_not_empty' panicked at crates/engine-core/tests/pda_simulate.rs:735:13:
+assertion `left == right` failed
+  left: "pda.sim.stack_not_empty"
+ right: "pda.sim.not_accepting_state"
+```
+- **Restoration**: Restored original priority order. Test passes.
+
+### Fix 3: `max_steps` Boundary
+- **Hand derivation**:
+  - Machine M2 ($ww^R$) on input `aa`:
+    - Level 0: $C_0 = (0, 0, [])$ $\to$ explored = 1
+    - Level 1: $C_1 = (1, 0, []), C_2 = (0, 1, [a])$ $\to$ explored = 3
+    - Level 2: $C_3 = (1, 1, [a]), C_4 = (0, 2, [a, a])$ $\to$ explored = 5
+    - Level 3: $C_5 = (1, 2, [])$ (accepted!), $C_6 = (1, 2, [a, a])$ $\to$ explored = 7
+  - `max_steps: 3`:
+    - Levels 0, 1, 2 are expanded.
+    - Level 3 checks acceptance of $C_5$ and returns `Finished { accepted: true, explored: 7 }`.
+  - `max_steps: 2`:
+    - Levels 0 and 1 are expanded.
+    - When `level_num = 2`, `level_num >= budget.max_steps` ($2 \ge 2$) triggers before Level 2 is expanded.
+    - Halts with `Stopped { reason: StopReason::MaxSteps, explored: 5 }`.
+- **Test (`test_max_steps_boundary_m2_aa`)**:
+  - Verifies `max_steps: 3` accepts with `explored: 7`.
+  - Verifies `max_steps: 2` stops at `StopReason::MaxSteps` with `explored: 5`.
+- **Deliberate Break**: Changed `if level_num >= budget.max_steps` to `if level_num > budget.max_steps`.
+- **Terminal failure output**:
+```text
+thread 'test_max_steps_boundary_m2_aa' panicked at crates/engine-core/tests/pda_simulate.rs:797:14:
+Expected Stopped(MaxSteps) with max_steps: 2
+```
+- **Restoration**: Restored `>=`. Test passes.
+
+### Fix 4: `max_stack` Boundary
+- **Rule**: With the stack-growing loop and `max_stack: 5`, a stack of exactly 5 symbols is allowed. Stopping happens when a stack of 6 would be created. The deepest stack in `partial_trace` is exactly 5.
+- **Trace handling**: Tracing from the configuration `node_idx` that attempts to exceed `max_stack` ensures the partial trace contains the full computation path that reached stack depth 5.
+- **Test (`test_max_stack_boundary_exact_depth`)**:
+  - Verifies stop reason is `StopReason::MaxStack`.
+  - Asserts deepest stack depth in `partial_trace` is 5.
+- **Deliberate Break**: Changed `if next_stack.len() > budget.max_stack` to `if next_stack.len() >= budget.max_stack`.
+- **Terminal failure output**:
+```text
+thread 'test_max_stack_boundary_exact_depth' panicked at crates/engine-core/tests/pda_simulate.rs:822:13:
+assertion `left == right` failed
+  left: 4
+ right: 5
+```
+- **Restoration**: Restored `>`. Test passes.
+
+

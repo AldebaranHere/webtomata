@@ -272,11 +272,13 @@ pub fn simulate_pda(
         let mut next_level = Vec::new();
 
         for &node_idx in &current_level {
-            for (t_idx, t) in pda.transitions.iter().enumerate() {
+            let node_state = nodes[node_idx].config.state;
+            let start = pda.transitions.partition_point(|t| t.from < node_state);
+            let count = pda.transitions[start..].partition_point(|t| t.from == node_state);
+
+            for (local_idx, t) in pda.transitions[start..start + count].iter().enumerate() {
+                let t_idx = start + local_idx;
                 let node_config = &nodes[node_idx].config;
-                if t.from != node_config.state {
-                    continue;
-                }
                 let consumes = match t.read {
                     Some(r) => {
                         if node_config.position < input.len() && input[node_config.position] == r {
@@ -296,9 +298,8 @@ pub fn simulate_pda(
                 next_stack.extend_from_slice(&node_config.stack[t.pop.len()..]);
 
                 if next_stack.len() > budget.max_stack {
-                    let best_idx = best_so_far(&nodes);
                     let partial_trace =
-                        trace_from_node(&nodes, best_idx, pda, input.len(), TraceStatus::Stopped);
+                        trace_from_node(&nodes, node_idx, pda, input.len(), TraceStatus::Stopped);
                     return Ok(PdaSimulation::Stopped {
                         reason: StopReason::MaxStack,
                         partial_trace,

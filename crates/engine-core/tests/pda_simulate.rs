@@ -1,5 +1,6 @@
 use engine_core::{
-    Param, Pda, PdaBudget, PdaSimulation, PdaStep, StopReason, SymbolId, simulate_pda,
+    Alphabet, Param, Pda, PdaBudget, PdaKind, PdaSimulation, PdaStep, PdaTransition, StateId,
+    StopReason, SymbolId, simulate_pda,
 };
 use proptest::prelude::*;
 
@@ -650,5 +651,176 @@ fn test_level_order_determinism() {
             assert_eq!(trace[1].transition, Some(0));
         }
         _ => panic!("Expected Finished"),
+    }
+}
+
+#[test]
+fn test_unrelated_transitions_performance() {
+    let alphabet = Alphabet::new(vec!["a".to_string(), "b".to_string()]).unwrap();
+    let states: Vec<StateId> = (0..=1000).map(StateId).collect();
+    let mut transitions = vec![
+        PdaTransition {
+            from: StateId(0),
+            read: None,
+            pop: vec![],
+            push: vec![SymbolId(0)],
+            to: StateId(0),
+        },
+        PdaTransition {
+            from: StateId(0),
+            read: None,
+            pop: vec![],
+            push: vec![SymbolId(1)],
+            to: StateId(0),
+        },
+    ];
+    for s in 1..=1000 {
+        for _ in 0..50 {
+            transitions.push(PdaTransition {
+                from: StateId(s),
+                read: None,
+                pop: vec![],
+                push: vec![],
+                to: StateId(s),
+            });
+        }
+    }
+    assert_eq!(transitions.len(), 50_002);
+    let pda = Pda::new(
+        PdaKind::Ndpda,
+        alphabet.clone(),
+        alphabet,
+        states,
+        Some(StateId(0)),
+        vec![],
+        transitions,
+    )
+    .unwrap();
+
+    let start = std::time::Instant::now();
+    let res = simulate_pda(&pda, &[], PdaBudget::default()).unwrap();
+    let elapsed = start.elapsed();
+    eprintln!(
+        "test_unrelated_transitions_performance AFTER elapsed: {:?}",
+        elapsed
+    );
+    match res {
+        PdaSimulation::Stopped {
+            reason, explored, ..
+        } => {
+            assert_eq!(reason, StopReason::MaxConfigurations);
+            assert_eq!(explored, 20_000);
+        }
+        _ => panic!("Expected Stopped(MaxConfigurations)"),
+    }
+}
+
+#[test]
+fn test_message_priority_not_accepting_over_stack_not_empty() {
+    // M1 with accepting: [] (no accepting states) on input "a".
+    // State 0 consumes "a", pushes "a", and halts at position 1.
+    // The final configuration has consumed all input, is in a non-accepting state,
+    // and has a non-empty stack.
+    // Priority rule: not_accepting_state takes precedence over stack_not_empty.
+    let json = r#"{"schemaVersion":1,"kind":"dpda","inputAlphabet":["a","b"],"stackAlphabet":["a"],"states":[0,1],"start":0,"accepting":[],"transitions":[{"from":0,"read":"a","pop":[],"push":["a"],"to":0},{"from":0,"read":"b","pop":["a"],"push":[],"to":1},{"from":1,"read":"b","pop":["a"],"push":[],"to":1}]}"#;
+    let pda = Pda::from_json(json).unwrap();
+    let input = syms(&pda, "a");
+    let res = simulate_pda(&pda, &input, PdaBudget::default()).unwrap();
+    match res {
+        PdaSimulation::Finished {
+            accepted, trace, ..
+        } => {
+            assert!(!accepted);
+            assert_eq!(trace.len(), 2);
+            assert_eq!(trace[1].message.key, "pda.sim.not_accepting_state");
+        }
+        _ => panic!("Expected Finished(rejected)"),
+    }
+}
+
+#[test]
+fn test_max_steps_boundary_m2_aa() {
+    let pda = Pda::from_json(m2_json()).unwrap();
+    let input = syms(&pda, "aa");
+
+    // Hand derivation:
+    // Level 0: C0 = (0, 0, []) -> explored = 1
+    // Level 1: C1 = (1, 0, []), C2 = (0, 1, ["a"]) -> explored = 3
+    // Level 2: C3 = (1, 1, ["a"]), C4 = (0, 2, ["a", "a"]) -> explored = 5
+    // Level 3: C5 = (1, 2, []) [ACCEPTED], C6 = (1, 2, ["a", "a"]) -> explored = 7
+    //
+    // With max_steps: 3:
+    // Levels 0, 1, 2 are expanded (level_num = 0, 1, 2).
+    // Level 3 is reached and C5 is accepted!
+    let budget_3 = PdaBudget {
+        max_steps: 3,
+        max_configurations: 20_000,
+        max_stack: 500,
+    };
+    let res_3 = simulate_pda(&pda, &input, budget_3).unwrap();
+    match res_3 {
+        PdaSimulation::Finished {
+            accepted,
+            explored,
+            trace,
+            ..
+        } => {
+            assert!(accepted);
+            assert_eq!(explored, 7);
+            assert_eq!(trace.len(), 4); // C0 -> C2 -> C3 -> C5
+        }
+        _ => panic!("Expected Finished with max_steps: 3"),
+    }
+
+    // With max_steps: 2:
+    // Levels 0, 1 are expanded (level_num = 0, 1).
+    // When level_num reaches 2, level_num >= budget.max_steps (2 >= 2) triggers.
+    // Simulation stops before level 2 is expanded.
+    // Exactly 5 configurations have been explored (C0, C1, C2, C3, C4).
+    let budget_2 = PdaBudget {
+        max_steps: 2,
+        max_configurations: 20_000,
+        max_stack: 500,
+    };
+    let res_2 = simulate_pda(&pda, &input, budget_2).unwrap();
+    match res_2 {
+        PdaSimulation::Stopped {
+            reason,
+            explored,
+            partial_trace,
+            ..
+        } => {
+            assert_eq!(reason, StopReason::MaxSteps);
+            assert_eq!(explored, 5);
+            assert!(!partial_trace.is_empty());
+        }
+        _ => panic!("Expected Stopped(MaxSteps) with max_steps: 2"),
+    }
+}
+
+#[test]
+fn test_max_stack_boundary_exact_depth() {
+    let pda = Pda::from_json(stack_growing_loop_json()).unwrap();
+    let budget = PdaBudget {
+        max_steps: 10_000,
+        max_configurations: 20_000,
+        max_stack: 5,
+    };
+    let res = simulate_pda(&pda, &[], budget).unwrap();
+    match res {
+        PdaSimulation::Stopped {
+            reason,
+            partial_trace,
+            ..
+        } => {
+            assert_eq!(reason, StopReason::MaxStack);
+            let deepest = partial_trace
+                .iter()
+                .map(|step| step.stack.len())
+                .max()
+                .unwrap_or(0);
+            assert_eq!(deepest, 5);
+        }
+        _ => panic!("Expected Stopped(MaxStack)"),
     }
 }
