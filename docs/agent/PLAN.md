@@ -1180,7 +1180,7 @@ Expected: all pass. Do not run the full suite locally. Paste real output into `R
 
 ## Task T-030 — PDA data model, JSON, validation and the determinism check
 
-**Status:** todo
+**Status:** done
 **Owner:** worker
 **Branch:** `task/T-030-pda-model`
 

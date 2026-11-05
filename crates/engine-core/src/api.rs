@@ -136,6 +136,25 @@ pub fn load_machine(json: &str) -> String {
     finish(machine(json))
 }
 
+fn pda_model(text: &str) -> Result<crate::pda::Pda, Message> {
+    crate::pda::Pda::from_json(text)
+}
+
+/// Reads a PDA JSON file and gives it back in its canonical form.
+pub fn load_pda(json: &str) -> String {
+    finish(pda_model(json))
+}
+
+/// The issues of a PDA, errors and warnings.
+pub fn validate_pda(pda_json: &str) -> String {
+    finish(pda_model(pda_json).map(|p| crate::pda::validate_pda(&p)))
+}
+
+/// The competing transition pairs of a PDA.
+pub fn pda_determinism(pda_json: &str) -> String {
+    finish(pda_model(pda_json).map(|p| crate::pda::determinism(&p)))
+}
+
 /// The issues of a machine, errors and warnings.
 pub fn validate(machine_json: &str) -> String {
     finish(machine(machine_json).map(|m| crate::validate(&m)))

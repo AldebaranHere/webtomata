@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import init, * as wasm from './wasm/engine_wasm.js';
 import { createHandlers, run } from './handlers.ts';
 import type { Handlers } from './handlers.ts';
-import type { Machine } from './types.ts';
+import type { Machine, Pda } from './types.ts';
 
 const even: Machine = {
 	schemaVersion: 1,
@@ -206,6 +206,27 @@ describe('every method reaches the engine', () => {
 				isCnf: true
 			}
 		});
+	});
+
+	it('loads, validates and checks determinism of a PDA', () => {
+		const m1: Pda = {
+			schemaVersion: 1,
+			kind: 'dpda',
+			inputAlphabet: ['a', 'b'],
+			stackAlphabet: ['a'],
+			states: [0, 1],
+			start: 0,
+			accepting: [0, 1],
+			transitions: [
+				{ from: 0, read: 'a', pop: [], push: ['a'], to: 0 },
+				{ from: 0, read: 'b', pop: ['a'], push: [], to: 1 },
+				{ from: 1, read: 'b', pop: ['a'], push: [], to: 1 }
+			]
+		};
+
+		expect(call('loadPda', JSON.stringify(m1))).toEqual({ ok: true, value: m1 });
+		expect(call('validatePda', m1)).toEqual({ ok: true, value: [] });
+		expect(call('pdaDeterminism', m1)).toEqual({ ok: true, value: [] });
 	});
 });
 

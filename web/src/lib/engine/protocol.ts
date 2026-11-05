@@ -26,6 +26,8 @@ import type {
 	Grammar,
 	CnfTransformationTrace,
 	CykResult,
+	Pda,
+	Competition,
 	StopReason,
 	ViaMachineBudget
 } from './types.ts';
@@ -107,6 +109,9 @@ export interface EngineApi {
 	parseGrammar(grammar: string): EngineResult<Grammar>;
 	transformToCnf(grammar: string, shortVersion?: boolean): EngineResult<CnfTransformationTrace>;
 	cykParse(grammar: string, inputWord: string): EngineResult<CykResult>;
+	loadPda(json: string): EngineResult<Pda>;
+	validatePda(pda: Pda): EngineResult<Issue[]>;
+	pdaDeterminism(pda: Pda): EngineResult<Competition[]>;
 }
 
 export type EngineMethod = keyof EngineApi;
@@ -136,7 +141,10 @@ export const METHODS = [
 	'enumerateLanguage',
 	'parseGrammar',
 	'transformToCnf',
-	'cykParse'
+	'cykParse',
+	'loadPda',
+	'validatePda',
+	'pdaDeterminism'
 ] as const satisfies readonly EngineMethod[];
 
 /** A method that is missing from `METHODS` makes this a type error. */

@@ -9,6 +9,7 @@ use crate::grammar::{
     CnfStepResult, CnfTransformationTrace, CykResult, Grammar, Production, Symbol,
 };
 use crate::json::{Wire, WireTransition};
+use crate::pda::{Competition, PdaKind, PdaWire, PdaWireTransition};
 use crate::{
     Budget, Change, Compiled, Conversion, ConversionBudget, ConversionStep, Counterexample,
     Equivalence, EquivalenceBudget, FsmKind, FsmToRegexBudget, Intersection, Issue, Jff, JffState,
@@ -134,6 +135,27 @@ fn samples() -> Vec<(&'static str, &'static str, String)> {
             "CykResult",
             api::cyk_parse("S -> A B\nA -> a\nB -> b", "ab"),
         ),
+        (
+            "sampleLoadPda",
+            "Pda",
+            api::load_pda(
+                r#"{"schemaVersion":1,"kind":"dpda","inputAlphabet":["a","b"],"stackAlphabet":["a"],"states":[0,1],"start":0,"accepting":[0,1],"transitions":[{"from":0,"read":"a","pop":[],"push":["a"],"to":0},{"from":0,"read":"b","pop":["a"],"push":[],"to":1},{"from":1,"read":"b","pop":["a"],"push":[],"to":1}]}"#,
+            ),
+        ),
+        (
+            "sampleValidatePda",
+            "Array<Issue>",
+            api::validate_pda(
+                r#"{"schemaVersion":1,"kind":"dpda","inputAlphabet":["a","b"],"stackAlphabet":["a"],"states":[0,1],"start":0,"accepting":[0,1],"transitions":[{"from":0,"read":"a","pop":[],"push":["a"],"to":0},{"from":0,"read":"b","pop":["a"],"push":[],"to":1},{"from":1,"read":"b","pop":["a"],"push":[],"to":1}]}"#,
+            ),
+        ),
+        (
+            "samplePdaDeterminism",
+            "Array<Competition>",
+            api::pda_determinism(
+                r#"{"schemaVersion":1,"kind":"dpda","inputAlphabet":["a","b"],"stackAlphabet":["a"],"states":[0,1],"start":0,"accepting":[0,1],"transitions":[{"from":0,"read":"a","pop":[],"push":["a"],"to":0},{"from":0,"read":"b","pop":["a"],"push":[],"to":1},{"from":1,"read":"b","pop":["a"],"push":[],"to":1}]}"#,
+            ),
+        ),
     ]
 }
 
@@ -198,6 +220,10 @@ pub fn declarations() -> String {
         CnfStepResult,
         CnfTransformationTrace,
         CykResult,
+        PdaWire,
+        PdaWireTransition,
+        PdaKind,
+        Competition,
     );
 
     // The envelope of every API function (see `api`).

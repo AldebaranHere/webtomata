@@ -14,6 +14,7 @@ mod message;
 mod minimize;
 mod nondeterminism;
 mod operations;
+pub mod pda;
 mod regex;
 mod regex_fsm;
 mod regex_machine;
@@ -39,6 +40,9 @@ pub use message::{Message, Param};
 pub use minimize::{Minimization, MinimizeBudget, minimize};
 pub use nondeterminism::{Nondeterminism, nondeterministic_states};
 pub use operations::{Intersection, Operation, add_trap_state, complement, intersection, union};
+pub use pda::{
+    Competition, MAX_PDA_STRING, Pda, PdaKind, PdaTransition, determinism, validate_pda,
+};
 pub use regex::{MAX_REGEX_CHARS, MAX_REGEX_DEPTH, Regex, parse_regex};
 pub use regex_fsm::{Compiled, RegexBudget, regex_to_fsm};
 pub use regex_machine::{ViaMachineBudget, simplify_via_machine};
