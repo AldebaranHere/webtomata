@@ -227,6 +227,19 @@ describe('every method reaches the engine', () => {
 		expect(call('loadPda', JSON.stringify(m1))).toEqual({ ok: true, value: m1 });
 		expect(call('validatePda', m1)).toEqual({ ok: true, value: [] });
 		expect(call('pdaDeterminism', m1)).toEqual({ ok: true, value: [] });
+		expect(call('simulatePda', m1, 'ab')).toEqual({
+			ok: true,
+			value: {
+				input: ['a', 'b'],
+				simulation: {
+					result: 'finished',
+					accepted: true,
+					trace: expect.any(Array),
+					peakConfigurations: 1,
+					explored: 3
+				}
+			}
+		});
 	});
 });
 

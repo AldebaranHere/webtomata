@@ -28,6 +28,8 @@ import type {
 	CykResult,
 	Pda,
 	Competition,
+	PdaBudget,
+	PdaSimulationReport,
 	StopReason,
 	ViaMachineBudget
 } from './types.ts';
@@ -112,6 +114,11 @@ export interface EngineApi {
 	loadPda(json: string): EngineResult<Pda>;
 	validatePda(pda: Pda): EngineResult<Issue[]>;
 	pdaDeterminism(pda: Pda): EngineResult<Competition[]>;
+	simulatePda(
+		pda: Pda,
+		input: string,
+		budget?: Partial<PdaBudget>
+	): EngineResult<PdaSimulationReport>;
 }
 
 export type EngineMethod = keyof EngineApi;
@@ -144,7 +151,8 @@ export const METHODS = [
 	'cykParse',
 	'loadPda',
 	'validatePda',
-	'pdaDeterminism'
+	'pdaDeterminism',
+	'simulatePda'
 ] as const satisfies readonly EngineMethod[];
 
 /** A method that is missing from `METHODS` makes this a type error. */

@@ -16,6 +16,7 @@
 use crate::fsm::{Alphabet, Fsm, SymbolId, limit_exceeded};
 use crate::jff::JffState;
 use crate::message::Message;
+use crate::pda_simulate::{PdaBudget, PdaSimulation};
 use crate::trace::ConversionStep;
 use crate::{
     Compiled, Conversion, ConversionBudget, Equivalence, EquivalenceBudget, Extraction,
@@ -38,6 +39,16 @@ pub struct SimulationReport {
     /// that `input[i - 1]` names.
     pub input: Vec<String>,
     pub simulation: Simulation,
+}
+
+/// What `simulate_pda` returns: the input symbols as names, and the simulation result.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(rename = "PdaSimulationReport"))]
+pub struct PdaSimulationReport {
+    pub input: Vec<String>,
+    pub simulation: PdaSimulation,
 }
 
 /// What `equivalent` returns. The symbols of the strings are names in the alphabet of the
@@ -153,6 +164,22 @@ pub fn validate_pda(pda_json: &str) -> String {
 /// The competing transition pairs of a PDA.
 pub fn pda_determinism(pda_json: &str) -> String {
     finish(pda_model(pda_json).map(|p| crate::pda::determinism(&p)))
+}
+
+/// Runs a PDA on `input` string tokenized by its input alphabet.
+pub fn simulate_pda(pda_json: &str, input: &str, budget_json: Option<&str>) -> String {
+    let run = || -> Result<PdaSimulationReport, Message> {
+        let pda = pda_model(pda_json)?;
+        let budget = budget::<PdaBudget>(budget_json)?;
+        too_long(input, "input bytes", MAX_INPUT_BYTES)?;
+        let symbols = pda.input.tokenize(input)?;
+        let simulation = crate::pda_simulate::simulate_pda(&pda, &symbols, budget)?;
+        Ok(PdaSimulationReport {
+            input: names(&pda.input, &symbols),
+            simulation,
+        })
+    };
+    finish(run())
 }
 
 /// The issues of a machine, errors and warnings.

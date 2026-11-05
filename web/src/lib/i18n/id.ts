@@ -315,9 +315,19 @@ export const id = {
 	'sim.stopped_max_steps': 'Dihentikan: string ini terlalu panjang untuk dijalankan di sini.',
 	'sim.stopped_max_configurations':
 		'Dihentikan: komputasi ini terlalu besar untuk dijalankan di sini.',
+	'sim.stopped_max_stack': 'Dihentikan: stack terlalu dalam untuk dijalankan di sini.',
 	'sim.stopped_other': 'Dihentikan: komputasi ini terlalu besar untuk dijalankan di sini.',
 	'input.unknown_symbol': 'Simbol "{symbol}" (posisi {position}) tidak ada di alfabet.',
 	'sim.refused_other': 'String ini belum bisa dijalankan.',
+	'pda.sim.no_start_state': 'Mesin belum punya start state.',
+	'pda.sim.unknown_symbol': 'Simbol "{symbol}" tidak ada di alfabet input.',
+	'pda.sim.input_left': 'Komputasi selesai tetapi masih ada {left} simbol input yang belum dibaca.',
+	'pda.sim.not_accepting_state': 'Komputasi berakhir di state yang bukan accepting state.',
+	'pda.sim.stack_not_empty':
+		'Komputasi selesai tetapi stack belum kosong ({depth} simbol tersisa).',
+	'pda.sim.start': 'Mulai',
+	'pda.sim.move': 'Transisi',
+	'pda.sim.accepted': 'Diterima',
 	// TODO(review): the wording of the test strings is a draft until the feedback guide (U4).
 	'test.title': 'Uji banyak string',
 	'test.add_label': 'Tambah string',
