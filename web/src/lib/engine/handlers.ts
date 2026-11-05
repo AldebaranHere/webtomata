@@ -37,6 +37,7 @@ export interface Wasm {
 	simulatePda(pda: string, input: string, budget?: string): string;
 	importPdaJff(xml: string): string;
 	exportPdaJff(pda: string, layout: string): string;
+	cfgToPdaTopdown(grammar: string): string;
 }
 
 export type Handlers = {
@@ -111,7 +112,8 @@ export function createHandlers(wasm: Wasm): Handlers {
 		pdaDeterminism: (pda) => wasm.pdaDeterminism(text(pda)),
 		simulatePda: (pda, input, budget) => wasm.simulatePda(text(pda), input, optional(budget)),
 		importPdaJff: (xml) => wasm.importPdaJff(xml),
-		exportPdaJff: (pda, layout) => wasm.exportPdaJff(text(pda), text(layout))
+		exportPdaJff: (pda, layout) => wasm.exportPdaJff(text(pda), text(layout)),
+		cfgToPdaTopdown: (grammar) => wasm.cfgToPdaTopdown(grammar)
 	};
 }
 

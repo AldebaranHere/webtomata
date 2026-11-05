@@ -277,6 +277,40 @@ describe('every method reaches the engine', () => {
 			} satisfies PdaJff
 		});
 	});
+
+	it('converts a CFG to a PDA top-down', () => {
+		const res = call('cfgToPdaTopdown', 'S -> a S b | a b');
+		expect(res).toEqual({
+			ok: true,
+			value: {
+				pda: {
+					schemaVersion: 1,
+					kind: 'ndpda',
+					inputAlphabet: ['a', 'b'],
+					stackAlphabet: ['S', 'a', 'b'],
+					states: [0, 1],
+					start: 0,
+					accepting: [1],
+					transitions: [
+						{ from: 0, read: null, pop: [], push: ['S'], to: 1 },
+						{ from: 1, read: null, pop: ['S'], push: ['a', 'S', 'b'], to: 1 },
+						{ from: 1, read: null, pop: ['S'], push: ['a', 'b'], to: 1 },
+						{ from: 1, read: 'a', pop: ['a'], push: [], to: 1 },
+						{ from: 1, read: 'b', pop: ['b'], push: [], to: 1 }
+					]
+				},
+				states: [
+					{ id: 0, name: 'p' },
+					{ id: 1, name: 'q' }
+				],
+				steps: expect.arrayContaining([
+					expect.objectContaining({
+						message: { key: 'cfg_pda.top_down.start', params: {} }
+					})
+				])
+			}
+		});
+	});
 });
 
 describe('a call that the engine cannot answer', () => {

@@ -163,3 +163,275 @@ After expanding $S \to AB$, the stack holds `["A", "B"]`. Because `'A'` is on to
 5. **JFLAP Round-trip on F1:**
    - Single-character symbols export cleanly to `<type>pda</type>` XML.
    - Re-import yields equivalent transitions.
+
+---
+
+## 2. AC5 Deliberate Breaks
+
+Each deliberate break was performed on purpose in `crates/engine-core/src/cfg_pda.rs`, verified to fail the intended tests, and then restored to clean working state.
+
+### Break 1: Wrong Push Order (`rev()`)
+- **Modification:** Changed production rule push sequence to reverse order: `push.reverse();`.
+- **Result:** FAILED tests:
+  - `test_fixture_f1_details`
+  - `test_fixture_f2_details`
+  - `test_fixture_f3_details`
+  - `test_fixture_f4_left_recursion`
+  - `proptest_ac3_small_grammars`
+- **Restoration:** Restored forward push order `rule.body.iter().map(...)`. Verified tests pass.
+
+### Break 2: Start Transition Target Inverted ($q \to p$)
+- **Modification:** Changed start transition from `(0, 1)` to `(1, 0)`: `from: q, to: p`.
+- **Result:** FAILED tests:
+  - `test_fixture_f1_details`
+  - `test_fixture_f2_details`
+  - `test_fixture_f3_details`
+  - `test_fixture_f4_left_recursion`
+  - `test_fixture_f5_duplicate_rules_merged`
+  - `test_pda_equivalence_f1_all_511_strings`
+  - `test_pda_equivalence_f2_all_511_strings`
+  - `test_pda_equivalence_f3_all_511_strings`
+  - `proptest_ac3_small_grammars`
+- **Restoration:** Restored `from: p, to: q`. Verified tests pass.
+
+### Break 3: Terminal Transition Pop Empty (`pop: vec![]`)
+- **Modification:** Changed terminal transition pop to empty slice: `pop: vec![]`.
+- **Result:** FAILED tests:
+  - `test_fixture_f1_details`
+  - `test_fixture_f2_details`
+  - `test_fixture_f3_details`
+  - `test_fixture_f4_left_recursion`
+  - `test_fixture_f5_duplicate_rules_merged`
+  - `test_pda_equivalence_f1_all_511_strings`
+  - `test_pda_equivalence_f2_all_511_strings`
+  - `test_pda_equivalence_f3_all_511_strings`
+  - `proptest_ac3_small_grammars`
+- **Restoration:** Restored `pop: vec![c_sym]`. Verified tests pass.
+
+### Break 4: Skip Duplicate Rule Deduplication
+- **Modification:** Removed `seen_rules` hashset deduplication in rule loop.
+- **Result:** FAILED test:
+  - `test_fixture_f5_duplicate_rules_merged`
+- **Restoration:** Restored `seen_rules.insert((rule.head, &rule.body))`. Verified tests pass.
+
+### Break 5: Allow Variable/Terminal Symbol Clash
+- **Modification:** Commented out `var_names.intersection(&term_names)` check.
+- **Result:** FAILED test:
+  - `test_fixture_f5_symbol_clash` (failed with `pda.invalid_alphabet` / duplicate symbol instead of expected `pda.cfg.symbol_clash`).
+- **Restoration:** Restored symbol clash check. Verified tests pass.
+
+### Break 6: Incorrect Stack Alphabet Sorting (variables then terminals joined)
+- **Modification:** Separated variables and terminals into two independently sorted lists and concatenated them (`vars` then `terms`), rather than sorting all symbols together in byte order.
+- **Result:** FAILED tests:
+  - `test_fixture_f1_details`
+  - `test_fixture_f2_details`
+  - `test_fixture_f3_details`
+  - `test_fixture_f4_left_recursion`
+  - `test_fixture_f5_duplicate_rules_merged`
+  - `proptest_ac4_arbitrary_string_never_panics`
+- **Restoration:** Restored unified `BTreeSet<String>` across all variable and terminal names. Verified tests pass.
+
+---
+
+## 3. Verification Output (Verbatim)
+
+### 3.1 Rust Checks and Formatting
+```
+$ cargo fmt --check && cargo clippy --all-targets -- -D warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s
+```
+
+### 3.2 Target Test Suite: `crates/engine-core/tests/cfg_pda.rs`
+```
+$ cargo test -p engine-core --test cfg_pda
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.32s
+     Running tests/cfg_pda.rs (target/debug/deps/cfg_pda-4ac66e51a83d8f5a)
+
+running 14 tests
+test test_fixture_f3_details ... ok
+test test_fixture_f1_details ... ok
+test test_fixture_f4_left_recursion ... ok
+test test_fixture_f2_details ... ok
+test test_fixture_f5_limit_exceeded_65_symbols ... ok
+test test_fixture_f5_duplicate_rules_merged ... ok
+test test_fixture_f5_symbol_clash ... ok
+test test_fixture_f5_multi_character_variable_and_jff ... ok
+test test_pda_equivalence_f2_all_511_strings ... ok
+test proptest_ac4_arbitrary_string_never_panics ... ok
+test test_pda_equivalence_f1_all_511_strings ... ok
+test test_pda_equivalence_f3_all_511_strings ... ok
+test test_oracles_agree_on_all_511_strings ... ok
+test proptest_ac3_small_grammars ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.78s
+```
+
+### 3.3 Engine Core Entire Test Suite
+```
+$ cargo test -p engine-core
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.83s
+     Running unittests src/lib.rs (target/debug/deps/engine_core-4d42c56399407537)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/api.rs
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running tests/boundaries.rs
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests/cfg_pda.rs
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.36s
+
+     Running tests/determinize.rs
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/dfsm.rs
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/equiv.rs
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/grammar.rs
+test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/jff.rs
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/minimize.rs
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/ndfsm.rs
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/pda_jff.rs
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/pda_json.rs
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/pda_simulate.rs
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
+
+     Running tests/pda_validate.rs
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/proptests.rs
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.90s
+
+     Running tests/regex.rs
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/simplify.rs
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+
+     Running tests/simulate.rs
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/trap_state.rs
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.16s
+
+     Running tests/ts_export.rs
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/validate.rs
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/xor.rs
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.29s
+```
+
+### 3.4 Engine WASM Test Suite
+```
+$ cargo test -p engine-wasm
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.24s
+     Running unittests src/lib.rs (target/debug/deps/engine_wasm-ca623b5f692ebe3b)
+
+running 10 tests
+test tests::enumerate_language_answers_in_envelope ... ok
+test tests::a_budget_that_is_too_small_stops_the_run ... ok
+test tests::cfg_to_pda_topdown_answers_in_envelope ... ok
+test tests::parse_grammar_answers_in_envelope ... ok
+test tests::cyk_parse_answers_in_envelope ... ok
+test tests::bad_input_is_an_error_and_not_a_trap ... ok
+test tests::version_matches_crate_version ... ok
+test tests::simulate_answers_in_the_envelope ... ok
+test tests::transform_to_cnf_answers_in_envelope ... ok
+test tests::equivalent_names_the_witness ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+
+### 3.5 Web Typecheck, Lint, Formatting, and Guard Rails
+```
+$ pnpm --filter web check
+$ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
+Loading svelte-check in workspace: /home/Aldebaran64/webtomata/web
+Getting Svelte diagnostics...
+
+svelte-check found 0 errors and 0 warnings
+
+$ pnpm --filter web lint
+$ eslint .
+
+$ pnpm --filter web format:check && cargo fmt --check
+$ prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+
+$ node tools/check-strings.mjs
+ok   63 components have no hard-coded text
+
+$ node tools/check-tokens-usage.mjs
+ok   65 files use no raw colors
+```
+
+### 3.6 Web Unit Tests
+```
+$ pnpm --filter web exec vitest run
+ Test Files  92 passed (92)
+      Tests  1181 passed | 2 skipped (1183)
+   Start at  19:54:40
+   Duration  11.27s (transform 3.82s, setup 0ms, collect 3.91s, tests 18.52s, environment 0ms, prepare 2.15s)
+```
+
+### 3.7 Tool Tests
+```
+$ pnpm test:tools
+ℹ tests 132
+ℹ suites 3
+ℹ pass 132
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11271.61218
+```
+
+### 3.8 Build and Size Verification (WASM Delta)
+```
+$ pnpm build && pnpm size
+$ node tools/check-size.mjs
+ok   initial JS index.html: 80.1 KB gzip (limit 170 KB)
+ok   initial JS panduan/berakhiran-x.html: 85.0 KB gzip (limit 170 KB)
+ok   initial JS panduan.html: 79.2 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 118.4 KB gzip (limit 170 KB)
+ok   initial JS soal/berakhiran-10.html: 118.0 KB gzip (limit 170 KB)
+ok   initial JS jumlah-a-genap.html: 118.0 KB gzip (limit 170 KB)
+ok   initial JS soal/mengandung-101.html: 118.0 KB gzip (limit 170 KB)
+ok   initial JS soal.html: 80.7 KB gzip (limit 170 KB)
+ok   initial JS tentang.html: 78.5 KB gzip (limit 170 KB)
+ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
+ok   wasm _app/immutable/workers/assets/engine_wasm_bg-lENq6a09.wasm: 228.0 KB gzip (limit 250 KB)
+```
+- **WASM Size Before:** 224.3 KB gzip
+- **WASM Size After:** 228.0 KB gzip (+3.7 KB gzip, comfortably below the 250 KB budget)
+
+---
+
+## 4. Summary & Non-Goals Confirmed
+- No UI components or screens were introduced or altered (T-033/T-038 remain deferred).
+- Conversion algorithm executes strictly Slide13 page 4: 1 start transition, 1 transition per distinct production rule, 1 transition per terminal symbol.
+- No grammar normalization is performed; duplicate production rules merged; symbol clashes between variables and terminals correctly rejected with `pda.cfg.symbol_clash`.
+- Top-down push sequence preserves top-first order (`[γ1, ..., γn]`).
+- All 14 tests in `crates/engine-core/tests/cfg_pda.rs` passed cleanly, including two-oracle agreement test on 511 strings and proptests.
+
