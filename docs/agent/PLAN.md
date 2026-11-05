@@ -1379,6 +1379,8 @@ Expected: all pass. No e2e (no UI). Paste real output into `REPORT.md`.
 ## Task T-034 — CFG to PDA, top-down
 
 **Status:** done
+**Commit:** `e6cefdd`
+**PR:** #157
 **Owner:** worker
 **Branch:** `task/T-034-cfg-to-pda-topdown`
 

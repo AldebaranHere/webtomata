@@ -429,6 +429,9 @@ ok   wasm _app/immutable/workers/assets/engine_wasm_bg-lENq6a09.wasm: 228.0 KB g
 ---
 
 ## 4. Summary & Non-Goals Confirmed
+- **PR:** #157 (https://github.com/AldebaranHere/webtomata/pull/157)
+- **Work Commit:** `e6cefdd` (`feat(engine): convert CFG to PDA top-down with step trace`)
+- **Status in PLAN.md:** `done`
 - No UI components or screens were introduced or altered (T-033/T-038 remain deferred).
 - Conversion algorithm executes strictly Slide13 page 4: 1 start transition, 1 transition per distinct production rule, 1 transition per terminal symbol.
 - No grammar normalization is performed; duplicate production rules merged; symbol clashes between variables and terminals correctly rejected with `pda.cfg.symbol_clash`.
