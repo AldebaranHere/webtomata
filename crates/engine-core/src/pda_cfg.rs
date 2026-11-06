@@ -176,9 +176,6 @@ pub fn pda_to_cfg(pda: &Pda) -> Result<PdaToCfg, Message> {
             return Err(limit_err());
         }
     }
-    if total_rules > MAX_PDA_CFG_RULES as u64 {
-        return Err(limit_err());
-    }
 
     let total_usize = usize::try_from(total_rules).map_err(|_| limit_err())?;
     let mut all_rules = Vec::with_capacity(total_usize);

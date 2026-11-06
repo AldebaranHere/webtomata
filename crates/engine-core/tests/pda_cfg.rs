@@ -902,7 +902,53 @@ fn test_fixture_f5_limits_and_high_state_ids() {
     assert_eq!(res_under.grammar.rules.len(), 1 + 3 + 19_683 + 3);
     assert!(res_under.grammar.rules.len() <= MAX_PDA_CFG_RULES);
 
-    // 4. State IDs near u32::MAX (e.g. s' = 4294967294, s = 4294967295, a = 4294967293).
+    // 4. Exact boundary 20,000 and 20,007:
+    // 7 states besides s' (ids 0..=7, s' = 0, s = 1, a = 2).
+    // One transition from s' (ε, [], push [#]) and six transitions from s, each popping # and
+    // reading its own input symbol, with push lengths 5, 4, 3, 3, 2, and 2, all going to s.
+    // Rule count = 1 + 7 + 7^5 + 7^4 + 7^3 + 7^3 + 7^2 + 7^2 = 20,000 exactly.
+    let states_8: Vec<u32> = (0..=7).collect();
+    let base_transitions_20000 = vec![
+        (0, None, vec![], vec![0], 1),
+        (1, Some(0), vec![0], vec![0; 5], 1),
+        (1, Some(1), vec![0], vec![0; 4], 1),
+        (1, Some(2), vec![0], vec![0; 3], 1),
+        (1, Some(3), vec![0], vec![0; 3], 1),
+        (1, Some(4), vec![0], vec![0; 2], 1),
+        (1, Some(5), vec![0], vec![0; 2], 1),
+    ];
+    let pda_20000 = make_pda(
+        PdaKind::Ndpda,
+        states_8.clone(),
+        Some(0),
+        vec![2],
+        &["a", "b", "c", "d", "e", "f", "g"],
+        &["#"],
+        base_transitions_20000.clone(),
+    );
+    let res_20000 = pda_to_cfg(&pda_20000).map(|r| r.grammar.rules.len());
+    assert_eq!(res_20000, Ok(20_000));
+
+    // Plus one more transition from s that pushes 1 symbol (20,007 rules):
+    let mut transitions_20007 = base_transitions_20000;
+    transitions_20007.push((1, Some(6), vec![0], vec![0; 1], 1));
+    let pda_20007 = make_pda(
+        PdaKind::Ndpda,
+        states_8,
+        Some(0),
+        vec![2],
+        &["a", "b", "c", "d", "e", "f", "g"],
+        &["#"],
+        transitions_20007,
+    );
+    assert_eq!(
+        pda_to_cfg(&pda_20007).map(|r| r.grammar.rules.len()),
+        Err(Message::new("machine.limit_exceeded")
+            .with("what", "rules")
+            .with("limit", MAX_PDA_CFG_RULES))
+    );
+
+    // 5. State IDs near u32::MAX (e.g. s' = 4294967294, s = 4294967295, a = 4294967293).
     let hi_s = u32::MAX; // 4294967295
     let hi_start = u32::MAX - 1; // 4294967294
     let hi_a = u32::MAX - 2; // 4294967293
