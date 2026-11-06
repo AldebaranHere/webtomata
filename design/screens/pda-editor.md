@@ -1,6 +1,6 @@
 # PDA editor: diagram, table, formal definition and the determinism badge (P-004, proposal)
 
-**Status:** proposed on 2026-11-06. The owner has not approved it. It becomes task T-033 when the owner approves it and answers the five questions at the end.
+**Status:** approved by the owner on 2026-11-06, with the planner's pick on all five questions at the end. It is built by T-033 (document), T-039 (diagram), T-049 (shell and label form), T-051 (tabs, badge, checks) and T-052 (library, files, examples).
 **Picture:** `pda-editor.svg` (one sheet, frames A to F; the numbers below are the numbers in the picture).
 **Sources:** the PDA decisions of 2026-11-05 in `docs/agent/DECISIONS.md`; tasks T-030 (model, validation, `determinism`), T-031 (simulation) and T-032 (`.jff`); the FSM editor as built (`docs/ux/editor-interactions.md`, `design/screens/workstation-switcher.md`). The sample machine in the picture is `wwᴿ` (even palindromes): it is non-deterministic, so one picture shows the badge, the list of competing pairs and the table.
 
@@ -87,12 +87,12 @@ The bar, the dock at the bottom, the panel with its drag bar, the 44 px targets,
 
 `pda_editor.mode_name`, `pda_editor.kind_dpda`, `pda_editor.kind_ndpda`, `pda_editor.badge_deterministic`, `pda_editor.badge_nondeterministic { count }`, `pda_editor.badge_not_dpda { count }`, `pda_editor.compete_same_read { read, pop1, pop2 }`, `pda_editor.compete_epsilon_read { pop1, pop2 }`, `pda_editor.compete_show`, `pda_editor.note_ndpda_ok`, `pda_editor.note_dpda_no`, `pda_editor.alphabet_input`, `pda_editor.alphabet_stack`, `pda_editor.col_from`, `.col_read`, `.col_pop`, `.col_push`, `.col_to`, `pda_editor.add_transition`, `pda_editor.edge_more { count }`, `pda_editor.label_hint`, `pda_editor.form_title { from, to }`, `pda_editor.form_add_row`, `pda_editor.definition_hint`. Announcements reuse `editor.edge_changed` with the label form (`ε / ε / ε`) and add `pda_editor.pair_selected { first, second }`. Terms for `docs/glossary.md` (`TODO(review)`): pasangan bersaing (competing pair), deterministik and non-deterministik for PDA, puncak stack (top of the stack; the glossary has "stack").
 
-## What T-033 includes, and what it does not
+## What the five tasks include, and what they do not
 
 **Includes:** the mode and its first-run examples, the diagram with the three-line label, the three-field label form, the Tabel and Definisi tabs, the kind switch, the badge with its list and "Tunjukkan", the checks line, save on the device, "Mesin saya" with the type chip, `.jff` and JSON open and export, undo and redo for every edit, the phone layout, and tests (geometry with three label lines; the table and the diagram agree; the badge for the three cases; keyboard; axe; one e2e that builds `wwᴿ`).
 **Does not include:** simulation and the stack picture (T-038), the conversions and their traces (T-038), the share link, selecting several items on touch, auto layout of a PDA (the FSM's auto layout is used if it works on the PDA document without change; if not, it waits), the NDPDA to DPDA conversion (it does not exist in general).
 
-## Questions for the owner (the planner's pick comes first)
+## Questions, and the owner's answers (2026-11-06: the planner's pick on all five)
 
 1. **The label form.** Three fields for each transition (this sheet), or one text field written as `a / ε / A`? Pick: three fields. They are easier to use on a phone (no `/` or `ε` hunting in a single string), they need no parser, and the hint can sit under the fields. The cost: two more taps for a student who types fast on a laptop; `Tab` and `Enter` keep that short.
 2. **The badge for an NDPDA** is neutral information (this sheet), or a warning? Pick: neutral. A non-deterministic PDA is normal in the course; it is a fault only when the student chose DPDA.

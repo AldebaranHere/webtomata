@@ -4,7 +4,7 @@
 > `todo` means ready: every field is written and the human approved it. Several tasks can be `todo` at the same time. The worker does one task at a time: the one that the human names in the start prompt ("Do task T-xxx"). The worker sets it to `in-progress` in the first commit of its own PR and to `done` in the last. The planner does not open a pull request only to change a status.
 > The blank task template is in `PLAN-TEMPLATE.md`.
 
-**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 (CNF phases in the homework order, after T-029 is merged) is `todo` since the owner approved `design/screens/cnf-stepper-homework-order.md`; T-060 is merged (PR 147). Written on 2026-11-05 after it: T-015 (`todo`: the "versi panjang / versi ringkas" toggle). Written on 2026-11-05 after T-015 merged: T-030, then T-031 (`todo`, the PDA engine: model and validation, then simulation; one after the other, they touch the same engine files). T-032 is `todo` since 2026-11-05 (T-031 merged) T-034 (done) and T-035 (`todo`, T-034 merged); T-036 and T-037 are merged (PRs 161 and 163); P-004 (the PDA editor wireframe) is drawn and waits for the owner, then T-033 is written; T-038 is a `proposed` draft; the full specs are written when the one before is merged.
+**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 (CNF phases in the homework order, after T-029 is merged) is `todo` since the owner approved `design/screens/cnf-stepper-homework-order.md`; T-060 is merged (PR 147). Written on 2026-11-05 after it: T-015 (`todo`: the "versi panjang / versi ringkas" toggle). Written on 2026-11-05 after T-015 merged: T-030, then T-031 (`todo`, the PDA engine: model and validation, then simulation; one after the other, they touch the same engine files). T-032 is `todo` since 2026-11-05 (T-031 merged) T-034 (done) and T-035 (`todo`, T-034 merged); T-036 and T-037 are merged (PRs 161 and 163); P-004 (the PDA editor wireframe) is approved; T-033 is `todo` since 2026-11-06 (T-039, T-049, T-051 and T-052 are `proposed` drafts that follow it); T-038 is a `proposed` draft; the full specs are written when the one before is merged.
 
 Status legend: `proposed` | `todo` | `in-progress` | `blocked` | `done` | `rejected`
 
@@ -1871,20 +1871,131 @@ Run both AC3 proptests with `PROPTEST_CASES=1000` three times in a row and paste
 
 ---
 
+## Task T-033 — PDA editor, part 1 of 5: the PDA document, its commands and its history
+
+**Status:** todo
+**Owner:** worker
+**Branch:** `task/T-033-pda-document`
+
+**Goal:** The PDA editor (wireframe `design/screens/pda-editor.md`, approved by the owner on 2026-11-06) is built in five small tasks, one after the other: T-033 (this one: the data, no screen), T-039 (the diagram shows a PDA), T-049 (the editor shell: build a PDA on the canvas, the label form, the kind switch), T-051 (the Tabel and Definisi tabs, the determinism badge, the checks), T-052 (saved machines with a type chip, files, the three examples). This task adds what a PDA editor edits: a **PDA document** with its commands and an undo history, in TypeScript, next to the FSM document, with the conversion to and from the engine's `Pda`. Nothing on a screen changes. See `docs/agent/DECISIONS.md` (2026-11-06, the PDA editor architecture).
+
+**Decisions already made (do not reopen; ask the planner if one looks wrong):**
+
+- **A parallel document, not a union.** `MachineDocument` is used by about forty files (checks, conversions, regex, storage, tests); a union type would touch them all. The PDA gets its own `PdaDocument` and its own commands. The shared parts stay shared: `StateEntry`, `LIMITS`, `checkName`, `checkSymbol`, `checkTitle`, `isCoordinate`, `message`, `Result`, and the habit of freezing every document. The FSM document and commands do not change.
+- **One history for both.** `history.ts` becomes generic over the document and the command: `createHistory` keeps its present signature and behavior for the FSM (every FSM test passes unchanged), and a new `createPdaHistory(initial, options)` is the same code bound to `applyPdaCommand` and `pdaDocumentsEqual`. Do it with a small internal `createGenericHistory(initial, { apply, equal, limit })`; no class, no new dependency.
+- **The document uses names, the engine uses numbers.** A PDA document holds `inputAlphabet` and `stackAlphabet` as lists of names (in the order the user wrote them; the order gives the numbers of the symbols, as in `MachineDocument.alphabet`), and a transition holds names: `{ from, read: string | null, pop: string[], push: string[], to }` (`read: null` is ε; `pop` and `push` are top first, as in the engine). The list of transitions is sorted as the engine sorts them (from; read with ε first, then by the number of the input symbol; pop and push compared element by element by the number of the stack symbol, a shorter list that is a prefix first; to), so that the table, the diagram and the definition show the engine's order.
+- **Kind** is `'dpda' | 'ndpda'`, default `'ndpda'`. Changing it is a command, one undo step; it never refuses.
+- **Limits:** the engine's (`MAX_STATES` 2000, `MAX_SYMBOLS` 256 for each alphabet, `MAX_TRANSITIONS` 100 000, `MAX_PDA_STRING` 64 for the length of one `pop` or `push`), the symbol and name rules of the document (`checkSymbol`: not empty, not `ε`, no space or control character, 32 characters), and the document size limit. A refused command gives a message and changes nothing, exactly as the FSM commands do. New message keys: `pda_document.string_too_long { limit }`, `pda_document.unknown_symbol { symbol }`, `pda_document.duplicate_transition`, `pda_document.unsupported_version { version }`.
+- **No bottom marker.** The stack starts empty; the document has no setting for it (decision of 2026-11-05).
+
+**Scope (in):**
+
+- `web/src/lib/editor/pda-document.ts` (about 400 lines; split only past 600): `PdaKind`, `PdaTransitionEntry`, `PdaDocument` (`schemaVersion: 1`, `title`, `kind`, `inputAlphabet`, `stackAlphabet`, `states`, `start`, `accepting`, `transitions`, `nextStateId`); `createPdaDocument()`; `pdaDocumentsEqual`; `serializePdaDocument` and `parsePdaDocument` / `parsePdaDocumentText` (untrusted input: validate every field and every limit, never throw, a future `schemaVersion` gives `pda_document.unsupported_version { version }`, as `parseDocument` does for the FSM); `comparePdaTransitions` (the engine's order); `toEnginePda(doc)` (names to numbers: the `Pda` of `engine/types.ts`, ready for `validatePda`, `pdaDeterminism`, `simulatePda`, `exportPdaJff`) and `fromEnginePda(pda, states)` (the other way, given the names and places; used by T-052 for `.jff`).
+- `web/src/lib/editor/pda-commands.ts`: `PdaCommand` = `addState`, `removeState` (also removes every transition that uses it, and clears start and accepting), `moveState`, `renameState`, `setStart`, `setAccepting`, `addTransition { from, read, pop, push, to }`, `removeTransition` (same fields), `addInputSymbol`, `removeInputSymbol` (also removes the transitions that read it), `addStackSymbol`, `removeStackSymbol` (also removes the transitions that pop or push it), `setKind`, `setTitle`, `batch { commands }` (same limits as the FSM batch: 10 000 commands, depth 8; a batch is all or nothing). `applyPdaCommand(doc, command): ApplyResult` is pure; a command that changes nothing gives back the same document object; a command with the wrong fields is refused (the check is at run time, input is not trusted). `addTransition` never adds a symbol by itself: a transition that names a symbol that is not in its alphabet is refused with `pda_document.unknown_symbol` (the form of T-049 sends `addInputSymbol` and `addStackSymbol` in the same batch, as the FSM label field does).
+- `web/src/lib/editor/history.ts`: generic as described above. `createPdaHistory` is exported from `history.ts` and `index.ts`.
+- `web/src/lib/editor/pda-samples.ts`: the three example documents of the first run, as plain data (positions chosen by hand, and a title in Indonesian kept in the document as the FSM samples do): **aⁿbⁿ, n ≥ 1** (a `dpda`), **wcwᴿ** (a `dpda`) and **wwᴿ, even palindromes** (an `ndpda`). The machines are F1 to F3 below. They are the oracle for the engine tests.
+- `docs/decisions/0041-pda-editor-document.md` (the decisions above and the plan of the five tasks) and one line in `docs/ARCHITECTURE.md`.
+- `id` and `en` texts for the four `pda_document.*` keys, in the files that hold the `document.*` texts.
+- Tests, written first.
+
+**Non-goals (out):**
+
+- No screen, no component, no route, no change to the FSM document, commands, checks, storage or tests (the generic history is the one shared file). No storage of PDA documents (T-052). No `.jff` file handling (T-052; `toEnginePda` and `fromEnginePda` are only the conversion). No simulation or conversion UI (T-038). No message texts for the UI (T-049 and T-051 add `pda_editor.*`).
+
+**Fixtures (the oracle; derive them by hand first and write the derivation in `REPORT.md`):**
+
+- *F1, aⁿbⁿ with n ≥ 1 (DPDA).* States `q0` (id 0, start), `q1` (id 1, accepting); input `["a","b"]`; stack `["A"]`; transitions in the engine's order: `q0 a/ε/A q0`, `q0 b/A/ε q1`, `q1 b/A/ε q1` (written `from read/pop/push to`; `ε` is an empty list). Check with the engine (`simulatePda` through the wasm test harness of `run.wasm.test.ts`): accepts `ab`, `aabb`, `aaabbb`; rejects ε (q0 is not accepting), `a`, `b`, `aab`, `abb`, `abab`, `ba`. By hand, `aabb`: `(q0,0,[]) → (q0,1,[A]) → (q0,2,[A,A]) → (q1,3,[A]) → (q1,4,[])`: accepted. `aab`: ends in `(q1,3,[A])`, the stack is not empty: rejected. `pdaDeterminism` returns no pair, and `validatePda` returns no error.
+- *F2, wcwᴿ (DPDA).* States `q0` (start), `q1` (accepting); input `["a","b","c"]`; stack `["A","B"]`; transitions in the engine's order: `q0 a/ε/A q0`, `q0 b/ε/B q0`, `q0 c/ε/ε q1`, `q1 a/A/ε q1`, `q1 b/B/ε q1`. Accepts exactly the strings `w c wᴿ` with `w ∈ {a,b}*` (so `c`, `aca`, `abcba`); the test checks every string over `{a,b,c}` up to length 7 against that predicate. `pdaDeterminism` returns no pair.
+- *F3, wwᴿ, even palindromes (NDPDA).* The same states; input `["a","b"]`; stack `["A","B"]`; transitions in the engine's order: `q0 ε/ε/ε q1`, `q0 a/ε/A q0`, `q0 b/ε/B q0`, `q1 a/A/ε q1`, `q1 b/B/ε q1` (the first one is `q0 ε/ε/ε q1`: it reads nothing, pops nothing, pushes nothing). Accepts exactly the even palindromes over `{a,b}`, ε included: every string up to length 8 is checked against the predicate. `pdaDeterminism` returns **exactly two pairs**: the first transition with `q0 a/ε/A q0`, and with `q0 b/ε/B q0` (the first reads nothing and pops nothing, so it competes with both; the two others read different symbols, so they do not compete with each other).
+- *F4, the engine's order.* A document that holds the F3 transitions added in a scrambled order is equal (`pdaDocumentsEqual`) to the F3 document; and for 200 random documents, the order of `doc.transitions` is the order of the transitions of `loadPda` on the JSON of `toEnginePda(doc)` (so the two sorts agree; this stops the table and the definition from showing another order than the engine).
+- *F5, limits and untrusted input.* A pop of 65 symbols: `pda_document.string_too_long { limit: 64 }`. A transition that names `Z` when the stack alphabet is `["A"]`: `pda_document.unknown_symbol { symbol: "Z" }`. The same transition twice: `pda_document.duplicate_transition` (a silent no-op would hide it; check how the FSM `addTransition` treats a duplicate and match it, and say which in the report). The symbol `ε` as a name: refused by `checkSymbol`. 2001 states and 257 symbols in one alphabet: refused. `parsePdaDocumentText` on `""`, `"null"`, `"[]"`, a 2 MiB text, a document with a transition that names a missing state, an alphabet with a duplicate, a `schemaVersion: 2`, an extra field: each gives an error and never throws.
+
+**Acceptance criteria:**
+- AC1: F1 to F3 are accepted and rejected as listed, through the engine; F3 has exactly two competing pairs; F1 and F2 have none.
+- AC2: F4 holds (equal documents whatever the insertion order; the TypeScript sort is the engine's sort).
+- AC3: F5: every refusal has the exact key and parameters above, and nothing throws.
+- AC4: round trip: for 500 random valid documents, `parsePdaDocument(JSON.parse(serializePdaDocument(doc)))` is equal to `doc`; `fromEnginePda(toEnginePda(doc), doc.states)` is equal to `doc` apart from the title (state the exact rule in the test); and the engine accepts every `toEnginePda` result (`loadPda` gives `ok`).
+- AC5: history: for random sequences of up to 40 commands (every command type), undo of the whole sequence gives back the initial document (the same object), redo gives back the last one, a command that is refused or changes nothing is not a step, and a `moveState` gesture with one `coalesce` key is one step. Use `fast-check` if the repo already has it (check `web/package.json`); if not, write a seeded random loop and do not add a dependency.
+- AC6: the FSM tests pass unchanged (`history.test.ts`, `history.property.test.ts`, `commands.test.ts`, and every other editor test).
+- AC7: deliberate breaks, each shown failing, then restored: sort `pop` lists by name instead of by symbol number (F4 fails); drop the "removes its transitions" rule of `removeState` (the round trip or the engine check fails); let `removeStackSymbol` leave the transitions that use it (the engine rejects the document); let `addTransition` accept an unknown symbol (F5 fails); make `createPdaHistory` use the FSM `applyCommand` (AC5 fails); let a batch apply half of its commands when one is refused (AC5 fails); remove the size check of `parsePdaDocument` (F5 fails).
+- AC8: `pnpm size`: the initial JS of every route stays under 170 KB (no route imports the new code yet, so no bundle should grow; report the numbers before and after).
+
+**Verification:**
+
+```
+pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens
+pnpm --filter web exec vitest run
+pnpm build && pnpm size
+```
+
+Run the history property test (AC5) with three different seeds and paste the results. No Rust change, so `cargo` is not needed unless a type changes. No e2e (no UI). Paste real output into `REPORT.md`.
+
+**Rollback:** `git revert <sha>`. Nothing reads the new code yet, and the FSM path is unchanged.
+
+**Depends on:** T-030, T-031 and T-032 (merged: the engine's `Pda`, `loadPda`, `validatePda`, `pdaDeterminism`, `simulatePda`, `exportPdaJff`).
+
+**Notes for worker:** (1) Do the three hand derivations first and show a broken `toEnginePda` failing the tests before you trust them. (2) Read `document.ts`, `commands.ts`, `history.ts` and `commands.test.ts` before you write a line: the PDA code follows their patterns (frozen documents, run-time checks, a refused command changes nothing, a no-op returns the same object). Name in the ADR the FSM function you copied from. (3) Do not refactor the FSM files beyond the generic history; if a shared helper looks worth extracting, say so in the report and do not do it here. (4) The engine, not the document, decides what a valid machine is: the document only refuses what the engine would refuse by limits and names. A document with no start state or an unreachable state is valid; the checks (`validatePda`) report it. (5) No `any`, no `@ts-ignore`, no new dependency. (6) Your `REPORT.md`, not your chat summary, is the record.
+
+---
+
+## Task T-039 — PDA editor, part 2 of 5: the diagram shows a PDA (draft)
+
+**Status:** proposed (after T-033)
+**Owner:** worker
+
+**Goal:** `edgeGeometry` and the canvas draw a PDA: the diagram takes a small `DiagramInput` (states, start, accepting, edges with their label lines) instead of a `MachineDocument`, with an adapter for each document type (`fsmDiagram(doc)` keeps every FSM picture and test as it is; `pdaDiagram(doc)` makes the label lines `c / pop / push`, at most three, then `+ n lagi`). The geometry tests for three label lines and the property "no label covers a state or another label" hold. No screen yet: a unit test lays out the three samples. See `design/screens/pda-editor.md`, section 2.
+
+**Depends on:** T-033.
+
+---
+
+## Task T-049 — PDA editor, part 3 of 5: the editor shell and the label form (draft)
+
+**Status:** proposed (after T-039)
+**Owner:** worker
+
+**Goal:** The mode switcher enables "Otomata Pushdown (PDA)" (`/sandbox?mode=pda`). A PDA editor with the canvas, the four tools, undo and redo, autosave to the device (its own record kind until T-052), the DPDA | NDPDA switch and the three-field label form (a popover on a laptop, a sheet on a phone, the `Ketik ε` button in the dock). The editor reuses the canvas, the tool rail, the history buttons and the panel frame of the FSM editor; the PDA editor shell is a new component, not a copy of `Editor.svelte`. See `design/screens/pda-editor.md`, sections 1, 2, 4, 8 and 9.
+
+**Depends on:** T-039.
+
+---
+
+## Task T-051 — PDA editor, part 4 of 5: the tabs, the badge and the checks (draft)
+
+**Status:** proposed (after T-049)
+**Owner:** worker
+
+**Goal:** The panel of the PDA editor: the Tabel tab (alphabets, states, the transition table), the Definisi tab, the determinism badge with its list of competing pairs and "Tunjukkan", and the "Pemeriksaan" line (`validatePda`). See `design/screens/pda-editor.md`, sections 3 to 7.
+
+**Depends on:** T-049.
+
+---
+
+## Task T-052 — PDA editor, part 5 of 5: saved machines, files and the three examples (draft)
+
+**Status:** proposed (after T-051)
+**Owner:** worker
+
+**Goal:** "Mesin saya" lists FSMs and PDAs with a type chip and opens a PDA in the PDA mode; the first-run card of the PDA editor with the three examples of T-033; open and export `.jff` and JSON for a PDA (with the calm message for symbols of more than one character); the FSM importer's `jff.unsupported_type { type: "pda" }` offers "Buka di mode PDA". No share link (a later task). See `design/screens/pda-editor.md`, section 1 and "Files and export".
+
+**Depends on:** T-051.
+
+---
+
 ## Task T-038 — Conversions and simulation panel for the PDA (draft)
 
-**Status:** proposed (after P-004 is approved and T-033, T-034, T-035, T-037 are merged)
+**Status:** proposed (after P-005 is approved and T-051, T-034, T-035, T-037 are merged)
 **Owner:** worker
 
 **Goal:** In the PDA editor, a panel that plays the simulation of T-031 (stack drawn, one step at a time, the peak number shown) and shows the traces of T-034 to T-037. A wireframe the owner approves comes first (planner task P-005, to be written after P-004).
 
-**Depends on:** P-004, T-033, T-034, T-035, T-037.
+**Depends on:** P-005, T-051, T-034, T-035, T-037.
 
 ---
 
 ## Planner task P-004 — Wireframe of the PDA editor
 
-**Status:** drawn on 2026-11-06 in `design/screens/pda-editor.md` and `.svg`; waiting for the owner's approval and the answers to its five questions (it then becomes task T-033)
+**Status:** done (drawn on 2026-11-06 in `design/screens/pda-editor.md` and `.svg`; the owner accepted the planner's pick on all five questions the same day; the build is split into T-033, T-039, T-049, T-051 and T-052)
 **Owner:** planner
 
 Draw `design/screens/pda-editor.md` and `.svg`: the diagram with the label `c / γ1 / γ2` (Rich's notation and the slides'; JFLAP shows `c, γ1; γ2`, which we do not use), a transition table with the same three columns, the formal definition, the "deterministic or not" badge with the list of competing pairs, and the panel tabs of the FSM editor. The owner approves it before T-033.
@@ -1948,13 +2059,13 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-030** PDA data model, JSON, validation and the determinism check: specified in its own block above (`todo`). The three questions are settled from the slides (2026-11-05): the stack starts empty, one acceptance rule (input used up, stack empty, accepting state), `pop` and `push` are lists of named symbols, top first.
 - **T-031** PDA simulation, breadth-first, with a stack trace, budgets and the peak number of configurations: specified in its own block above (`todo`; after T-030).
 - **T-032** PDA `.jff` import and export: specified in its own block above (`todo`; T-030 and T-031 are merged).
-- **T-033** PDA editor: after P-004 (wireframe) is approved and T-032 is merged.
+- **T-033** PDA editor, part 1 of 5, the PDA document, its commands and its history: specified in its own block above (`todo`, since 2026-11-06). **T-039** (the diagram shows a PDA), **T-049** (the editor shell and the label form), **T-051** (the tabs, the badge and the checks) and **T-052** (saved machines, files, examples): drafts above (`proposed`), one after the other.
 - **T-034** CFG to PDA, top-down (slides, `CFGtoPDAtopdown`): specified in its own block above (`todo`, since 2026-11-05; T-032 is merged). Tested by language equivalence, not by structure against JFLAP's file.
 - **T-035** CFG to PDA, bottom-up (slides, shift and reduce): specified in its own block above (`todo`, since 2026-11-05; T-034 is merged).
 - **T-036** PDA to restricted normal form, with a trace: specified in its own block above (`done`, PR 161).
 - **T-037** PDA in restricted normal form to CFG, with a trace: specified in its own block above (`done`, PR 163). The slides' example `wcwᴿ` is the oracle (76 rules, 15 after cleanup).
 - **T-038** Conversions and simulation panel for the PDA: draft above (`proposed`; after P-004, P-005 and T-033).
-- **P-004** Wireframe of the PDA editor: planner task above (drawn on 2026-11-06, waiting for the owner).
+- **P-004** Wireframe of the PDA editor: planner task above (`done`, approved on 2026-11-06).
 
 **E. Turing machines** (after C; the owner names each step; each has an ADR, differential tests on the owner's `.jff` files, and an approved wireframe before any editor)
 
