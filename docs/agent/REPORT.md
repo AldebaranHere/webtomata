@@ -354,6 +354,83 @@ AssertionError: expected { ok: false, error: { …(2) } } to deeply equal { ok: 
 
 Restored `parsePdaDocumentText`.
 
+### 2.9 Break 8 (Fix Round): Ignore `push` in `pdaDocumentsEqual`
+
+Removed `&& same(p.push, q.push, (x, y) => x === y)` from `pdaDocumentsEqual` in `web/src/lib/editor/pda-document.ts`:
+
+```text
+$ pnpm --filter web exec vitest run src/lib/editor/pda-document.test.ts
+
+ RUN  v5.0.3 /home/Aldebaran64/webtomata/web
+
+ ❯ src/lib/editor/pda-document.test.ts (15 tests | 1 failed) 120ms
+   ❯ pdaDocumentsEqual (2)
+     ✓ returns true for two equal but separately built documents 1ms
+     × returns false for every single-field difference 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/editor/pda-document.test.ts > pdaDocumentsEqual > returns false for every single-field difference
+AssertionError: transition push symbol: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/lib/editor/pda-document.test.ts:469:48
+    467|
+    468|   for (const { label, doc } of cases) {
+    469|    expect(pdaDocumentsEqual(base, doc), label).toBe(false);
+       |                                                ^
+    470|   }
+    471|  });
+```
+
+Restored `pdaDocumentsEqual`.
+
+### 2.10 Break 9 (Fix Round): Drop the Depth Check in `batch`
+
+Removed `depth >= LIMITS.batchDepth ||` from `case 'batch'` in `web/src/lib/editor/pda-commands.ts`:
+
+```text
+$ pnpm --filter web exec vitest run src/lib/editor/pda-commands.test.ts
+
+ RUN  v5.0.3 /home/Aldebaran64/webtomata/web
+
+ ❯ src/lib/editor/pda-commands.test.ts (12 tests | 1 failed) 106ms
+   ❯ no-op commands and batch atomicity (3)
+     ✓ returns the exact same document reference when a command changes nothing 0ms
+     ✓ batch is atomic: if one inner command is refused, the whole batch is refused and nothing changes 0ms
+     × refuses nested batches deeper than LIMITS.batchDepth (8) leaving the document unchanged, and accepts 10,000 commands while refusing 10,001 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/editor/pda-commands.test.ts > no-op commands and batch atomicity > refuses nested batches deeper than LIMITS.batchDepth (8) leaving the document unchanged, and accepts 10,000 commands while refusing 10,001
+AssertionError: expected { ok: true, doc: { …(10) } } to deeply equal { ok: false, error: { …(2) } }
+
+- Expected
++ Received
+
+  {
+-   "error": {
+-     "key": "document.limit_exceeded",
+-     "params": {
+-       "limit": 8,
+-       "what": "batch",
+-     },
+-   },
+-   "ok": false,
++   "doc": { ... },
++   "ok": true,
+  }
+
+ ❯ src/lib/editor/pda-commands.test.ts:323:24
+```
+
+Restored `batch`.
+
 ---
 
 ## 3. Three Seeded Runs of `pda-history.property.test.ts` (AC5)
@@ -424,107 +501,107 @@ $ pnpm --filter web exec vitest run
 
  RUN  v5.0.3 /home/Aldebaran64/webtomata/web
 
- ✓ src/lib/editor/pda-commands.test.ts (11 tests) 465ms
- ✓ src/lib/editor/conversion.wasm.test.ts (49 tests) 731ms
- ✓ src/lib/editor/interaction/editor.test.ts (41 tests) 583ms
- ✓ src/lib/share/link.test.ts (15 tests) 1289ms
- ✓ src/lib/editor/diagram/geometry.test.ts (38 tests) 1237ms
- ✓ src/lib/editor/compare.wasm.test.ts (6 tests) 409ms
- ✓ src/lib/editor/pda-document.wasm.test.ts (5 tests) 1517ms
- ✓ src/lib/editor/history.property.test.ts (7 tests) 1681ms
- ✓ src/lib/editor/regex-simplify.wasm.test.ts (6 tests) 330ms
- ✓ src/lib/editor/run.wasm.test.ts (29 tests) 105ms
- ✓ src/lib/editor/pda-history.property.test.ts (5 tests) 2019ms
- ✓ src/lib/editor/commands.test.ts (26 tests) 309ms
- ✓ src/lib/share/files.wasm.test.ts (6 tests | 1 skipped) 140ms
- ✓ src/lib/grammar/grammar-text.wasm.test.ts (31 tests) 208ms
- ✓ src/lib/questions/load.test.ts (32 tests) 401ms
- ✓ src/lib/editor/regex-compile.wasm.test.ts (5 tests) 86ms
- ✓ src/lib/questions/check.wasm.test.ts (27 tests) 534ms
- ✓ src/lib/engine/handlers.test.ts (20 tests) 214ms
- ✓ src/lib/editor/regex-conversion.wasm.test.ts (4 tests) 102ms
- ✓ src/lib/questions/grade.wasm.test.ts (13 tests) 380ms
- ✓ src/lib/i18n/i18n.test.ts (14 tests) 116ms
- ✓ src/lib/editor/interaction/camera.test.ts (25 tests) 28ms
- ✓ src/lib/questions/summaries.test.ts (10 tests) 180ms
- ✓ src/lib/editor/document.test.ts (32 tests) 210ms
- ✓ src/lib/editor/pda-document.test.ts (13 tests) 399ms
- ✓ src/lib/editor/table.test.ts (22 tests) 70ms
- ✓ src/lib/engine/client.test.ts (30 tests) 52ms
- ✓ src/lib/editor/interaction/editor.link.test.ts (19 tests) 30ms
- ✓ src/lib/questions/question.test.ts (4 tests) 29ms
- ✓ src/lib/editor/history.test.ts (20 tests) 21ms
- ✓ src/lib/storage/autosave.test.ts (12 tests) 29ms
- ✓ src/lib/storage/autosave.tests-field.test.ts (9 tests) 55ms
- ✓ src/lib/share/image.test.ts (10 tests) 16ms
- ✓ src/lib/editor/layout-client.test.ts (9 tests) 13ms
- ✓ src/lib/editor/tester.test.ts (11 tests) 19ms
+ ✓ src/lib/editor/interaction/editor.test.ts (41 tests) 473ms
+ ✓ src/lib/editor/conversion.wasm.test.ts (49 tests) 785ms
+ ✓ src/lib/editor/diagram/geometry.test.ts (38 tests) 979ms
+ ✓ src/lib/share/link.test.ts (15 tests) 1310ms
+ ✓ src/lib/editor/compare.wasm.test.ts (6 tests) 402ms
+ ✓ src/lib/editor/commands.test.ts (26 tests) 352ms
+ ✓ src/lib/questions/check.wasm.test.ts (27 tests) 497ms
+ ✓ src/lib/editor/pda-document.wasm.test.ts (5 tests) 1530ms
+ ✓ src/lib/editor/pda-history.property.test.ts (5 tests) 1798ms
+ ✓ src/lib/grammar/grammar-text.wasm.test.ts (31 tests) 169ms
+ ✓ src/lib/editor/history.property.test.ts (7 tests) 1959ms
+ ✓ src/lib/editor/run.wasm.test.ts (29 tests) 175ms
+ ✓ src/lib/questions/load.test.ts (32 tests) 451ms
+ ✓ src/lib/engine/handlers.test.ts (20 tests) 102ms
+ ✓ src/lib/editor/regex-simplify.wasm.test.ts (6 tests) 306ms
+ ✓ src/lib/editor/document.wasm.test.ts (10 tests) 2116ms
+ ✓ src/lib/share/files.wasm.test.ts (6 tests | 1 skipped) 235ms
+ ✓ src/lib/editor/regex-conversion.wasm.test.ts (4 tests) 113ms
+ ✓ src/lib/questions/grade.wasm.test.ts (13 tests) 375ms
+ ✓ src/lib/editor/document.test.ts (32 tests) 227ms
+ ✓ src/lib/i18n/i18n.test.ts (14 tests) 216ms
+ ✓ src/lib/editor/pda-commands.test.ts (12 tests) 344ms
+ ✓ src/lib/questions/summaries.test.ts (10 tests) 175ms
+ ✓ src/lib/editor/regex-compile.wasm.test.ts (5 tests) 104ms
+ ✓ src/lib/editor/pda-document.test.ts (15 tests) 301ms
+ ✓ src/lib/engine/client.test.ts (30 tests) 58ms
+ ✓ src/lib/editor/table.test.ts (22 tests) 76ms
+ ✓ src/lib/share/image.test.ts (10 tests) 29ms
+ ✓ src/lib/questions/question.test.ts (4 tests) 18ms
+ ✓ src/lib/storage/autosave.test.ts (12 tests) 38ms
+ ✓ src/lib/storage/autosave.tests-field.test.ts (9 tests) 69ms
+ ✓ src/lib/storage/library.test.ts (21 tests) 44ms
+ ✓ src/lib/editor/interaction/camera.test.ts (25 tests) 46ms
+ ✓ src/lib/editor/tester.test.ts (11 tests) 25ms
+ ✓ src/lib/questions/grade.test.ts (20 tests) 25ms
+ ✓ src/lib/editor/interaction/keys.test.ts (49 tests) 19ms
+ ✓ src/lib/examples/examples.test.ts (9 tests) 14ms
+ ✓ src/lib/editor/interaction/editor.apply.test.ts (7 tests) 7ms
+ ✓ src/lib/editor/layout-client.test.ts (9 tests) 17ms
+ ✓ src/lib/editor/history.test.ts (20 tests) 18ms
+ ✓ src/lib/storage/machines.test.ts (8 tests) 14ms
+ ✓ src/lib/guides/load.test.ts (10 tests) 68ms
+ ✓ src/lib/storage/question-work.test.ts (13 tests) 27ms
+ ✓ src/lib/storage/autosave.progress.test.ts (8 tests) 10ms
+ ✓ src/lib/storage/example.test.ts (6 tests) 22ms
+ ✓ src/lib/questions/machine.test.ts (13 tests) 11ms
+ ✓ src/lib/share/files.test.ts (11 tests) 25ms
+ ✓ src/lib/questions/list.test.ts (14 tests) 14ms
+ ✓ src/lib/examples/examples.wasm.test.ts (6 tests) 14ms
+ ✓ src/lib/share/local-jff.test.ts (6 tests) 17ms
+ ✓ src/lib/editor/interaction/editor.states.test.ts (17 tests) 21ms
+ ✓ src/lib/editor/interaction/editor.link.test.ts (19 tests) 48ms
+ ✓ src/lib/editor/regex-compile.test.ts (15 tests) 10ms
+ ✓ src/lib/editor/test-list.test.ts (13 tests) 13ms
+ ✓ src/lib/editor/regex-simplify.test.ts (12 tests) 10ms
+ ✓ src/lib/lint.test.ts (2 tests) 3293ms
+ ✓ src/lib/storage/progress.test.ts (13 tests) 7ms
+ ✓ src/lib/share/open-file.test.ts (13 tests) 10ms
  ✓ src/lib/share/open-file.wasm.test.ts (8 tests | 1 skipped) 15ms
- ✓ src/lib/examples/examples.wasm.test.ts (6 tests) 35ms
- ✓ src/lib/editor/document.wasm.test.ts (10 tests) 2943ms
- ✓ src/lib/questions/grade.test.ts (20 tests) 20ms
- ✓ src/lib/editor/interaction/editor.states.test.ts (17 tests) 23ms
- ✓ src/lib/storage/library.test.ts (21 tests) 38ms
- ✓ src/lib/editor/interaction/editor.edges.test.ts (15 tests) 18ms
- ✓ src/lib/editor/checker.test.ts (6 tests) 15ms
- ✓ src/lib/storage/question-work.test.ts (13 tests) 10ms
- ✓ src/lib/lint.test.ts (2 tests) 3080ms
- ✓ src/lib/guides/load.test.ts (10 tests) 93ms
- ✓ src/lib/questions/answer.test.ts (7 tests) 15ms
- ✓ src/lib/editor/tour.test.ts (8 tests) 12ms
- ✓ src/lib/storage/machines.test.ts (8 tests) 15ms
- ✓ src/lib/share/open-file.test.ts (13 tests) 21ms
- ✓ src/lib/storage/example.test.ts (6 tests) 13ms
- ✓ src/lib/storage/progress.test.ts (13 tests) 6ms
- ✓ src/lib/editor/interaction/editor.apply.test.ts (7 tests) 4ms
- ✓ src/lib/share/files.test.ts (11 tests) 15ms
- ✓ src/lib/editor/panel-width.test.ts (13 tests) 4ms
- ✓ src/lib/editor/regex-compile.test.ts (15 tests) 14ms
- ✓ src/lib/editor/regex-conversion.test.ts (13 tests) 11ms
- ✓ src/lib/editor/interaction/label.test.ts (14 tests) 10ms
- ✓ src/lib/questions/feedback-text.test.ts (14 tests) 13ms
- ✓ src/lib/storage/autosave.progress.test.ts (8 tests) 25ms
- ✓ src/lib/questions/statement.test.ts (12 tests) 8ms
- ✓ src/lib/editor/checks.test.ts (7 tests) 13ms
- ✓ src/lib/share/local-jff.test.ts (6 tests) 16ms
- ✓ src/lib/editor/interaction/canvas.test.ts (12 tests) 19ms
+ ✓ src/lib/editor/regex-conversion.test.ts (13 tests) 6ms
+ ✓ src/lib/editor/interaction/editor.edges.test.ts (15 tests) 16ms
+ ✓ src/lib/editor/checks.test.ts (7 tests) 3ms
+ ✓ src/lib/storage/tests-field.test.ts (7 tests) 8ms
  ✓ src/lib/editor/definition.test.ts (10 tests) 3ms
- ✓ src/lib/storage/tests-field.test.ts (7 tests) 20ms
- ✓ src/lib/questions/list.test.ts (14 tests) 9ms
- ✓ src/lib/editor/interaction/placement.test.ts (7 tests) 10ms
- ✓ src/lib/editor/compare.test.ts (11 tests) 6ms
- ✓ src/lib/editor/interaction/keys.test.ts (49 tests) 12ms
- ✓ src/lib/editor/test-list.test.ts (13 tests) 9ms
- ✓ src/lib/editor/regex-simplify.test.ts (12 tests) 9ms
- ✓ src/lib/storage/migrate.test.ts (9 tests) 5ms
- ✓ src/lib/editor/conversion-text.test.ts (4 tests) 9ms
- ✓ src/lib/editor/panel-height.test.ts (12 tests) 9ms
- ✓ src/lib/editor/run-text.test.ts (7 tests) 5ms
- ✓ src/lib/questions/machine.test.ts (13 tests) 13ms
- ✓ src/lib/examples/examples.test.ts (9 tests) 11ms
- ✓ src/lib/storage/memory.test.ts (5 tests) 3ms
- ✓ src/lib/language/language-math.test.ts (5 tests) 4ms
- ✓ src/lib/grammar/presets.test.ts (4 tests) 6ms
- ✓ src/lib/language/presets.test.ts (2 tests) 2ms
- ✓ src/lib/grammar/grammar-text.test.ts (19 tests) 6ms
- ✓ src/lib/editor/interaction/selection.test.ts (11 tests) 7ms
- ✓ src/lib/editor/regex-math.test.ts (8 tests) 3ms
- ✓ src/lib/editor/panel-tab.test.ts (8 tests) 5ms
- ✓ src/lib/guides/list.test.ts (3 tests) 3ms
- ✓ src/lib/editor/layout.test.ts (16 tests) 3371ms
- ✓ src/lib/editor/interaction/menu.test.ts (4 tests) 2ms
- ✓ src/lib/editor/table-grid.test.ts (4 tests) 3ms
- ✓ src/lib/questions/feedback-view.test.ts (6 tests) 3ms
+ ✓ src/lib/editor/interaction/label.test.ts (14 tests) 8ms
+ ✓ src/lib/editor/regex-math.test.ts (8 tests) 4ms
+ ✓ src/lib/editor/interaction/selection.test.ts (11 tests) 15ms
+ ✓ src/lib/questions/feedback-text.test.ts (14 tests) 15ms
+ ✓ src/lib/editor/panel-width.test.ts (13 tests) 3ms
+ ✓ src/lib/editor/tour.test.ts (8 tests) 6ms
+ ✓ src/lib/editor/interaction/canvas.test.ts (12 tests) 8ms
+ ✓ src/lib/editor/compare.test.ts (11 tests) 9ms
+ ✓ src/lib/editor/checker.test.ts (6 tests) 9ms
+ ✓ src/lib/questions/answer.test.ts (7 tests) 15ms
+ ✓ src/lib/grammar/grammar-text.test.ts (19 tests) 8ms
+ ✓ src/lib/grammar/presets.test.ts (4 tests) 3ms
+ ✓ src/lib/editor/panel-height.test.ts (12 tests) 5ms
+ ✓ src/lib/language/language-math.test.ts (5 tests) 2ms
+ ✓ src/lib/editor/layout.test.ts (16 tests) 3238ms
+ ✓ src/lib/guides/list.test.ts (3 tests) 4ms
+ ✓ src/lib/questions/feedback-view.test.ts (6 tests) 2ms
+ ✓ src/lib/editor/conversion-text.test.ts (4 tests) 5ms
+ ✓ src/lib/storage/memory.test.ts (5 tests) 2ms
  ✓ src/lib/engine/problem.test.ts (5 tests) 3ms
- ✓ src/lib/questions/statement-fold.test.ts (4 tests) 3ms
+ ✓ src/lib/storage/migrate.test.ts (9 tests) 4ms
+ ✓ src/lib/editor/panel-tab.test.ts (8 tests) 4ms
+ ✓ src/lib/editor/interaction/placement.test.ts (7 tests) 4ms
+ ✓ src/lib/language/presets.test.ts (2 tests) 1ms
+ ✓ src/lib/editor/interaction/menu.test.ts (4 tests) 3ms
+ ✓ src/lib/questions/statement-fold.test.ts (4 tests) 1ms
+ ✓ src/lib/storage/titles.test.ts (3 tests) 2ms
+ ✓ src/lib/editor/run-text.test.ts (7 tests) 4ms
  ✓ src/lib/seo.test.ts (1 test) 2ms
- ✓ src/lib/storage/titles.test.ts (3 tests) 1ms
- ✓ src/lib/editor/interaction/editor.property.test.ts (4 tests) 3375ms
+ ✓ src/lib/editor/table-grid.test.ts (4 tests) 6ms
+ ✓ src/lib/questions/statement.test.ts (12 tests) 10ms
+ ✓ src/lib/editor/interaction/editor.property.test.ts (4 tests) 3337ms
 
  Test Files  96 passed (96)
-      Tests  1218 passed | 2 skipped (1220)
-   Start at  19:43:06
-   Duration  4.21s (tests 68%, transform 22%, import 9%)
+      Tests  1221 passed | 2 skipped (1223)
+   Start at  20:10:02
+   Duration  4.28s (tests 65%, transform 25%, import 10%)
 ```
 
 ### 4.3 Bundle Size Before and After (`pnpm build && pnpm size`, AC8)
@@ -573,6 +650,63 @@ ok   wasm _app/immutable/workers/assets/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB g
 
 - **Duplicate transition handling in `addTransition`:** Matching `commands.ts` (`addTransition` in the FSM editor, which refuses duplicates with `document.duplicate_transition`), `applyPdaCommand`'s `addTransition` refuses a duplicate `(from, read, pop, push, to)` transition with `pda_document.duplicate_transition` rather than silently returning a no-op.
 - **`checkPdaDocument` location:** Kept in the test support module `web/src/lib/editor/testing.ts` rather than exported from `pda-document.ts`.
+- **`web/eslint.config.js` exemption:** Added `'src/lib/editor/pda-document.wasm.test.ts'` to the `no-restricted-imports` override list (the same exemption granted to all other `*.wasm.test.ts` files that load the WASM engine bindings directly in Node).
 - **What was not run:** No e2e tests or Rust `cargo test` were needed because this task touches no UI routes/components and no Rust code.
+
+---
+
+## 6. Fix Round (PR #165 Review)
+
+### 6.1 Root Cause of Trailing `r` Corruption in `docs/agent/PLAN.md` and `docs/ARCHITECTURE.md`
+
+In the initial session, `sed -i s/\r$// docs/ARCHITECTURE.md docs/agent/PLAN.md ...` was executed inside `wsl.exe ... -e bash -lc '...'` without inner quotes around `s/\r$//`. Because `\r` was unquoted inside the `bash -lc` command string, bash stripped the backslash before passing the argument to `sed`, turning `s/\r$//` into `s/r$//` and stripping any literal trailing `r` at the end of a line (43 lines in `docs/agent/PLAN.md` and 2 lines in `docs/ARCHITECTURE.md`).
+
+Both files were restored from `origin/staging` (`git checkout origin/staging -- docs/agent/PLAN.md docs/ARCHITECTURE.md`) and only the intended edits were re-applied:
+
+```text
+$ git diff origin/staging...HEAD -- docs/agent/PLAN.md docs/ARCHITECTURE.md
+diff --git a/docs/ARCHITECTURE.md b/docs/ARCHITECTURE.md
+index 997c88a..3cc6842 100644
+--- a/docs/ARCHITECTURE.md
++++ b/docs/ARCHITECTURE.md
+@@ -52,7 +52,8 @@ The machine that the user edits is a **document** (`web/src/lib/editor/`): plain
+ - **Commands** are plain data (`addState`, `moveState`, `addTransition`, `removeSymbol`, `batch`, and so on). `applyCommand(doc, command)` is a pure function that gives a new document or an error message; it never throws, and a refused command changes nothing.
+ - **History** (`createHistory`) keeps earlier versions of the document, so undo gives back exactly the earlier one. One gesture is one step: commands with the same `coalesce` key merge, and `seal()` ends the group. Undo covers document edits only (not selection, pan or zoom). The depth is 200 steps.
+ - **Files** (`serializeDocument`, `parseDocumentText`) are read strictly, with a size limit and no unknown fields. `documentFromJff` and `jffLayout` move names and places to and from a JFLAP file (FA `<type>fa</type>` and PDA `<type>pda</type>`).
+-- See ADR 0017 for the decisions, and `docs/ux/editor-interactions.md` (U3, not written yet) for how the editor uses the commands.
++- **PDA document** (`PdaDocument`, `applyPdaCommand`, `createPdaHistory`, `toEnginePda`, `fromEnginePda`) mirrors the FSM document for pushdown automata, sharing the generic undo/redo history while keeping `MachineDocument` untouched.
++- See ADR 0017 and ADR 0041 for the decisions, and `docs/ux/editor-interactions.md` (U3, not written yet) for how the editor uses the commands.
+ 
+ ## Trust boundary
+ 
+diff --git a/docs/agent/PLAN.md b/docs/agent/PLAN.md
+index f7a6da9..6150db2 100644
+--- a/docs/agent/PLAN.md
++++ b/docs/agent/PLAN.md
+@@ -1873,7 +1873,7 @@ Run both AC3 proptests with `PROPTEST_CASES=1000` three times in a row and paste
+ 
+ ## Task T-033 — PDA editor, part 1 of 5: the PDA document, its commands and its history
+ 
+-**Status:** todo
++**Status:** done
+ **Owner:** worker
+ **Branch:** `task/T-033-pda-document`
+ 
+```
+
+### 6.2 Check That No Other File in the PR Lost a Final Letter
+
+Checked by running `git diff -U0 origin/staging...HEAD` across every modified file in `git diff --name-only origin/staging...HEAD` (excluding `docs/agent/REPORT.md`, which is replaced per task) and inspecting every removed (`-`) line, as well as reading `docs/decisions/0041-pda-editor-document.md` in full:
+
+- `docs/ARCHITECTURE.md`: 1 removed line (`- See ADR 0017 for the decisions...` replaced by the ADR 0017 + ADR 0041 line).
+- `docs/agent/PLAN.md`: 1 removed line (`-**Status:** todo` replaced by `+**Status:** done`).
+- `web/eslint.config.js`: 1 removed line (`-'src/lib/grammar/grammar-text.wasm.test.ts'` with trailing comma added).
+- `web/src/lib/editor/history.ts`: 15 removed lines (all intentional genericization of `Step`, `History`, and `createHistory`).
+- `web/src/lib/editor/index.ts`: 0 removed lines.
+- `web/src/lib/editor/testing.ts`: 0 removed lines.
+- `web/src/lib/i18n/en.ts`: 1 removed line (`-'workstation.tabs_language_aria': 'Language workstation areas'` with trailing comma added).
+- `web/src/lib/i18n/id.ts`: 1 removed line (`-'workstation.tabs_language_aria': 'Navigasi area bahasa formal'` with trailing comma added).
+- `docs/decisions/0041-pda-editor-document.md` and all new `web/src/lib/editor/pda-*` files: inspected in full; no line lost a trailing `r`.
+
 
 

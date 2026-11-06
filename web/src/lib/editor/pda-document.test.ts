@@ -4,6 +4,7 @@ import {
 	MAX_PDA_STRING,
 	comparePdaTransitions,
 	createPdaDocument,
+	freezePdaDocument,
 	fromEnginePda,
 	parsePdaDocument,
 	parsePdaDocumentText,
@@ -322,5 +323,150 @@ describe('F5: limits and untrusted input in parsePdaDocument and parsePdaDocumen
 			'"schemaVersion":1,"__proto__":{}'
 		);
 		expect(parsePdaDocumentText(protoText).ok).toBe(false);
+	});
+});
+
+describe('pdaDocumentsEqual', () => {
+	function makeBase(): PdaDocument {
+		return freezePdaDocument({
+			schemaVersion: 1,
+			title: 'base',
+			kind: 'ndpda',
+			inputAlphabet: ['a', 'b'],
+			stackAlphabet: ['A', 'B'],
+			states: [
+				{ id: 0, name: 'q0', x: 100, y: 100 },
+				{ id: 1, name: 'q1', x: 200, y: 200 }
+			],
+			start: 0,
+			accepting: [1],
+			transitions: [
+				{
+					from: 0,
+					read: 'a',
+					pop: ['A'],
+					push: ['A', 'B'],
+					to: 1
+				}
+			],
+			nextStateId: 2
+		});
+	}
+
+	it('returns true for two equal but separately built documents', () => {
+		const a = makeBase();
+		const b = makeBase();
+		expect(a).not.toBe(b);
+		expect(pdaDocumentsEqual(a, b)).toBe(true);
+	});
+
+	it('returns false for every single-field difference', () => {
+		const base = makeBase();
+		const baseTx = base.transitions[0]!;
+		const cases: ReadonlyArray<{ label: string; doc: PdaDocument }> = [
+			{ label: 'title', doc: freezePdaDocument({ ...makeBase(), title: 'other' }) },
+			{ label: 'kind', doc: freezePdaDocument({ ...makeBase(), kind: 'dpda' }) },
+			{
+				label: 'one input symbol',
+				doc: freezePdaDocument({ ...makeBase(), inputAlphabet: ['a', 'c'] })
+			},
+			{
+				label: 'one stack symbol',
+				doc: freezePdaDocument({ ...makeBase(), stackAlphabet: ['A', 'C'] })
+			},
+			{
+				label: 'state name',
+				doc: freezePdaDocument({
+					...makeBase(),
+					states: [
+						{ id: 0, name: 's0', x: 100, y: 100 },
+						{ id: 1, name: 'q1', x: 200, y: 200 }
+					]
+				})
+			},
+			{
+				label: 'state x',
+				doc: freezePdaDocument({
+					...makeBase(),
+					states: [
+						{ id: 0, name: 'q0', x: 101, y: 100 },
+						{ id: 1, name: 'q1', x: 200, y: 200 }
+					]
+				})
+			},
+			{
+				label: 'state y',
+				doc: freezePdaDocument({
+					...makeBase(),
+					states: [
+						{ id: 0, name: 'q0', x: 100, y: 101 },
+						{ id: 1, name: 'q1', x: 200, y: 200 }
+					]
+				})
+			},
+			{ label: 'start', doc: freezePdaDocument({ ...makeBase(), start: 1 }) },
+			{ label: 'one accepting id', doc: freezePdaDocument({ ...makeBase(), accepting: [0] }) },
+			{ label: 'nextStateId', doc: freezePdaDocument({ ...makeBase(), nextStateId: 3 }) },
+			{
+				label: 'transition from',
+				doc: freezePdaDocument({
+					...makeBase(),
+					transitions: [{ ...baseTx, from: 1 }]
+				})
+			},
+			{
+				label: 'transition read (null vs symbol)',
+				doc: freezePdaDocument({
+					...makeBase(),
+					transitions: [{ ...baseTx, read: null }]
+				})
+			},
+			{
+				label: 'transition to',
+				doc: freezePdaDocument({
+					...makeBase(),
+					transitions: [{ ...baseTx, to: 0 }]
+				})
+			},
+			{
+				label: 'transition pop symbol',
+				doc: freezePdaDocument({
+					...makeBase(),
+					transitions: [{ ...baseTx, pop: ['B'] }]
+				})
+			},
+			{
+				label: 'transition push symbol',
+				doc: freezePdaDocument({
+					...makeBase(),
+					transitions: [{ ...baseTx, push: ['A', 'A'] }]
+				})
+			},
+			{
+				label: 'transition pop length',
+				doc: freezePdaDocument({
+					...makeBase(),
+					transitions: [{ ...baseTx, pop: ['A', 'B'] }]
+				})
+			},
+			{
+				label: 'transition push length',
+				doc: freezePdaDocument({
+					...makeBase(),
+					transitions: [{ ...baseTx, push: ['A'] }]
+				})
+			},
+			{
+				label: 'swap of two symbols inside push',
+				doc: freezePdaDocument({
+					...makeBase(),
+					transitions: [{ ...baseTx, push: ['B', 'A'] }]
+				})
+			}
+		];
+
+		for (const { label, doc } of cases) {
+			expect(pdaDocumentsEqual(base, doc), label).toBe(false);
+		}
 	});
 });

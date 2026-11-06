@@ -301,4 +301,69 @@ describe('no-op commands and batch atomicity', () => {
 		}
 		expect(doc.states.length).toBe(3);
 	});
+
+	it('refuses nested batches deeper than LIMITS.batchDepth (8) leaving the document unchanged, and accepts 10,000 commands while refusing 10,001', () => {
+		const doc = samplePda();
+		const before = doc;
+
+		// Depth 8 (depths 0..7) is accepted
+		let atLimit: PdaCommand = { type: 'setKind', kind: 'dpda' };
+		for (let i = 0; i < LIMITS.batchDepth; i++) {
+			atLimit = { type: 'batch', commands: [atLimit] };
+		}
+		const okDepth = applyPdaCommand(doc, atLimit);
+		expect(okDepth.ok && okDepth.doc.kind).toBe('dpda');
+
+		// Deeper than LIMITS.batchDepth (8) is refused with document.limit_exceeded and leaves the document unchanged
+		const tooDeep: PdaCommand = {
+			type: 'batch',
+			commands: [add(500, 500), atLimit]
+		};
+		const refusedDepth = applyPdaCommand(doc, tooDeep);
+		expect(refusedDepth).toEqual({
+			ok: false,
+			error: {
+				key: 'document.limit_exceeded',
+				params: { what: 'batch', limit: LIMITS.batchDepth }
+			}
+		});
+		expect(pdaDocumentsEqual(doc, before)).toBe(true);
+		expect(doc.states.length).toBe(3);
+
+		// Exactly 10,000 (LIMITS.batchCommands) commands is accepted
+		const tenThousand: PdaCommand = {
+			type: 'batch',
+			commands: Array.from({ length: LIMITS.batchCommands }, (_, i) => ({
+				type: 'moveState' as const,
+				id: 0,
+				x: i + 1,
+				y: 0
+			}))
+		};
+		const okCount = applyPdaCommand(doc, tenThousand);
+		expect(okCount.ok).toBe(true);
+		if (okCount.ok) {
+			expect(okCount.doc.states[0]?.x).toBe(LIMITS.batchCommands);
+		}
+
+		// 10,001 commands is refused with document.limit_exceeded and leaves the document unchanged
+		const tenThousandOne: PdaCommand = {
+			type: 'batch',
+			commands: Array.from({ length: LIMITS.batchCommands + 1 }, (_, i) => ({
+				type: 'moveState' as const,
+				id: 0,
+				x: i + 1,
+				y: 0
+			}))
+		};
+		const refusedCount = applyPdaCommand(doc, tenThousandOne);
+		expect(refusedCount).toEqual({
+			ok: false,
+			error: {
+				key: 'document.limit_exceeded',
+				params: { what: 'batch', limit: LIMITS.batchDepth }
+			}
+		});
+		expect(doc.states[0]?.x).toBe(100);
+	});
 });
