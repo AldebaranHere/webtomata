@@ -10,6 +10,8 @@ export const RADIUS = 32;
 export const INNER_RADIUS = 26;
 /** The distance between a label and its line, and between a label and the end of the arrow. */
 export const LABEL_GAP = 4;
+/** The vertical distance from one line of a multi-line label to the next. */
+export const LINE_PITCH = 18;
 
 const START_LENGTH = 28;
 const START_WIDTH = 36;
@@ -51,8 +53,22 @@ export interface Box {
 }
 export interface LabelShape {
 	text: string;
+	lines: string[];
 	center: Point;
 	box: Box;
+}
+export interface DiagramEdgeInput {
+	from: number;
+	to: number;
+	lines: readonly string[];
+	/** The name that a screen reader reads (defaults to `lines.join('; ')`). */
+	text?: string;
+}
+export interface DiagramInput {
+	states: readonly { id: number; name: string; x: number; y: number }[];
+	start: number | null;
+	accepting: readonly number[];
+	edges: readonly DiagramEdgeInput[];
 }
 export interface StateShape {
 	id: number;
@@ -144,9 +160,23 @@ function nearestOnLine(p: Point, points: Point[]): { distance: number; at: Point
 
 // ---- labels and names ----
 
-/** The size of a label for a text. A character counts as one, also an emoji or a combined one. */
-export function labelBox(text: string, charWidth: number): { width: number; height: number } {
-	return { width: [...text].length * charWidth + LABEL_PADDING, height: LABEL_HEIGHT };
+/** The size of a label for one line or several lines. A character counts as one, also an emoji or a combined one. */
+export function labelBox(
+	textOrLines: string | readonly string[],
+	charWidth: number
+): { width: number; height: number } {
+	const lines = typeof textOrLines === 'string' ? [textOrLines] : textOrLines;
+	const maxChars = lines.reduce((max, line) => Math.max(max, [...line].length), 0);
+	const count = Math.max(1, lines.length);
+	return {
+		width: maxChars * charWidth + LABEL_PADDING,
+		height: LABEL_HEIGHT + LINE_PITCH * (count - 1)
+	};
+}
+
+/** The vertical center `y` of line `index` (from 0) inside a label box. */
+export function labelLineY(box: Box, index: number): number {
+	return round(box.y + LABEL_HEIGHT / 2 + LINE_PITCH * index);
 }
 
 /** How far a box reaches from its center in the direction `normal` (a unit vector). */
@@ -154,11 +184,20 @@ const reach = (normal: Point, size: { width: number; height: number }) =>
 	(Math.abs(normal.x) * size.width) / 2 + (Math.abs(normal.y) * size.height) / 2;
 
 /** A label next to `anchor`, on the side of `normal`, with its nearest side LABEL_GAP away. */
-function placeLabel(text: string, charWidth: number, anchor: Point, normal: Point): LabelShape {
-	const size = labelBox(text, charWidth);
+function placeLabel(
+	textOrLines: string | readonly string[],
+	charWidth: number,
+	anchor: Point,
+	normal: Point,
+	accessibleText?: string
+): LabelShape {
+	const lines = typeof textOrLines === 'string' ? [textOrLines] : [...textOrLines];
+	const text = accessibleText ?? lines.join('; ');
+	const size = labelBox(lines, charWidth);
 	const center = add(anchor, normal, LABEL_GAP + reach(normal, size));
 	return {
 		text,
+		lines,
 		center: rounded(center),
 		box: {
 			x: round(center.x - size.width / 2),
@@ -289,6 +328,20 @@ function groupTransitions(doc: MachineDocument): Group[] {
 
 const labelText = (symbols: (string | null)[]) => symbols.map((s) => s ?? 'ε').join(', ');
 
+/** Turns an FSM `MachineDocument` into a neutral `DiagramInput`. */
+export function fsmDiagram(doc: MachineDocument): DiagramInput {
+	const groups = groupTransitions(doc);
+	return {
+		states: doc.states,
+		start: doc.start,
+		accepting: doc.accepting,
+		edges: groups.map((g) => {
+			const text = labelText(g.symbols);
+			return { from: g.from, to: g.to, lines: [text], text };
+		})
+	};
+}
+
 function path(command: string, ...points: Point[]) {
 	return `${command} ${points.map((p) => `${round(p.x)} ${round(p.y)}`).join(' ')}`;
 }
@@ -361,16 +414,16 @@ function clear(
 }
 
 /**
- * Draws a document. `options.startLabel` is the text of the start arrow ("mulai").
- * The rules are in docs/ux/editor-interactions.md.
+ * Draws a diagram from a neutral `DiagramInput`. `options.startLabel` is the text of the start
+ * arrow ("mulai"). The rules are in docs/ux/editor-interactions.md.
  */
-export function edgeGeometry(doc: MachineDocument, options: DiagramOptions = {}): DiagramShapes {
+export function diagramGeometry(input: DiagramInput, options: DiagramOptions = {}): DiagramShapes {
 	const startLabel = options.startLabel ?? 'mulai';
-	const states = doc.states;
+	const states = input.states;
 	const byId = new Map(states.map((s) => [s.id, s]));
 	const index = makeIndex(states);
-	const accepting = new Set(doc.accepting);
-	const groups = groupTransitions(doc);
+	const accepting = new Set(input.accepting);
+	const groups = input.edges;
 	// A state with a self-loop needs more room, so that an edge does not pass through its loop.
 	const loopStates = new Set(groups.filter((g) => g.from === g.to).map((g) => g.from));
 	const has = (from: number, to: number) => groups.some((g) => g.from === from && g.to === to);
@@ -384,7 +437,6 @@ export function edgeGeometry(doc: MachineDocument, options: DiagramOptions = {})
 		if (group.from === group.to) continue;
 		const a = byId.get(group.from)!;
 		const b = byId.get(group.to)!;
-		const text = labelText(group.symbols);
 		const paired = has(group.to, group.from);
 
 		let shape: EdgeShape | undefined;
@@ -404,7 +456,7 @@ export function edgeGeometry(doc: MachineDocument, options: DiagramOptions = {})
 					start: rounded(start),
 					end: rounded(end),
 					points: points.map(rounded),
-					label: placeLabel(text, MONO_CHAR, mid, { x: u.y, y: -u.x })
+					label: placeLabel(group.lines, MONO_CHAR, mid, { x: u.y, y: -u.x }, group.text)
 				};
 			}
 		}
@@ -443,7 +495,13 @@ export function edgeGeometry(doc: MachineDocument, options: DiagramOptions = {})
 				start: rounded(curve.start),
 				end: rounded(curve.end),
 				points: curve.points.map(rounded),
-				label: placeLabel(text, MONO_CHAR, apex, { x: -u.y * side, y: u.x * side })
+				label: placeLabel(
+					group.lines,
+					MONO_CHAR,
+					apex,
+					{ x: -u.y * side, y: u.x * side },
+					group.text
+				)
 			};
 		}
 		edges.push(shape);
@@ -472,7 +530,7 @@ export function edgeGeometry(doc: MachineDocument, options: DiagramOptions = {})
 
 	// 3. The start marker triangle.
 	let start: StartShape | undefined;
-	const startState = doc.start === null ? undefined : byId.get(doc.start);
+	const startState = input.start === null ? undefined : byId.get(input.start);
 	if (startState) {
 		const angle = pickAngle(busy.get(startState.id) ?? [], 180, START_FREE_GAP);
 		const along = direction(angle);
@@ -521,12 +579,7 @@ export function edgeGeometry(doc: MachineDocument, options: DiagramOptions = {})
 			start: rounded(p1),
 			end: rounded(p2),
 			points: points.map(rounded),
-			label: placeLabel(
-				labelText(group.symbols),
-				MONO_CHAR,
-				points[SAMPLES / 2]!,
-				direction(angle)
-			),
+			label: placeLabel(group.lines, MONO_CHAR, points[SAMPLES / 2]!, direction(angle), group.text),
 			angle
 		});
 	}
@@ -567,6 +620,14 @@ export function edgeGeometry(doc: MachineDocument, options: DiagramOptions = {})
 		);
 	}
 	return { states: stateShapes, edges, start, bounds: boundsOf(boxes) };
+}
+
+/**
+ * Draws an FSM document. `options.startLabel` is the text of the start arrow ("mulai").
+ * The rules are in docs/ux/editor-interactions.md.
+ */
+export function edgeGeometry(doc: MachineDocument, options: DiagramOptions = {}): DiagramShapes {
+	return diagramGeometry(fsmDiagram(doc), options);
 }
 
 function boundsOf(boxes: Box[]): Box {

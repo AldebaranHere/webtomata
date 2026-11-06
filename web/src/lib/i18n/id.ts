@@ -1044,7 +1044,8 @@ export const id = {
 	'pda_document.unknown_symbol': 'Simbol "{symbol}" belum ada di alfabet.',
 	'pda_document.duplicate_transition': 'Transisi itu sudah ada.',
 	'pda_document.unsupported_version':
-		'PDA ini dibuat oleh WebTomata versi yang lebih baru (versi {version}).'
+		'PDA ini dibuat oleh WebTomata versi yang lebih baru (versi {version}).',
+	'pda_editor.edge_more': '+ {count} lagi'
 } as const;
 
 export type MessageKey = keyof typeof id;
