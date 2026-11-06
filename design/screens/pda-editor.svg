@@ -1,0 +1,370 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1130" viewBox="0 0 1200 1130" role="img" font-family="sans-serif">
+<title>Proposed PDA editor: diagram, table, formal definition and the determinism badge</title>
+<desc>The PDA editor on a laptop with the Tabel tab open; the Definisi tab; the badge opened to list the competing transitions; the label editor for one edge; and the phone layouts of the Tabel tab and of the label editor.</desc>
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3b414c"/></marker><marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f5bd3"/></marker></defs>
+<rect width="1200" height="1130" fill="#f6f7f9"/>
+<text x="20" y="26" font-size="14" fill="#16181d" font-weight="bold" text-anchor="start">PDA editor (P-004, proposal): the machine wwR, even palindromes, as sample data</text>
+<text x="20" y="42" font-size="10" fill="#5b6270" font-weight="normal" text-anchor="start">Colors and sizes are the design tokens. Words are the Indonesian draft. Numbers 1 to 9 refer to the list in pda-editor.md.</text>
+<g transform="translate(20,60)">
+<text x="0" y="-6" font-size="11" fill="#16181d" font-weight="bold" text-anchor="start">A. Laptop, tab Tabel (the editor opens like this)</text>
+<rect x="0" y="0" width="780" height="490" rx="10" fill="#fff" stroke="#737b88" />
+<text x="12" y="18" font-size="12" fill="#16181d" font-weight="bold" text-anchor="start">WebTomata</text>
+<text x="740" y="18" font-size="10" fill="#3b414c" font-weight="normal" text-anchor="middle">Menu</text>
+<line x1="0" y1="28" x2="780" y2="28" stroke="#dde1e7" stroke-width="1" />
+<text x="12" y="46" font-size="10" fill="#3b414c" font-weight="normal" text-anchor="start">Mode Kerja:  Otomata Pushdown (PDA) ▾</text>
+<text x="380" y="46" font-size="10" fill="#2f5bd3" font-weight="bold" text-anchor="start">1</text>
+<line x1="0" y1="56" x2="780" y2="56" stroke="#dde1e7" stroke-width="1" />
+<text x="12" y="78" font-size="12" fill="#16181d" font-weight="bold" text-anchor="start">Palindrom genap</text>
+<text x="150" y="78" font-size="9" fill="#1f7a4d" font-weight="normal" text-anchor="start">Tersimpan di perangkat ini</text>
+<text x="690" y="78" font-size="10" fill="#3b414c" font-weight="normal" text-anchor="middle">↶   ↷   Pas</text>
+<line x1="0" y1="92" x2="780" y2="92" stroke="#dde1e7" stroke-width="1" />
+<rect x="0" y="92" width="44" height="398" fill="#f6f7f9"/>
+<line x1="44" y1="92" x2="44" y2="490" stroke="#dde1e7" stroke-width="1" />
+<rect x="4" y="100" width="36" height="36" rx="6" fill="#eaf0fd" stroke="#2f5bd3" />
+<text x="22" y="122" font-size="8" fill="#1e3f9e" font-weight="normal" text-anchor="middle">Pilih</text>
+<rect x="4" y="142" width="36" height="36" rx="6" fill="#fff" stroke="#737b88" />
+<text x="22" y="164" font-size="8" fill="#3b414c" font-weight="normal" text-anchor="middle">State</text>
+<rect x="4" y="184" width="36" height="36" rx="6" fill="#fff" stroke="#737b88" />
+<text x="22" y="206" font-size="8" fill="#3b414c" font-weight="normal" text-anchor="middle">Trans.</text>
+<rect x="4" y="226" width="36" height="36" rx="6" fill="#fff" stroke="#737b88" />
+<text x="22" y="248" font-size="8" fill="#3b414c" font-weight="normal" text-anchor="middle">Hapus</text>
+<rect x="45" y="93" width="455" height="397" fill="#f6f7f9"/>
+<polygon points="162,310 134.0,292.0 134.0,328.0" fill="#fff" stroke="#3b414c" stroke-width="1.5"/>
+<text x="76" y="314" font-size="9" fill="#5b6270" font-weight="normal" text-anchor="start">mulai</text>
+<circle cx="190" cy="310" r="28" fill="#fff" stroke="#3b414c" stroke-width="1.5"/>
+<text x="190" y="314.0" font-size="12" fill="#16181d" font-weight="bold" text-anchor="middle">q0</text>
+<circle cx="400" cy="310" r="28" fill="#fff" stroke="#3b414c" stroke-width="1.5"/>
+<circle cx="400" cy="310" r="23" fill="none" stroke="#3b414c" stroke-width="1.5"/>
+<text x="400" y="314.0" font-size="12" fill="#16181d" font-weight="bold" text-anchor="middle">q1</text>
+<line x1="218" y1="310" x2="372" y2="310" stroke="#3b414c" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="295" y="302" font-size="10" fill="#16181d" font-weight="normal" text-anchor="middle" font-family="monospace">ε / ε / ε</text>
+<path d="M176.0,285.8 C158.0,239.8 222.0,239.8 204.0,285.8" fill="none" stroke="#3b414c" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="190" y="230" font-size="10" fill="#16181d" font-weight="normal" text-anchor="middle" font-family="monospace">a / ε / A</text>
+<text x="190" y="242" font-size="10" fill="#16181d" font-weight="normal" text-anchor="middle" font-family="monospace">b / ε / B</text>
+<path d="M386.0,285.8 C368.0,239.8 432.0,239.8 414.0,285.8" fill="none" stroke="#3b414c" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="400" y="230" font-size="10" fill="#16181d" font-weight="normal" text-anchor="middle" font-family="monospace">a / A / ε</text>
+<text x="400" y="242" font-size="10" fill="#16181d" font-weight="normal" text-anchor="middle" font-family="monospace">b / B / ε</text>
+<text x="60" y="120" font-size="10" fill="#2f5bd3" font-weight="bold" text-anchor="start">2</text>
+<text x="465" y="395" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="end">Label: c / pop / push</text>
+<text x="465" y="406" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="end">(puncak stack di kiri)</text>
+<line x1="500" y1="92" x2="500" y2="490" stroke="#dde1e7" stroke-width="1" />
+<text x="520" y="111" font-size="11" fill="#1e3f9e" font-weight="bold" text-anchor="start">Tabel</text>
+<rect x="508" y="116" width="46" height="3" fill="#2f5bd3"/>
+<text x="590" y="111" font-size="11" fill="#3b414c" font-weight="normal" text-anchor="start">Definisi</text>
+<text x="752" y="111" font-size="10" fill="#2f5bd3" font-weight="bold" text-anchor="start">3</text>
+<line x1="500" y1="120" x2="780" y2="120" stroke="#dde1e7" stroke-width="1" />
+<rect x="510" y="128" width="56" height="22" rx="6" fill="#fff" stroke="#737b88" />
+<text x="538" y="143" font-size="9" fill="#3b414c" font-weight="normal" text-anchor="middle">DPDA</text>
+<rect x="568" y="128" width="62" height="22" rx="6" fill="#eaf0fd" stroke="#2f5bd3" />
+<text x="599" y="143" font-size="9" fill="#1e3f9e" font-weight="bold" text-anchor="middle">NDPDA</text>
+<text x="752" y="143" font-size="10" fill="#2f5bd3" font-weight="bold" text-anchor="start">4</text>
+<rect x="510" y="156" width="262" height="20" rx="10" fill="#eef0f3" stroke="#737b88" />
+<text x="641.0" y="169.0" font-size="9" fill="#3b414c" font-weight="normal" text-anchor="middle">Non-deterministik · 2 pasangan bersaing ▾</text>
+<text x="758" y="169" font-size="10" fill="#2f5bd3" font-weight="bold" text-anchor="start">5</text>
+<text x="512" y="196" font-size="9" fill="#5b6270" font-weight="normal" text-anchor="start">Pemeriksaan: lengkap ▾</text>
+<text x="512" y="216" font-size="9" fill="#5b6270" font-weight="bold" text-anchor="start">Alfabet input Σ</text>
+<rect x="512" y="221" width="26" height="20" rx="10" fill="#fff" stroke="#737b88" />
+<text x="525.0" y="234.33333333333334" font-size="10" fill="#16181d" font-weight="normal" text-anchor="middle">a</text>
+<rect x="542" y="221" width="26" height="20" rx="10" fill="#fff" stroke="#737b88" />
+<text x="555.0" y="234.33333333333334" font-size="10" fill="#16181d" font-weight="normal" text-anchor="middle">b</text>
+<rect x="572" y="221" width="26" height="20" rx="10" fill="#fff" stroke="#2f5bd3" />
+<text x="585.0" y="234.66666666666666" font-size="11" fill="#2f5bd3" font-weight="normal" text-anchor="middle">+</text>
+<text x="512" y="256" font-size="9" fill="#5b6270" font-weight="bold" text-anchor="start">Alfabet stack Γ</text>
+<rect x="512" y="261" width="26" height="20" rx="10" fill="#fff" stroke="#737b88" />
+<text x="525.0" y="274.3333333333333" font-size="10" fill="#16181d" font-weight="normal" text-anchor="middle">A</text>
+<rect x="542" y="261" width="26" height="20" rx="10" fill="#fff" stroke="#737b88" />
+<text x="555.0" y="274.3333333333333" font-size="10" fill="#16181d" font-weight="normal" text-anchor="middle">B</text>
+<rect x="572" y="261" width="26" height="20" rx="10" fill="#fff" stroke="#2f5bd3" />
+<text x="585.0" y="274.6666666666667" font-size="11" fill="#2f5bd3" font-weight="normal" text-anchor="middle">+</text>
+<text x="512" y="298" font-size="9" fill="#5b6270" font-weight="bold" text-anchor="start">State</text>
+<text x="512" y="314" font-size="10" fill="#16181d" font-weight="bold" text-anchor="start">q0</text>
+<text x="560" y="314" font-size="9" fill="#3b414c" font-weight="normal" text-anchor="start">● mulai   ☐ accepting</text>
+<text x="512" y="332" font-size="10" fill="#16181d" font-weight="bold" text-anchor="start">q1</text>
+<text x="560" y="332" font-size="9" fill="#3b414c" font-weight="normal" text-anchor="start">○ mulai   ☑ accepting</text>
+<text x="512" y="354" font-size="9" fill="#5b6270" font-weight="bold" text-anchor="start">Transisi (5)</text>
+<rect x="508" y="360" width="268" height="16" fill="#eef0f3"/>
+<text x="512" y="372" font-size="9" fill="#3b414c" font-weight="bold" text-anchor="start">Dari</text>
+<text x="548" y="372" font-size="9" fill="#3b414c" font-weight="bold" text-anchor="start">Baca</text>
+<text x="590" y="372" font-size="9" fill="#3b414c" font-weight="bold" text-anchor="start">Pop</text>
+<text x="640" y="372" font-size="9" fill="#3b414c" font-weight="bold" text-anchor="start">Push</text>
+<text x="700" y="372" font-size="9" fill="#3b414c" font-weight="bold" text-anchor="start">Ke</text>
+<rect x="508" y="380" width="268" height="15" fill="#fff4e0"/>
+<rect x="508" y="380" width="3" height="15" fill="#b86e00"/>
+<text x="512" y="391" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q0</text>
+<text x="548" y="391" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<text x="590" y="391" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<text x="640" y="391" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<text x="700" y="391" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q1</text>
+<text x="758" y="391" font-size="9" fill="#5b6270" font-weight="normal" text-anchor="start">✕</text>
+<text x="512" y="407" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q0</text>
+<text x="548" y="407" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">a</text>
+<text x="590" y="407" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<text x="640" y="407" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">A</text>
+<text x="700" y="407" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q0</text>
+<text x="758" y="407" font-size="9" fill="#5b6270" font-weight="normal" text-anchor="start">✕</text>
+<text x="512" y="423" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q0</text>
+<text x="548" y="423" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">b</text>
+<text x="590" y="423" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<text x="640" y="423" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">B</text>
+<text x="700" y="423" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q0</text>
+<text x="758" y="423" font-size="9" fill="#5b6270" font-weight="normal" text-anchor="start">✕</text>
+<text x="512" y="439" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q1</text>
+<text x="548" y="439" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">a</text>
+<text x="590" y="439" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">A</text>
+<text x="640" y="439" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<text x="700" y="439" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q1</text>
+<text x="758" y="439" font-size="9" fill="#5b6270" font-weight="normal" text-anchor="start">✕</text>
+<text x="512" y="455" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q1</text>
+<text x="548" y="455" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">b</text>
+<text x="590" y="455" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">B</text>
+<text x="640" y="455" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<text x="700" y="455" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q1</text>
+<text x="758" y="455" font-size="9" fill="#5b6270" font-weight="normal" text-anchor="start">✕</text>
+<text x="512" y="480" font-size="9" fill="#2f5bd3" font-weight="bold" text-anchor="start">+ Tambah transisi</text>
+<text x="752" y="480" font-size="10" fill="#2f5bd3" font-weight="bold" text-anchor="start">6</text>
+</g>
+<g transform="translate(830,60)">
+<text x="0" y="-6" font-size="11" fill="#16181d" font-weight="bold" text-anchor="start">B. Tab Definisi (hanya baca)</text>
+<rect x="0" y="0" width="350" height="300" rx="8" fill="#fff" stroke="#737b88" />
+<text x="12" y="17" font-size="11" fill="#3b414c" font-weight="normal" text-anchor="start">Tabel</text>
+<text x="70" y="17" font-size="11" fill="#1e3f9e" font-weight="bold" text-anchor="start">Definisi</text>
+<rect x="62" y="22" width="52" height="3" fill="#2f5bd3"/>
+<line x1="0" y1="28" x2="350" y2="28" stroke="#dde1e7" stroke-width="1" />
+<rect x="10" y="36" width="56" height="22" rx="6" fill="#fff" stroke="#737b88" />
+<text x="38" y="51" font-size="9" fill="#3b414c" font-weight="normal" text-anchor="middle">DPDA</text>
+<rect x="68" y="36" width="62" height="22" rx="6" fill="#eaf0fd" stroke="#2f5bd3" />
+<text x="99" y="51" font-size="9" fill="#1e3f9e" font-weight="bold" text-anchor="middle">NDPDA</text>
+<rect x="10" y="64" width="262" height="20" rx="10" fill="#eef0f3" stroke="#737b88" />
+<text x="141.0" y="77.0" font-size="9" fill="#3b414c" font-weight="normal" text-anchor="middle">Non-deterministik · 2 pasangan bersaing ▾</text>
+<text x="14" y="108" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">M = (K, Σ, Γ, Δ, s, A)</text>
+<text x="14" y="122" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">K = {q0, q1}</text>
+<text x="14" y="136" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">Σ = {a, b}</text>
+<text x="14" y="150" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">Γ = {A, B}</text>
+<text x="14" y="164" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">s = q0</text>
+<text x="14" y="178" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">A = {q1}</text>
+<text x="14" y="192" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">Δ =</text>
+<text x="14" y="206" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">  ((q0, ε, ε), (q1, ε))</text>
+<text x="14" y="220" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">  ((q0, a, ε), (q0, A))</text>
+<text x="14" y="234" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">  ((q0, b, ε), (q0, B))</text>
+<text x="14" y="248" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">  ((q1, a, A), (q1, ε))</text>
+<text x="14" y="262" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">  ((q1, b, B), (q1, ε))</text>
+<text x="14" y="284" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">Kiri = puncak stack. ε pada pop: tidak memeriksa stack.</text>
+</g>
+<g transform="translate(830,400)">
+<text x="0" y="-6" font-size="11" fill="#16181d" font-weight="bold" text-anchor="start">B'. Badge dibuka: pasangan yang bersaing</text>
+<rect x="0" y="0" width="350" height="215" rx="8" fill="#fff" stroke="#737b88" />
+<rect x="10" y="10" width="56" height="22" rx="6" fill="#fff" stroke="#737b88" />
+<text x="38" y="25" font-size="9" fill="#3b414c" font-weight="normal" text-anchor="middle">DPDA</text>
+<rect x="68" y="10" width="62" height="22" rx="6" fill="#eaf0fd" stroke="#2f5bd3" />
+<text x="99" y="25" font-size="9" fill="#1e3f9e" font-weight="bold" text-anchor="middle">NDPDA</text>
+<rect x="10" y="38" width="262" height="20" rx="10" fill="#eef0f3" stroke="#737b88" />
+<text x="141.0" y="51.0" font-size="9" fill="#3b414c" font-weight="normal" text-anchor="middle">Non-deterministik · 2 pasangan bersaing ▴</text>
+<rect x="10" y="66" width="330" height="50" rx="6" fill="#fff" stroke="#dde1e7" />
+<text x="18" y="82" font-size="9" fill="#16181d" font-weight="bold" text-anchor="start">q0:</text>
+<text x="42" y="82" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">a / ε / A   ↔   ε / ε / ε</text>
+<text x="18" y="98" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">ε cocok dengan input mana pun, dan pop ε adalah awalan dari pop ε.</text>
+<text x="18" y="110" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">Kedua transisi bisa terpilih pada konfigurasi yang sama.</text>
+<rect x="262" y="72" width="70" height="22" rx="6" fill="#fff" stroke="#2f5bd3" />
+<text x="297" y="87" font-size="9" fill="#2f5bd3" font-weight="bold" text-anchor="middle">Tunjukkan</text>
+<rect x="10" y="124" width="330" height="50" rx="6" fill="#fff" stroke="#dde1e7" />
+<text x="18" y="140" font-size="9" fill="#16181d" font-weight="bold" text-anchor="start">q0:</text>
+<text x="42" y="140" font-size="10" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">b / ε / B   ↔   ε / ε / ε</text>
+<text x="18" y="156" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">ε cocok dengan input mana pun, dan pop ε adalah awalan dari pop ε.</text>
+<text x="18" y="168" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">Kedua transisi bisa terpilih pada konfigurasi yang sama.</text>
+<rect x="262" y="130" width="70" height="22" rx="6" fill="#fff" stroke="#2f5bd3" />
+<text x="297" y="145" font-size="9" fill="#2f5bd3" font-weight="bold" text-anchor="middle">Tunjukkan</text>
+<text x="14" y="196" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">Pada NDPDA ini boleh. Pada DPDA setiap pasangan menjadi kesalahan.</text>
+<text x="340" y="205" font-size="10" fill="#2f5bd3" font-weight="bold" text-anchor="end">7</text>
+</g>
+<g transform="translate(20,640)">
+<text x="0" y="-6" font-size="11" fill="#16181d" font-weight="bold" text-anchor="start">C. Mengubah label satu edge (laptop; di ponsel jadi lembar bawah, lihat E)</text>
+<rect x="0" y="0" width="440" height="300" rx="8" fill="#f6f7f9" stroke="#737b88" />
+<circle cx="90" cy="70" r="26" fill="#fff" stroke="#3b414c" stroke-width="1.5"/>
+<text x="90" y="74.0" font-size="12" fill="#16181d" font-weight="bold" text-anchor="middle">q0</text>
+<circle cx="330" cy="70" r="26" fill="#fff" stroke="#3b414c" stroke-width="1.5"/>
+<circle cx="330" cy="70" r="21" fill="none" stroke="#3b414c" stroke-width="1.5"/>
+<text x="330" y="74.0" font-size="12" fill="#16181d" font-weight="bold" text-anchor="middle">q1</text>
+<line x1="116" y1="70" x2="304" y2="70" stroke="#2f5bd3" stroke-width="2.6" marker-end="url(#aha)"/>
+<text x="210" y="62" font-size="10" fill="#1e3f9e" font-weight="bold" text-anchor="middle" font-family="monospace">ε / ε / ε</text>
+<rect x="50" y="110" width="340" height="178" rx="8" fill="#fff" stroke="#737b88" />
+<line x1="210" y1="96" x2="210" y2="110" stroke="#737b88" stroke-width="1"/>
+<text x="62" y="130" font-size="11" fill="#16181d" font-weight="bold" text-anchor="start">Transisi q0 → q1</text>
+<text x="62" y="150" font-size="9" fill="#5b6270" font-weight="bold" text-anchor="start">Baca</text>
+<text x="132" y="150" font-size="9" fill="#5b6270" font-weight="bold" text-anchor="start">Pop</text>
+<text x="212" y="150" font-size="9" fill="#5b6270" font-weight="bold" text-anchor="start">Push</text>
+<rect x="62" y="156" width="60" height="28" rx="4" fill="#fff" stroke="#2f5bd3" stroke-width="1.5"/>
+<text x="70" y="175" font-size="11" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<rect x="132" y="156" width="70" height="28" rx="4" fill="#fff" stroke="#737b88" />
+<text x="140" y="175" font-size="11" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<rect x="212" y="156" width="100" height="28" rx="4" fill="#fff" stroke="#737b88" />
+<text x="220" y="175" font-size="11" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<rect x="326" y="156" width="56" height="28" rx="4" fill="#fff" stroke="#737b88" />
+<text x="354" y="175" font-size="9" fill="#3b414c" font-weight="normal" text-anchor="middle">Hapus</text>
+<text x="62" y="208" font-size="9" fill="#2f5bd3" font-weight="bold" text-anchor="start">+ Transisi lain di antara q0 dan q1</text>
+<text x="62" y="226" font-size="9" fill="#5b6270" font-weight="normal" text-anchor="start">Kiri = puncak stack. Pop ε tidak memeriksa stack.</text>
+<text x="62" y="240" font-size="9" fill="#5b6270" font-weight="normal" text-anchor="start">Tab pindah kolom, Enter menyimpan, Esc membatalkan.</text>
+<rect x="262" y="252" width="56" height="26" rx="6" fill="#fff" stroke="#737b88" />
+<text x="290" y="269" font-size="9" fill="#3b414c" font-weight="normal" text-anchor="middle">Batal</text>
+<rect x="324" y="252" width="56" height="26" rx="6" fill="#2f5bd3" stroke="#2f5bd3" />
+<text x="352" y="269" font-size="9" fill="#fff" font-weight="bold" text-anchor="middle">Simpan</text>
+<text x="432" y="20" font-size="10" fill="#2f5bd3" font-weight="bold" text-anchor="end">8</text>
+</g>
+<g transform="translate(470,640)">
+<text x="0" y="-6" font-size="11" fill="#16181d" font-weight="bold" text-anchor="start">D. Ponsel, tab Tabel</text>
+<rect x="0" y="0" width="210" height="440" rx="12" fill="#fff" stroke="#737b88" />
+<text x="10" y="17" font-size="10" fill="#16181d" font-weight="bold" text-anchor="start">WebTomata</text>
+<text x="182" y="17" font-size="8" fill="#3b414c" font-weight="normal" text-anchor="middle">Menu</text>
+<line x1="0" y1="24" x2="210" y2="24" stroke="#dde1e7" stroke-width="1" />
+<text x="10" y="38" font-size="8" fill="#3b414c" font-weight="normal" text-anchor="start">Mode Kerja: Otomata Pushdown (PDA) ▾</text>
+<line x1="0" y1="44" x2="210" y2="44" stroke="#dde1e7" stroke-width="1" />
+<text x="10" y="60" font-size="9" fill="#16181d" font-weight="bold" text-anchor="start">Palindrom genap</text>
+<text x="150" y="60" font-size="9" fill="#3b414c" font-weight="normal" text-anchor="start">↶  ↷</text>
+<line x1="0" y1="68" x2="210" y2="68" stroke="#dde1e7" stroke-width="1" />
+<rect x="1" y="69" width="208" height="120" fill="#f6f7f9"/>
+<polygon points="46,135 32.0,126.0 32.0,144.0" fill="#fff" stroke="#3b414c" stroke-width="1.5"/>
+<circle cx="60" cy="135" r="14" fill="#fff" stroke="#3b414c" stroke-width="1.5"/>
+<text x="60" y="138.0" font-size="9" fill="#16181d" font-weight="bold" text-anchor="middle">q0</text>
+<circle cx="150" cy="135" r="14" fill="#fff" stroke="#3b414c" stroke-width="1.5"/>
+<circle cx="150" cy="135" r="9" fill="none" stroke="#3b414c" stroke-width="1.5"/>
+<text x="150" y="138.0" font-size="9" fill="#16181d" font-weight="bold" text-anchor="middle">q1</text>
+<line x1="74" y1="135" x2="136" y2="135" stroke="#3b414c" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="105" y="129" font-size="7" fill="#16181d" font-weight="normal" text-anchor="middle" font-family="monospace">ε / ε / ε</text>
+<path d="M53.0,122.9 C44.0,99.9 76.0,99.9 67.0,122.9" fill="none" stroke="#3b414c" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="60" y="85" font-size="7" fill="#16181d" font-weight="normal" text-anchor="middle" font-family="monospace">a / ε / A</text>
+<text x="60" y="94" font-size="7" fill="#16181d" font-weight="normal" text-anchor="middle" font-family="monospace">b / ε / B</text>
+<path d="M143.0,122.9 C134.0,99.9 166.0,99.9 157.0,122.9" fill="none" stroke="#3b414c" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="150" y="85" font-size="7" fill="#16181d" font-weight="normal" text-anchor="middle" font-family="monospace">a / A / ε</text>
+<text x="150" y="94" font-size="7" fill="#16181d" font-weight="normal" text-anchor="middle" font-family="monospace">b / B / ε</text>
+<line x1="0" y1="189" x2="210" y2="189" stroke="#dde1e7" stroke-width="1" />
+<rect x="80" y="193" width="50" height="5" rx="2" fill="#eef0f3" stroke="#eef0f3" />
+<text x="10" y="209" font-size="9" fill="#1e3f9e" font-weight="bold" text-anchor="start">Tabel</text>
+<text x="52" y="209" font-size="9" fill="#3b414c" font-weight="normal" text-anchor="start">Definisi</text>
+<line x1="0" y1="215" x2="210" y2="215" stroke="#dde1e7" stroke-width="1" />
+<rect x="8" y="221" width="44" height="18" rx="5" fill="#fff" stroke="#737b88" />
+<text x="30" y="233" font-size="7" fill="#3b414c" font-weight="normal" text-anchor="middle">DPDA</text>
+<rect x="54" y="221" width="48" height="18" rx="5" fill="#eaf0fd" stroke="#2f5bd3" />
+<text x="78" y="233" font-size="7" fill="#1e3f9e" font-weight="bold" text-anchor="middle">NDPDA</text>
+<rect x="106" y="221" width="96" height="18" rx="9" fill="#eef0f3" stroke="#737b88" />
+<text x="154.0" y="232.33333333333334" font-size="7" fill="#3b414c" font-weight="normal" text-anchor="middle">Non-det. · 2 ▾</text>
+<text x="10" y="255" font-size="8" fill="#5b6270" font-weight="bold" text-anchor="start">Transisi (5)</text>
+<rect x="6" y="259" width="198" height="14" fill="#eef0f3"/>
+<text x="10" y="269" font-size="8" fill="#3b414c" font-weight="bold" text-anchor="start">Dari</text>
+<text x="44" y="269" font-size="8" fill="#3b414c" font-weight="bold" text-anchor="start">Baca</text>
+<text x="78" y="269" font-size="8" fill="#3b414c" font-weight="bold" text-anchor="start">Pop</text>
+<text x="112" y="269" font-size="8" fill="#3b414c" font-weight="bold" text-anchor="start">Push</text>
+<text x="150" y="269" font-size="8" fill="#3b414c" font-weight="bold" text-anchor="start">Ke</text>
+<rect x="6" y="276" width="198" height="13" fill="#fff4e0"/>
+<text x="10" y="286" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q0</text>
+<text x="44" y="286" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<text x="78" y="286" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<text x="112" y="286" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<text x="150" y="286" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q1</text>
+<text x="10" y="300" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q0</text>
+<text x="44" y="300" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">a</text>
+<text x="78" y="300" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<text x="112" y="300" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">A</text>
+<text x="150" y="300" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q0</text>
+<text x="10" y="314" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q0</text>
+<text x="44" y="314" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">b</text>
+<text x="78" y="314" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<text x="112" y="314" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">B</text>
+<text x="150" y="314" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q0</text>
+<text x="10" y="328" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q1</text>
+<text x="44" y="328" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">a</text>
+<text x="78" y="328" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">A</text>
+<text x="112" y="328" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<text x="150" y="328" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q1</text>
+<text x="10" y="342" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q1</text>
+<text x="44" y="342" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">b</text>
+<text x="78" y="342" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">B</text>
+<text x="112" y="342" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<text x="150" y="342" font-size="8" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">q1</text>
+<line x1="0" y1="392" x2="210" y2="392" stroke="#dde1e7" stroke-width="1" />
+<rect x="8" y="398" width="44" height="34" rx="6" fill="#eaf0fd" stroke="#2f5bd3" />
+<text x="30" y="419" font-size="8" fill="#1e3f9e" font-weight="normal" text-anchor="middle">Pilih</text>
+<rect x="58" y="398" width="44" height="34" rx="6" fill="#fff" stroke="#737b88" />
+<text x="80" y="419" font-size="8" fill="#3b414c" font-weight="normal" text-anchor="middle">State</text>
+<rect x="108" y="398" width="44" height="34" rx="6" fill="#fff" stroke="#737b88" />
+<text x="130" y="419" font-size="8" fill="#3b414c" font-weight="normal" text-anchor="middle">Trans.</text>
+<rect x="158" y="398" width="44" height="34" rx="6" fill="#fff" stroke="#737b88" />
+<text x="180" y="419" font-size="8" fill="#3b414c" font-weight="normal" text-anchor="middle">Hapus</text>
+<text x="204" y="20" font-size="10" fill="#2f5bd3" font-weight="bold" text-anchor="end">9</text>
+</g>
+<g transform="translate(710,640)">
+<text x="0" y="-6" font-size="11" fill="#16181d" font-weight="bold" text-anchor="start">E. Ponsel, label satu edge</text>
+<rect x="0" y="0" width="210" height="440" rx="12" fill="#fff" stroke="#737b88" />
+<text x="10" y="17" font-size="10" fill="#16181d" font-weight="bold" text-anchor="start">WebTomata</text>
+<text x="182" y="17" font-size="8" fill="#3b414c" font-weight="normal" text-anchor="middle">Menu</text>
+<line x1="0" y1="24" x2="210" y2="24" stroke="#dde1e7" stroke-width="1" />
+<text x="10" y="38" font-size="8" fill="#3b414c" font-weight="normal" text-anchor="start">Mode Kerja: Otomata Pushdown (PDA) ▾</text>
+<line x1="0" y1="44" x2="210" y2="44" stroke="#dde1e7" stroke-width="1" />
+<text x="10" y="60" font-size="9" fill="#16181d" font-weight="bold" text-anchor="start">Palindrom genap</text>
+<text x="150" y="60" font-size="9" fill="#3b414c" font-weight="normal" text-anchor="start">↶  ↷</text>
+<line x1="0" y1="68" x2="210" y2="68" stroke="#dde1e7" stroke-width="1" />
+<rect x="1" y="69" width="208" height="96" fill="#f6f7f9"/>
+<polygon points="46,123 32.0,114.0 32.0,132.0" fill="#fff" stroke="#3b414c" stroke-width="1.5"/>
+<circle cx="60" cy="123" r="14" fill="#fff" stroke="#3b414c" stroke-width="1.5"/>
+<text x="60" y="126.0" font-size="9" fill="#16181d" font-weight="bold" text-anchor="middle">q0</text>
+<circle cx="150" cy="123" r="14" fill="#fff" stroke="#3b414c" stroke-width="1.5"/>
+<circle cx="150" cy="123" r="9" fill="none" stroke="#3b414c" stroke-width="1.5"/>
+<text x="150" y="126.0" font-size="9" fill="#16181d" font-weight="bold" text-anchor="middle">q1</text>
+<line x1="74" y1="123" x2="136" y2="123" stroke="#2f5bd3" stroke-width="2.6" marker-end="url(#aha)"/>
+<text x="105" y="117" font-size="7" fill="#1e3f9e" font-weight="bold" text-anchor="middle" font-family="monospace">ε / ε / ε</text>
+<path d="M53.0,110.9 C44.0,87.9 76.0,87.9 67.0,110.9" fill="none" stroke="#3b414c" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="60" y="73" font-size="7" fill="#16181d" font-weight="normal" text-anchor="middle" font-family="monospace">a / ε / A</text>
+<text x="60" y="82" font-size="7" fill="#16181d" font-weight="normal" text-anchor="middle" font-family="monospace">b / ε / B</text>
+<path d="M143.0,110.9 C134.0,87.9 166.0,87.9 157.0,110.9" fill="none" stroke="#3b414c" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="150" y="73" font-size="7" fill="#16181d" font-weight="normal" text-anchor="middle" font-family="monospace">a / A / ε</text>
+<text x="150" y="82" font-size="7" fill="#16181d" font-weight="normal" text-anchor="middle" font-family="monospace">b / B / ε</text>
+<rect x="0" y="165" width="210" height="275" fill="#fff" stroke="#737b88"/>
+<rect x="80" y="170" width="50" height="5" rx="2" fill="#eef0f3" stroke="#eef0f3" />
+<text x="10" y="193" font-size="10" fill="#16181d" font-weight="bold" text-anchor="start">Transisi q0 → q1</text>
+<text x="10" y="211" font-size="8" fill="#5b6270" font-weight="bold" text-anchor="start">Baca</text>
+<text x="62" y="211" font-size="8" fill="#5b6270" font-weight="bold" text-anchor="start">Pop</text>
+<text x="122" y="211" font-size="8" fill="#5b6270" font-weight="bold" text-anchor="start">Push</text>
+<rect x="10" y="217" width="46" height="44" rx="5" fill="#fff" stroke="#2f5bd3" />
+<text x="18" y="245" font-size="12" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<rect x="62" y="217" width="54" height="44" rx="5" fill="#fff" stroke="#737b88" />
+<text x="70" y="245" font-size="12" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<rect x="122" y="217" width="52" height="44" rx="5" fill="#fff" stroke="#737b88" />
+<text x="130" y="245" font-size="12" fill="#16181d" font-weight="normal" text-anchor="start" font-family="monospace">ε</text>
+<rect x="178" y="217" width="24" height="44" rx="5" fill="#fff" stroke="#737b88" />
+<text x="190" y="243" font-size="10" fill="#3b414c" font-weight="normal" text-anchor="middle">✕</text>
+<text x="10" y="281" font-size="8" fill="#2f5bd3" font-weight="bold" text-anchor="start">+ Transisi lain di antara q0 dan q1</text>
+<text x="10" y="297" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">Kiri = puncak stack. Pop ε tidak</text>
+<text x="10" y="308" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">memeriksa stack.</text>
+<rect x="8" y="321" width="62" height="36" rx="6" fill="#fff" stroke="#737b88" />
+<text x="39" y="343" font-size="8" fill="#3b414c" font-weight="bold" text-anchor="middle">Ketik ε</text>
+<rect x="76" y="321" width="56" height="36" rx="6" fill="#fff" stroke="#737b88" />
+<text x="104" y="343" font-size="8" fill="#3b414c" font-weight="normal" text-anchor="middle">Batal</text>
+<rect x="138" y="321" width="64" height="36" rx="6" fill="#2f5bd3" stroke="#2f5bd3" />
+<text x="170" y="343" font-size="8" fill="#fff" font-weight="bold" text-anchor="middle">Simpan</text>
+</g>
+<g transform="translate(950,640)">
+<text x="0" y="-6" font-size="11" fill="#16181d" font-weight="bold" text-anchor="start">F. Cara membaca label  c / pop / push</text>
+<rect x="0" y="0" width="230" height="440" rx="8" fill="#fff" stroke="#737b88" />
+<text x="12" y="22" font-size="11" fill="#16181d" font-weight="bold" text-anchor="start" font-family="monospace">a / ε / A</text>
+<text x="12" y="37" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">baca a, tidak memeriksa stack,</text>
+<text x="12" y="49" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">taruh A di puncak</text>
+<text x="12" y="74" font-size="11" fill="#16181d" font-weight="bold" text-anchor="start" font-family="monospace">b / A / ε</text>
+<text x="12" y="89" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">baca b, A harus di puncak,</text>
+<text x="12" y="101" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">buang A (tidak push apa-apa)</text>
+<text x="12" y="126" font-size="11" fill="#16181d" font-weight="bold" text-anchor="start" font-family="monospace">ε / ε / ε</text>
+<text x="12" y="141" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">tidak baca input, tidak periksa</text>
+<text x="12" y="153" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">stack, tidak mengubah stack</text>
+<text x="12" y="178" font-size="11" fill="#16181d" font-weight="bold" text-anchor="start" font-family="monospace">c / AB / CD</text>
+<text x="12" y="193" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">pop AB (A di puncak, B di bawahnya),</text>
+<text x="12" y="205" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">push CD (C di puncak)</text>
+<line x1="10" y1="236" x2="220" y2="236" stroke="#dde1e7" stroke-width="1" />
+<text x="12" y="254" font-size="9" fill="#16181d" font-weight="bold" text-anchor="start">Aturan yang selalu sama:</text>
+<text x="12" y="270" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">Stack mulai kosong. Tidak ada penanda dasar.</text>
+<text x="12" y="283" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">Diterima: input habis, stack kosong,</text>
+<text x="12" y="296" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">dan state accepting.</text>
+<text x="12" y="309" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">Pop ε bukan 'stack kosong': ia tidak</text>
+<text x="12" y="322" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">memeriksa stack sama sekali.</text>
+<text x="12" y="335" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">Teks pop dan push: kiri = puncak.</text>
+<text x="12" y="348" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">Satu baris label = satu transisi.</text>
+<text x="12" y="361" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">Paling banyak 3 baris per edge di</text>
+<text x="12" y="374" font-size="8" fill="#5b6270" font-weight="normal" text-anchor="start">diagram, lalu '+ n lagi' (tabel penuh).</text>
+</g>
+</svg>
