@@ -4,13 +4,13 @@ WebTomata is a static site. Everything runs in the visitor's browser; there is n
 
 ```mermaid
 flowchart LR
-  subgraph Browser
+  subgraph Browse
     UI["Svelte UI (main thread)"] -- "typed messages" --> W["Engine worker"]
     W --> E["engine-wasm (WASM)"]
     E --> C["engine-core (Rust)"]
     UI --> S[("IndexedDB: saved machines")]
   end
-  CDN["Cloudflare static assets"] -- "HTML, JS, .wasm, content" --> Browser
+  CDN["Cloudflare static assets"] -- "HTML, JS, .wasm, content" --> Browse
 ```
 
 ## Layers
@@ -52,7 +52,8 @@ The machine that the user edits is a **document** (`web/src/lib/editor/`): plain
 - **Commands** are plain data (`addState`, `moveState`, `addTransition`, `removeSymbol`, `batch`, and so on). `applyCommand(doc, command)` is a pure function that gives a new document or an error message; it never throws, and a refused command changes nothing.
 - **History** (`createHistory`) keeps earlier versions of the document, so undo gives back exactly the earlier one. One gesture is one step: commands with the same `coalesce` key merge, and `seal()` ends the group. Undo covers document edits only (not selection, pan or zoom). The depth is 200 steps.
 - **Files** (`serializeDocument`, `parseDocumentText`) are read strictly, with a size limit and no unknown fields. `documentFromJff` and `jffLayout` move names and places to and from a JFLAP file (FA `<type>fa</type>` and PDA `<type>pda</type>`).
-- See ADR 0017 for the decisions, and `docs/ux/editor-interactions.md` (U3, not written yet) for how the editor uses the commands.
+- **PDA document** (`pda-document.ts`, `pda-commands.ts`, `createPdaHistory` in `history.ts`, `pda-samples.ts`): a parallel, frozen document for pushdown automata (`dpda` / `ndpda`, `inputAlphabet`, `stackAlphabet`, transitions with `read`, `pop`, `push` top-first) sharing the generic history and primitives of `document.ts` (ADR 0041).
+- See ADR 0017 and ADR 0041 for the decisions, and `docs/ux/editor-interactions.md` (U3, not written yet) for how the editor uses the commands.
 
 ## Trust boundary
 

@@ -1038,5 +1038,10 @@ export const en: Record<MessageKey, string> = {
 	'workstation.tab_cyk': 'CYK',
 	'workstation.tab_results': 'Results',
 	'workstation.tabs_grammar_aria': 'Grammar workstation areas',
-	'workstation.tabs_language_aria': 'Language workstation areas'
+	'workstation.tabs_language_aria': 'Language workstation areas',
+	'pda_document.string_too_long': 'A pop or push string cannot be longer than {limit} symbols.',
+	'pda_document.unknown_symbol': 'The symbol "{symbol}" is not in the alphabet.',
+	'pda_document.duplicate_transition': 'That transition already exists.',
+	'pda_document.unsupported_version':
+		'This PDA was made by a newer version of WebTomata (version {version}).'
 };

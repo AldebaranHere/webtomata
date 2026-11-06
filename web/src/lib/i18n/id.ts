@@ -1038,7 +1038,13 @@ export const id = {
 	'workstation.tab_cyk': 'CYK',
 	'workstation.tab_results': 'Hasil',
 	'workstation.tabs_grammar_aria': 'Navigasi area tata bahasa',
-	'workstation.tabs_language_aria': 'Navigasi area bahasa formal'
+	'workstation.tabs_language_aria': 'Navigasi area bahasa formal',
+	'pda_document.string_too_long':
+		'String pop atau push terlalu panjang (paling banyak {limit} simbol).',
+	'pda_document.unknown_symbol': 'Simbol "{symbol}" belum ada di alfabet.',
+	'pda_document.duplicate_transition': 'Transisi itu sudah ada.',
+	'pda_document.unsupported_version':
+		'PDA ini dibuat oleh WebTomata versi yang lebih baru (versi {version}).'
 } as const;
 
 export type MessageKey = keyof typeof id;
