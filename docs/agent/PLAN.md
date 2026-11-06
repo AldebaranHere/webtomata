@@ -2011,7 +2011,7 @@ Paste real output into `REPORT.md`, with the hand derivation of F1 and F2 first.
 
 ## Task T-049 — PDA editor, part 3 of 8: the interaction core works for two kinds of document
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-049-editor-core`
 
