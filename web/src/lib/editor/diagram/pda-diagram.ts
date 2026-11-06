@@ -13,17 +13,17 @@ function formatStackSeq(seq: readonly string[], sep: string): string {
 	return seq.length === 0 ? 'ε' : seq.join(sep);
 }
 
+function formatTransition(t: PdaTransitionEntry, sep: string): string {
+	return `${t.read ?? 'ε'} / ${formatStackSeq(t.pop, sep)} / ${formatStackSeq(t.push, sep)}`;
+}
+
 /**
  * Formats one PDA transition as `read / pop / push` (`ε` for empty read, pop or push; leftmost
  * symbol is the top of the stack). The stack alphabet of the whole document decides whether stack
  * symbols are joined without spaces (`AB`) or with a single space (`Z0 A`).
  */
 export function transitionLabel(doc: PdaDocument, transition: PdaTransitionEntry): string {
-	const sep = stackSeparator(doc.stackAlphabet);
-	const read = transition.read ?? 'ε';
-	const pop = formatStackSeq(transition.pop, sep);
-	const push = formatStackSeq(transition.push, sep);
-	return `${read} / ${pop} / ${push}`;
+	return formatTransition(transition, stackSeparator(doc.stackAlphabet));
 }
 
 /**
@@ -34,13 +34,11 @@ export function transitionLabel(doc: PdaDocument, transition: PdaTransitionEntry
  */
 export function pdaDiagram(doc: PdaDocument, more: (count: number) => string): DiagramInput {
 	const sep = stackSeparator(doc.stackAlphabet);
-	const formatOne = (t: PdaTransitionEntry) =>
-		`${t.read ?? 'ε'} / ${formatStackSeq(t.pop, sep)} / ${formatStackSeq(t.push, sep)}`;
 
 	const groups = new Map<string, { from: number; to: number; allLines: string[] }>();
 	for (const t of doc.transitions) {
 		const key = `${t.from}>${t.to}`;
-		const label = formatOne(t);
+		const label = formatTransition(t, sep);
 		const group = groups.get(key);
 		if (group) group.allLines.push(label);
 		else groups.set(key, { from: t.from, to: t.to, allLines: [label] });

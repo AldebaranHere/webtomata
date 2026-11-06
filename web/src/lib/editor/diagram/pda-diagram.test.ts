@@ -206,12 +206,14 @@ describe('PDA diagram adapter (T-039)', () => {
 		expect(transitionLabel(emojiDoc, emojiDoc.transitions[0]!)).toBe('a / 😀 / A😀');
 	});
 
-	it('F6: 300 random PDA documents on a grid have no overlapping labels, no label on a state, all labels inside bounds, and deterministic output', () => {
-		// Starting at 240 fails on seed 48 because two adjacent columns with opposite-pair vertical
-		// edges have inner-curved labels of 11 chars (113.6 px) and 10 chars (104 px) that bulge 24 px
-		// + 4 px gap toward each other, requiring 28 + 113.6 + 104 + 28 = 273.6 px (274 px minimum integer).
-		const SPACING = 274;
-		for (let seed = 1; seed <= 300; seed++) {
+	it('F6: 1000 random PDA documents on a grid have no overlapping labels, no label on a state, all labels inside bounds, and deterministic output', () => {
+		// A three-line loop label that turns to a diagonal angle reaches about 146 px sideways from
+		// its state, and the label of a neighbor's curved edge is up to 113.6 px wide at the midpoint:
+		// in the worst case the states must be about 410 apart (405 is the lowest integer that passes
+		// seeds 1 to 3000, 404 fails on seed 2615). 420 is the smallest round value tested that
+		// holds for 3000 seeds (REPORT.md records the lower values that fail).
+		const SPACING = 420;
+		for (let seed = 1; seed <= 1000; seed++) {
 			const rng = random(seed);
 			const cells: [number, number][] = [];
 			for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) cells.push([x, y]);

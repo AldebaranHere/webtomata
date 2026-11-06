@@ -91,12 +91,32 @@ With `more = (n) => "+ " + n + " lagi"`:
   - `stackAlphabet: ['Z0', 'A']` (`'Z0'` has 2 code points): `a / Z0 / A Z0` AND in the same document `pop: ['A'], push: ['A', 'A']` formats as `a / A / A A`.
   - `stackAlphabet: ['😀', 'A']` (`'😀'` is a surrogate pair, 2 UTF-16 code units but 1 Unicode code point `[...'😀'].length === 1`): `a / 😀 / A😀` (no space).
 
-### 1.6 Fixture F6: Property Across 300 Seeded Random PDA Documents on a Grid
+### 1.6 Fixture F6: Property Across Seeded Random PDA Documents on a Grid
 
 - **Starting spacing check (`240 px`):**
   - At `SPACING = 240`, seeds `48, 57, 98, 125, 206` fail because of label-to-label overlap between adjacent grid columns (or self-loops next to curved edges).
   - **Root cause on seed 48:** Column `x = 0` (`x = 100`) and column `x = 1` (`x = 100 + SPACING`) both have opposite-pair vertical edges between rows `y = 0` and `y = 1`. The inner curve of column `0` bulges east by `CURVE_OFFSET = 24 px` and places its label `LABEL_GAP = 4 px` further east (`x = 128`), with a 2-symbol pop and 2-symbol push line (`11` chars, e.g. `a / BB / BB`, `width = 11 * 9.6 + 8 = 113.6 px`), reaching `x = 128 + 113.6 = 241.6`. Meanwhile, the inner curve of column `1` bulges west by `24 px` and places its `10`-char label (`width = 10 * 9.6 + 8 = 104 px`) `4 px` further west (`right = 100 + SPACING - 28`, `left = 100 + SPACING - 132`). They overlap whenever `128 + 113.6 > 100 + SPACING - 132`, i.e., $\text{SPACING} < 28 + 113.6 + 104 + 28 = 273.6\text{ px}$.
-  - **Minimum grid spacing:** `SPACING = 274` (`274 > 273.6`) is the smallest integer grid spacing at which all 300 seeds pass with zero label-label overlaps, zero label-state circle overlaps, all labels and states inside `bounds`, and identical output when transitions are added in reversed order. Recorded in `pda-diagram.test.ts` for `T-040`.
+  - **Minimum grid spacing for seeds 1 to 300:** `SPACING = 274` (`274 > 273.6`). **This was overfitted**: the owner ran 3000 seeds and found failures at 274 (seed 349) and at every spacing up to 400 (seed 2615). See the fix round below.
+
+#### F6 fix round (PR 167 review): the real threshold over 3000 seeds
+
+The test now uses `SPACING = 420` and seeds 1 to 1000 (463 ms measured, well under 10 s). The reason for the value: a three-line loop label that turns to a diagonal angle reaches about 146 px sideways from its state, and the label of a neighbor's curved edge is up to 113.6 px wide at the midpoint, so in the worst case states must be about 410 apart. The property and the drawing rules are unchanged.
+
+A scratch script (not committed; same generator as the test, seeds 1 to 3000, same three checks: no label overlap, no label on a state, labels inside bounds) gave:
+
+```text
+SPACING=240: 62/3000 failed
+SPACING=274: 11/3000 failed (seed 349, 392, 463, 574, 644, ...)
+SPACING=400: 1/3000 failed — seed 2615: labels 1 (1>3) and 6 (3>3) overlap
+SPACING=401: 1/3000 failed — seed 2615
+SPACING=402: 1/3000 failed — seed 2615
+SPACING=403: 1/3000 failed — seed 2615
+SPACING=404: 1/3000 failed — seed 2615
+SPACING=405: 0/3000 failed (all 3000 passed)
+SPACING=406, 407, 410, 420, 460, 500, 560, 640: 0/3000 failed
+```
+
+So the real threshold for seeds 1 to 3000 is **405** (404 fails). 420 is a round value with a small margin, not the exact limit. The grid checked here is a 3 × 3 grid; other layouts may need more.
 
 ### 1.7 Fixture F7: FSM Baseline Recorded Before Code Changes
 
@@ -416,3 +436,23 @@ Running 110 tests using 6 workers
 
 - Physical phone testing and live deployment checks (owner-only).
 - Full Playwright cross-browser suite (`pnpm test:e2e`, `pnpm test:e2e:cross`); ran the 5 diagram/edge/label specs on `desktop` and `phone` per AC9 and AGENTS.md verification tiers.
+
+---
+
+## 5. Fix round after review of PR 167
+
+Changes: (1) F6 spacing 274 → 420, seeds 300 → 1000, real comment, ADR 0042 line (see 1.6); (2) `pda-diagram.ts`: one internal `formatTransition(t, sep)` used by both `transitionLabel` and `pdaDiagram` (no behavior change; the existing tests pass unchanged).
+
+Re-run after the fix (real output):
+
+```text
+$ pnpm format:check   -> All matched files use Prettier code style!
+$ pnpm check          -> svelte-check found 0 errors and 0 warnings
+$ pnpm lint           -> eslint . (no output, exit 0)
+$ pnpm --filter web exec vitest run
+ Test Files  97 passed (97)
+      Tests  1229 passed | 2 skipped (1231)
+   Duration  3.84s
+$ vitest run src/lib/editor/diagram/pda-diagram.test.ts
+ ✓ F6: 1000 random PDA documents on a grid ... 463ms
+```

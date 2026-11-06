@@ -16,5 +16,5 @@ Status: accepted
 ## Consequences
 
 - FSM diagram geometry and SVG markup are byte-for-byte unchanged apart from `lines: [text]` on `LabelShape` (verified against `diagram/__fixtures__/fsm-shapes.json` across `endsWith01()` and 300 seeded random FSMs).
-- Because 3-line PDA labels are `56 px` tall and up to `113.6 px` wide for 2-symbol pops and pushes, random PDA grids with opposite-pair vertical edges on adjacent columns need at least `274 px` of grid spacing (`28 + 113.6 + 104 + 28 = 273.6 px`) so inner-curved labels never overlap; `T-040` can use this bound when spacing PDA states.
+- Labels of three lines of 11 characters are about 114 px wide and 56 px high, so a PDA needs far more room between states than an FSM (random PDA grids pass for 3000 seeds only from a spacing of about 405, tested at 420); T-049 must size the auto-layout spacing and the default placement from the label width.
 
