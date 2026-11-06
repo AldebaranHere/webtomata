@@ -1873,7 +1873,7 @@ Run both AC3 proptests with `PROPTEST_CASES=1000` three times in a row and paste
 
 ## Task T-033 — PDA editor, part 1 of 5: the PDA document, its commands and its history
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-033-pda-document`
 
