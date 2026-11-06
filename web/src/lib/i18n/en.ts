@@ -343,6 +343,22 @@ export const en: Record<MessageKey, string> = {
 		'Expand pop-nothing transition from state {from} to {to} for every stack symbol.',
 	'pda.rnf.no_start_state': 'The PDA does not have a start state.',
 	'pda.rnf.marker_clash': 'Stack symbol "{symbol}" clashes with the bottom marker #.',
+	'pda_cfg.start': 'Add the start rule S → <s, #, a>.',
+	'pda_cfg.empty': "Add {count} ε-rule(s) (<q, ε, q> → ε) for every state except s'.",
+	'pda_cfg.push_none':
+		'Transition from state {from} to {to} pushing nothing: add a rule for every target state.',
+	'pda_cfg.push':
+		'Transition from state {from} to {to} pushing {pushes} symbol(s): add a rule for every tuple of intermediate states.',
+	'pda_cfg.no_start_state': 'The PDA does not have a start state.',
+	'pda_cfg.bad_start':
+		'Start state {state} is not in restricted normal form: it must have one ε-transition with no pop that pushes one marker, no incoming transition, and not be accepting.',
+	'pda_cfg.not_one_accepting':
+		'The PDA must have one accepting state for conversion to CFG (found {count}).',
+	'pda_cfg.bad_accept':
+		'The transition from state {from} into the accepting state must read ε, pop only the bottom marker, and push nothing.',
+	'pda_cfg.not_single_pop': 'The transition from state {from} to {to} must pop one stack symbol.',
+	'pda_cfg.terminal_not_readable':
+		'Input symbol "{symbol}" cannot be written as a terminal symbol in the grammar.',
 	'test.title': 'Test many strings',
 	'test.add_label': 'Add a string',
 	'test.add_button': 'Add',

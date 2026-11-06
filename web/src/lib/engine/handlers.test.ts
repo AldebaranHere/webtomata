@@ -394,6 +394,66 @@ describe('every method reaches the engine', () => {
 			}
 		});
 	});
+
+	it('converts a PDA in restricted normal form (RNF) to a CFG', () => {
+		const rnfPda: Pda = {
+			schemaVersion: 1,
+			kind: 'ndpda',
+			inputAlphabet: ['a'],
+			stackAlphabet: ['#'],
+			states: [0, 1, 2],
+			start: 0,
+			accepting: [2],
+			transitions: [
+				{ from: 0, read: null, pop: [], push: ['#'], to: 1 },
+				{ from: 1, read: null, pop: ['#'], push: [], to: 2 }
+			]
+		};
+
+		const result = call('pdaToCfg', rnfPda);
+		expect(result).toEqual({
+			ok: true,
+			value: {
+				grammar: {
+					start: 'S',
+					rules: [
+						{ head: 'S', body: [{ type: 'nonTerminal', value: 'V_1g0p2' }] },
+						{ head: 'V_1gep1', body: [] },
+						{ head: 'V_2gep2', body: [] },
+						{ head: 'V_1g0p1', body: [{ type: 'nonTerminal', value: 'V_2gep1' }] },
+						{ head: 'V_1g0p2', body: [{ type: 'nonTerminal', value: 'V_2gep2' }] }
+					]
+				},
+				variables: [
+					{ name: 'V_1g0p1', from: 1, stack: '#', to: 1 },
+					{ name: 'V_1g0p2', from: 1, stack: '#', to: 2 },
+					{ name: 'V_1gep1', from: 1, stack: null, to: 1 },
+					{ name: 'V_2gep1', from: 2, stack: null, to: 1 },
+					{ name: 'V_2gep2', from: 2, stack: null, to: 2 }
+				],
+				steps: [
+					{
+						added: [{ head: 'S', body: [{ type: 'nonTerminal', value: 'V_1g0p2' }] }],
+						message: { key: 'pda_cfg.start', params: {} }
+					},
+					{
+						added: [
+							{ head: 'V_1gep1', body: [] },
+							{ head: 'V_2gep2', body: [] }
+						],
+						message: { key: 'pda_cfg.empty', params: { count: 2 } }
+					},
+					{
+						added: [
+							{ head: 'V_1g0p1', body: [{ type: 'nonTerminal', value: 'V_2gep1' }] },
+							{ head: 'V_1g0p2', body: [{ type: 'nonTerminal', value: 'V_2gep2' }] }
+						],
+						message: { key: 'pda_cfg.push_none', params: { from: 1, to: 2 } }
+					}
+				]
+			}
+		});
+	});
 });
 
 describe('a call that the engine cannot answer', () => {

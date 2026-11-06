@@ -40,6 +40,7 @@ export interface Wasm {
 	cfgToPdaTopdown(grammar: string): string;
 	cfgToPdaBottomup(grammar: string): string;
 	pdaToRnf(pda: string): string;
+	pdaToCfg(pda: string): string;
 }
 
 export type Handlers = {
@@ -117,7 +118,8 @@ export function createHandlers(wasm: Wasm): Handlers {
 		exportPdaJff: (pda, layout) => wasm.exportPdaJff(text(pda), text(layout)),
 		cfgToPdaTopdown: (grammar) => wasm.cfgToPdaTopdown(grammar),
 		cfgToPdaBottomup: (grammar) => wasm.cfgToPdaBottomup(grammar),
-		pdaToRnf: (pda) => wasm.pdaToRnf(text(pda))
+		pdaToRnf: (pda) => wasm.pdaToRnf(text(pda)),
+		pdaToCfg: (pda) => wasm.pdaToCfg(text(pda))
 	};
 }
 

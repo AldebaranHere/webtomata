@@ -347,6 +347,23 @@ export const id = {
 		'Perluas transisi tanpa pop dari state {from} ke {to} untuk setiap simbol stack.',
 	'pda.rnf.no_start_state': 'PDA belum punya start state.',
 	'pda.rnf.marker_clash': 'Simbol stack "{symbol}" bentrok dengan marker dasar stack #.',
+	'pda_cfg.start': 'Tambahkan aturan awal S → <s, #, a>.',
+	'pda_cfg.empty': "Tambahkan {count} aturan ε (<q, ε, q> → ε) untuk setiap state selain s'.",
+	'pda_cfg.push_none':
+		'Transisi dari state {from} ke {to} tanpa push: tambahkan aturan untuk setiap state tujuan.',
+	'pda_cfg.push':
+		'Transisi dari state {from} ke {to} yang mem-push {pushes} simbol: tambahkan aturan untuk setiap tupel state perantara.',
+	'pda_cfg.no_start_state': 'PDA belum punya start state.',
+	'pda_cfg.bad_start':
+		'Start state {state} belum memenuhi restricted normal form: harus punya tepat satu transisi tanpa baca dan tanpa pop yang mem-push tepat satu marker, tanpa transisi masuk, dan bukan accepting state.',
+	'pda_cfg.not_one_accepting':
+		'PDA harus punya tepat satu accepting state untuk konversi ke CFG (ditemukan {count}).',
+	'pda_cfg.bad_accept':
+		'Transisi dari state {from} ke accepting state harus tanpa baca, mem-pop tepat marker dasar stack, dan tanpa push.',
+	'pda_cfg.not_single_pop':
+		'Transisi dari state {from} ke {to} harus mem-pop tepat satu simbol stack.',
+	'pda_cfg.terminal_not_readable':
+		'Simbol input "{symbol}" tidak bisa ditulis sebagai simbol terminal di tata bahasa.',
 	// TODO(review): the wording of the test strings is a draft until the feedback guide (U4).
 	'test.title': 'Uji banyak string',
 	'test.add_label': 'Tambah string',

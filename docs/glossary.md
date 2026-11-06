@@ -117,3 +117,5 @@ Added in the PDA model (`TODO(review)`): pushdown automaton / PDA (mesin pushdow
 Added in PDA simulation (`TODO(review)`): konfigurasi puncak (peak configurations), pencarian melebar (breadth-first search), batas kedalaman stack (maximum stack depth budget).
 
 Added in PDA to restricted normal form (`TODO(review)`): restricted normal form / RNF (kept in English, the slides' own term; no Indonesian term is invented), marker dasar stack # (bottom-of-stack marker `#`; the glossary has "penanda bawah stack", the messages use "marker"), start state baru s' (new start state), accepting state baru a (new accepting state), memecah transisi (to split a transition into single-pop transitions), memperluas transisi (to expand a pop-nothing transition for every stack symbol), ber-pop satu (popping exactly one symbol).
+
+Added in PDA in restricted normal form to CFG (`TODO(review)`): aturan awal (start rule, `S → <s, #, a>`), aturan ε (ε-rule, `<q, ε, q> → ε`), tupel state perantara (tuple of intermediate states, `(v1, …, vn)` in step S4 case B), tanpa push (pushing nothing, step S4 case A).

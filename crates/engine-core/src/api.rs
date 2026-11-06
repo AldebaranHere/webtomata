@@ -542,3 +542,12 @@ pub fn pda_to_rnf(pda_json: &str) -> String {
     };
     finish(run())
 }
+
+/// Converts a PDA in restricted normal form (RNF) to an equivalent CFG with a step trace.
+pub fn pda_to_cfg(pda_json: &str) -> String {
+    let run = || -> Result<crate::pda_cfg::PdaToCfg, Message> {
+        let pda = pda_model(pda_json)?;
+        crate::pda_cfg::pda_to_cfg(&pda)
+    };
+    finish(run())
+}

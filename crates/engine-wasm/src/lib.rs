@@ -171,6 +171,11 @@ pub fn pda_to_rnf(pda: &str) -> String {
     api::pda_to_rnf(pda)
 }
 
+#[wasm_bindgen(js_name = pdaToCfg)]
+pub fn pda_to_cfg(pda: &str) -> String {
+    api::pda_to_cfg(pda)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -292,5 +297,16 @@ mod tests {
         assert!(answer.contains(r#""ok":true"#), "{answer}");
         assert!(answer.contains(r#""steps""#), "{answer}");
         assert!(answer.contains(r#""pda""#), "{answer}");
+    }
+
+    #[wasm_bindgen_test]
+    #[test]
+    fn pda_to_cfg_answers_in_envelope() {
+        let rnf_pda = r##"{"schemaVersion":1,"kind":"ndpda","inputAlphabet":["a"],"stackAlphabet":["#"],"states":[0,1,2],"start":0,"accepting":[2],"transitions":[{"from":0,"read":null,"pop":[],"push":["#"],"to":1},{"from":1,"read":null,"pop":["#"],"push":[],"to":2}]}"##;
+        let answer = pda_to_cfg(rnf_pda);
+        assert!(answer.contains(r#""ok":true"#), "{answer}");
+        assert!(answer.contains(r#""grammar""#), "{answer}");
+        assert!(answer.contains(r#""variables""#), "{answer}");
+        assert!(answer.contains(r#""steps""#), "{answer}");
     }
 }

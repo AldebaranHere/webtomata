@@ -13,6 +13,7 @@ use crate::grammar::{
 };
 use crate::json::{Wire, WireTransition};
 use crate::pda::{Competition, PdaKind, PdaWire, PdaWireTransition};
+use crate::pda_cfg::{CfgVariable, PdaCfgStep, PdaToCfg};
 use crate::pda_rnf::{RnfResult, RnfStep};
 use crate::pda_simulate::{PdaBudget, PdaSimulation, PdaStep};
 use crate::{
@@ -197,6 +198,13 @@ fn samples() -> Vec<(&'static str, &'static str, String)> {
                 r#"{"schemaVersion":1,"kind":"ndpda","inputAlphabet":["a","b"],"stackAlphabet":["a"],"states":[0,1],"start":0,"accepting":[1],"transitions":[{"from":0,"read":"a","pop":[],"push":["a"],"to":1}]}"#,
             ),
         ),
+        (
+            "samplePdaToCfg",
+            "PdaToCfg",
+            api::pda_to_cfg(
+                r##"{"schemaVersion":1,"kind":"ndpda","inputAlphabet":["a"],"stackAlphabet":["#"],"states":[0,1,2],"start":0,"accepting":[2],"transitions":[{"from":0,"read":null,"pop":[],"push":["#"],"to":1},{"from":1,"read":null,"pop":["#"],"push":[],"to":2}]}"##,
+            ),
+        ),
     ]
 }
 
@@ -275,6 +283,9 @@ pub fn declarations() -> String {
         CfgToPda,
         RnfStep,
         RnfResult,
+        CfgVariable,
+        PdaCfgStep,
+        PdaToCfg,
     );
 
     // The envelope of every API function (see `api`).
