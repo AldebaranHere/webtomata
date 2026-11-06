@@ -1043,5 +1043,6 @@ export const en: Record<MessageKey, string> = {
 	'pda_document.unknown_symbol': 'The symbol "{symbol}" is not in the alphabet.',
 	'pda_document.duplicate_transition': 'That transition already exists.',
 	'pda_document.unsupported_version':
-		'This PDA was made by a newer version of WebTomata (version {version}).'
+		'This PDA was made by a newer version of WebTomata (version {version}).',
+	'pda_editor.edge_more': '+ {count} more'
 };

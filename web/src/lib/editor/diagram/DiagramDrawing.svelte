@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { t } from '#lib/i18n/index.svelte.ts';
-	import { INNER_RADIUS, RADIUS } from './geometry.ts';
+	import { INNER_RADIUS, RADIUS, labelLineY } from './geometry.ts';
 	import type { DiagramShapes, StateShape } from './geometry.ts';
 
 	// The inside of a diagram: the lines, the circles and the labels. The read-only view and the
@@ -166,15 +166,29 @@
 
 <g class="labels">
 	{#each shapes.edges as edge (`${edge.from}>${edge.to}`)}
-		<text
-			class="label"
-			class:chosen={chosen(edge)}
-			class:taken={taken.has(`${edge.from}>${edge.to}`)}
-			x={edge.label.center.x}
-			y={edge.label.center.y}
-		>
-			{edge.label.text}
-		</text>
+		{#if edge.label.lines.length <= 1}
+			<text
+				class="label"
+				class:chosen={chosen(edge)}
+				class:taken={taken.has(`${edge.from}>${edge.to}`)}
+				x={edge.label.center.x}
+				y={edge.label.center.y}
+			>
+				{edge.label.text}
+			</text>
+		{:else}
+			<text
+				class="label"
+				class:chosen={chosen(edge)}
+				class:taken={taken.has(`${edge.from}>${edge.to}`)}
+				x={edge.label.center.x}
+				y={edge.label.center.y}
+			>
+				{#each edge.label.lines as line, i (i)}
+					<tspan x={edge.label.center.x} y={labelLineY(edge.label.box, i)}>{line}</tspan>
+				{/each}
+			</text>
+		{/if}
 	{/each}
 	{#if shapes.start}
 		<text class="start-label" x={shapes.start.label.center.x} y={shapes.start.label.center.y}>

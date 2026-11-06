@@ -1,0 +1,20 @@
+# 0042. DiagramInput, multi-line edge labels and the PDA diagram adapter
+
+Status: accepted
+
+## Context
+
+`edgeGeometry` in `web/src/lib/editor/diagram/geometry.ts` took a `MachineDocument`, grouped its transitions into one comma-separated line per `(from, to)` pair, and sized every edge label to a single `20 px` line (`LABEL_HEIGHT`). A PDA edge (`design/screens/pda-editor.md`, section 2; `docs/ux/editor-interactions.md`, "Drawing conventions") lists one transition per line in Rich notation (`read / pop / push`), up to three lines before collapsing the rest into `+ n lagi` (`+ n more`). Four existing FSM callers (`EditorCanvas.svelte`, `DiagramView.svelte`, `ConversionCanvas.svelte`, and `web/src/lib/share/image.ts`) call `edgeGeometry(doc, options)` and must continue to work unchanged.
+
+## Decision
+
+- **Neutral diagram input (`DiagramInput` and `DiagramEdgeInput`).** `diagramGeometry(input: DiagramInput, options?: GeometryOptions): DiagramShapes` takes `{ states, start, accepting, edges }` where each `DiagramEdgeInput` is `{ from, to, lines: readonly string[], text?: string }`. `fsmDiagram(doc: MachineDocument): DiagramInput` builds the one-line FSM edges (`lines: [text], text`), and `edgeGeometry(doc, options)` stays `diagramGeometry(fsmDiagram(doc), options)`.
+- **Multi-line label box (`LINE_PITCH = 18`).** `labelBox(textOrLines, charWidth)` takes a string or a list of lines; `width = maxChars * charWidth + LABEL_PADDING` (`charWidth = 9.6`, `LABEL_PADDING = 8`, counting Unicode code points) and `height = LABEL_HEIGHT + LINE_PITCH * (Math.max(1, lines.length) - 1)` (`20`, `38`, `56` for 1, 2, 3 lines). `placeLabel` uses `reach(normal, size)` so the side of the box nearest the edge or loop stays `LABEL_GAP` (`4 px`) away and the box grows outward away from the curve. `LabelShape` carries `lines: string[]` alongside `text: string` (`edge.text ?? edge.lines.join('; ')`). `labelLineY(box, index)` returns `round(box.y + LABEL_HEIGHT / 2 + LINE_PITCH * index)` (`box.y + 10 + 18 * i`).
+- **SVG rendering (`DiagramDrawing.svelte`).** When `edge.label.lines.length <= 1`, `DiagramDrawing` renders the exact single `<text>` node as before (no `<tspan>`), preserving all existing FSM DOM assertions and tests. When `edge.label.lines.length > 1`, it renders one `<tspan x={edge.label.center.x} y={labelLineY(edge.label.box, i)}>{line}</tspan>` per line inside `<text class="label">`. The hit rectangle (`rect.hit-label`) uses `edge.label.box` and covers all lines automatically; the accessible edge button (`aria-label`) continues to read `edge.label.text`.
+- **PDA diagram adapter (`pda-diagram.ts`).** `transitionLabel(doc, transition)` formats one transition as `read / pop / push` (`ε` for empty `read`, `pop`, or `push`; index 0 on the left as top of stack). Stack symbols are joined without spaces (`BA`) when every symbol in `doc.stackAlphabet` is a single Unicode code point (`[...s].length === 1`), and joined with a single space (`A Z0`, `A A`) for every transition in the document whenever any symbol in `doc.stackAlphabet` has more than one code point. `pdaDiagram(doc, more)` groups transitions by `(from, to)` sorted by `from` then `to`, preserving `doc.transitions` order within each edge. Up to 3 transitions are shown in full (`lines.length <= 3`); for 4 or more transitions, `lines` is `[all[0], all[1], more(all.length - 2)]` (`pda_editor.edge_more`: `+ {count} lagi` / `+ {count} more`), while `text` always holds all transition labels joined by `'; '` so screen readers announce every transition.
+
+## Consequences
+
+- FSM diagram geometry and SVG markup are byte-for-byte unchanged apart from `lines: [text]` on `LabelShape` (verified against `diagram/__fixtures__/fsm-shapes.json` across `endsWith01()` and 300 seeded random FSMs).
+- Labels of three lines of 11 characters are about 114 px wide and 56 px high, so a PDA needs far more room between states than an FSM (random PDA grids pass for 3000 seeds only from a spacing of about 405, tested at 420); T-049 must size the auto-layout spacing and the default placement from the label width.
+
