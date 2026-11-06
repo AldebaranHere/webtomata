@@ -645,3 +645,219 @@ describe('no two labels overlap, and no label covers a state (random machines on
 		}
 	});
 });
+
+import { createHash } from 'node:crypto';
+import fsmBaseline from './__fixtures__/fsm-shapes.json' with { type: 'json' };
+import { LINE_PITCH, diagramGeometry, fsmDiagram, labelLineY } from './geometry.ts';
+import type { DiagramInput, LabelShape } from './geometry.ts';
+
+function stripLines(shapes: DiagramShapes): unknown {
+	const stripLabel = (label: LabelShape) => ({
+		text: label.text,
+		center: label.center,
+		box: label.box
+	});
+	return {
+		states: shapes.states,
+		edges: shapes.edges.map((e) => ({
+			...e,
+			label: stripLabel(e.label)
+		})),
+		...(shapes.start !== undefined
+			? {
+					start: {
+						...shapes.start,
+						label: stripLabel(shapes.start.label)
+					}
+				}
+			: {}),
+		bounds: shapes.bounds
+	};
+}
+
+describe('multi-line labels and DiagramInput (T-039)', () => {
+	it('F1: straight edge with three lines has box 94.4 × 56 at (102.8, -60) and line centers -50, -32, -14', () => {
+		expect(LINE_PITCH).toBe(18);
+		const input: DiagramInput = {
+			states: [
+				{ id: 0, name: 'q0', x: 0, y: 0 },
+				{ id: 1, name: 'q1', x: 300, y: 0 }
+			],
+			start: null,
+			accepting: [],
+			edges: [
+				{
+					from: 0,
+					to: 1,
+					lines: ['ε / ε / ε', 'a / ε / A', 'b / ε / B']
+				}
+			]
+		};
+		const shapes = diagramGeometry(input);
+		const edge = edgeOf(shapes, 0, 1);
+		expect(edge.kind).toBe('straight');
+		expect(edge.label.lines).toEqual(['ε / ε / ε', 'a / ε / A', 'b / ε / B']);
+		expect(edge.label.text).toBe('ε / ε / ε; a / ε / A; b / ε / B');
+		expect(edge.label.center).toEqual({ x: 150, y: -32 });
+		expect(edge.label.box.x).toBeCloseTo(102.8, 10);
+		expect(edge.label.box.y).toBe(-60);
+		expect(edge.label.box.width).toBeCloseTo(94.4, 10);
+		expect(edge.label.box.height).toBe(56);
+		expect(edge.label.box.y + edge.label.box.height).toBe(-4);
+		const lineCenters = [0, 1, 2].map((i) => edge.label.box.y + 10 + LINE_PITCH * i);
+		expect(lineCenters).toEqual([-50, -32, -14]);
+	});
+
+	it('F2: loop with three lines at (200, 300) grows upward with bottom 4 px above loop apex (228)', () => {
+		// Confirm from the existing one-line loop test at (200, 300): apex y is 300 - 32 - 40 = 228.
+		const oneLineLoop = edgeOf(
+			edgeGeometry(build({ alphabet: ['a'], states: [[200, 300]], transitions: [[0, 'a', 0]] })),
+			0,
+			0
+		);
+		const apexY = Math.min(...oneLineLoop.points.map((p) => p.y));
+		expect(apexY).toBe(228);
+
+		const input: DiagramInput = {
+			states: [{ id: 0, name: 'q0', x: 200, y: 300 }],
+			start: null,
+			accepting: [],
+			edges: [
+				{
+					from: 0,
+					to: 0,
+					lines: ['ε / ε / ε', 'a / ε / A', 'b / ε / B']
+				}
+			]
+		};
+		const shapes = diagramGeometry(input);
+		const loop = edgeOf(shapes, 0, 0);
+		expect(loop.kind).toBe('loop');
+		expect(loop.angle).toBe(-90);
+		expect(loop.label.box.x).toBeCloseTo(152.8, 10);
+		expect(loop.label.box.y).toBe(168);
+		expect(loop.label.box.width).toBeCloseTo(94.4, 10);
+		expect(loop.label.box.height).toBe(56);
+		expect(loop.label.box.y + loop.label.box.height).toBe(apexY - LABEL_GAP);
+		expect(loop.label.center).toEqual({ x: 200, y: 196 });
+		const lineCenters = [0, 1, 2].map((i) => loop.label.box.y + 10 + LINE_PITCH * i);
+		expect(lineCenters).toEqual([178, 196, 214]);
+	});
+
+	it('F7: edgeGeometry for endsWith01 and 300 random FSMs matches the recorded baseline apart from lines', () => {
+		expect(typeof fsmDiagram).toBe('function');
+
+		const sampleShapes = edgeGeometry(endsWith01());
+		for (const e of sampleShapes.edges) {
+			expect(e.label.lines).toEqual([e.label.text]);
+		}
+		expect(sampleShapes.start?.label.lines).toEqual([sampleShapes.start?.label.text]);
+		expect(stripLines(sampleShapes)).toEqual(fsmBaseline.samples.endsWith01);
+
+		for (let seed = 1; seed <= 300; seed++) {
+			const rng = random(seed);
+			const cells: [number, number][] = [];
+			for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) cells.push([x, y]);
+			const count = 2 + rng.int(5);
+			const chosen: [number, number][] = [];
+			while (chosen.length < count) {
+				const cell = rng.pick(cells);
+				if (!chosen.includes(cell)) chosen.push(cell);
+			}
+			const alphabet = ['a', 'b', 'c'].slice(0, 1 + rng.int(3));
+			const transitions: [number, string | null, number][] = [];
+			for (let k = 0; k < 4 + rng.int(8); k++) {
+				const from = rng.int(count);
+				const to = rng.chance(0.2)
+					? from
+					: chosen.findIndex(
+							(c) =>
+								Math.abs(c[0] - chosen[from]![0]) + Math.abs(c[1] - chosen[from]![1]) === 1 &&
+								rng.chance(0.7)
+						);
+				if (to < 0) continue;
+				transitions.push([from, rng.chance(0.15) ? null : rng.pick(alphabet), to]);
+			}
+			const unique = [...new Map(transitions.map((t) => [t.join('|'), t])).values()].filter(
+				(t, i, all) => all.slice(0, i).filter((u) => u[0] === t[0] && u[2] === t[2]).length < 2
+			);
+			const doc = build({
+				alphabet,
+				states: chosen.map(([x, y]) => [100 + 130 * x, 100 + 130 * y]),
+				start: rng.chance(0.8) ? rng.int(count) : undefined,
+				accepting: rng.chance(0.5) ? [rng.int(count)] : [],
+				transitions: unique
+			});
+			const shapes = edgeGeometry(doc);
+			for (const e of shapes.edges) {
+				expect(e.label.lines).toEqual([e.label.text]);
+			}
+			if (shapes.start) {
+				expect(shapes.start.label.lines).toEqual([shapes.start.label.text]);
+			}
+			const strippedJson = JSON.stringify(stripLines(shapes));
+			const hash = createHash('sha256').update(strippedJson).digest('hex');
+			expect(hash, `seed ${seed}`).toBe(fsmBaseline.randomHashes[seed - 1]);
+		}
+	});
+
+	it('AC6: labelLineY pure helper gives the exact y positions for one-, two- and three-line labels', () => {
+		expect(typeof labelLineY).toBe('function');
+
+		// 1. One-line FSM edge: lines has 1 element equal to text, and y at index 0 equals center.y
+		const fsmShapes = edgeGeometry(
+			build({
+				alphabet: ['a', 'b'],
+				states: [
+					[0, 0],
+					[300, 0]
+				],
+				transitions: [
+					[0, 'a', 1],
+					[0, 'b', 1]
+				]
+			})
+		);
+		const fsmEdge = edgeOf(fsmShapes, 0, 1);
+		expect(fsmEdge.label.lines).toEqual(['a, b']);
+		expect(fsmEdge.label.text).toBe('a, b');
+		expect(labelLineY(fsmEdge.label.box, 0)).toBe(fsmEdge.label.center.y);
+
+		// 2. One-line PDA edge
+		const oneLinePdaShapes = diagramGeometry({
+			states: [
+				{ id: 0, name: 'q0', x: 0, y: 0 },
+				{ id: 1, name: 'q1', x: 300, y: 0 }
+			],
+			start: null,
+			accepting: [],
+			edges: [{ from: 0, to: 1, lines: ['a / ε / A'] }]
+		});
+		const oneLinePdaEdge = edgeOf(oneLinePdaShapes, 0, 1);
+		expect(oneLinePdaEdge.label.lines).toEqual(['a / ε / A']);
+		expect(labelLineY(oneLinePdaEdge.label.box, 0)).toBe(oneLinePdaEdge.label.center.y);
+
+		// 3. Three-line PDA edge (F1): y values are -50, -32, -14
+		const threeLineShapes = diagramGeometry({
+			states: [
+				{ id: 0, name: 'q0', x: 0, y: 0 },
+				{ id: 1, name: 'q1', x: 300, y: 0 }
+			],
+			start: null,
+			accepting: [],
+			edges: [
+				{
+					from: 0,
+					to: 1,
+					lines: ['ε / ε / ε', 'a / ε / A', 'b / ε / B'],
+					text: 'ε / ε / ε; a / ε / A; b / ε / B; c / ε / C'
+				}
+			]
+		});
+		const threeLineEdge = edgeOf(threeLineShapes, 0, 1);
+		expect(threeLineEdge.label.lines.map((_, i) => labelLineY(threeLineEdge.label.box, i))).toEqual(
+			[-50, -32, -14]
+		);
+		expect(threeLineEdge.label.text).toBe('ε / ε / ε; a / ε / A; b / ε / B; c / ε / C');
+	});
+});
