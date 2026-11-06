@@ -25,7 +25,7 @@ Rules for every task (from `CLAUDE.md` and `AGENTS.md`): tests first, with a del
 **Status:** done
 **Commit:** `1d5690e`
 **PR:** #108
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-001-typecheck-alias`
 
 **Goal:** `pnpm --filter web typecheck` must work from a clean checkout. It does not exist today: `web/package.json` has only `check`, which already runs `svelte-kit sync` first. The handoff and the old plan template named a script that was never there. (The Linux-only tests in `tools/install-browser-deps.test.mjs`, which are skipped on Windows, were already proven by the CI run of PR 107: 105 tool tests passed, 0 skipped.)
@@ -83,7 +83,7 @@ Expected: the two typecheck commands and `pnpm check` end with `svelte-check fou
 **Status:** done
 **Commit:** `9dcad9d`
 **PR:** #134
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-002-tokio-audit`
 
 **Goal:** `.cargo/audit.toml` ignores RUSTSEC-2026-0384 "until 2026-11-04". The lock file has had `tokio 1.54.1` (the fixed version) since commit 2d0dba6 on 2026-10-25, so the ignore is probably stale. Remove it and prove that `cargo audit` is green without it.
@@ -134,7 +134,7 @@ Expected: version 1.54.1 or newer; `cargo audit` exits 0; all tests pass.
 **Status:** done
 **Commit:** `d938e2a`
 **PR:** #110
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-003-original-cnf-presets`
 
 **Goal:** `web/src/lib/grammar/presets.ts` has four presets titled "CNF 01/03/04/05 (HW05 Fasilkom UI)", and three Rust tests are named after HW05. The About page promises that content is never copied from course homework. Replace them with five grammars that the planner designed, each showing a different part of the six CNF phases, and test them against the language they must keep.
@@ -180,7 +180,7 @@ Expected: version 1.54.1 or newer; `cargo audit` exits 0; all tests pass.
 ```
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
-cargo test -p engine-core --test grammar
+cargo test -p engine-core --test gramma
 pnpm --filter web test
 pnpm check
 pnpm lint
@@ -204,7 +204,7 @@ Expected: all pass; the new tests are listed by name in the `cargo test` output;
 **Status:** done
 **Commit:** `9d46f2f`
 **PR:** #116
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-004-adr-glossary-grammar-language`
 
 **Goal:** The formal-language enumeration (PR 104) and the CFG/CNF/CYK workstation (PR 105) added 119 Indonesian messages and two engines, with no ADR and no glossary entries. Write them from the code and the PR descriptions. This is documentation only.
@@ -253,7 +253,7 @@ Expected: both pass. Paste the output into `REPORT.md`.
 ## Task T-005 — Remove the `wrangler` and `miniflare` age-rule exclusions
 
 **Status:** todo (not before 2026-11-12; the owner decided on 2026-11-02 to keep `wrangler` 4.155.0 until then)
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-005-remove-age-exclusions`
 
 **Goal:** PR 103 let `wrangler@4.155.0` (published 2026-10-28 20:28 UTC) and `miniflare@5.20261023.2-beta` (2026-10-28 20:19 UTC) skip the two-week `minimumReleaseAge` rule in `pnpm-workspace.yaml`. Both are 14 days old on 2026-11-11. Remove the two exclusions, so that the rule applies to every package again.
@@ -303,7 +303,7 @@ Expected: all exit 0. Paste the real output into `REPORT.md`, and name the CI jo
 **Status:** done
 **Commit:** `d4aec74`
 **PR:** #112
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-014-cnf-course-method`
 
 **Goal:** The course slide ("Eliminating Long RHS") turns `A → N1 N2 … Nn` (n > 2) into `A → N1 M2`, `M2 → N2 M3`, …, with `n − 2` new variables for each rule and no sharing between rules. Since commit a82bf0e, our phase 6 reuses a helper variable when the same pair appears in another rule, so a student who works by hand gets a different grammar. Make the course method the default and keep the sharing behind an option, off by default. The owner wants both versions in the UI (planner task P-002 and T-015); this task changes the engine only.
@@ -342,7 +342,7 @@ Expected: all exit 0. Paste the real output into `REPORT.md`, and name the CI jo
 ```
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
-cargo test -p engine-core --test grammar
+cargo test -p engine-core --test gramma
 pnpm build:wasm
 pnpm test:wasm
 pnpm --filter web test
@@ -366,7 +366,7 @@ Expected: all pass. Paste the real output.
 **Status:** done
 **Commit:** `987b2e8`
 **PR:** #120
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-018-start-marker-triangle`
 
 **Goal:** The owner wants the start state to look as in JFLAP: a large hollow triangle that touches the state, with the label "mulai" kept beside it (approved on 2026-11-02, "triangle with label"). Today the marker is a short arrow (40 long, with an arrowhead). The marker is drawn by one geometry function, so the editor, the guide embeds, the comparison player and the SVG and PNG export change together.
@@ -438,7 +438,7 @@ Expected: all pass. Run the new e2e test 5 times. Paste the real output into `RE
 **Status:** done
 **Commit:** `b0ec336`
 **PR:** #121
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-016-workstation-phone-layout`
 
 **Goal:** On a phone, both workstations stack three areas as small boxes with their own scroll bars (owner's phone test, 2026-11-02). Make them usable: below 900 px, show **one area at a time** with a tab strip, and let the page scroll as a whole. The laptop layout does not change.
@@ -514,10 +514,10 @@ Expected: all pass. Paste the real output into `REPORT.md`.
 
 ---
 
-## Task T-023 — Open the CNF result as a new grammar
+## Task T-023 — Open the CNF result as a new gramma
 
 **Status:** done (branch `task/T-023-open-cnf-as-grammar`)
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-023-open-cnf-as-grammar`
 
 **Goal:** The FSM panels end with "Buka sebagai mesin baru" (`convert.open_result`, in `ConversionPanel.svelte` and `CompilePlayer.svelte`). The grammar workstation has nothing like it: a student can read the six CNF phases but cannot keep the result. Add the same idea: on the last step (the CNF result) a button "Buka sebagai tata bahasa baru" adds the result to the library as a new custom grammar and shows it in the Editor. The original grammar does not change.
@@ -564,7 +564,7 @@ Expected: all pass. Paste the real output into `REPORT.md`.
 **Verification (Mode B form shown; in Mode A drop the bridge):**
 
 ```
-pnpm --filter web exec vitest run src/lib/grammar
+pnpm --filter web exec vitest run src/lib/gramma
 pnpm check
 pnpm lint
 pnpm format:check
@@ -592,7 +592,7 @@ Expected: all pass. Run the new e2e tests 10 times (they use local storage). Pas
 
 **Status:** done
 **Commit:** `959dd6a`
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-026-readable-cnf-helper-names`
 
 **Goal:** CNF phase 5 names the helper variable of a terminal `c` as `T_c` (`cnf.rs`, `phase5_isolate_terminals`). For a letter or a digit this is fine (`T_a`, `T_0`). For a terminal such as `(` or `+` the name is `T_(`, which the grammar parser cannot read: it reads `T_` and then the terminal `(`. So the CNF result that the student sees is not the same grammar as the text that T-023 stores when the student opens the result as a new grammar. Make every helper name readable by the parser, so that the text and the grammar always agree.
@@ -636,7 +636,7 @@ Expected: all pass, and the `.wasm` stays within the budget in `AGENTS.md`/`CLAU
 ## Task T-027 — The grammar parser reads `λ` as the empty string
 
 **Status:** done
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-027-parser-lambda-empty`
 
 **Goal:** The Editor legend says that `ε`, `λ` and `^` all mean the empty string, and the presets use `λ`. But `parse_rhs_symbols` in `crates/engine-core/src/grammar/parser.rs` accepts `ε`, `^`, `\lambda`, `\epsilon`, `lambda` and `epsilon`, not the character `λ` (U+03BB). So `S -> a S b | λ` gives a rule with the terminal `λ`, not an empty rule. Make the parser accept `λ`.
@@ -666,7 +666,7 @@ Expected: all pass, and the `.wasm` stays within the budget in `AGENTS.md`/`CLAU
 ## Task T-050 — A fast path in CI for pull requests that change only documents
 
 **Status:** done
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-050-ci-docs-only-fast-path`
 
 **Goal:** Every pull request runs the whole CI (about 6 to 7 minutes, plus CodeQL, audit, fuzz and a preview deploy), even when it changes only documents. Make a documents-only change pass the **required** checks (`rust` and `web`) in about a minute, without weakening any guard and without a way to hide a code change as a document. The decision is made **inside the workflow**, not at its trigger: a workflow that is stopped by `paths-ignore` never reports the required checks, and the pull request then waits for ever.
@@ -741,7 +741,7 @@ Expected: the tests pass; the two last commands print `true` and `false`. Paste 
 **Status:** done
 **Commit:** `ee4b47e`
 **PR:** #135
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-019-cyk-input-limit`
 
 **Goal:** The CYK tester has three different limits and three different ways to fail. `CykParser::MAX_INPUT_LEN` is 100 **characters** (`crates/engine-core/src/grammar/cyk.rs`). The API check in `cyk_parse` (`crates/engine-core/src/api.rs`, a literal `256`) calls `too_long`, which compares `text.len()`, the number of **bytes**, although its label says "input characters". So: a word of 101 to 256 bytes passes the API and fails in the parser with an Indonesian **sentence** (`api.cyk_failed` with that sentence as `detail`); a longer word fails in the API with `machine.limit_exceeded`, whose text says "the machine in this file is too big", which is wrong here; and `GrammarCykTester.svelte` shows `params.detail` or, when there is none, the **raw key**. A student sees an Indonesian sentence in the English interface, or the text `machine.limit_exceeded`. Make it one limit (100 characters) and one message that the UI translates.
@@ -799,7 +799,7 @@ Expected: all pass; the `.wasm` stays within the budget. Paste the real output i
 **Status:** done
 **Commit:** `aba03fe`
 **PR:** #136
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-017-local-reference-tests`
 
 **Goal:** `web/src/lib/share/files.wasm.test.ts` and `web/src/lib/share/open-file.wasm.test.ts` read the top level of `REFERENCES/JFF-FILES` and assume that the folder holds finite automata: each ends with `expect(finite).toBeGreaterThan(0)`. On 2026-11-02 one Turing machine file at the top level made the pre-push hook fail ("0 finite automata found"). The folder is private and changes with the owner's course files, so the tests must not depend on what it holds. Today the top level has no `.jff` file (only sub-folders), so both tests are skipped; the fault is waiting for the next file the owner saves there. Since 2026-11-04 the worker's clone has a copy of `REFERENCES/`, so the hook there reads it.
@@ -848,7 +848,7 @@ Expected: all pass. Paste the real output into `REPORT.md`, with the "skipped" c
 **Status:** done
 **Commit:** `1e26263`
 **PR:** #139
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-025-workstation-landmarks`
 
 **Goal:** Before T-016 the three columns of the grammar and the language workstations were an `aside` and two `section` elements with a label, so a screen reader found three landmarks. T-016 made them `div role="tabpanel"` with `aria-labelledby` at every width. Above 900 px the tab strip is hidden, so a screen-reader user finds tab panels that belong to no tab list. Give each width the right roles: landmarks on a laptop, tab panels on a phone.
@@ -903,7 +903,7 @@ Expected: all pass. The area specs are those of the two workstations (`grep -l -
 **Status:** done
 **Commit:** `ba5ff97`
 **PR:** #137
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-013-preset-text-and-rule-chips`
 
 **Goal:** Two small faults in the grammar and language workstations. (1) The preset titles and descriptions are Indonesian only: `web/src/lib/grammar/presets.ts` has `title` and `description` in Indonesian; `web/src/lib/language/presets.ts` has `name` in Indonesian and `descriptionId`/`descriptionEn`. So with the interface in English a student reads Indonesian titles, which breaks principle 5 of `CLAUDE.md` (every user-facing string in `id` and `en`). Also the default title of a new custom grammar, `Tata Bahasa ${id}`, is written in `GrammarWorkstation.svelte`. (2) The rule chips of the CNF stepper join the symbols without spaces (`formatRule` in `GrammarCnfStepper.svelte`), so a rule reads `S → T_aST_b`, which a student cannot read as `S → T_a S T_b`.
@@ -958,7 +958,7 @@ Expected: all pass. Paste the real output into `REPORT.md`.
 **Status:** done
 **Commit:** `9cbc226`
 **PR:** #141
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-024-rule-rows-touch`
 
 **Goal:** On a phone the controls of the rule matrix are too small for a finger (left-hand box 64 × 26 px, alternative box 45 × 22 px, "+" 24 × 24 px, symbol buttons about 20 px tall, "+ Tambah Baris" about 28 px tall), which breaks the 44 px rule of `CLAUDE.md`. Also, a row can be deleted only by a right-click (`oncontextmenu`), which a finger cannot do on iOS. The owner approved the design on 2026-11-04: option B (alternatives flow in one line, like the textbook), for every touch screen and every width up to 900 px, and a delete button that deletes without asking.
@@ -1016,7 +1016,7 @@ Expected: all pass. Do not run the full suite locally (see `AGENTS.md`, verifica
 **Status:** done
 **Commit:** `ccafc05`
 **PR:** #142
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-010-grammar-flow-e2e`
 
 **Goal:** The existing grammar specs test the layout, the targets, the landmarks, the locale, "open the CNF result" and the CYK length limit. Nothing tests what a student does: type a grammar into the matrix, walk through the six CNF phases, and test strings with CYK. Add those tests, with axe, so that later changes (T-024, T-015, T-028) cannot break the flow without a failing test.
@@ -1067,12 +1067,12 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 
 ---
 
-## Task T-011 — End-to-end tests for the language workstation and the mode switcher
+## Task T-011 — End-to-end tests for the language workstation and the mode switche
 
 **Status:** done
 **Commit:** `e0c793d`
 **PR:** #143
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-011-language-and-switcher-e2e`
 
 **Goal:** The language workstation and the mode switcher are used by every other grammar and language spec to get to a screen, but nothing tests their own behavior: the enumeration in proper order, its settings, the copy button, the formula errors, and the switcher's keyboard and persistence. Add those tests, with axe.
@@ -1126,7 +1126,7 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 **Status:** done
 **Commit:** `1665a38`
 **PR:** #145
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-029-cyk-text-spacing`
 
 **Goal:** `GrammarCykTester.svelte` builds the grammar text for the engine with its own code that joins the symbols of a rule body with no space (`.join('')`). A rule `S → T_a T_b` becomes `S -> T_aT_b`, which the parser reads as one symbol, so CYK answers "the grammar must be in CNF". The planner reproduced it on 2026-11-05 through the engine: `S -> T_aT_b` fails and `S -> T_a T_b` is accepted (found by the worker in T-010). It breaks the main flow: convert to CNF, open the result as a grammar (T-023), test a string; every CNF result that has a helper variable `T_a` fails in CYK.
@@ -1172,7 +1172,7 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 ## Task T-060 — CNF phases in the homework order, with message keys
 
 **Status:** done
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-060-cnf-homework-order`
 
 **Goal:** The six phases of the CNF stepper follow the six stages of the course homework: (1) unreachable rules, (2) non-productive rules, (3) ε-rules, (4) unit rules, (5) mixed rules, (6) long right-hand sides. Today they are: start symbol, ε-rules, unit rules, useless symbols, terminals, long rules. Also, the engine returns Indonesian sentences for the phase names and descriptions; they become message keys, translated in the UI.
@@ -1224,10 +1224,10 @@ Expected: all pass. Do not run the full suite locally. Paste the real output int
 
 ---
 
-## Task T-015 — Toggle "versi panjang / versi ringkas" in the CNF stepper
+## Task T-015 — Toggle "versi panjang / versi ringkas" in the CNF steppe
 
 **Status:** done
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-015-cnf-version-toggle`
 
 **Goal:** A segmented control in the stepper header switches the CNF conversion between two versions. _Versi panjang_ (default) is today's behavior. _Versi ringkas_ reuses what exists: in phase 5 a terminal `a` uses an existing variable `A` whose only rule is `A → a` instead of a new `T_a`; in phase 6 identical helper variables are shared between rules. Both versions end in a CNF grammar for the same language. The six phases and their order stay as in T-060. See `design/screens/cnf-stepper-homework-order.md` (the owner approved it, and chose the names "versi panjang" and "versi ringkas").
@@ -1301,7 +1301,7 @@ Expected: all pass. Do not run the full suite locally. Paste real output into `R
 ## Task T-030 — PDA data model, JSON, validation and the determinism check
 
 **Status:** done
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-030-pda-model`
 
 **Goal:** The engine gets a pushdown automaton (PDA) as plain data, in the notation of the course slides (Slide12 and Slide13, the same as Rich): a transition `((q1, c, γ1), (q2, γ2))` reads `c` (or nothing), pops the string `γ1` from the top of the stack, and pushes the string `γ2`. The machine is non-deterministic by default (NDPDA); a deterministic PDA (DPDA) is the special case where no two transitions compete. This task adds the model, the versioned JSON file, the validation, and a function that lists the competing transitions. It does not run the machine (T-031), read `.jff` (T-032), or draw it (T-033). See ADR 0034 (written in this task) and `docs/agent/DECISIONS.md` (2026-11-05, PDA decisions).
@@ -1377,7 +1377,7 @@ Expected: all pass. No e2e (no UI). Paste real output into `REPORT.md`.
 ## Task T-031 — PDA simulation: breadth-first, stack trace, peak configurations
 
 **Status:** done
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-031-pda-simulation`
 
 **Goal:** Run a PDA on an input string, as in the course: breadth-first over configurations `(state, remaining input, stack)`, with a step budget, a trace of one computation, and the largest number of configurations that were alive at the same time. The homework grades a machine "by how low a level of non-determinism it performs, counted by the simulator as the largest number of contents in the BFS queue"; the number this task returns is our version of that count. See ADR 0035.
@@ -1442,7 +1442,7 @@ Expected: all pass. Paste real output into `REPORT.md`.
 **Status:** done
 **Commit:** `cd1327f`
 **PR:** #155
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-032-pda-jff`
 
 **Goal:** Read and write JFLAP files with `<type>pda</type>`, next to the finite-automaton code in `jff.rs`. A student can then bring a PDA from JFLAP into WebTomata and take one back, as with FSMs. This is engine only: no screen, no file picker (T-033 wires the editor).
@@ -1522,7 +1522,7 @@ Expected: all pass. No e2e (no UI). Paste real output into `REPORT.md`.
 **Status:** done
 **Commit:** `e6cefdd`
 **PR:** #157
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-034-cfg-to-pda-topdown`
 
 **Goal:** The slides' `CFGtoPDAtopdown` (Slide13, page 4), with a step trace. From a context-free grammar the engine builds a PDA with two states, `p` (start) and `q` (accepting), that accepts the same strings. The student sees the PDA and one trace step for every transition that the algorithm adds. Engine only: no screen (T-033 is the editor, T-038 the panel).
@@ -1613,7 +1613,7 @@ Expected: all pass. No e2e (no UI). Paste real output into `REPORT.md`.
 **Status:** done
 **Commit:** `b446940`
 **PR:** #159
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-035-cfg-to-pda-bottomup`
 
 **Goal:** The slides' `CFGtoPDAbottomup` (Slide13, page 8), with a step trace, next to the top-down conversion of T-034. From a context-free grammar the engine builds a PDA that accepts the same strings by shift and reduce: it reads input symbols onto the stack, and whenever the top of the stack holds the right-hand side of a rule, it replaces that by the left-hand side. Engine only: no screen (T-033 is the editor, T-038 the panel).
@@ -1703,7 +1703,7 @@ Run the two proptests of AC3 with `PROPTEST_CASES=1000` three times in a row and
 
 **Status:** done
 **Commit:** `bb7993d`
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-036-pda-to-rnf`
 
 **Goal:** The slides' conversion of a PDA to **restricted normal form** (RNF; Slide13, pages 13 to 19), with a step trace. This is the first half of "PDA to CFG": T-037 turns an RNF machine into a grammar. A student sees the new start state, the new single accepting state, and every transition that is split or expanded so that each one pops exactly one symbol. Engine only: no screen (T-033 is the editor, T-038 the panel).
@@ -1789,7 +1789,7 @@ Run the AC3 proptest with `PROPTEST_CASES=1000` three times in a row and paste t
 ## Task T-037 — PDA in restricted normal form to CFG, with a trace
 
 **Status:** done
-**Owner:** worker
+**Owner:** worke
 **Branch:** `task/T-037-pda-to-cfg`
 
 **Goal:** The slides' `PDAtoCFG` (Slide13, pages 20 to 22): one variable for every triple (state, stack symbol, state), the start rule `S → <s,#,a>`, the rules `<q,ε,q> → ε`, and the rules of step S4 (A) for transitions that push nothing and (B) for transitions that push `n ≥ 1` symbols. Input is a PDA in restricted normal form (T-036 makes one); output is a grammar (T-034's `Grammar`), plus the step trace. Engine only: no screen (T-033 is the editor, T-038 the panel). The slides' own example (`wcwᴿ`, pages 23 to 27) is the oracle.
@@ -1873,8 +1873,8 @@ Run both AC3 proptests with `PROPTEST_CASES=1000` three times in a row and paste
 
 ## Task T-033 — PDA editor, part 1 of 5: the PDA document, its commands and its history
 
-**Status:** in-progress
-**Owner:** worker
+**Status:** done
+**Owner:** worke
 **Branch:** `task/T-033-pda-document`
 
 **Goal:** The PDA editor (wireframe `design/screens/pda-editor.md`, approved by the owner on 2026-11-06) is built in five small tasks, one after the other: T-033 (this one: the data, no screen), T-039 (the diagram shows a PDA), T-049 (the editor shell: build a PDA on the canvas, the label form, the kind switch), T-051 (the Tabel and Definisi tabs, the determinism badge, the checks), T-052 (saved machines with a type chip, files, the three examples). This task adds what a PDA editor edits: a **PDA document** with its commands and an undo history, in TypeScript, next to the FSM document, with the conversion to and from the engine's `Pda`. Nothing on a screen changes. See `docs/agent/DECISIONS.md` (2026-11-06, the PDA editor architecture).
@@ -1941,7 +1941,7 @@ Run the history property test (AC5) with three different seeds and paste the res
 ## Task T-039 — PDA editor, part 2 of 5: the diagram shows a PDA (draft)
 
 **Status:** proposed (after T-033)
-**Owner:** worker
+**Owner:** worke
 
 **Goal:** `edgeGeometry` and the canvas draw a PDA: the diagram takes a small `DiagramInput` (states, start, accepting, edges with their label lines) instead of a `MachineDocument`, with an adapter for each document type (`fsmDiagram(doc)` keeps every FSM picture and test as it is; `pdaDiagram(doc)` makes the label lines `c / pop / push`, at most three, then `+ n lagi`). The geometry tests for three label lines and the property "no label covers a state or another label" hold. No screen yet: a unit test lays out the three samples. See `design/screens/pda-editor.md`, section 2.
 
@@ -1952,7 +1952,7 @@ Run the history property test (AC5) with three different seeds and paste the res
 ## Task T-049 — PDA editor, part 3 of 5: the editor shell and the label form (draft)
 
 **Status:** proposed (after T-039)
-**Owner:** worker
+**Owner:** worke
 
 **Goal:** The mode switcher enables "Otomata Pushdown (PDA)" (`/sandbox?mode=pda`). A PDA editor with the canvas, the four tools, undo and redo, autosave to the device (its own record kind until T-052), the DPDA | NDPDA switch and the three-field label form (a popover on a laptop, a sheet on a phone, the `Ketik ε` button in the dock). The editor reuses the canvas, the tool rail, the history buttons and the panel frame of the FSM editor; the PDA editor shell is a new component, not a copy of `Editor.svelte`. See `design/screens/pda-editor.md`, sections 1, 2, 4, 8 and 9.
 
@@ -1963,7 +1963,7 @@ Run the history property test (AC5) with three different seeds and paste the res
 ## Task T-051 — PDA editor, part 4 of 5: the tabs, the badge and the checks (draft)
 
 **Status:** proposed (after T-049)
-**Owner:** worker
+**Owner:** worke
 
 **Goal:** The panel of the PDA editor: the Tabel tab (alphabets, states, the transition table), the Definisi tab, the determinism badge with its list of competing pairs and "Tunjukkan", and the "Pemeriksaan" line (`validatePda`). See `design/screens/pda-editor.md`, sections 3 to 7.
 
@@ -1974,7 +1974,7 @@ Run the history property test (AC5) with three different seeds and paste the res
 ## Task T-052 — PDA editor, part 5 of 5: saved machines, files and the three examples (draft)
 
 **Status:** proposed (after T-051)
-**Owner:** worker
+**Owner:** worke
 
 **Goal:** "Mesin saya" lists FSMs and PDAs with a type chip and opens a PDA in the PDA mode; the first-run card of the PDA editor with the three examples of T-033; open and export `.jff` and JSON for a PDA (with the calm message for symbols of more than one character); the FSM importer's `jff.unsupported_type { type: "pda" }` offers "Buka di mode PDA". No share link (a later task). See `design/screens/pda-editor.md`, section 1 and "Files and export".
 
@@ -1985,7 +1985,7 @@ Run the history property test (AC5) with three different seeds and paste the res
 ## Task T-038 — Conversions and simulation panel for the PDA (draft)
 
 **Status:** proposed (after P-005 is approved and T-051, T-034, T-035, T-037 are merged)
-**Owner:** worker
+**Owner:** worke
 
 **Goal:** In the PDA editor, a panel that plays the simulation of T-031 (stack drawn, one step at a time, the peak number shown) and shows the traces of T-034 to T-037. A wireframe the owner approves comes first (planner task P-005, to be written after P-004).
 
@@ -1993,10 +1993,10 @@ Run the history property test (AC5) with three different seeds and paste the res
 
 ---
 
-## Planner task P-004 — Wireframe of the PDA editor
+## Planner task P-004 — Wireframe of the PDA edito
 
 **Status:** done (drawn on 2026-11-06 in `design/screens/pda-editor.md` and `.svg`; the owner accepted the planner's pick on all five questions the same day; the build is split into T-033, T-039, T-049, T-051 and T-052)
-**Owner:** planner
+**Owner:** planne
 
 Draw `design/screens/pda-editor.md` and `.svg`: the diagram with the label `c / γ1 / γ2` (Rich's notation and the slides'; JFLAP shows `c, γ1; γ2`, which we do not use), a transition table with the same three columns, the formal definition, the "deterministic or not" badge with the list of competing pairs, and the panel tabs of the FSM editor. The owner approves it before T-033.
 
@@ -2005,14 +2005,14 @@ Draw `design/screens/pda-editor.md` and `.svg`: the diagram with the label `c / 
 ## Planner task P-003 — Wireframe of the grammar rule rows on a phone
 
 **Status:** done (approved by the owner on 2026-11-04, option B; it became task T-024)
-**Owner:** planner
+**Owner:** planne
 
 `design/screens/grammar-rule-rows-phone.md` and `.svg`.
 
-## Planner task P-001 — As-built spec of the grammar workstation, the language workstation and the switcher
+## Planner task P-001 — As-built spec of the grammar workstation, the language workstation and the switche
 
 **Status:** done (PR 117, merged on 2026-11-02; the phone layout became task T-016)
-**Owner:** planner
+**Owner:** planne
 
 Write `design/screens/grammar-workstation.md`, `design/screens/language-workstation.md` and `design/screens/workstation-switcher.md` from the screenshots and the code, and add them to `docs/ux/wireframes.md`. No redesign of the laptop layouts. The owner approves each. T-010 to T-012 wait for this.
 
@@ -2021,7 +2021,7 @@ Write `design/screens/grammar-workstation.md`, `design/screens/language-workstat
 ## Planner task P-002 — Wireframe of the CNF "versi panjang / versi ringkas" switch
 
 **Status:** drawn on 2026-11-05 in `design/screens/cnf-stepper-homework-order.md` and `.svg`, and approved by the owner the same day (the stage order and the start-symbol rule were settled from the course slides). It also changes the phase order (the owner agreed on 2026-11-05: follow the homework). Tasks: T-060 (order and message keys), then T-015 (the toggle).
-**Owner:** planner
+**Owner:** planne
 
 **Owner's answers (2026-11-04):** the long version is the default; a toggle switches to a "minimized" version with reused rules (one version at a time, not side by side). The engine's six phases follow the course's homework text for CNF (report the grammar after each stage: unreachable rules, non-productive rules, epsilon rules, unit rules, mixed rules, long right-hand sides). Still to draw and ask: where the toggle sits (in the stepper header is the planner's pick), and what exactly "minimized" does (shared helper variables only, or also reuse of an existing `A → a` rule; see the note below).
 
