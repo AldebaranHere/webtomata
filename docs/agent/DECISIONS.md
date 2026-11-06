@@ -15,6 +15,17 @@ Format:
 
 ---
 
+## 2026-11-06 — The PDA editor: wireframe answers and architecture (P-004, tasks T-033 to T-052)
+
+- Decider: owner (the five answers); planner (the architecture)
+- Context: The planner drew the PDA editor wireframe (`design/screens/pda-editor.md`) with five questions; the owner accepted the planner's pick on all five. The FSM editor is tied to `MachineDocument` (about forty files), so the PDA editor needs a way in that does not rewrite it.
+- Decision: (1) The label of a transition is edited in three fields (Baca, Pop, Push), not one slash text. (2) The badge of an NDPDA is neutral information; it is a warning only for a DPDA. (3) "Mesin saya" is one list with a type chip; there is no share link in the first PDA editor. (4) The first-run examples are aⁿbⁿ (n ≥ 1), wcwᴿ and wwᴿ. (5) An edge shows at most three label lines, then `+ n lagi`. Architecture: a parallel `PdaDocument` with its own commands (the FSM document is not changed); one generic undo history; the diagram takes a small `DiagramInput` with an adapter for each document type; the editor shell is a new component that reuses the canvas, the tool rail and the panel frame. The build is five small tasks: T-033 (document), T-039 (diagram), T-049 (shell and label form), T-051 (tabs, badge, checks), T-052 (library, files, examples); T-038 (simulation and conversions) waits for P-005 and T-051.
+- Alternatives considered: one document type that is a union of the FSM and the PDA (rejected: it touches about forty files and every FSM test for no student-visible gain); copying `Editor.svelte` and `EditorCanvas.svelte` (rejected: about 1700 lines of duplicated gestures; code is a cost).
+- Reversible? yes (nothing is built yet)
+- Affects: `design/screens/pda-editor.md`, `docs/agent/PLAN.md` (T-033, T-038, T-039, T-049, T-051, T-052), `web/src/lib/editor/history.ts` and the new `pda-*` files (T-033)
+
+---
+
 ## 2026-11-06 — PDA in restricted normal form to CFG conversion with step trace (task T-037)
 
 - Decider: worker
