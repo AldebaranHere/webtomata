@@ -1940,7 +1940,7 @@ Run the history property test (AC5) with three different seeds and paste the res
 
 ## Task T-039 — PDA editor, part 2 of 5: the diagram shows a PDA
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-039-pda-diagram`
 
@@ -2118,7 +2118,7 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-030** PDA data model, JSON, validation and the determinism check: specified in its own block above (`todo`). The three questions are settled from the slides (2026-11-05): the stack starts empty, one acceptance rule (input used up, stack empty, accepting state), `pop` and `push` are lists of named symbols, top first.
 - **T-031** PDA simulation, breadth-first, with a stack trace, budgets and the peak number of configurations: specified in its own block above (`todo`; after T-030).
 - **T-032** PDA `.jff` import and export: specified in its own block above (`todo`; T-030 and T-031 are merged).
-- **T-033** PDA editor, part 1 of 5, the PDA document, its commands and its history: specified in its own block above (`done`, PR 165). **T-039** (the diagram shows a PDA): specified in its own block above (`todo`, since 2026-11-06). **T-049** (the editor shell and the label form), **T-051** (the tabs, the badge and the checks) and **T-052** (saved machines, files, examples): drafts above (`proposed`), one after the other.
+- **T-033** PDA editor, part 1 of 5, the PDA document, its commands and its history: specified in its own block above (`done`, PR 165). **T-039** (the diagram shows a PDA): specified in its own block above (`in-progress`, since 2026-11-06). **T-049** (the editor shell and the label form), **T-051** (the tabs, the badge and the checks) and **T-052** (saved machines, files, examples): drafts above (`proposed`), one after the other.
 - **T-034** CFG to PDA, top-down (slides, `CFGtoPDAtopdown`): specified in its own block above (`todo`, since 2026-11-05; T-032 is merged). Tested by language equivalence, not by structure against JFLAP's file.
 - **T-035** CFG to PDA, bottom-up (slides, shift and reduce): specified in its own block above (`todo`, since 2026-11-05; T-034 is merged).
 - **T-036** PDA to restricted normal form, with a trace: specified in its own block above (`done`, PR 161).
