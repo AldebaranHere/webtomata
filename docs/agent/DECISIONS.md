@@ -15,6 +15,17 @@ Format:
 
 ---
 
+## 2026-11-06 — The PDA editor is built in eight tasks, and the interaction core is shared (T-049)
+
+- Decider: planner
+- Context: Reading `interaction/editor.ts` (711 lines) and `EditorCanvas.svelte` (957 lines) for the editor shell showed that the states, the selection, the drag, the tools and undo are the same for a PDA; only the text of an edge, the removal of an edge and the label differ. The planned part 3 of 5 (shell and label form) was too big for one pull request.
+- Decision: The five tasks become eight: T-049 (the interaction core works for two kinds of document, through a small `EditorKind` with history, equality, edge text and edge removal; the FSM wrapper keeps its signature and `commitLabel`), T-053 (the canvas takes either kind and has a slot for the label box), T-054 (the three-field label form and its logic), T-055 (the editor shell, the mode and autosave), T-051 (the panel with the kind switch, the Tabel and Definisi tabs, the badge and the checks), T-052 (saved machines, files, examples). The kind switch moves from the shell to the panel, where the wireframe puts it. A new `commitEdge(commands)` is the one way a label is committed; the FSM `commitLabel` ends by calling it. Finding from T-039: PDA labels need states about 410 units apart in the worst case, so T-055 must size the default placement and the auto layout from the label width.
+- Alternatives considered: copying the controller for the PDA (rejected: about 700 lines of duplicated gestures); making the controller a union over the two documents (rejected: it would touch every FSM test for nothing the student sees).
+- Reversible? yes (nothing is built yet)
+- Affects: `docs/agent/PLAN.md` (T-049, T-053, T-054, T-055, T-051, T-052), `web/src/lib/editor/interaction/*`, `diagram/pda-diagram.ts`
+
+---
+
 ## 2026-11-06 — The PDA editor: wireframe answers and architecture (P-004, tasks T-033 to T-052)
 
 - Decider: owner (the five answers); planner (the architecture)

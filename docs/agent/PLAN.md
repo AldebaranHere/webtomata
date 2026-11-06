@@ -4,7 +4,7 @@
 > `todo` means ready: every field is written and the human approved it. Several tasks can be `todo` at the same time. The worker does one task at a time: the one that the human names in the start prompt ("Do task T-xxx"). The worker sets it to `in-progress` in the first commit of its own PR and to `done` in the last. The planner does not open a pull request only to change a status.
 > The blank task template is in `PLAN-TEMPLATE.md`.
 
-**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 (CNF phases in the homework order, after T-029 is merged) is `todo` since the owner approved `design/screens/cnf-stepper-homework-order.md`; T-060 is merged (PR 147). Written on 2026-11-05 after it: T-015 (`todo`: the "versi panjang / versi ringkas" toggle). Written on 2026-11-05 after T-015 merged: T-030, then T-031 (`todo`, the PDA engine: model and validation, then simulation; one after the other, they touch the same engine files). T-032 is `todo` since 2026-11-05 (T-031 merged) T-034 (done) and T-035 (`todo`, T-034 merged); T-036 and T-037 are merged (PRs 161 and 163); P-004 (the PDA editor wireframe) is approved; T-033 is merged (PR 165); T-039 is `todo` since 2026-11-06 (T-049, T-051 and T-052 are `proposed` drafts that follow it); T-038 is a `proposed` draft; the full specs are written when the one before is merged.
+**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 (CNF phases in the homework order, after T-029 is merged) is `todo` since the owner approved `design/screens/cnf-stepper-homework-order.md`; T-060 is merged (PR 147). Written on 2026-11-05 after it: T-015 (`todo`: the "versi panjang / versi ringkas" toggle). Written on 2026-11-05 after T-015 merged: T-030, then T-031 (`todo`, the PDA engine: model and validation, then simulation; one after the other, they touch the same engine files). T-032 is `todo` since 2026-11-05 (T-031 merged) T-034 (done) and T-035 (`todo`, T-034 merged); T-036 and T-037 are merged (PRs 161 and 163); P-004 (the PDA editor wireframe) is approved; T-033 is merged (PR 165); T-039 is merged (PR 167); T-049 is `todo` since 2026-11-06 (T-053, T-054, T-055, T-051 and T-052 are `proposed` drafts that follow it); T-038 is a `proposed` draft; the full specs are written when the one before is merged.
 
 Status legend: `proposed` | `todo` | `in-progress` | `blocked` | `done` | `rejected`
 
@@ -2009,29 +2009,122 @@ Paste real output into `REPORT.md`, with the hand derivation of F1 and F2 first.
 
 ---
 
-## Task T-049 — PDA editor, part 3 of 5: the editor shell and the label form (draft)
+## Task T-049 — PDA editor, part 3 of 8: the interaction core works for two kinds of document
 
-**Status:** proposed (after T-039)
+**Status:** todo
 **Owner:** worker
+**Branch:** `task/T-049-editor-core`
 
-**Goal:** The mode switcher enables "Otomata Pushdown (PDA)" (`/sandbox?mode=pda`). A PDA editor with the canvas, the four tools, undo and redo, autosave to the device (its own record kind until T-052), the DPDA | NDPDA switch and the three-field label form (a popover on a laptop, a sheet on a phone, the `Ketik ε` button in the dock). The editor reuses the canvas, the tool rail, the history buttons and the panel frame of the FSM editor; the PDA editor shell is a new component, not a copy of `Editor.svelte`. See `design/screens/pda-editor.md`, sections 1, 2, 4, 8 and 9.
+**Goal:** The editor's brain, `createEditor` in `web/src/lib/editor/interaction/editor.ts` (711 lines: the document with its history, the selection, the tools, a drag, a transition that is being made, the open label box, the edge that is selected, the announcements), is written for `MachineDocument`. Everything in it that a PDA does the same way (states: add, move, rename, delete, start, accepting; the selection; edges as pairs of states; undo and redo) must work for a `PdaDocument` too, and the three things that differ (the text of an edge, how an edge is removed, how a label is committed) must come from the document type. This task makes that split. **It is a refactor with one addition:** the FSM editor behaves exactly as before (every existing test passes unchanged), and a `createPdaEditor(initial: PdaDocument)` exists and is tested. No component and no screen changes. The PDA editor is built in eight small tasks: T-033 and T-039 (merged), this one, T-053 (the canvas), T-054 (the label form), T-055 (the editor shell and the mode), T-051 (the panel: tabs, kind switch, badge, checks), T-052 (saved machines, files, examples). See `docs/agent/DECISIONS.md` (2026-11-06) and `design/screens/pda-editor.md`.
 
-**Depends on:** T-039.
+**Decisions already made (do not reopen; ask the planner if one looks wrong):**
+
+- **One core, two thin kinds.** `createEditorCore<D extends StatesDocument, C>(initial: D, kind: EditorKind<D, C>)` holds everything that is shared. `createEditor(initial: MachineDocument): Editor` keeps its exact signature and returns the FSM editor with all its present methods, including `commitLabel(text, split?)`. `createPdaEditor(initial: PdaDocument): PdaEditor` is new. Do not copy `editor.ts`.
+- **`StatesDocument`** is a small structural type in a new file `interaction/document-view.ts`: `{ readonly states: readonly StateEntry[]; readonly start: number | null; readonly accepting: readonly number[]; readonly transitions: readonly { readonly from: number; readonly to: number }[] }`. `MachineDocument` and `PdaDocument` already satisfy it. `menu.ts`, `placement.ts` and `selection.ts` take a `StatesDocument` (or the part they use) instead of `MachineDocument`; their tests are not edited.
+- **The commands that are the same.** `addState`, `removeState`, `moveState`, `renameState`, `setStart`, `setAccepting`, `setTitle` and `batch` have the same shape in `Command` and `PdaCommand` (T-033 made them so). Define `StateCommand` (the first seven) once, in `document-view.ts`, so that the core builds them without knowing the document type; a test of types (`satisfies`) proves that both `Command` and `PdaCommand` accept every `StateCommand`.
+- **`EditorKind<D, C>`** is what a document type supplies: `createHistory(initial: D): GenericHistory<D, C>` (`createHistory` and `createPdaHistory` from `history.ts`; the type `GenericHistory` is already exported), `equal(a: D, b: D): boolean` (`documentsEqual`, `pdaDocumentsEqual`), `edgeText(doc: D, from: number, to: number): string` (what a screen reader reads for an edge; `''` if there is none) and `removeEdge(doc: D, from: number, to: number): C[]` (the commands that remove every transition of the pair; `removeTransition` has other fields in a PDA). Nothing else. If you find that the core needs a fourth thing, stop and tell the planner.
+- **The label.** The core no longer knows how a label is typed. It keeps `labeling` (`{ from, to, ask }`), `editEdge()`, `cancelLabel()` and what happens when a transition is finished (`finishLink` opens the label for the pair), and gains `commitEdge(commands: readonly C[]): Refusal | null`: it sends the commands as one `batch` (one undo step; a single command goes alone), closes the label box, and announces. With no commands it closes the box and makes no step. If the document refuses, the box stays open, the announcement is the refusal (as `commitLabel` does now), and the refusal is returned. After a successful send the announcement is `editor.edge_removed { from, to }` if the pair has no transition left, else `editor.edge_changed { from, to, symbols: edgeText(doc, from, to) }`. **The FSM's `commitLabel(text, split)` keeps the part that is FSM only** (parse the text, the question of a long part, `labelCommands`) **and ends by calling `commitEdge`**, so the tail of the code exists once. Its behavior, its returned values and its announcements do not change.
+- **The text of a PDA edge** is `pdaEdgeText(doc, from, to)`, new, in `diagram/pda-diagram.ts`: the label of every transition of the pair (`transitionLabel`, the document-wide stack spacing of T-039), in `doc.transitions` order, joined by `; `. `pdaDiagram` uses it for the `text` of an edge, so the format exists once.
+- **The PDA editor interface.** `PdaEditor` is the core interface for `PdaDocument` and `PdaCommand` (no `commitLabel`). `Editor` (the FSM one) stays exported under the same name with the same members; the generic core interface is `EditorCore<D, C>` and `EditorState<D>` is generic with `EditorState` (no argument) meaning the FSM one, so that no component changes in this task.
+- **No new message key.** The announcements are the existing `editor.*` keys.
+
+**Scope (in):**
+
+- `web/src/lib/editor/interaction/document-view.ts` (new): `StatesDocument`, `StateCommand`, `EditorKind`.
+- `web/src/lib/editor/interaction/editor.ts`: the core, `createEditor` as a thin FSM wrapper, `commitEdge`. Keep it one file if it stays under about 800 lines; if not, move `createPdaEditor` and the FSM kind to small files, never the shared logic.
+- `web/src/lib/editor/interaction/pda-editor.ts` (new, about 40 lines): the PDA kind and `createPdaEditor`.
+- `menu.ts`, `placement.ts`, `selection.ts`: parameter types only.
+- `web/src/lib/editor/diagram/pda-diagram.ts`: `pdaEdgeText`.
+- `docs/decisions/0043-editor-core-two-documents.md` (the decisions above, short).
+- Tests, written first: `interaction/pda-editor.test.ts` (new, the fixtures below) and `interaction/pda-editor.property.test.ts` (new).
+
+**Non-goals (out):**
+
+- No component, no route, no `EditorCanvas`, `Editor.svelte` or `LabelField.svelte` change (T-053 to T-055). No PDA label form or label parsing (T-054). No change to the document types, commands, history or any FSM test. No new message key. No storage.
+
+**Fixtures (the oracle; derive the numbers by hand first and write the derivation in `REPORT.md`). The document is `wwrSample()` of T-033: states `q0` (id 0, start), `q1` (id 1, accepting); transitions in order `q0 ε/ε/ε q1`, `q0 a/ε/A q0`, `q0 b/ε/B q0`, `q1 a/A/ε q1`, `q1 b/B/ε q1`; stack alphabet `["A","B"]`:**
+
+- *F1, edges.* `selectEdge(0, 1)`: `state.edge = {0, 1}`, selection empty, announcement `editor.edge_selected { from: "q0", to: "q1", symbols: "ε / ε / ε" }`. `selectEdge(0, 0)`: symbols `"a / ε / A; b / ε / B"`. `selectEdge(1, 0)` (no such edge): nothing changes. `deleteEdge(0, 0)`: both transitions of the pair are removed in **one** undo step (the document has 3 transitions left: `q0 ε/ε/ε q1`, `q1 a/A/ε q1`, `q1 b/B/ε q1`), the announcement and the toast are `editor.edge_removed { from: "q0", to: "q0" }`, the selection is empty and the focus goes to state 0; one `undo()` gives back a document that is `===` the one before (the history keeps the object). `deleteEdge(0, 1)` leaves 4 transitions.
+- *F2, deleting a state.* `deleteStates([1])`: the states are `[q0]`; `start` is 0; `accepting` is `[]`; the transitions are the two on `q0 a/ε/A q0` and `q0 b/ε/B q0` (every transition that touches state 1 is gone: `0>1` and the two on `1>1`); it is one undo step; one `undo()` restores the same object. The same call with the edge `(1, 1)` selected clears the selected edge.
+- *F3, making a transition and committing it.* `startLink(0)`, `finishLink(1)`: `state.labeling = { from: 0, to: 1, ask: null }`. `commitEdge([addTransition 0, read "a", pop ["A"], push [], to 1])` returns `null`; `labeling` is `null`; the document has the new transition **after** `q0 ε/ε/ε q1` (read `a` sorts after ε); the announcement is `editor.edge_changed { from: "q0", to: "q1", symbols: "ε / ε / ε; a / A / ε" }`; it is one undo step. `commitEdge([])` returns `null`, closes the box and makes **no** step (the history's `canUndo` is as before). `commitEdge([addTransition 0, read "z", ...])` with a symbol that is not in the alphabet returns `{ key: "pda_document.unknown_symbol", params: { symbol: "z" } }`, the box stays open, the document is the same object, and the announcement is that refusal. `commitEdge` of the commands that remove the last transition of a pair announces `editor.edge_removed`.
+- *F4, a drag.* `beginDrag(0, p)`, `dragTo(p + (40, 10), false)` several times, `endDrag()`: the state moved by (40, 10) in **one** undo step; while dragging, `state.preview` holds the new place and the document is unchanged; `cancelDrag()` leaves the document and the history as they were; `undo()` gives back the same object.
+- *F5, the rest of the shared rules, once each on a PDA:* `addStateAt`, `toggleAccepting`, `toggleStart` (set, then cleared), `startRename` and `commitRename`, `setTitle` (announcement `editor.title_set`), `selectAll`, `nudge` and `seal`, `undo` and `redo` (announcements `editor.undone` and `editor.redone`), the order of `escape()` (rename, label, drag, link, marquee, selection or edge, tool), `dirty` (true after a change, false again after the undo of that change, and false again when an edit returns the document to a state that is equal to the first one: this uses `pdaDocumentsEqual`, not `===`).
+- *F6, the property.* The existing `editor.property.test.ts` runs random actions on the FSM editor and checks the invariants. Write the same for the PDA editor: 300 seeded sequences of up to 60 actions (every method that changes something, with valid and invalid arguments, including `commitEdge` with a random valid or refused command); after each action: every id in the selection is a state; `state.edge` is `null` or a pair that has a transition; `state.labeling` is `null` or its two states exist; `state.link.from` exists; `state.doc` is the history's document; and at the end `undo()` until `canUndo` is false gives back the first document (`===`). Read the FSM test first and reuse its helpers where it allows; do not edit it.
+- *F7, nothing changed for the FSM.* Every existing test passes unchanged, and `pnpm size` shows no route above its limit. A test of types proves that `createEditor`'s return value still has every member of the old `Editor` (for example `const e: Editor = createEditor(doc)` and a call of `commitLabel`).
+
+**Acceptance criteria:**
+- AC1: F1 to F5 give exactly the results above.
+- AC2: F6 holds (three runs with different seed offsets).
+- AC3: F7: all existing tests pass without any edit (list the test files you ran: `interaction/*.test.ts`, `Editor`-related tests, `history*.test.ts`, the whole `vitest run`), and `git diff` shows no change to an existing test file.
+- AC4: the tail of the commit code exists once: `commitLabel` calls `commitEdge` (point to the lines in the report).
+- AC5: deliberate breaks, each shown failing, then restored: let `deleteEdge` of a PDA remove only the first transition of the pair (F1 fails); let `commitEdge` leave the box open after a success (F3 fails); announce `edge_changed` when the pair is empty (F3 fails); build the symbols of `edge_selected` with `, ` instead of `; ` (F1 fails); compute `dirty` with `!==` instead of `equal` (F5 fails); make `createPdaEditor` use the FSM history (it must fail to compile or F1 to F4 fail; say which); let `removeState` leave the selected edge (F2 fails); let a refused `commitEdge` close the box (F3 fails); make `pdaEdgeText` sort the transitions by label (F1 fails).
+- AC6: `pnpm size`: every route stays under 170 KB; report the numbers before and after (the FSM routes may grow by at most 1 KB gzip, because they now carry the adapter; say the exact figure).
+- AC7: e2e: run the existing Playwright specs that drive the editor (find them with `grep -l "editor" web/e2e`), on the laptop and the phone project, and paste the result. There is no new e2e.
+
+**Verification:**
+
+```
+pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens
+pnpm --filter web exec vitest run
+pnpm build && pnpm size
+pnpm --filter web exec playwright test <the specs of AC7>
+```
+
+Paste real output into `REPORT.md`, with the hand derivation of F1 to F4 first.
+
+**Rollback:** `git revert <sha>`. The FSM path is unchanged (F7), and nothing else reads the new code yet.
+
+**Depends on:** T-033 and T-039 (merged).
+
+**Notes for worker:** (1) Read `interaction/editor.ts`, `label.ts`, `menu.ts`, `placement.ts`, `selection.ts`, `keys.ts`, all the `interaction/*.test.ts` and `history.ts` before you write a line, and state your plan (the three methods of `EditorKind`, the types) in the restatement. (2) This is a refactor: do it in small steps, run the FSM tests after each one, and commit the generic core (with the FSM still passing) before you add the PDA editor. (3) Do not change an existing test, an announcement key, or the text of any message. (4) `EditorState` and `Editor` must keep working for the components as they are today; the generic names are new exports. (5) No `any`, no `@ts-ignore`, no new dependency. (6) Edit with the edit tool, not with `sed` or a script, and run `git diff` after every edit (PR 165 lost the last "r" of 45 doc lines to an unquoted `sed`). (7) Your `REPORT.md`, not your chat summary, is the record.
 
 ---
 
-## Task T-051 — PDA editor, part 4 of 5: the tabs, the badge and the checks (draft)
+## Task T-053 — PDA editor, part 4 of 8: the canvas works for two kinds of document (draft)
 
 **Status:** proposed (after T-049)
 **Owner:** worker
 
-**Goal:** The panel of the PDA editor: the Tabel tab (alphabets, states, the transition table), the Definisi tab, the determinism badge with its list of competing pairs and "Tunjukkan", and the "Pemeriksaan" line (`validatePda`). See `design/screens/pda-editor.md`, sections 3 to 7.
+**Goal:** `EditorCanvas.svelte` (957 lines) takes the editor state of either kind: it draws with `diagramGeometry` from a `DiagramInput` supplied by the document kind (`fsmDiagram` or `pdaDiagram`), and the box that opens on an edge is a slot (a snippet) that the page fills: `LabelField` for an FSM, the form of T-054 for a PDA. The FSM editor looks and behaves as before (the existing e2e specs and the F7 baseline of T-039 are the proof). Also: the `+ n lagi` text on an edge is a button that selects the edge. See `design/screens/pda-editor.md`, section 2.
+
+**Depends on:** T-055.
+
+---
+
+## Task T-054 — PDA editor, part 5 of 8: the label form (draft)
+
+**Status:** proposed (after T-053)
+**Owner:** worker
+
+**Goal:** The three-field form for the transitions of one edge (Baca, Pop, Push; a row for each transition; `+ Transisi lain`; Batal and Simpan; a popover on a laptop and a sheet on a phone, with `Ketik ε`), and the logic behind it in plain TypeScript: how the text of a field becomes a symbol or a string of stack symbols (the rule of one-character stack alphabets versus names with spaces), the `ask_split` question for the input symbol, and the commands for `commitEdge` (new symbols in `addInputSymbol` and `addStackSymbol` first, then the new transitions, then the removed ones). See `design/screens/pda-editor.md`, section 8.
+
+**Depends on:** T-053.
+
+---
+
+## Task T-055 — PDA editor, part 6 of 8: the editor shell and the mode (draft)
+
+**Status:** proposed (after T-054)
+**Owner:** worker
+
+**Goal:** `PdaEditor.svelte` (the canvas, the tool rail, the title bar with undo and redo and the save line, the zoom control, the announcer and the toast; no panel yet), the mode switcher item "Otomata Pushdown (PDA)" enabled (`/sandbox?mode=pda`), autosave of the PDA document to the device in its own record kind, an empty canvas with "Mulai dari kanvas kosong", and the phone layout of the bar and the dock. The panel with the tabs comes with T-051. See `design/screens/pda-editor.md`, sections 1, 2 and 9.
+
+**Depends on:** T-054.
+
+---
+
+## Task T-051 — PDA editor, part 7 of 8: the panel: tabs, kind switch, badge and checks (draft)
+
+**Status:** proposed (after T-055)
+**Owner:** worker
+
+**Goal:** The panel of the PDA editor: the DPDA | NDPDA switch, the Tabel tab (alphabets, states, the transition table), the Definisi tab, the determinism badge with its list of competing pairs and "Tunjukkan", and the "Pemeriksaan" line (`validatePda`). See `design/screens/pda-editor.md`, sections 3 to 7.
 
 **Depends on:** T-049.
 
 ---
 
-## Task T-052 — PDA editor, part 5 of 5: saved machines, files and the three examples (draft)
+## Task T-052 — PDA editor, part 8 of 8: saved machines, files and the three examples (draft)
 
 **Status:** proposed (after T-051)
 **Owner:** worker
@@ -2119,7 +2212,7 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-030** PDA data model, JSON, validation and the determinism check: specified in its own block above (`todo`). The three questions are settled from the slides (2026-11-05): the stack starts empty, one acceptance rule (input used up, stack empty, accepting state), `pop` and `push` are lists of named symbols, top first.
 - **T-031** PDA simulation, breadth-first, with a stack trace, budgets and the peak number of configurations: specified in its own block above (`todo`; after T-030).
 - **T-032** PDA `.jff` import and export: specified in its own block above (`todo`; T-030 and T-031 are merged).
-- **T-033** PDA editor, part 1 of 5, the PDA document, its commands and its history: specified in its own block above (`done`, PR 165). **T-039** (the diagram shows a PDA): specified in its own block above (`done`, `0df683e`). **T-049** (the editor shell and the label form), **T-051** (the tabs, the badge and the checks) and **T-052** (saved machines, files, examples): drafts above (`proposed`), one after the other.
+- **T-033** PDA editor, part 1 of 5, the PDA document, its commands and its history: specified in its own block above (`done`, PR 165). **T-039** (the diagram shows a PDA): specified in its own block above (`done`, PR 167). **T-049** (the interaction core works for two kinds of document): specified in its own block above (`todo`, since 2026-11-06). **T-053** (the canvas), **T-054** (the label form), **T-055** (the editor shell and the mode), **T-051** (the panel) and **T-052** (saved machines, files, examples): drafts above (`proposed`), one after the other.
 - **T-034** CFG to PDA, top-down (slides, `CFGtoPDAtopdown`): specified in its own block above (`todo`, since 2026-11-05; T-032 is merged). Tested by language equivalence, not by structure against JFLAP's file.
 - **T-035** CFG to PDA, bottom-up (slides, shift and reduce): specified in its own block above (`todo`, since 2026-11-05; T-034 is merged).
 - **T-036** PDA to restricted normal form, with a trace: specified in its own block above (`done`, PR 161).
