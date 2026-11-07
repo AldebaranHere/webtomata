@@ -15,6 +15,17 @@ Format:
 
 ---
 
+## 2026-11-08 — The PDA editor shell is split again: frame, storage, shell (T-055 to T-057)
+
+- Decider: planner
+- Context: Reading `Editor.svelte` (767 lines, 220 of them layout and phone CSS), the sandbox page and the storage code for the editor shell showed three separate pieces of work: the frame of the editor is written into `Editor.svelte` together with its FSM contents; the storage (`createAutosave`, the record, `openLatest`) knows only `MachineDocument`; and the shell itself is new. One pull request for all of it would be too big to review, and copying the frame CSS would duplicate about 220 lines.
+- Decision: The PDA editor is built in ten tasks. T-055 extracts `EditorFrame.svelte` from `Editor.svelte` (the FSM editor must stay pixel-identical: sixteen screenshot pairs are the proof); T-056 saves a PDA on the device (`createAutosave` takes a codec; a PDA record has `type: 'pda'` and lives in the same store, kept out of the FSM list for now as `soal:` records are; a refused write and an unreadable record are tested); T-057 is the shell and the mode (`PdaEditor.svelte`, the label form as a popover on a laptop and a sheet on a phone, the switcher item, and the e2e that T-053 and T-054 left for it); then T-051 (panel) and T-052 (list, files, examples). Auto layout of a PDA is left out: labels need states about 410 units apart, so it needs a label-aware spacing and becomes its own proposed task.
+- Alternatives considered: a second copy of the frame inside `PdaEditor.svelte` (rejected: 220 lines of CSS and phone rules that would drift); a separate IndexedDB database for PDAs (rejected: T-052 lists both kinds in one place, and a second database needs its own upgrade path); doing the frame and the shell in one task (rejected: the refactor needs the pixel proof alone).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-055, T-056, T-057, T-051, T-052), `web/src/lib/editor/Editor.svelte`, `web/src/lib/storage/*`
+
+---
+
 ## 2026-11-07 — The PDA label form: no ask_split question, Ketik ε in the form (T-054)
 
 - Decider: planner
