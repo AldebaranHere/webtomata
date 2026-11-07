@@ -5,7 +5,8 @@
 - **Status:** done
 - **Implementation Commits:**
   - Status start: `6c00fc0` (`docs(agent): set T-055 to in-progress`)
-  - Framework extraction and completion: (current commit)
+  - Framework extraction and completion: `f00699d` (`feat(editor): extract shared editor frame`)
+- **PR:** #178 (https://github.com/AldebaranHere/webtomata/pull/178)
 
 ---
 
