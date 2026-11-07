@@ -24,6 +24,12 @@ With sample document `wwrSample()` (input alphabet `["a", "b"]`, stack alphabet 
   - Push: `[]` $\to$ `'ε'`.
   - Derivation: `[{ read: "ε", pop: "ε", push: "ε" }]`.
 - **Pair (1, 0):** No transitions exist $\to$ `[]`.
+- **Stack Alphabet with Comma (Probe 1):** Document with `stackAlphabet: ["A", ","]` and transition pop `[","]`, push `["A", ","]`:
+  - `stackAlphabet` contains single characters only (`allSingle = true`), but includes `','`.
+  - Pop: `[',']` $\to$ `','`.
+  - Push: `['A', ',']` $\to$ `'A,'`.
+  - Derivation: `{ read: "a", pop: ",", push: "A," }`.
+  - Round trip: `parseRows` detects `doc.stackAlphabet` contains `','`, so comma is NOT treated as a separator; `push` splits code points into `['A', ',']` and pop gives `[',']`.
 - **Multi-character stack alphabet:** Document with `stackAlphabet: ["Z0", "A"]` and transition `a`, pop `["Z0"]`, push `["A", "Z0"]`:
   - `stackAlphabet` contains multi-character name `"Z0"`, so separator is `' '`.
   - Pop: `['Z0']` $\to$ `'Z0'`.
@@ -35,10 +41,25 @@ With `stackAlphabet: ["A", "B"]` (all single-character symbols):
 - `"AB"` $\to$ no separator, all single $\to$ `["A", "B"]`.
 - `"A B"` $\to$ whitespace separator $\to$ `["A", "B"]`.
 - `"A, B"` $\to$ comma separator $\to$ `["A", "B"]`.
+- `"A,B"` $\to$ comma without whitespace $\to$ `["A", "B"]`.
 - `"ε"`, `"eps"`, `""`, `"  "` $\to$ empty $\to$ `[]`.
 - `"Z0 A"` $\to$ space separator $\to$ `["Z0", "A"]`.
 - `"Z0"` $\to$ no separator, all single $\to$ code points `["Z", "0"]`.
 - `"A😀"` $\to$ no separator, all single $\to$ code points `["A", "😀"]`.
+
+Special alphabet probes:
+- With `stackAlphabet: ["A", ","]`:
+  - `",A"` $\to$ single characters $\to$ `[",", "A"]`.
+  - `"A ,"` $\to$ whitespace separator $\to$ `["A", ","]`.
+  - `","` $\to$ `[","]`.
+- With `stackAlphabet: ["A", "a,b"]`:
+  - `"a,b"` $\to$ multi-character symbol $\to$ `["a,b"]` (comma is NOT a separator because `"a,b"` has comma).
+- With `stackAlphabet: ["A", "eps"]`:
+  - `"eps"` $\to$ `"eps"` is in `doc.stackAlphabet`, so it means `["eps"]`, not $\epsilon$.
+  - `"ε"` $\to$ always means $\epsilon$ $\to$ `[]`.
+- Read field with `inputAlphabet: ["a", "eps"]`:
+  - `"eps"` $\to$ `"eps"` is in `doc.inputAlphabet`, so read is `"eps"`, not `null`.
+  - `"ε"` $\to$ always means $null$.
 
 With `stackAlphabet: ["Z0", "A"]` (multi-character symbol present):
 - `"Z0A"` $\to$ no separator, not all single $\to$ one name `["Z0A"]`.
@@ -101,21 +122,29 @@ Using `wwrSample()` pair (0, 0), which starts with transitions `a / ε / A` and 
 
 ## 3. Verification of F5 (Properties & 10,000 Larger Run)
 
-Executed via `LARGER_RUN=true pnpm --filter web exec vitest run src/lib/editor/pda-label.property.test.ts`:
+The property generator was hardened to draw from both standard pools and an adversarial pool of symbols (`,`, `a,b`, `eps`, `(`, `)`, `+`, `|`, `\`, `"`, `'`, `😀`, combining sequence `e\u0301`, `Z0`, `num`, and 32-character strings).
+
+### Generator Adversarial Detection (Revert Check)
+When reverting the comma-in-stack-symbol and eps fixes in `pda-label.ts`:
+- The old generator missed the comma and "eps" corruptions entirely because it only drew from `["A","B","C"]`, `["Z0","A","B"]`, etc.
+- With the adversarial pool, `Property (a)` failed immediately on case 16 (failing round-trip when stack symbols contain `,` or `eps`) and `Property (c)` failed on case 46.
+- Restoring the fix passed all 1,000 cases cleanly.
+
+Executed via `LARGER_RUN=1 pnpm --filter web exec vitest run src/lib/editor/pda-label.property.test.ts`:
 
 ```
  RUN  v5.0.3 /home/Aldebaran64/webtomata/web
 
- ✓ src/lib/editor/pda-label.property.test.ts (3 tests) 2186ms
+ ✓ src/lib/editor/pda-label.property.test.ts (3 tests) 3295ms
    ✓ F5: PDA label properties (3)
-     ✓ Property (a): round trip (10000 cases) 581ms
-     ✓ Property (b): never throws on extreme strings (10000 cases) 571ms
-     ✓ Property (c): applying rowCommands is valid or refused, and idempotent (10000 cases) 1032ms
+     ✓ Property (a): round trip (10000 cases) 404ms
+     ✓ Property (b): never throws on extreme strings (10000 cases) 1392ms
+     ✓ Property (c): applying rowCommands is valid or refused, and idempotent (10000 cases) 1496ms
 
  Test Files  1 passed (1)
       Tests  3 passed (3)
-   Start at  23:38:40
-   Duration  2.56s (tests 92%, transform 7%, import 1%)
+   Start at  00:12:48
+   Duration  3.62s (tests 95%, transform 4%, import 1%)
 ```
 
 - **Property (a):** For 10,000 random valid PDA document edge pairs, `parseRows(doc, rowsOf(doc, from, to))` exactly equals the document's transitions for that pair, and `rowCommands` returns `[]`.
@@ -152,6 +181,9 @@ Each break was introduced in `web/src/lib/editor/pda-label.ts`, observed failing
 8. **Break 8: Let `rowCommands` add a symbol twice when it is in two rows.**
    - Change: removed deduplication check `!newStacks.includes(s)`.
    - Result: Test `F3: adds new stack symbol only once when it appears multiple times` failed (received 3 duplicate `addStackSymbol` commands for `'C'`). Restored.
+9. **Break 9: Remove comma from separator test in `parseStackSeq` (`trimmed.includes(',')` dropped).**
+   - Change: changed separator test to only check `/\s/.test(trimmed)`.
+   - Result: Caught by new F2 fixture `"A,B" -> ["A", "B"]` (received `["A,B"]` instead of `["A", "B"]`) and probe test. Restored.
 
 ---
 
@@ -160,7 +192,7 @@ Each break was introduced in `web/src/lib/editor/pda-label.ts`, observed failing
 - **Role and Dialog Name:** `role="dialog"` at `PdaLabelForm.svelte:155`; accessible name `pda_editor.form_title { from, to }` at line 156.
 - **Accessible Field Labels:** `pda_editor.field_label { n, field }` on Baca (line 177), Pop (line 192), and Push (line 207).
 - **Accessible Delete Buttons:** `pda_editor.row_delete { n }` at line 221.
-- **Refusal in `aria-describedby`:** Inputs bind `aria-describedby={refusalText !== null ? problemId : undefined}` at lines 179, 194, 209; live region `<p id={problemId} class="problem" aria-live="polite">` at line 237.
+- **Refusal in `aria-describedby`:** Inputs bind `aria-describedby={refusalText !== null ? problemId : undefined}` at lines 179, 194, 209; permanent live region container `<div aria-live="polite">` hosts the refusal `<p id={problemId} class="problem">` when present so screen readers reliably announce appearing errors.
 - **Keyboard Handling:**
   - `Enter` triggers `commit()`: line 117.
   - `Escape` cancels via `editor.cancelLabel()`: line 120.
@@ -263,9 +295,10 @@ Running 28 tests using 6 workers
    - `rowCommands`: Computes minimal delta commands for `commitEdge`. Used by `PdaLabelForm.svelte` and tests.
    - `pdaMenuLabels`: Context menu overrides (`edit: 'pda_editor.menu_edit'`). Exported for T-055 to pass to canvas `menuLabels`.
    - Every export is strictly needed by either the components or tests.
-2. **Duplicated Logic:**
+2. **Duplicated Logic & Redundancies:**
    - The 400 ms settle rule (`performance.now() - openedAt < SETTLE_MS`) and the leave rule (`onfocusout` checking `container.contains(event.relatedTarget)`) in `PdaLabelForm.svelte` (lines 131–146) duplicate the same mechanics in `LabelField.svelte` (lines 112–122). `LabelField` is out of scope for this task to avoid touching FSM code.
    - Stack string formatting logic is **not** duplicated: `pda-label.ts` imports and calls `stackSeparator` and `formatStackSeq` directly from `diagram/pda-diagram.ts`.
+   - **Dead check removed:** In `parseRead`, the condition `!doc.inputAlphabet.includes(trimmed)` was redundant because if `trimmed` is in `doc.inputAlphabet` and has $> 1$ code point, `allSingle` is already `false`. It was safely removed.
 3. **Casts:**
    - **Zero** `any`, **zero** `@ts-ignore`, and **zero** `as unknown as` were introduced.
 

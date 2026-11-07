@@ -55,7 +55,11 @@ type ParseReadResult = { ok: true; read: string | null } | { ok: false; refusal:
 
 function parseRead(doc: PdaDocument, text: string): ParseReadResult {
 	const trimmed = text.trim();
-	if (trimmed === '' || trimmed === 'ε' || trimmed === 'eps') {
+	if (
+		trimmed === '' ||
+		trimmed === 'ε' ||
+		(trimmed === 'eps' && !doc.inputAlphabet.includes('eps'))
+	) {
 		return { ok: true, read: null };
 	}
 	if (/\s/.test(trimmed)) {
@@ -69,7 +73,7 @@ function parseRead(doc: PdaDocument, text: string): ParseReadResult {
 	}
 	const codePoints = [...trimmed];
 	const allSingle = doc.inputAlphabet.every((s) => [...s].length === 1);
-	if (codePoints.length > 1 && !doc.inputAlphabet.includes(trimmed) && allSingle) {
+	if (codePoints.length > 1 && allSingle) {
 		return {
 			ok: false,
 			refusal: {
@@ -83,11 +87,19 @@ function parseRead(doc: PdaDocument, text: string): ParseReadResult {
 
 function parseStackSeq(doc: PdaDocument, text: string): string[] {
 	const trimmed = text.trim();
-	if (trimmed === '' || trimmed === 'ε' || trimmed === 'eps') {
+	if (
+		trimmed === '' ||
+		trimmed === 'ε' ||
+		(trimmed === 'eps' && !doc.stackAlphabet.includes('eps'))
+	) {
 		return [];
 	}
-	if (trimmed.includes(',') || /\s/.test(trimmed)) {
+	const hasCommaSymbol = doc.stackAlphabet.some((s) => s.includes(','));
+	if (!hasCommaSymbol && trimmed.includes(',')) {
 		return trimmed.split(/[\s,]+/).filter((s) => s.length > 0);
+	}
+	if (/\s/.test(trimmed)) {
+		return trimmed.split(/\s+/).filter((s) => s.length > 0);
 	}
 	const allSingle = doc.stackAlphabet.every((s) => [...s].length === 1);
 	if (allSingle) {

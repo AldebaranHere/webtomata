@@ -8,12 +8,15 @@
      - `Row`: `{ read: string; pop: string; push: string }`.
      - `rowsOf(doc, from, to)`: writes transitions in label format (empty read/pop/push as `ε`; stack symbols joined without spaces for single-character stack alphabets, or with spaces for alphabets containing multi-character symbols).
      - `parseRows(doc, rows)`: parses non-blank rows into `ParsedTransition[]` (`{ read, pop, push }`) dropping blank rows and deduplicating identical transitions in first-seen order. Refuses multi-character read strings on single-character alphabets with `pda_editor.read_one_symbol`.
+       - In pop and push text, a comma is a separator only when no name of the stack alphabet contains a comma; when one does, only whitespace separates.
+       - "eps" means ε in a field only when no name of that alphabet (input alphabet for the read field, stack alphabet for pop and push) is exactly "eps"; "ε" always means ε. `rowsOf` always writes ε, never eps.
+       - The round trip holds for every valid document: `parseRows(doc, rowsOf(doc, from, to))` equals the transitions of the pair, and `rowCommands` on unchanged rows is `[]`.
      - `rowCommands(doc, from, to, rows)`: computes the batch commands for `commitEdge`: `addInputSymbol` and `addStackSymbol` (deduplicated, order of appearance) first, then `addTransition` (new transitions), then `removeTransition` (removed transitions).
      - `pdaMenuLabels`: exports `{ edit: 'pda_editor.menu_edit' }` for the context menu.
   2. Implement `PdaLabelForm.svelte`:
      - Dialog with accessible title `pda_editor.form_title { from, to }`, table-like row headers, and 44 px inputs with $\ge 16$ px font sizes.
      - Settle rule (400 ms) and leave rule (sends changed and valid rows, cancels otherwise).
-     - Accessible names per field and row delete buttons; live region and `aria-describedby` for refusal messages; Ketik ε button and Ctrl+E.
+     - Accessible names per field and row delete buttons; permanent live region container (`aria-live="polite"`) and `aria-describedby` for refusal messages; Ketik ε button and Ctrl+E.
   3. Implement `PdaLabelPopover.svelte`:
      - Placed at `LabelSlot` coordinates, clamped within canvas bounds with 4 px margin and responsive width clamping.
 - **Alternatives considered:**

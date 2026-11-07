@@ -66,6 +66,10 @@ describe('T-054 PDA label logic', () => {
 			expect(parseRows(docSingle, [{ read: 'a', pop: 'A, B', push: 'A, B' }])).toEqual([
 				{ read: 'a', pop: ['A', 'B'], push: ['A', 'B'] }
 			]);
+			// "A,B" -> ["A", "B"] (comma without whitespace)
+			expect(parseRows(docSingle, [{ read: 'a', pop: 'A,B', push: 'A,B' }])).toEqual([
+				{ read: 'a', pop: ['A', 'B'], push: ['A', 'B'] }
+			]);
 			// "ε", "eps", "", "  " -> []
 			for (const empty of ['ε', 'eps', '', '  ']) {
 				expect(parseRows(docSingle, [{ read: 'a', pop: empty, push: empty }])).toEqual([
@@ -156,6 +160,79 @@ describe('T-054 PDA label logic', () => {
 
 	describe('F3: rowCommands', () => {
 		const doc = wwrSample();
+		const docSingle = wwrSample();
+
+		it('probes bug cases: stack alphabet with comma and eps', () => {
+			// Probe 1: stack alphabet ["A", ","], transition pop [","], push ["A", ","]
+			const docComma = pdaDocumentFrom({
+				inputAlphabet: ['a'],
+				stackAlphabet: ['A', ','],
+				states: [
+					[0, 0, 'q0'],
+					[100, 0, 'q1']
+				],
+				transitions: [[0, 'a', [','], ['A', ','], 1]]
+			});
+			const rows1 = rowsOf(docComma, 0, 1);
+			expect(rows1).toEqual([{ read: 'a', pop: ',', push: 'A,' }]);
+			expect(parseRows(docComma, rows1)).toEqual([{ read: 'a', pop: [','], push: ['A', ','] }]);
+			expect(rowCommands(docComma, 0, 1, rows1)).toEqual([]);
+
+			// Probe 2: stack ["E", ",", "("], reading "," and pushing ","
+			const docCommaParen = pdaDocumentFrom({
+				inputAlphabet: [','],
+				stackAlphabet: ['E', ',', '('],
+				states: [
+					[0, 0, 'q0'],
+					[100, 0, 'q1']
+				],
+				transitions: [[0, ',', [','], [','], 1]]
+			});
+			const rows2 = rowsOf(docCommaParen, 0, 1);
+			expect(rows2).toEqual([{ read: ',', pop: ',', push: ',' }]);
+			expect(parseRows(docCommaParen, rows2)).toEqual([{ read: ',', pop: [','], push: [','] }]);
+			expect(rowCommands(docCommaParen, 0, 1, rows2)).toEqual([]);
+
+			// Probe 3: stack ["A", "a,b"] with pop ["a,b"]
+			const docMultiComma = pdaDocumentFrom({
+				inputAlphabet: ['a'],
+				stackAlphabet: ['A', 'a,b'],
+				states: [
+					[0, 0, 'q0'],
+					[100, 0, 'q1']
+				],
+				transitions: [[0, 'a', ['a,b'], [], 1]]
+			});
+			const rows3 = rowsOf(docMultiComma, 0, 1);
+			expect(rows3).toEqual([{ read: 'a', pop: 'a,b', push: 'ε' }]);
+			expect(parseRows(docMultiComma, rows3)).toEqual([{ read: 'a', pop: ['a,b'], push: [] }]);
+			expect(rowCommands(docMultiComma, 0, 1, rows3)).toEqual([]);
+
+			// Probe 4: stack ["A", "eps"] with pop ["eps"]
+			const docEps = pdaDocumentFrom({
+				inputAlphabet: ['a'],
+				stackAlphabet: ['A', 'eps'],
+				states: [
+					[0, 0, 'q0'],
+					[100, 0, 'q1']
+				],
+				transitions: [[0, 'a', ['eps'], [], 1]]
+			});
+			const rows4 = rowsOf(docEps, 0, 1);
+			expect(rows4).toEqual([{ read: 'a', pop: 'eps', push: 'ε' }]);
+			expect(parseRows(docEps, rows4)).toEqual([{ read: 'a', pop: ['eps'], push: [] }]);
+			expect(rowCommands(docEps, 0, 1, rows4)).toEqual([]);
+
+			// Text cases:
+			// with stack ["A", "B"], "A,B" gives ["A", "B"]
+			expect(parseRows(docSingle, [{ read: 'a', pop: 'A,B', push: 'A,B' }])).toEqual([
+				{ read: 'a', pop: ['A', 'B'], push: ['A', 'B'] }
+			]);
+			// with stack ["A", ","], ",A" gives [",", "A"] and "A ," gives ["A", ","]
+			expect(parseRows(docComma, [{ read: 'a', pop: ',A', push: 'A ,' }])).toEqual([
+				{ read: 'a', pop: [',', 'A'], push: ['A', ','] }
+			]);
+		});
 
 		it('yields [] when rows are unchanged on pair (0, 0)', () => {
 			const unchanged = rowsOf(doc, 0, 0);

@@ -23,12 +23,51 @@ function randomInt(rand: () => number, min: number, max: number): number {
 	return min + Math.floor(rand() * (max - min + 1));
 }
 
+const ADVERSARIAL_SYMBOLS = [
+	',',
+	'a,b',
+	'eps',
+	'(',
+	')',
+	'+',
+	'|',
+	'\\',
+	'"',
+	"'",
+	'😀',
+	'e\u0301',
+	'Z0',
+	'num',
+	'A'.repeat(32)
+];
+
 function makeRandomPda(rand: () => number, id: number): PdaDocument {
 	const numStates = randomInt(rand, 2, 5);
-	const multiStack = rand() < 0.4;
-	const stackSymbols = multiStack ? ['Z0', 'A', 'B'] : ['A', 'B', 'C'];
-	const multiInput = rand() < 0.3;
-	const inputSymbols = multiInput ? ['a', 'num'] : ['a', 'b', 'c'];
+	const useAdversarial = rand() < 0.5;
+
+	let stackSymbols: string[];
+	let inputSymbols: string[];
+
+	if (useAdversarial) {
+		const sCount = randomInt(rand, 2, 5);
+		const sSet = new Set<string>();
+		for (let i = 0; i < sCount; i++) {
+			sSet.add(randomChoice(rand, ADVERSARIAL_SYMBOLS));
+		}
+		stackSymbols = [...sSet];
+
+		const iCount = randomInt(rand, 2, 5);
+		const iSet = new Set<string>();
+		for (let i = 0; i < iCount; i++) {
+			iSet.add(randomChoice(rand, ADVERSARIAL_SYMBOLS));
+		}
+		inputSymbols = [...iSet];
+	} else {
+		const multiStack = rand() < 0.4;
+		stackSymbols = multiStack ? ['Z0', 'A', 'B'] : ['A', 'B', 'C'];
+		const multiInput = rand() < 0.3;
+		inputSymbols = multiInput ? ['a', 'num'] : ['a', 'b', 'c'];
+	}
 
 	const states: [number, number, string][] = [];
 	for (let i = 0; i < numStates; i++) {
@@ -155,9 +194,8 @@ describe('F5: PDA label properties', () => {
 			const to = randomInt(rand, 0, doc.states.length - 1);
 
 			const isMultiStack = doc.stackAlphabet.some((s) => [...s].length > 1);
-			const stackPool = isMultiStack ? ['Z0', 'A', 'B'] : ['A', 'B', 'C', 'D'];
-			const isMultiInput = doc.inputAlphabet.some((s) => [...s].length > 1);
-			const inputPool = isMultiInput ? ['a', 'num'] : ['a', 'b', 'c', 'd'];
+			const stackPool = [...doc.stackAlphabet];
+			const inputPool = [...doc.inputAlphabet];
 
 			const numRows = randomInt(rand, 0, 4);
 			const rows: Row[] = [];

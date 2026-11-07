@@ -244,9 +244,11 @@
 
 	<p class="hint">{t('pda_editor.label_hint')}</p>
 
-	{#if refusalText !== null}
-		<p id={problemId} class="problem" aria-live="polite">{refusalText}</p>
-	{/if}
+	<div aria-live="polite">
+		{#if refusalText !== null}
+			<p id={problemId} class="problem">{refusalText}</p>
+		{/if}
+	</div>
 
 	<div class="actions">
 		<button type="button" class="btn" onmousedown={keep} onclick={insertEpsilon}>
