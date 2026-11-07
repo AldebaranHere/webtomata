@@ -648,7 +648,7 @@ describe('no two labels overlap, and no label covers a state (random machines on
 
 import { createHash } from 'node:crypto';
 import fsmBaseline from './__fixtures__/fsm-shapes.json' with { type: 'json' };
-import { LINE_PITCH, diagramGeometry, fsmDiagram, labelLineY } from './geometry.ts';
+import { LINE_PITCH, diagramGeometry, fsmDiagram, labelLineY, overflowTarget } from './geometry.ts';
 import type { DiagramInput, LabelShape } from './geometry.ts';
 
 function stripLines(shapes: DiagramShapes): unknown {
@@ -859,5 +859,103 @@ describe('multi-line labels and DiagramInput (T-039)', () => {
 			[-50, -32, -14]
 		);
 		expect(threeLineEdge.label.text).toBe('ε / ε / ε; a / ε / A; b / ε / B; c / ε / C');
+	});
+
+	describe('overflowTarget and overflow (T-053)', () => {
+		it('F1: calculates overflow target 44px high centered on the last line', () => {
+			// 3-line box from T-039 F1
+			const threeLineLabel: LabelShape = {
+				text: 'ε / ε / ε; a / ε / A; + 2 lagi',
+				lines: ['ε / ε / ε', 'a / ε / A', '+ 2 lagi'],
+				center: { x: 150, y: -32 },
+				box: { x: 102.8, y: -60, width: 94.4, height: 56 },
+				overflow: true
+			};
+			expect(labelLineY(threeLineLabel.box, 2)).toBe(-14);
+			expect(overflowTarget(threeLineLabel)).toEqual({
+				x: 102.8,
+				y: -36,
+				width: 94.4,
+				height: 44
+			});
+
+			// 2-line box with overflow
+			const twoLineLabel: LabelShape = {
+				text: 'line 1; + 1 lagi',
+				lines: ['line 1', '+ 1 lagi'],
+				center: { x: 150, y: 19 },
+				box: { x: 100, y: 0, width: 90, height: 38 },
+				overflow: true
+			};
+			expect(labelLineY(twoLineLabel.box, 1)).toBe(28);
+			expect(overflowTarget(twoLineLabel)).toEqual({
+				x: 100,
+				y: 6,
+				width: 90,
+				height: 44
+			});
+
+			// Label without overflow returns null
+			const noOverflowLabel: LabelShape = {
+				text: 'line 1; line 2',
+				lines: ['line 1', 'line 2'],
+				center: { x: 150, y: 19 },
+				box: { x: 100, y: 0, width: 90, height: 38 }
+			};
+			expect(overflowTarget(noOverflowLabel)).toBeNull();
+
+			// Narrow label (width < 44)
+			const narrowLabel: LabelShape = {
+				text: '+',
+				lines: ['+'],
+				center: { x: 10, y: 10 },
+				box: { x: 5, y: 0, width: 17.6, height: 20 },
+				overflow: true
+			};
+			expect(labelLineY(narrowLabel.box, 0)).toBe(10);
+			expect(overflowTarget(narrowLabel)).toEqual({
+				x: 5,
+				y: -12,
+				width: 17.6,
+				height: 44
+			});
+
+			// Narrow FSM label has no overflow, so it is null
+			const fsmNarrow: LabelShape = {
+				text: 'a',
+				lines: ['a'],
+				center: { x: 10, y: 10 },
+				box: { x: 5, y: 0, width: 17.6, height: 20 }
+			};
+			expect(overflowTarget(fsmNarrow)).toBeNull();
+		});
+
+		it('F1/F3: diagramGeometry propagates overflow to LabelShape, omitted for FSM', () => {
+			const input: DiagramInput = {
+				states: [
+					{ id: 0, name: 'q0', x: 0, y: 0 },
+					{ id: 1, name: 'q1', x: 300, y: 0 }
+				],
+				start: null,
+				accepting: [],
+				edges: [
+					{
+						from: 0,
+						to: 1,
+						lines: ['a', 'b', '+ 2 lagi'],
+						overflow: true
+					}
+				]
+			};
+			const shapes = diagramGeometry(input);
+			const edge = edgeOf(shapes, 0, 1);
+			expect(edge.label.overflow).toBe(true);
+
+			// FSM document through edgeGeometry has no overflow key on any label
+			const fsmShapes = edgeGeometry(endsWith01());
+			for (const e of fsmShapes.edges) {
+				expect('overflow' in e.label).toBe(false);
+			}
+		});
 	});
 });

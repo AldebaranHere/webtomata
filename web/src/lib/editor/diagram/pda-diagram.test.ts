@@ -308,4 +308,54 @@ describe('PDA diagram adapter (T-039)', () => {
 			);
 		}
 	});
+
+	it('F2: pdaDiagram sets overflow: true only when transitions exceed 3', () => {
+		const buildWithCount = (count: number) => {
+			const commands: PdaCommand[] = [
+				{ type: 'addInputSymbol', symbol: 'a' },
+				{ type: 'addStackSymbol', symbol: 'A' },
+				{ type: 'addState', x: 0, y: 0 },
+				{ type: 'addState', x: 300, y: 0 }
+			];
+			for (let i = 0; i < count; i++) {
+				const pop = i < 60 ? [] : ['A'];
+				const pushLen = i < 60 ? i : i - 60;
+				const push = Array.from({ length: pushLen }, () => 'A');
+				commands.push({ type: 'addTransition', from: 0, read: 'a', pop, push, to: 1 });
+			}
+			const res = applyPdaCommand(createPdaDocument(), { type: 'batch', commands });
+			if (!res.ok) throw new Error(res.error.key);
+			return res.doc;
+		};
+
+		// 3 transitions: 3 lines, no overflow key
+		const doc3 = buildWithCount(3);
+		const diag3 = pdaDiagram(doc3, more);
+		expect(diag3.edges).toHaveLength(1);
+		const edge3 = diag3.edges[0]!;
+		expect(edge3.lines).toHaveLength(3);
+		expect('overflow' in edge3).toBe(false);
+		const shapes3 = diagramGeometry(diag3);
+		expect('overflow' in shapes3.edges[0]!.label).toBe(false);
+
+		// 4 transitions: 2 lines + more(2), overflow: true
+		const doc4 = buildWithCount(4);
+		const diag4 = pdaDiagram(doc4, more);
+		const edge4 = diag4.edges[0]!;
+		expect(edge4.lines).toHaveLength(3);
+		expect(edge4.lines[2]).toBe('+ 2 lagi');
+		expect(edge4.overflow).toBe(true);
+		const shapes4 = diagramGeometry(diag4);
+		expect(shapes4.edges[0]!.label.overflow).toBe(true);
+
+		// 70 transitions: 2 lines + more(68), overflow: true
+		const doc70 = buildWithCount(70);
+		const diag70 = pdaDiagram(doc70, more);
+		const edge70 = diag70.edges[0]!;
+		expect(edge70.lines).toHaveLength(3);
+		expect(edge70.lines[2]).toBe('+ 68 lagi');
+		expect(edge70.overflow).toBe(true);
+		const shapes70 = diagramGeometry(diag70);
+		expect(shapes70.edges[0]!.label.overflow).toBe(true);
+	});
 });

@@ -56,6 +56,7 @@ export interface LabelShape {
 	lines: string[];
 	center: Point;
 	box: Box;
+	overflow?: true;
 }
 export interface DiagramEdgeInput {
 	from: number;
@@ -63,6 +64,7 @@ export interface DiagramEdgeInput {
 	lines: readonly string[];
 	/** The name that a screen reader reads (defaults to `lines.join('; ')`). */
 	text?: string;
+	overflow?: true;
 }
 export interface DiagramInput {
 	states: readonly { id: number; name: string; x: number; y: number }[];
@@ -189,7 +191,8 @@ function placeLabel(
 	charWidth: number,
 	anchor: Point,
 	normal: Point,
-	accessibleText?: string
+	accessibleText?: string,
+	overflow?: boolean
 ): LabelShape {
 	const lines = typeof textOrLines === 'string' ? [textOrLines] : [...textOrLines];
 	const text = accessibleText ?? lines.join('; ');
@@ -204,7 +207,23 @@ function placeLabel(
 			y: round(center.y - size.height / 2),
 			width: size.width,
 			height: size.height
-		}
+		},
+		...(overflow ? { overflow: true } : {})
+	};
+}
+
+/**
+ * Pointer target for the "+ n lagi" overflow line of a multi-line label.
+ * Null without overflow; otherwise 44 px high, centered on the last line.
+ */
+export function overflowTarget(label: LabelShape): Box | null {
+	if (!label.overflow || label.lines.length === 0) return null;
+	const lastCenterY = labelLineY(label.box, label.lines.length - 1);
+	return {
+		x: label.box.x,
+		y: round(lastCenterY - 22),
+		width: label.box.width,
+		height: 44
 	};
 }
 
@@ -456,7 +475,14 @@ export function diagramGeometry(input: DiagramInput, options: DiagramOptions = {
 					start: rounded(start),
 					end: rounded(end),
 					points: points.map(rounded),
-					label: placeLabel(group.lines, MONO_CHAR, mid, { x: u.y, y: -u.x }, group.text)
+					label: placeLabel(
+						group.lines,
+						MONO_CHAR,
+						mid,
+						{ x: u.y, y: -u.x },
+						group.text,
+						group.overflow
+					)
 				};
 			}
 		}
@@ -500,7 +526,8 @@ export function diagramGeometry(input: DiagramInput, options: DiagramOptions = {
 					MONO_CHAR,
 					apex,
 					{ x: -u.y * side, y: u.x * side },
-					group.text
+					group.text,
+					group.overflow
 				)
 			};
 		}
@@ -579,7 +606,14 @@ export function diagramGeometry(input: DiagramInput, options: DiagramOptions = {
 			start: rounded(p1),
 			end: rounded(p2),
 			points: points.map(rounded),
-			label: placeLabel(group.lines, MONO_CHAR, points[SAMPLES / 2]!, direction(angle), group.text),
+			label: placeLabel(
+				group.lines,
+				MONO_CHAR,
+				points[SAMPLES / 2]!,
+				direction(angle),
+				group.text,
+				group.overflow
+			),
 			angle
 		});
 	}

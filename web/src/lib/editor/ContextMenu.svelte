@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
-	import type { MenuItem } from './interaction/menu.ts';
+	import type { MessageKey } from '#lib/i18n/id.ts';
+	import type { MenuAction, MenuItem } from './interaction/menu.ts';
 
 	// The menu of a right-click or a long-press. The items are buttons with 44 px of height; the
 	// arrows move between them, Esc closes. A press that ends over the menu in the first moments
@@ -11,6 +12,7 @@
 		x,
 		y,
 		guarded,
+		labels,
 		onpick,
 		onclose
 	}: {
@@ -20,6 +22,8 @@
 		y: number;
 		/** Opened by a long-press: the finger that is lifted must not choose an item. */
 		guarded: boolean;
+		/** Custom message keys to override menu item texts. */
+		labels?: Partial<Record<MenuAction, MessageKey>>;
 		onpick: (item: MenuItem) => void;
 		onclose: () => void;
 	} = $props();
@@ -98,7 +102,7 @@
 			onclick={() => pick(item)}
 		>
 			<span class="mark" aria-hidden="true">{item.checked ? '✓' : ''}</span>
-			{t(`editor.menu.${item.action}`)}
+			{labels?.[item.action] ? t(labels[item.action]!) : t(`editor.menu.${item.action}`)}
 		</button>
 	{/each}
 </div>

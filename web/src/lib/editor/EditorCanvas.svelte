@@ -1,15 +1,14 @@
-<script lang="ts">
+<script lang="ts" generics="D extends StatesDocument, C">
 	import { onMount, untrack } from 'svelte';
+	import type { Snippet } from 'svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
 	import DiagramDrawing from './diagram/DiagramDrawing.svelte';
-	import { edgeGeometry } from './diagram/geometry.ts';
+	import { RADIUS, diagramGeometry } from './diagram/geometry.ts';
+	import type { DiagramInput } from './diagram/geometry.ts';
 	import ContextMenu from './ContextMenu.svelte';
-	import type { MachineDocument } from './document.ts';
-	import LabelField from './LabelField.svelte';
 	import RenameField from './RenameField.svelte';
 	import ZoomControl from './ZoomControl.svelte';
-	import { RADIUS } from './diagram/geometry.ts';
 	import {
 		IDENTITY,
 		ZOOM_STEP,
@@ -27,12 +26,32 @@
 	import type { Camera } from './interaction/camera.ts';
 	import { linkLine } from './interaction/canvas.ts';
 	import type { Point } from './interaction/canvas.ts';
-	import type { Editor, EditorState } from './interaction/editor.ts';
+	import type { StatesDocument } from './interaction/document-view.ts';
+	import type { EditorCore, EditorState } from './interaction/editor.ts';
 	import { keyAction } from './interaction/keys.ts';
-	import { labelOf } from './interaction/label.ts';
 	import { menuItems } from './interaction/menu.ts';
-	import type { MenuItem, MenuTarget } from './interaction/menu.ts';
+	import type { MenuAction, MenuItem, MenuTarget } from './interaction/menu.ts';
 	import { nearestInDirection } from './interaction/selection.ts';
+
+	export interface LabelSlot {
+		x: number;
+		y: number;
+		from: number;
+		to: number;
+	}
+
+	export interface EditorCanvasProps<D extends StatesDocument, C> {
+		editor: EditorCore<D, C>;
+		state: EditorState<D>;
+		diagram: (doc: D) => DiagramInput;
+		label?: Snippet<[LabelSlot]>;
+		onmore?: (from: number, to: number) => void;
+		menuLabels?: Partial<Record<MenuAction, MessageKey>>;
+		flags?: ReadonlyMap<number, 'error' | 'warning'>;
+		active?: ReadonlySet<number>;
+		taken?: ReadonlySet<string>;
+		onlayout?: () => void;
+	}
 
 	// The canvas of the editor: the drawing, and the pointer and keyboard. It turns what the user
 	// does into calls of the editor (interaction/editor.ts), where the rules are. The canvas has no
@@ -41,44 +60,46 @@
 	let {
 		editor,
 		state: view,
+		diagram,
+		label,
+		onmore,
+		menuLabels,
 		flags = new Map(),
 		active = new Set<number>(),
 		taken = new Set<string>(),
 		onlayout
-	}: {
-		editor: Editor;
-		state: EditorState;
-		/** The states that have something to look at (the checks), for a mark on the diagram. */
-		flags?: ReadonlyMap<number, 'error' | 'warning'>;
-		/** The states that are active at this step of a run, and the edges ("from>to") that led to them. */
-		active?: ReadonlySet<number>;
-		taken?: ReadonlySet<string>;
-		/** The menu item "Tata letak otomatis". */
-		onlayout?: () => void;
-	} = $props();
+	}: EditorCanvasProps<D, C> = $props();
 
 	const uid = $props.id();
 	const arrow = `${uid}-arrow`;
 
+	let lastMoreTime = 0;
+	function triggerMore(from: number, to: number) {
+		if (Date.now() - lastMoreTime < 250) return;
+		lastMoreTime = Date.now();
+		(onmore ?? ((f, t) => editor.selectEdge(f, t)))(from, to);
+	}
+
 	// While a drag is under way, the states are drawn at their preview places.
-	const shown = $derived.by((): MachineDocument => {
+	const rawDiagram = $derived(diagram(view.doc));
+	const diagramInput = $derived.by((): DiagramInput => {
 		const preview = view.preview;
-		if (!preview) return view.doc;
+		if (!preview) return rawDiagram;
 		return {
-			...view.doc,
-			states: view.doc.states.map((s) => {
+			...rawDiagram,
+			states: rawDiagram.states.map((s) => {
 				const place = preview.get(s.id);
 				return place ? { ...s, x: place.x, y: place.y } : s;
 			})
 		};
 	});
-	const shapes = $derived(edgeGeometry(shown, { startLabel: t('diagram.start') }));
+	const shapes = $derived(diagramGeometry(diagramInput, { startLabel: t('diagram.start') }));
 	const selected = $derived(new Set(view.selection));
 	const preview = $derived(
-		view.link?.pointer ? linkLine(shown.states, view.link.from, view.link.pointer) : null
+		view.link?.pointer ? linkLine(diagramInput.states, view.link.from, view.link.pointer) : null
 	);
 	// The label box sits on the label of its edge, or where the edge will be.
-	const labelAt = $derived.by(() => {
+	const labelSlot = $derived.by((): LabelSlot | null => {
 		const open = view.labeling;
 		if (!open) return null;
 		const edge = shapes.edges.find((e) => e.from === open.from && e.to === open.to);
@@ -90,7 +111,8 @@
 			: open.from === open.to
 				? { x: a.x, y: a.y - RADIUS - 60 }
 				: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 - 36 };
-		return { ...center, initial: labelOf(view.doc, open.from, open.to) };
+		const screen = screenOf(center);
+		return { x: screen.x, y: screen.y, from: open.from, to: open.to };
 	});
 	const renamed = $derived(view.doc.states.find((s) => s.id === view.renaming));
 
@@ -190,6 +212,7 @@
 				marquee: false;
 				moved: boolean;
 				consumed: boolean;
+				overflow: boolean;
 		  }
 		| {
 				kind: 'empty';
@@ -307,10 +330,6 @@
 	} | null>(null);
 	let longPress: ReturnType<typeof setTimeout> | undefined;
 	let refused = $state<string | null>(null);
-	let labelProblem = $state<string | null>(null);
-	$effect(() => {
-		if (!view.labeling) labelProblem = null;
-	});
 
 	function openMenu(
 		target: MenuTarget,
@@ -416,6 +435,7 @@
 		pressClient = { x: event.clientX, y: event.clientY };
 		panFrom = null;
 		if (edge) {
+			const isOverflow = (event.target as Element | null)?.closest?.('.hit-overflow') !== null;
 			edgeNode(edge)?.focus({ preventScroll: true });
 			press = {
 				kind: 'edge',
@@ -425,7 +445,8 @@
 				from,
 				marquee: false,
 				moved: false,
-				consumed: false
+				consumed: false,
+				overflow: isOverflow
 			};
 		} else if (id !== undefined) {
 			// A mouse press does not move the focus by itself (it is prevented below): the keys
@@ -548,8 +569,13 @@
 			}
 		} else if (done.kind === 'edge') {
 			if (done.moved) return;
-			if (view.tool === 'delete') editor.deleteEdge(done.edge.from, done.edge.to);
-			else editor.selectEdge(done.edge.from, done.edge.to);
+			if (done.overflow) {
+				triggerMore(done.edge.from, done.edge.to);
+			} else if (view.tool === 'delete') {
+				editor.deleteEdge(done.edge.from, done.edge.to);
+			} else {
+				editor.selectEdge(done.edge.from, done.edge.to);
+			}
 		} else if (done.marquee) {
 			editor.endMarquee();
 		} else if (!done.moved) {
@@ -822,6 +848,7 @@
 				{active}
 				{taken}
 				interactive
+				onmore={triggerMore}
 			/>
 			{#if preview}
 				<line
@@ -857,26 +884,8 @@
 			oncancel={() => editor.cancelRename()}
 		/>
 	{/if}
-	{#if view.labeling && labelAt}
-		<LabelField
-			x={screenOf(labelAt).x}
-			y={screenOf(labelAt).y}
-			initial={labelAt.initial}
-			problem={labelProblem}
-			ask={view.labeling.ask}
-			oncommit={(text, split) => {
-				const result = editor.commitLabel(text, split);
-				labelProblem =
-					result && 'key' in result ? t(result.key as MessageKey, result.params) : null;
-			}}
-			oncancel={() => editor.cancelLabel()}
-			onleave={(text) => {
-				// Leaving the box sends a text that changed, and cancels in every other case.
-				if (text.trim() === labelAt?.initial || editor.commitLabel(text) !== null) {
-					editor.cancelLabel();
-				}
-			}}
-		/>
+	{#if view.labeling && labelSlot}
+		{@render label?.(labelSlot)}
 	{/if}
 	{#if menu}
 		<ContextMenu
@@ -884,6 +893,7 @@
 			x={menu.x}
 			y={menu.y}
 			guarded={menu.touch}
+			labels={menuLabels}
 			onpick={pick}
 			onclose={closeMenu}
 		/>
