@@ -2152,8 +2152,8 @@ Run the quick loop while you work (one file or pattern) and the whole gate once 
 
 ## Task T-054 — PDA editor, part 5 of 8: the label form
 
-**Status:** in-progress
-**Owner:** worker
+**Status:** done
+**Commit:** `fc7853a`
 **Branch:** `task/T-054-pda-label-form`
 
 **Goal:** The one new interaction of the PDA editor (`design/screens/pda-editor.md`, section 8): the form where the transitions of one edge are edited, with three fields for each transition (**Baca**, **Pop**, **Push**), instead of the FSM's single text box. This task builds (1) the logic, in plain TypeScript: how the text of the fields becomes symbols and strings of stack symbols, and how the difference from what the edge has becomes the commands for `commitEdge` (T-049); (2) the form as a component, `PdaLabelForm.svelte`, whose content does not know where it sits; and (3) a thin wrapper, `PdaLabelPopover.svelte`, that places it on the canvas as a popover through the label slot of T-053. **Nothing is wired to a screen:** the PDA editor shell, the mode and the phone placement of the form (a sheet in the panel area) are T-055. The form is therefore checked by logic tests, the type checker and a written checklist here, and by e2e in T-055 (listed below). See ADR 0043 and 0044.

@@ -1045,7 +1045,20 @@ export const id = {
 	'pda_document.duplicate_transition': 'Transisi itu sudah ada.',
 	'pda_document.unsupported_version':
 		'PDA ini dibuat oleh WebTomata versi yang lebih baru (versi {version}).',
-	'pda_editor.edge_more': '+ {count} lagi'
+	'pda_editor.edge_more': '+ {count} lagi',
+	'pda_editor.form_title': 'Transisi di antara {from} dan {to}',
+	'pda_editor.col_read': 'Baca',
+	'pda_editor.col_pop': 'Pop',
+	'pda_editor.col_push': 'Push',
+	'pda_editor.field_label': 'Baris {n}, {field}',
+	'pda_editor.row_delete': 'Hapus baris {n}',
+	'pda_editor.add_row': '+ Transisi lain di antara {from} dan {to}',
+	'pda_editor.label_hint': 'Kiri = puncak stack. Pop ε tidak memeriksa stack.',
+	'pda_editor.save': 'Simpan',
+	'pda_editor.cancel': 'Batal',
+	'pda_editor.menu_edit': 'Ubah transisi',
+	'pda_editor.read_one_symbol':
+		'Satu baris membaca satu simbol. Untuk ‘{text}’: buat dua baris, atau tambahkan ‘{text}’ ke alfabet input di tab Tabel.'
 } as const;
 
 export type MessageKey = keyof typeof id;

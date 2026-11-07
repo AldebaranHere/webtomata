@@ -1044,5 +1044,18 @@ export const en: Record<MessageKey, string> = {
 	'pda_document.duplicate_transition': 'That transition already exists.',
 	'pda_document.unsupported_version':
 		'This PDA was made by a newer version of WebTomata (version {version}).',
-	'pda_editor.edge_more': '+ {count} more'
+	'pda_editor.edge_more': '+ {count} more',
+	'pda_editor.form_title': 'Transitions between {from} and {to}',
+	'pda_editor.col_read': 'Read',
+	'pda_editor.col_pop': 'Pop',
+	'pda_editor.col_push': 'Push',
+	'pda_editor.field_label': 'Row {n}, {field}',
+	'pda_editor.row_delete': 'Delete row {n}',
+	'pda_editor.add_row': '+ Another transition between {from} and {to}',
+	'pda_editor.label_hint': 'Left = top of stack. Pop ε does not check stack.',
+	'pda_editor.save': 'Save',
+	'pda_editor.cancel': 'Cancel',
+	'pda_editor.menu_edit': 'Edit transitions',
+	'pda_editor.read_one_symbol':
+		'One row reads one symbol. For ‘{text}’: make two rows, or add ‘{text}’ to the input alphabet in the Table tab.'
 };
