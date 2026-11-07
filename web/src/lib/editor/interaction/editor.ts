@@ -12,9 +12,12 @@ import type { Command } from '../commands.ts';
 import { documentsEqual } from '../document.ts';
 import type { MachineDocument } from '../document.ts';
 import { createHistory } from '../history.ts';
+import type { GenericHistory } from '../history.ts';
 import type { Message } from '../../engine/types.ts';
 import { LIMIT, dragPlaces } from './canvas.ts';
 import type { Point } from './canvas.ts';
+import type { CoreCommand, EditorKind, StatesDocument } from './document-view.ts';
+import { moveStatesCommands } from './document-view.ts';
 import { labelCommands, labelOf, parseLabel, splitNeeded, splitParts } from './label.ts';
 import { freeSpot } from './placement.ts';
 import { inRectangle, prune, selectAll, toggle } from './selection.ts';
@@ -29,8 +32,8 @@ export interface Announcement {
 	seq: number;
 }
 
-export interface EditorState {
-	doc: MachineDocument;
+export interface EditorState<D extends StatesDocument = MachineDocument> {
+	doc: D;
 	selection: Selection;
 	tool: Tool;
 	/** True from the press that starts a drag to its end. */
@@ -69,8 +72,9 @@ export interface Refusal {
 	params: Params;
 }
 
-export interface Editor {
-	getState(): EditorState;
+/** Shared editor interaction interface for any supported document type. */
+export interface EditorCore<D extends StatesDocument, C> {
+	getState(): EditorState<D>;
 	subscribe(listener: () => void): () => void;
 
 	setTool(tool: Tool): void;
@@ -109,10 +113,10 @@ export interface Editor {
 	/** The key of the keyboard: starts a transition from the one selected state, or ends it at the focus. */
 	linkAtFocus(): void;
 	/**
-	 * Sends the text of the label box. Returns null when the box closed, why the text was refused
-	 * (the box stays open), or a question to answer with `split`.
+	 * Commits transitions for the currently open edge label box.
+	 * Returns null on success or when closed with no commands, or Refusal on error.
 	 */
-	commitLabel(text: string, split?: 'split' | 'whole'): Refusal | SplitQuestion | null;
+	commitEdge(commands: readonly C[]): Refusal | null;
 	cancelLabel(): void;
 	selectEdge(from: number, to: number): void;
 	/** Opens the label box for the selected edge. */
@@ -130,7 +134,7 @@ export interface Editor {
 	 * Urungkan. Returns why the document refused the command (nothing changes), or null.
 	 */
 	apply(
-		command: Command,
+		command: C,
 		note?: { say?: { key: MessageKey; params?: Params }; toast?: boolean }
 	): Refusal | null;
 
@@ -139,6 +143,15 @@ export interface Editor {
 	escape(): void;
 	/** Ends a series of keyboard moves, so that the next one is a new undo step. */
 	seal(): void;
+}
+
+/** The FSM editor with all its present methods, including `commitLabel(text, split?)`. */
+export interface Editor extends EditorCore<MachineDocument, Command> {
+	/**
+	 * Sends the text of the label box. Returns null when the box closed, why the text was refused
+	 * (the box stays open), or a question to answer with `split`.
+	 */
+	commitLabel(text: string, split?: 'split' | 'whole'): Refusal | SplitQuestion | null;
 }
 
 const clamp = (n: number, low: number, high: number) => Math.min(high, Math.max(low, n));
@@ -153,18 +166,13 @@ function refusal(error: Message): Refusal {
 const sameList = (a: readonly number[], b: readonly number[]) =>
 	a.length === b.length && a.every((n, i) => n === b[i]);
 
-function moveStates(places: ReadonlyMap<number, Point>): Command {
-	const commands: Command[] = [...places].map(([id, p]) => ({
-		type: 'moveState',
-		id,
-		x: p.x,
-		y: p.y
-	}));
-	return commands.length === 1 ? commands[0]! : { type: 'batch', commands };
-}
-
-export function createEditor(initial: MachineDocument): Editor {
-	const history = createHistory(initial);
+export function createEditorCore<D extends StatesDocument, C>(
+	initial: D,
+	kind: EditorKind<D, C>
+): EditorCore<D, C> & {
+	setLabelingAsk: (open: { from: number; to: number }, ask: string) => void;
+} {
+	const history: GenericHistory<D, CoreCommand<C>> = kind.createHistory(initial);
 	const listeners = new Set<() => void>();
 	let sequence = 0;
 	let focusRequest = 0;
@@ -172,7 +180,7 @@ export function createEditor(initial: MachineDocument): Editor {
 	let drag: { originals: Map<number, Point>; start: Point } | null = null;
 	let marqueeStart: Point | null = null;
 
-	let state: EditorState = {
+	let state: EditorState<D> = {
 		doc: initial,
 		selection: [],
 		tool: 'select',
@@ -201,13 +209,13 @@ export function createEditor(initial: MachineDocument): Editor {
 	};
 
 	/** Changes that do not touch the document. */
-	function set(patch: Partial<EditorState>) {
+	function set(patch: Partial<EditorState<D>>) {
 		state = { ...state, ...patch };
 		notify();
 	}
 
 	/** Takes the document and the history as they are now, plus other changes, in one notification. */
-	function commit(patch: Partial<EditorState> = {}) {
+	function commit(patch: Partial<EditorState<D>> = {}) {
 		const doc = history.doc;
 		const before = state.doc;
 		const selection = prune(patch.selection ?? state.selection, doc);
@@ -224,7 +232,7 @@ export function createEditor(initial: MachineDocument): Editor {
 			},
 			canUndo: history.canUndo,
 			canRedo: history.canRedo,
-			dirty: !documentsEqual(initial, doc)
+			dirty: !kind.equal(initial, doc)
 		};
 		// The name field closes with its state, and the toast goes with the next change of the document.
 		const renaming = patch.renaming === undefined ? state.renaming : patch.renaming;
@@ -313,7 +321,7 @@ export function createEditor(initial: MachineDocument): Editor {
 				target = s.id;
 			}
 		}
-		const commands: Command[] = doomed.map((s) => ({ type: 'removeState', id: s.id }));
+		const commands: CoreCommand<C>[] = doomed.map((s) => ({ type: 'removeState', id: s.id }));
 		history.execute(commands.length === 1 ? commands[0]! : { type: 'batch', commands });
 		const message =
 			doomed.length === 1
@@ -332,7 +340,11 @@ export function createEditor(initial: MachineDocument): Editor {
 		if (busy() || ids.length === 0) return;
 		history.seal();
 		const on = !ids.every((id) => history.doc.accepting.includes(id));
-		const commands: Command[] = ids.map((id) => ({ type: 'setAccepting', id, accepting: on }));
+		const commands: CoreCommand<C>[] = ids.map((id) => ({
+			type: 'setAccepting',
+			id,
+			accepting: on
+		}));
 		history.execute(commands.length === 1 ? commands[0]! : { type: 'batch', commands });
 		commit({
 			announcement:
@@ -361,7 +373,7 @@ export function createEditor(initial: MachineDocument): Editor {
 		});
 	}
 
-	function closeLabel(patch: Partial<EditorState> = {}) {
+	function closeLabel(patch: Partial<EditorState<D>> = {}) {
 		const open = state.labeling;
 		// An edge that is selected and still there gets the focus back; otherwise its source does.
 		const edge = state.edge;
@@ -383,7 +395,7 @@ export function createEditor(initial: MachineDocument): Editor {
 	const nameOf = (id: number) => stateOf(id)?.name ?? '';
 
 	function selectEdge(from: number, to: number) {
-		const symbols = labelOf(history.doc, from, to);
+		const symbols = kind.edgeText(history.doc, from, to);
 		if (symbols === '') return;
 		if (state.edge?.from === from && state.edge.to === to && state.selection.length === 0) return;
 		history.seal();
@@ -396,12 +408,9 @@ export function createEditor(initial: MachineDocument): Editor {
 
 	function deleteEdge(from: number, to: number) {
 		if (busy()) return;
-		const symbols = history.doc.transitions
-			.filter((t) => t.from === from && t.to === to)
-			.map((t) => t.on);
-		if (symbols.length === 0) return;
+		const commands = kind.removeEdge(history.doc, from, to);
+		if (commands.length === 0) return;
 		history.seal();
-		const commands: Command[] = symbols.map((on) => ({ type: 'removeTransition', from, on, to }));
 		history.execute(commands.length === 1 ? commands[0]! : { type: 'batch', commands });
 		const message = say('editor.edge_removed', { from: nameOf(from), to: nameOf(to) });
 		commit({
@@ -432,13 +441,49 @@ export function createEditor(initial: MachineDocument): Editor {
 		});
 	}
 
-	function closeRename(patch: Partial<EditorState> = {}) {
+	function closeRename(patch: Partial<EditorState<D>> = {}) {
 		const id = state.renaming;
 		commit({
 			renaming: null,
 			focus: { id, request: ++focusRequest },
 			...patch
 		});
+	}
+
+	function commitEdge(commands: readonly C[]): Refusal | null {
+		const open = state.labeling;
+		if (!open) return null;
+		if (commands.length === 0) {
+			closeLabel();
+			return null;
+		}
+		const result = history.execute(
+			commands.length === 1 ? commands[0]! : { type: 'batch', commands }
+		);
+		if (!result.ok) {
+			const problem = refusal(result.error);
+			set({ labeling: { ...open, ask: null }, announcement: say(problem.key, problem.params) });
+			return problem;
+		}
+		const from = nameOf(open.from);
+		const to = nameOf(open.to);
+		const hasTransitionsLeft = history.doc.transitions.some(
+			(t) => t.from === open.from && t.to === open.to
+		);
+		closeLabel({
+			announcement: !hasTransitionsLeft
+				? say('editor.edge_removed', { from, to })
+				: say('editor.edge_changed', {
+						from,
+						to,
+						symbols: kind.edgeText(history.doc, open.from, open.to)
+					})
+		});
+		return null;
+	}
+
+	function setLabelingAsk(open: { from: number; to: number }, ask: string) {
+		set({ labeling: { ...open, ask } });
 	}
 
 	return {
@@ -525,7 +570,7 @@ export function createEditor(initial: MachineDocument): Editor {
 			if (!drag) return;
 			const places = state.preview ?? drag.originals;
 			drag = null;
-			history.execute(moveStates(places));
+			history.execute(moveStatesCommands<C>(places));
 			commit({ dragging: false, preview: null });
 		},
 		cancelDrag() {
@@ -538,7 +583,7 @@ export function createEditor(initial: MachineDocument): Editor {
 			if (busy() || state.selection.length === 0) return;
 			const originals = originalsOf(state.selection);
 			const before = history.doc;
-			history.execute(moveStates(dragPlaces(originals, { x: dx, y: dy }, false)), {
+			history.execute(moveStatesCommands<C>(dragPlaces(originals, { x: dx, y: dy }, false)), {
 				coalesce: 'nudge'
 			});
 			if (history.doc === before) return;
@@ -598,46 +643,8 @@ export function createEditor(initial: MachineDocument): Editor {
 				startLink(state.selection[0]!);
 			}
 		},
-		commitLabel(text, split) {
-			const open = state.labeling;
-			if (!open) return null;
-			let parts = parseLabel(text);
-			if (split === 'split') {
-				parts = splitParts(parts);
-			} else if (split === undefined) {
-				const long = splitNeeded(history.doc, parts);
-				if (long !== null) {
-					set({ labeling: { ...open, ask: long } });
-					return { ask: long };
-				}
-			}
-			const commands = labelCommands(history.doc, open.from, open.to, parts);
-			if (commands.length === 0) {
-				closeLabel();
-				return null;
-			}
-			const result = history.execute(
-				commands.length === 1 ? commands[0]! : { type: 'batch', commands }
-			);
-			if (!result.ok) {
-				const problem = refusal(result.error);
-				set({ labeling: { ...open, ask: null }, announcement: say(problem.key, problem.params) });
-				return problem;
-			}
-			const from = stateOf(open.from)?.name ?? '';
-			const to = stateOf(open.to)?.name ?? '';
-			closeLabel({
-				announcement:
-					parts.length === 0
-						? say('editor.edge_removed', { from, to })
-						: say('editor.edge_changed', {
-								from,
-								to,
-								symbols: labelOf(history.doc, open.from, open.to)
-							})
-			});
-			return null;
-		},
+		commitEdge,
+		setLabelingAsk,
 		cancelLabel() {
 			if (state.labeling) closeLabel();
 		},
@@ -707,5 +714,38 @@ export function createEditor(initial: MachineDocument): Editor {
 			}
 		},
 		seal: () => history.seal()
+	};
+}
+
+export const fsmKind: EditorKind<MachineDocument, Command> = {
+	createHistory,
+	equal: documentsEqual,
+	edgeText: (doc, from, to) => labelOf(doc, from, to),
+	removeEdge: (doc, from, to) =>
+		doc.transitions
+			.filter((t) => t.from === from && t.to === to)
+			.map((t) => ({ type: 'removeTransition', from, on: t.on, to }))
+};
+
+export function createEditor(initial: MachineDocument): Editor {
+	const { setLabelingAsk, ...core } = createEditorCore(initial, fsmKind);
+	return {
+		...core,
+		commitLabel(text, split) {
+			const open = core.getState().labeling;
+			if (!open) return null;
+			let parts = parseLabel(text);
+			if (split === 'split') {
+				parts = splitParts(parts);
+			} else if (split === undefined) {
+				const long = splitNeeded(core.getState().doc, parts);
+				if (long !== null) {
+					setLabelingAsk(open, long);
+					return { ask: long };
+				}
+			}
+			const commands = labelCommands(core.getState().doc, open.from, open.to, parts);
+			return core.commitEdge(commands);
+		}
 	};
 }

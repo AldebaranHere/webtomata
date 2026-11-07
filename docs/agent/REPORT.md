@@ -1,274 +1,273 @@
-# Task T-039 Report — PDA editor, part 2 of 5: the diagram shows a PDA
+# Task T-049 Report — PDA editor, part 3 of 8: the interaction core works for two kinds of document
 
-- **Task:** T-039
-- **Branch:** `task/T-039-pda-diagram`
+- **Task:** T-049
+- **Branch:** `task/T-049-editor-core`
 - **Status:** done
-- **Implementation Commit:** `0df683e` (preceded by status commit `577d4a8`, F7 baseline commit `8fbbe72`, and tests commit `ab6d539`)
+- **Implementation Commits:**
+  - Status start: `2818a8d` (`docs(agent): start T-049`)
+  - Generic core and commitEdge: `0b031e4` (`refactor(editor): generic interaction core and commitEdge`)
+  - PDA editor and full test suite: (current HEAD)
 
 ---
 
-## 1. Hand Derivations (F1–F7) and AC6 / F6 Notes
+## 1. Hand Derivations (Fixtures F1 to F4 on `wwrSample()`)
 
-### 1.1 Multi-line Label Box Formulas (`geometry.ts`)
+`wwrSample()` has states `q0` (id 0, start) at `(180, 200)` and `q1` (id 1, accepting) at `(440, 200)`.
+Input alphabet: `["a", "b"]`. Stack alphabet: `["A", "B"]` (all 1-char symbols, so stack separator is empty string `""`).
+Transitions in canonical engine order:
+- T0: `q0` reads `ε`, pops `ε`, pushes `ε` to `q1` (`from: 0, read: null, pop: [], push: [], to: 1`)
+- T1: `q0` reads `a`, pops `ε`, pushes `A` to `q0` (`from: 0, read: "a", pop: [], push: ["A"], to: 0`)
+- T2: `q0` reads `b`, pops `ε`, pushes `B` to `q0` (`from: 0, read: "b", pop: [], push: ["B"], to: 0`)
+- T3: `q1` reads `a`, pops `A`, pushes `ε` to `q1` (`from: 1, read: "a", pop: ["A"], push: [], to: 1`)
+- T4: `q1` reads `b`, pops `B`, pushes `ε` to `q1` (`from: 1, read: "b", pop: ["B"], push: [], to: 1`)
 
-- Constants:
-  - `LABEL_CHAR_WIDTH = 9.6`
-  - `LABEL_PADDING = 8`
-  - `LABEL_HEIGHT = 20`
-  - `LINE_PITCH = 18`
-  - `LABEL_GAP = 4`
-- For `n = Math.max(1, lines.length)` lines where the longest line has `maxChars = max([...line].length)` Unicode code points:
-  - $\text{width} = \text{maxChars} \times 9.6 + 8$
-  - $\text{height} = 20 + 18 \times (n - 1)$
-    - 1 line: $\text{height} = 20$
-    - 2 lines: $\text{height} = 38$
-    - 3 lines: $\text{height} = 56$
-- Outward placement from anchor point $A$ along unit normal $\vec{n}$:
-  - $\text{reach}(\vec{n}, \text{size}) = \frac{|\vec{n}_x| \cdot \text{width} + |\vec{n}_y| \cdot \text{height}}{2}$
-  - $\text{center} = A + (\text{LABEL\_GAP} + \text{reach}(\vec{n}, \text{size})) \vec{n}$
-  - Because $\text{reach}(\vec{n}, \text{size})$ scales with `size.width` and `size.height`, the side of the box nearest the edge or loop stays at distance `LABEL_GAP = 4 px` from $A$, and the box grows outward away from the line or loop.
-- Line vertical centers (`labelLineY(box, i)` for $i \in \{0, \dots, n - 1\}$):
-  - $y_i = \text{round}(\text{box.y} + 10 + 18 \times i)$
+### F1: Edges
+- `selectEdge(0, 1)`:
+  - Selected edge: `{ from: 0, to: 1 }`.
+  - State selection: `[]`.
+  - Screen reader text: `transitionLabel(T0) = "ε / ε / ε"`.
+  - Announcement: `editor.edge_selected { from: "q0", to: "q1", symbols: "ε / ε / ε" }`.
+- `selectEdge(0, 0)`:
+  - Edge transitions: T1 and T2 in order.
+  - Formatted lines: `a / ε / A` and `b / ε / B`.
+  - Joined by `; `: `"a / ε / A; b / ε / B"`.
+  - Announcement: `editor.edge_selected { from: "q0", to: "q0", symbols: "a / ε / A; b / ε / B" }`.
+- `selectEdge(1, 0)`:
+  - No transition from 1 to 0 exists; `selectEdge` returns early without modifying state.
+- `deleteEdge(0, 0)`:
+  - Both T1 and T2 are removed in **one** undo step.
+  - Transitions remaining: 3 (`T0`, `T3`, `T4`).
+  - Announcement & toast: `editor.edge_removed { from: "q0", to: "q0" }`.
+  - Selection: `[]`. Focus: id `0`.
+  - `undo()`: gives back document reference strictly `===` initial `doc`.
+- `deleteEdge(0, 1)`:
+  - Removes T0, leaving 4 transitions (`T1`, `T2`, `T3`, `T4`).
 
-### 1.2 Fixture F1: Straight Edge with Three Lines
+### F2: Deleting a State
+- `deleteStates([1])`:
+  - Remaining states: `[q0]`.
+  - `start`: 0.
+  - `accepting`: `[]` (since state 1 was the only accepting state).
+  - Transitions touching state 1 are removed: T0 (`0 -> 1`), T3 (`1 -> 1`), T4 (`1 -> 1`).
+  - Transitions remaining: 2 (T1: `q0 a/ε/A q0`, T2: `q0 b/ε/B q0`).
+  - History: exactly 1 undo step.
+  - `undo()`: gives back document reference strictly `===` initial `doc`.
+  - If edge `(1, 1)` is selected prior to `deleteStates([1])`, `state.edge` becomes `null` (since all its transitions are removed and its state is removed).
 
-- **Input:** Two states `q0` at `(0, 0)` and `q1` at `(300, 0)`. One edge `0 → 1` with `lines: ['ε / ε / ε', 'a / ε / A', 'b / ε / B']`.
-- **Geometry derivation:**
-  1. State circle radius `RADIUS = 32`. The straight edge goes from rim `(32, 0)` to rim `(268, 0)`, with midpoint anchor $A = (150, 0)$.
-  2. Direction of travel is $\vec{u} = (1, 0)$, so the left normal is $\vec{n} = (-\vec{u}_y, \vec{u}_x) = (0, -1)$ (upward in SVG coordinates).
-  3. Each of the 3 lines has 9 Unicode code points (`[...line].length === 9`):
-     - $\text{width} = 9 \times 9.6 + 8 = 94.4$
-     - $\text{height} = 20 + 18 \times (3 - 1) = 56$
-  4. $\text{reach}((0, -1), \{ \text{width}: 94.4, \text{height}: 56 \}) = 56 / 2 = 28$.
-  5. $\text{center} = (150, 0) + (4 + 28) \times (0, -1) = (150, -32)$.
-  6. $\text{box} = \{ x: 150 - 94.4 / 2,\ y: -32 - 56 / 2,\ \text{width}: 94.4,\ \text{height}: 56 \} = \{ x: 102.8,\ y: -60,\ \text{width}: 94.4,\ \text{height}: 56 \}$.
-  7. Bottom edge of box: $y + \text{height} = -60 + 56 = -4$, which is `4 px` (`LABEL_GAP`) above the edge line $y = 0$.
-  8. Line centers (`labelLineY(box, i) = -60 + 10 + 18 * i`):
-     - $i = 0 \implies y_0 = -50$
-     - $i = 1 \implies y_1 = -32$
-     - $i = 2 \implies y_2 = -14$
+### F3: Transition Link and commitEdge
+- `startLink(0)`, `finishLink(1)`:
+  - Sets `state.labeling = { from: 0, to: 1, ask: null }`.
+- `commitEdge([addTransition 0, read: "a", pop: ["A"], push: [], to: 1])`:
+  - Returns `null`.
+  - `state.labeling` becomes `null`.
+  - `canUndo` becomes `true`.
+  - Ordering of transitions in document:
+    - `T0`: `(0, null, [], [], 1)` — read `null` sorts first.
+    - `T1`: `(0, "a", [], ["A"], 0)` — read `"a"`, pop `[]` sorts before pop `["A"]`.
+    - **new**: `(0, "a", ["A"], [], 1)` — read `"a"`, pop `["A"]` sorts after `[]`, and before read `"b"`.
+    - `T2`: `(0, "b", [], ["B"], 0)`.
+    - `T3`: `(1, "a", ["A"], [], 1)`.
+    - `T4`: `(1, "b", ["B"], [], 1)`.
+    - Exact resulting transition array: `[T0, T1, new, T2, T3, T4]` (6 transitions).
+  - Announcement: `editor.edge_changed { from: "q0", to: "q1", symbols: "ε / ε / ε; a / A / ε" }`.
+- `commitEdge([])`:
+  - Returns `null`, closes the labeling box, and does **not** push a step to history (`canUndo` unchanged).
+- `commitEdge([addTransition with read: "z"])`:
+  - Returns refusal `{ key: "pda_document.unknown_symbol", params: { symbol: "z" } }`.
+  - `state.labeling` remains `{ from: 0, to: 1, ask: null }`.
+  - Document remains strictly identical object reference (`===`).
+  - Announcement is the refusal message.
+- `commitEdge` of commands removing all transitions of `(0, 1)`:
+  - After removing T0 and the new transition, the pair has 0 transitions.
+  - Announcement: `editor.edge_removed { from: "q0", to: "q1" }`.
 
-### 1.3 Fixture F2: Self-Loop with Three Lines (and Apex Confirmation)
-
-- **Apex confirmation from existing `geometry.test.ts` and `edgeGeometry`:**
-  - In `web/src/lib/editor/diagram/geometry.test.ts` line 207 (`describe('a self-loop', ...)`), a state at `(200, 200)` with a default top self-loop (`angle = -90`) has `const top = Math.min(...edge.points.map((p) => p.y)); near(top, 200 - RADIUS - 40, 0)` ($200 - 32 - 40 = 128$).
-  - In `makeLoop` (`geometry.ts`), at `angle = -90`, $\vec{u} = (0, -1)$ and the cubic Bezier control points reach 52 px beyond the rim so the midpoint (`points[SAMPLES / 2]` at $t = 0.5$) reaches $0.75 \times 52 + 0.25 \times 4 = 40\text{ px}$ beyond the rim (`y = cy - 32 - 40`).
-  - Evaluating `edgeGeometry` on a state at `(200, 300)` with a self-loop gives `Math.min(...oneLineLoop.points.map((p) => p.y)) === 228` ($300 - 32 - 40 = 228$). The code and the hand formula agree: the loop apex is at `(200, 228)`.
-- **Geometry derivation for F2 (state at `(200, 300)`, 3 lines of 9 chars):**
-  1. Anchor $A = (200, 228)$, outward normal $\vec{n} = (0, -1)$.
-  2. $\text{width} = 94.4$, $\text{height} = 56$, $\text{reach}((0, -1), \text{size}) = 28$.
-  3. $\text{center} = (200, 228 - (4 + 28)) = (200, 196)$.
-  4. $\text{box} = \{ x: 200 - 47.2,\ y: 196 - 28,\ \text{width}: 94.4,\ \text{height}: 56 \} = \{ x: 152.8,\ y: 168,\ \text{width}: 94.4,\ \text{height}: 56 \}$.
-  5. Bottom of box: $y + \text{height} = 168 + 56 = 224 = 228 - 4$ (`LABEL_GAP = 4 px` above the loop apex `228`).
-  6. Line centers (`168 + 10 + 18 * i`): `178`, `196`, `214`.
-
-### 1.4 Fixture F3: The Three Samples Through `pdaDiagram`
-
-With `more = (n) => "+ " + n + " lagi"`:
-1. **`wwrSample()` ($w w^R$):**
-   - `0>0`: `lines: ['a / ε / A', 'b / ε / B']`, `text: 'a / ε / A; b / ε / B'`
-   - `0>1`: `lines: ['ε / ε / ε']`, `text: 'ε / ε / ε'`
-   - `1>1`: `lines: ['a / A / ε', 'b / B / ε']`, `text: 'a / A / ε; b / B / ε'`
-2. **`wcwrSample()` ($w c w^R$):**
-   - `0>0`: `lines: ['a / ε / A', 'b / ε / B']`, `text: 'a / ε / A; b / ε / B'`
-   - `0>1`: `lines: ['c / ε / ε']`, `text: 'c / ε / ε'`
-   - `1>1`: `lines: ['a / A / ε', 'b / B / ε']`, `text: 'a / A / ε; b / B / ε'`
-3. **`anbnSample()` ($a^n b^n$):**
-   - `0>0`: `lines: ['a / ε / A']`, `text: 'a / ε / A'`
-   - `0>1`: `lines: ['b / A / ε']`, `text: 'b / A / ε'`
-   - `1>1`: `lines: ['b / A / ε']`, `text: 'b / A / ε'`
-
-### 1.5 Fixtures F4 and F5
-
-- **F4 (more than 3 transitions on an edge):**
-  - 3 transitions: 3 transition lines (`lines.length === 3`).
-  - 4 transitions: first 2 transition lines + `'+ 2 lagi'`.
-  - 5 transitions: first 2 transition lines + `'+ 3 lagi'`.
-  - 70 transitions: first 2 transition lines + `'+ 68 lagi'` (`'+ 68 more'` in English via `pda_editor.edge_more`).
-  - In all cases, `edge.text` holds all transitions in `doc.transitions` order joined by `'; '`.
-- **F5 (stack alphabet spacing rule):**
-  - `stackAlphabet: ['A', 'B']` (all 1 code point): `a / A / BA` and `ε / ε / ε`.
-  - `stackAlphabet: ['Z0', 'A']` (`'Z0'` has 2 code points): `a / Z0 / A Z0` AND in the same document `pop: ['A'], push: ['A', 'A']` formats as `a / A / A A`.
-  - `stackAlphabet: ['😀', 'A']` (`'😀'` is a surrogate pair, 2 UTF-16 code units but 1 Unicode code point `[...'😀'].length === 1`): `a / 😀 / A😀` (no space).
-
-### 1.6 Fixture F6: Property Across Seeded Random PDA Documents on a Grid
-
-- **Starting spacing check (`240 px`):**
-  - At `SPACING = 240`, seeds `48, 57, 98, 125, 206` fail because of label-to-label overlap between adjacent grid columns (or self-loops next to curved edges).
-  - **Root cause on seed 48:** Column `x = 0` (`x = 100`) and column `x = 1` (`x = 100 + SPACING`) both have opposite-pair vertical edges between rows `y = 0` and `y = 1`. The inner curve of column `0` bulges east by `CURVE_OFFSET = 24 px` and places its label `LABEL_GAP = 4 px` further east (`x = 128`), with a 2-symbol pop and 2-symbol push line (`11` chars, e.g. `a / BB / BB`, `width = 11 * 9.6 + 8 = 113.6 px`), reaching `x = 128 + 113.6 = 241.6`. Meanwhile, the inner curve of column `1` bulges west by `24 px` and places its `10`-char label (`width = 10 * 9.6 + 8 = 104 px`) `4 px` further west (`right = 100 + SPACING - 28`, `left = 100 + SPACING - 132`). They overlap whenever `128 + 113.6 > 100 + SPACING - 132`, i.e., $\text{SPACING} < 28 + 113.6 + 104 + 28 = 273.6\text{ px}$.
-  - **Minimum grid spacing for seeds 1 to 300:** `SPACING = 274` (`274 > 273.6`). **This was overfitted**: the owner ran 3000 seeds and found failures at 274 (seed 349) and at every spacing up to 400 (seed 2615). See the fix round below.
-
-#### F6 fix round (PR 167 review): the real threshold over 3000 seeds
-
-The test now uses `SPACING = 420` and seeds 1 to 1000 (463 ms measured, well under 10 s). The reason for the value: a three-line loop label that turns to a diagonal angle reaches about 146 px sideways from its state, and the label of a neighbor's curved edge is up to 113.6 px wide at the midpoint, so in the worst case states must be about 410 apart. The property and the drawing rules are unchanged.
-
-A scratch script (not committed; same generator as the test, seeds 1 to 3000, same three checks: no label overlap, no label on a state, labels inside bounds) gave:
-
-```text
-SPACING=240: 62/3000 failed
-SPACING=274: 11/3000 failed (seed 349, 392, 463, 574, 644, ...)
-SPACING=400: 1/3000 failed — seed 2615: labels 1 (1>3) and 6 (3>3) overlap
-SPACING=401: 1/3000 failed — seed 2615
-SPACING=402: 1/3000 failed — seed 2615
-SPACING=403: 1/3000 failed — seed 2615
-SPACING=404: 1/3000 failed — seed 2615
-SPACING=405: 0/3000 failed (all 3000 passed)
-SPACING=406, 407, 410, 420, 460, 500, 560, 640: 0/3000 failed
-```
-
-So the real threshold for seeds 1 to 3000 is **405** (404 fails). 420 is a round value with a small margin, not the exact limit. The grid checked here is a 3 × 3 grid; other layouts may need more.
-
-### 1.7 Fixture F7: FSM Baseline Recorded Before Code Changes
-
-- In commit `8fbbe72` (before any edit to `geometry.ts`), we recorded `web/src/lib/editor/diagram/__fixtures__/fsm-shapes.json` containing the full `edgeGeometry(endsWith01())` JSON and the SHA-256 hashes of `JSON.stringify(edgeGeometry(doc))` for the 300 seeded random FSM documents of `geometry.test.ts` (full JSON for 300 machines was ~796 KB; the fixture with `endsWith01` + 300 SHA-256 hashes is ~32 KB).
-- In `geometry.test.ts`, F7 verifies that every label has `lines: [label.text]` and that after stripping `lines` from `LabelShape`, `edgeGeometry(endsWith01())` and all 300 random FSMs match `fsm-shapes.json` byte-for-byte.
-
-### 1.8 Note on AC6 Testing Setup
-
-- `vitest` in `web/` runs without a `vitest.config.ts` / `@sveltejs/vite-plugin-svelte` transform, so importing `.svelte` components in unit tests fails at parse time. Per AC6 and Reminder 4 ("if it has none, test the pure function that makes the line positions and say so (do not add a dependency)"), we exported `labelLineY(box: Box, index: number): number` from `geometry.ts`, called `labelLineY(edge.label.box, i)` in `DiagramDrawing.svelte`, and tested `labelLineY` on one-line FSM, one-line PDA, and three-line PDA (F1) labels in `geometry.test.ts`. And in `DiagramDrawing.svelte`, `edge.label.lines.length <= 1` keeps the exact single `<text>` node (no `<tspan>`), verified both by unit tests and by the existing Playwright diagram and image-export e2e specs.
+### F4: Drag
+- `beginDrag(0, p)` at `p = (180, 200)`: sets `state.dragging = true`, document unchanged.
+- `dragTo(p + (40, 10))` repeated: updates `state.preview.get(0) = (220, 210)`. Document untouched.
+- `endDrag()`: applies `moveState` in **one** undo step. `state.doc.states[0]` position is `(220, 210)`.
+- `undo()`: gives back document reference strictly `===` initial `doc`.
+- `cancelDrag()`: restores `dragging = false`, `preview = null`, document and history unchanged.
 
 ---
 
-## 2. Deliberate Breaks (AC7)
+## 2. Shared Core Architecture & Tail Consolidation (AC4)
 
-Each of the 8 deliberate breaks specified in AC7 was applied one at a time, verified to fail the target test, and then restored:
+### 2.1 Typing of the Generic Core
+`createEditorCore<D extends StatesDocument, C>(initial: D, kind: EditorKind<D, C>)`:
+- History typed with `CoreCommand<C> = StateCommand | C | { type: 'batch'; commands: CoreCommand<C>[] }`.
+- Method bivariance allows `kind.createHistory` to be consumed cleanly without intrusive casts across the codebase.
+- `EditorKind` has exactly four members:
+  1. `createHistory(initial: D): GenericHistory<D, C>`
+  2. `equal(a: D, b: D): boolean`
+  3. `edgeText(doc: D, from: number, to: number): string`
+  4. `removeEdge(doc: D, from: number, to: number): C[]`
 
-### Break 1: Ignore the number of lines in the box height (`height: LABEL_HEIGHT`) → F1 fails
+### 2.2 FSM `commitLabel` Calls `commitEdge`
+In `web/src/lib/editor/interaction/editor.ts`:
+- FSM-specific label parsing, `splitNeeded` check, and `labelCommands` calculation remain in `createEditor(initial: MachineDocument)`.
+- The execution tail (sending batch/single command, handling refusal, closing label box, and announcing `editor.edge_removed` vs `editor.edge_changed`) lives solely inside `commitEdge` in `createEditorCore`:
+```ts
+// editor.ts lines 473-503:
+function commitEdge(commands: readonly C[]): Refusal | null {
+	const open = state.labeling;
+	if (!open) return null;
+	if (commands.length === 0) {
+		closeLabel();
+		return null;
+	}
+	const result = history.execute(
+		commands.length === 1 ? commands[0]! : { type: 'batch', commands: commands as CoreCommand<C>[] }
+	);
+	if (!result.ok) {
+		const problem = refusal(result.error);
+		set({ labeling: { ...open, ask: null }, announcement: say(problem.key, problem.params) });
+		return problem;
+	}
+	const from = nameOf(open.from);
+	const to = nameOf(open.to);
+	const hasTransitionsLeft = history.doc.transitions.some(
+		(t) => t.from === open.from && t.to === open.to
+	);
+	closeLabel({
+		announcement: !hasTransitionsLeft
+			? say('editor.edge_removed', { from, to })
+			: say('editor.edge_changed', {
+					from,
+					to,
+					symbols: kind.edgeText(history.doc, open.from, open.to)
+				})
+	});
+	return null;
+}
 
-```text
- FAIL  src/lib/editor/diagram/geometry.test.ts > multi-line labels and DiagramInput (T-039) > F1: straight edge with three lines has box 94.4 × 56 at (102.8, -60) and line centers -50, -32, -14
-AssertionError: expected { x: 150, y: -14 } to deeply equal { x: 150, y: -32 }
-
-- Expected
-+ Received
-
-  {
-    "x": 150,
--   "y": -32,
-+   "y": -14,
-  }
+// In createEditor (lines 722-740):
+commitLabel(text, split) {
+	const open = core.getState().labeling;
+	if (!open) return null;
+	let parts = parseLabel(text);
+	if (split === 'split') {
+		parts = splitParts(parts);
+	} else if (split === undefined) {
+		const long = splitNeeded(core.getState().doc, parts);
+		if (long !== null) {
+			core.setLabelingAsk(open, long);
+			return { ask: long };
+		}
+	}
+	const commands = labelCommands(core.getState().doc, open.from, open.to, parts);
+	return core.commitEdge(commands);
+}
 ```
 
-### Break 2: Put the lines in alphabet order (`[...allLines].sort()`) instead of `doc.transitions` order → F3 fails
-
-```text
- FAIL  src/lib/editor/diagram/pda-diagram.test.ts > PDA diagram adapter (T-039) > F3: produces exact edges and lines in order for wwᴿ, wcwᴿ and aⁿbⁿ
-AssertionError: expected [ 'a / ε / A', 'b / ε / A' ] to deeply equal [ 'b / ε / A', 'a / ε / A' ]
-
-- Expected
-+ Received
-
-  [
--   "b / ε / A",
-    "a / ε / A",
-+   "b / ε / A",
-  ]
-```
-
-### Break 3: Show three transitions plus `+ n lagi` instead of two → F4 fails
-
-```text
- FAIL  src/lib/editor/diagram/pda-diagram.test.ts > PDA diagram adapter (T-039) > F4: truncates to 2 transitions + "+ n lagi" when an edge has > 3 transitions while keeping full text
-AssertionError: expected [ 'a / ε / ε', 'a / ε / A', …(2) ] to deeply equal [ Array(3) ]
-
-- Expected
-+ Received
-
-  [
-    "a / ε / ε",
-    "a / ε / A",
--   "+ 2 lagi",
-+   "a / ε / AA",
-+   "+ 1 lagi",
-  ]
-```
-
-### Break 4: Decide stack spacing per transition (`stackSeparator([...transition.pop, ...transition.push])`) instead of `doc.stackAlphabet` → F5 fails
-
-```text
- FAIL  src/lib/editor/diagram/pda-diagram.test.ts > PDA diagram adapter (T-039) > F5: formats stack strings according to the whole document stackAlphabet (code points)
-AssertionError: expected 'a / A / AA' to be 'a / A / A A' // Object.is equality
-
-Expected: "a / A / A A"
-Received: "a / A / AA"
-```
-
-### Break 5: Sort edges by `to` first (`a.to - b.to || a.from - b.from`) → F3 fails
-
-```text
- FAIL  src/lib/editor/diagram/pda-diagram.test.ts > PDA diagram adapter (T-039) > F3: produces exact edges and lines in order for wwᴿ, wcwᴿ and aⁿbⁿ
-AssertionError: expected [ '1>0', '0>1' ] to deeply equal [ '0>1', '1>0' ]
-
-- Expected
-+ Received
-
-  [
--   "0>1",
-    "1>0",
-+   "0>1",
-  ]
-```
-
-### Break 6: Build `text` from the visible `lines` only (`lines.join('; ')`) → F4 fails
-
-```text
- FAIL  src/lib/editor/diagram/pda-diagram.test.ts > PDA diagram adapter (T-039) > F4: truncates to 2 transitions + "+ n lagi" when an edge has > 3 transitions while keeping full text
-AssertionError: expected 'a / ε / ε; a / ε / A; + 2 lagi' to be 'a / ε / ε; a / ε / A; a / ε / AA; a /…' // Object.is equality
-
-Expected: "a / ε / ε; a / ε / A; a / ε / AA; a / ε / AAA"
-Received: "a / ε / ε; a / ε / A; + 2 lagi"
-```
-
-### Break 7: Let the label grow toward the line instead of away from it (`LABEL_GAP - reach(normal, size)`) → F1 and F2 fail
-
-```text
- FAIL  src/lib/editor/diagram/geometry.test.ts > multi-line labels and DiagramInput (T-039) > F1: straight edge with three lines has box 94.4 × 56 at (102.8, -60) and line centers -50, -32, -14
-AssertionError: expected { x: 150, y: 24 } to deeply equal { x: 150, y: -32 }
-
- FAIL  src/lib/editor/diagram/geometry.test.ts > multi-line labels and DiagramInput (T-039) > F2: loop with three lines at (200, 300) grows upward with bottom 4 px above loop apex (228)
-AssertionError: expected 224 to be 168 // Object.is equality
-```
-
-### Break 8: Drop `lines` in `fsmDiagram` (`lines: []`) → F7 fails
-
-```text
- FAIL  src/lib/editor/diagram/geometry.test.ts > multi-line labels and DiagramInput (T-039) > F7: edgeGeometry for endsWith01 and 300 random FSMs matches the recorded baseline apart from lines
-AssertionError: expected [] to deeply equal [ '1' ]
-
-- Expected
-+ Received
-
-- [
--   "1",
-- ]
-+ []
-```
+The condition `!hasTransitionsLeft` perfectly matches `parts.length === 0` in FSM logic because `labelCommands` removes all transitions when `parts` is empty, leaving 0 transitions. All 113 existing FSM editor tests passed without any modifications.
 
 ---
 
-## 3. Bundle Size Before and After (AC8)
+## 3. Deliberate Breaks (AC5)
 
-### Before (`staging` at `4ab12f3` / `577d4a8`)
+All 9 deliberate breaks were applied, observed to fail the designated test, and restored.
 
-```text
-$ node tools/check-size.mjs
-ok   initial JS index.html: 81.3 KB gzip (limit 170 KB)
-ok   initial JS panduan/berakhiran-x.html: 86.2 KB gzip (limit 170 KB)
-ok   initial JS panduan.html: 80.4 KB gzip (limit 170 KB)
-ok   initial JS sandbox.html: 119.7 KB gzip (limit 170 KB)
-ok   initial JS soal/berakhiran-10.html: 119.3 KB gzip (limit 170 KB)
-ok   initial JS soal/jumlah-a-genap.html: 119.3 KB gzip (limit 170 KB)
-ok   initial JS soal/mengandung-101.html: 119.3 KB gzip (limit 170 KB)
-ok   initial JS soal.html: 81.9 KB gzip (limit 170 KB)
-ok   initial JS tentang.html: 79.7 KB gzip (limit 170 KB)
-ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
-ok   wasm _app/immutable/workers/assets/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB gzip (limit 250 KB)
+1. **Break 1: Let `deleteEdge` of a PDA remove only the first transition of the pair.**
+   - Code modification: in `pda-editor.ts`, returned only `[first]` in `removeEdge`.
+   - Failure: `src/lib/editor/interaction/pda-editor.test.ts` > F1:
+     `AssertionError: expected [ Array(4) ] to have a length of 3 but got 4`
+   - Restored: returned all matching transitions.
+
+2. **Break 2: Let `commitEdge` leave the box open after a success.**
+   - Code modification: in `closeLabel()`, omitted resetting `labeling: null`.
+   - Failure: `src/lib/editor/interaction/pda-editor.test.ts` > F3:
+     `AssertionError: expected { from: +0, to: 1, ask: null } to be null`
+   - Restored: `labeling: null` retained.
+
+3. **Break 3: Announce `edge_changed` when the pair is empty.**
+   - Code modification: in `commitEdge`, always announced `edge_changed`.
+   - Failure: `src/lib/editor/interaction/pda-editor.test.ts` > F3:
+     `AssertionError: expected { key: 'editor.edge_changed', … } to match object { key: 'editor.edge_removed', … }`
+   - Restored: conditional check `!hasTransitionsLeft ? edge_removed : edge_changed`.
+
+4. **Break 4: Build the symbols of `edge_selected` with `, ` instead of `; `.**
+   - Code modification: in `pdaEdgeText`, joined with `', '`.
+   - Failure: `src/lib/editor/interaction/pda-editor.test.ts` > F1:
+     `expected "a / ε / A, b / ε / B" to match "a / ε / A; b / ε / B"`
+   - Restored: joined with `'; '`.
+
+5. **Break 5: Compute `dirty` with `!==` instead of `kind.equal`.**
+   - Code modification: in `commit()`, set `dirty: initial !== doc`.
+   - Failure: `src/lib/editor/interaction/pda-editor.test.ts` > F5:
+     `AssertionError: expected true to be false` (when setting title back to initial value).
+   - Restored: `dirty: !kind.equal(initial, doc)`.
+
+6. **Break 6: Make `createPdaEditor` use the FSM history.**
+   - Code modification: in `pda-editor.ts`, passed `createHistory` from `history.ts`.
+   - Failure: Caught at compile time by TypeScript / `pnpm check`:
+     `Error: Type '(initial: MachineDocument, options?: ...) => History' is not assignable to type '(initial: PdaDocument) => GenericHistory<PdaDocument, PdaCommand>'. Property 'alphabet' is missing in type 'PdaDocument' but required in type 'MachineDocument'.`
+   - Restored: `createPdaHistory`.
+
+7. **Break 7: Let `removeState` leave the selected edge.**
+   - Code modification: in `commit()`, disabled both the selection-clears-edge rule and the `live(state.edge)` check.
+   - Failure: `src/lib/editor/interaction/pda-editor.test.ts` > F2:
+     `AssertionError: expected { from: 1, to: 1 } to be null`
+   - Restored: both clearing rules active in `commit()`.
+
+8. **Break 8: Let a refused `commitEdge` close the box.**
+   - Code modification: on `!result.ok`, called `closeLabel()`.
+   - Failure: `src/lib/editor/interaction/pda-editor.test.ts` > F3:
+     `AssertionError: expected null to deeply equal { from: 0, to: 1, ask: null }`
+   - Restored: keeps box open on refusal.
+
+9. **Break 9: Make `pdaEdgeText` sort the transitions by label.**
+   - Code modification: in `pdaEdgeText`, added `.sort()`.
+   - Failure: `src/lib/editor/interaction/pda-editor.test.ts` > F3:
+     `expected "a / A / ε; ε / ε / ε" to match "ε / ε / ε; a / A / ε"`
+   - Restored: preserving `doc.transitions` order.
+
+---
+
+## 4. Verification Output
+
+### 4.1 Guard Rails
+```
+$ pnpm --filter web format:check && cargo fmt --check
+$ prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+
+$ pnpm --filter web check
+$ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
+Loading svelte-check in workspace: /home/Aldebaran64/webtomata/web
+Getting Svelte diagnostics...
+svelte-check found 0 errors and 0 warnings
+
+$ pnpm --filter web lint
+$ eslint .
+
+$ node tools/check-strings.mjs
+ok   63 components have no hard-coded text
+
+$ node tools/check-tokens-usage.mjs
+ok   65 files use no raw colors
 ```
 
-### After (`0df683e`)
+### 4.2 Unit Tests (`vitest run`)
+```
+ RUN  v5.0.3 /home/Aldebaran64/webtomata/web
 
-```text
-$ node tools/check-size.mjs
+ Test Files  101 passed (101)
+      Tests  1247 passed | 2 skipped (1249)
+   Start at  20:39:38
+   Duration  7.90s (tests 73%, transform 19%, import 8%)
+```
+All interaction suites passed:
+- `document-view.test.ts` (3 tests)
+- `editor.commit-edge.test.ts` (7 tests)
+- `pda-editor.test.ts` (5 tests)
+- `pda-editor.property.test.ts` (3 runs with seed offsets 0, 10_000, 20_000, 300 sequences each)
+- `editor.test.ts`, `editor.apply.test.ts`, `editor.edges.test.ts`, `editor.link.test.ts`, `editor.states.test.ts`, `editor.property.test.ts` (all passed unedited).
+
+### 4.3 Bundle Size (AC6)
+
+Before (baseline on `staging`):
+```
 ok   initial JS index.html: 81.4 KB gzip (limit 170 KB)
 ok   initial JS panduan/berakhiran-x.html: 86.5 KB gzip (limit 170 KB)
 ok   initial JS panduan.html: 80.4 KB gzip (limit 170 KB)
@@ -282,177 +281,121 @@ ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzi
 ok   wasm _app/immutable/workers/assets/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB gzip (limit 250 KB)
 ```
 
+After (with generic core and `pdaEdgeText`):
+```
+ok   initial JS index.html: 81.4 KB gzip (limit 170 KB)
+ok   initial JS panduan/berakhiran-x.html: 86.5 KB gzip (limit 170 KB)
+ok   initial JS panduan.html: 80.4 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 120.0 KB gzip (limit 170 KB)  [+0.1 KB gzip]
+ok   initial JS soal/berakhiran-10.html: 119.6 KB gzip (limit 170 KB) [+0.1 KB gzip]
+ok   initial JS soal/jumlah-a-genap.html: 119.6 KB gzip (limit 170 KB) [+0.1 KB gzip]
+ok   initial JS soal/mengandung-101.html: 119.6 KB gzip (limit 170 KB) [+0.1 KB gzip]
+ok   initial JS soal.html: 81.9 KB gzip (limit 170 KB)
+ok   initial JS tentang.html: 79.8 KB gzip (limit 170 KB)
+ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
+ok   wasm _app/immutable/workers/assets/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB gzip (limit 250 KB)
+```
+Growth on sandbox and soal routes is at most +0.1 KB gzip (well below the 1.0 KB gzip budget), and all routes stay well under 170 KB.
+
+### 4.4 End-to-End Tests (AC7)
+Command:
+```
+pnpm --filter web exec playwright test web/e2e/editor-bar-phone.spec.ts web/e2e/editor-checks.spec.ts web/e2e/editor-compare.spec.ts web/e2e/editor-convert.spec.ts web/e2e/editor-edges.spec.ts web/e2e/editor-flows.spec.ts web/e2e/editor-layout.spec.ts web/e2e/editor-panel-height.spec.ts web/e2e/editor-panel-tabs.spec.ts web/e2e/editor-panel.spec.ts web/e2e/editor-run.spec.ts web/e2e/editor-states.spec.ts web/e2e/editor-table.spec.ts web/e2e/editor-tests.spec.ts web/e2e/editor-tooltips.spec.ts web/e2e/editor-transitions.spec.ts web/e2e/editor-view.spec.ts web/e2e/editor.spec.ts --project=desktop --project=phone
+```
+Result:
+```
+Running 324 tests using 6 workers
+  86 skipped
+  238 passed (3.2m)
+```
+All editor e2e tests passed on both desktop and mobile phone projects.
+
 ---
 
-## 4. Verification Outputs
+## 5. Review Fixes Round (PR #169 Follow-up)
 
-### 4.1 `pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens`
+### 5.1 Elimination of Casts (Zero Casts)
+By making the recursive batch commands array `readonly` in `CoreCommand<C>`:
+```ts
+export type CoreCommand<C> = StateCommand | C | { type: 'batch'; commands: readonly CoreCommand<C>[] };
+```
+TypeScript's array covariance rules allow `GenericHistory<D, C>` to be assigned directly to `GenericHistory<D, CoreCommand<C>>` through method bivariance with **zero casts**:
+```ts
+const history: GenericHistory<D, CoreCommand<C>> = kind.createHistory(initial);
+```
+In addition, `moveStatesCommands` directly returns `StateCommand | { type: 'batch'; commands: readonly CoreCommand<C>[] }` without any cast.
+- `as unknown as GenericHistory<...>` in `editor.ts`: removed.
+- `as unknown as C[]` in `document-view.ts`: removed.
+- Two `as CoreCommand<C>[]` casts in `editor.ts`: removed.
+- **Total casts remaining in `document-view.ts`, `editor.ts`, and `pda-editor.ts`**: **0**.
 
-```text
+### 5.2 Test Gap for `commitEdge([])` (Break & Restoration)
+Added explicit assertions to both FSM (`editor.commit-edge.test.ts`) and PDA (`pda-editor.test.ts`, F3) that calling `commitEdge([])` closes the label box, records no history step, and leaves the announcement and its `seq` strictly unchanged (`expect(s.announcement).toBe(annBefore)` and `expect(s.announcement?.seq).toBe(annBefore.seq)`).
+
+**Deliberate Break:**
+In `editor.ts` `commitEdge`, changed the empty commands branch to announce something:
+```ts
+if (commands.length === 0) {
+	closeLabel({ announcement: say('editor.undone') });
+	return null;
+}
+```
+**Failure output:**
+```
+FAIL  src/lib/editor/interaction/editor.commit-edge.test.ts > commitEdge > with no commands closes the box, makes no step, and leaves announcement unchanged
+AssertionError: expected { key: 'editor.undone' } to be { key: 'editor.hint_pick_target' } // Object.is equality
+
+FAIL  src/lib/editor/interaction/pda-editor.test.ts > PDA editor fixtures (T-049) > F3: commitEdge on PDA
+AssertionError: expected { key: 'editor.undone' } to be { key: 'editor.hint_pick_target' } // Object.is equality
+
+Test Files  2 failed (2)
+Tests  2 failed | 10 passed (12)
+```
+**Restoration:**
+Restored back to `closeLabel()` with no announcement patch. All 16 tests in both suites pass cleanly.
+
+### 5.3 Plugged `setLabelingAsk` Runtime Leak
+`createEditor` and `createPdaEditor` now omit `setLabelingAsk` when constructing their returned objects:
+- In `editor.ts`: `const { setLabelingAsk, ...core } = createEditorCore(initial, fsmKind);` and spreads `...core`.
+- In `pda-editor.ts`: `const { setLabelingAsk: _, ...core } = createEditorCore(initial, pdaKind); void _; return core;`.
+- In `document-view.test.ts`: Added test verifying that neither `createEditor(fsm)` nor `createPdaEditor(pda)` contains `setLabelingAsk` in `Object.keys()` or as `'setLabelingAsk' in editor`.
+
+### 5.4 Full Verification Rerun
+- `pnpm format:check`:
+```
 $ pnpm --filter web format:check && cargo fmt --check
 $ prettier --check .
 Checking formatting...
 All matched files use Prettier code style!
+```
+- `pnpm check`:
+```
 $ pnpm --filter web check
 $ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
 Loading svelte-check in workspace: /home/Aldebaran64/webtomata/web
 Getting Svelte diagnostics...
-
 svelte-check found 0 errors and 0 warnings
+```
+- `pnpm lint`:
+```
 $ pnpm --filter web lint
 $ eslint .
-$ node tools/check-strings.mjs
+(0 errors, 0 warnings)
+```
+- `pnpm check:strings && pnpm check:tokens`:
+```
 ok   63 components have no hard-coded text
-$ node tools/check-tokens-usage.mjs
 ok   65 files use no raw colors
 ```
-
-### 4.2 `pnpm --filter web exec vitest run`
-
-```text
- RUN  v5.0.3 /home/Aldebaran64/webtomata/web
-
- ✓ src/lib/editor/compare.wasm.test.ts (6 tests) 663ms
- ✓ src/lib/editor/interaction/editor.test.ts (41 tests) 758ms
- ✓ src/lib/share/link.test.ts (15 tests) 1238ms
- ✓ src/lib/editor/diagram/geometry.test.ts (42 tests) 1240ms
-   ✓ the whole drawing (7)
-     ✓ draws 200 states and 421 edges between neighbors quickly (9 ms measured) 28ms
-     ✓ draws the worst case, 600 random edges across 200 states, in well under a second (96 ms measured) 433ms
- ✓ src/lib/editor/pda-document.wasm.test.ts (5 tests) 1334ms
- ✓ src/lib/editor/history.property.test.ts (7 tests) 1549ms
- ✓ src/lib/editor/pda-commands.test.ts (12 tests) 429ms
- ✓ src/lib/editor/pda-document.test.ts (15 tests) 477ms
- ✓ src/lib/editor/commands.test.ts (26 tests) 183ms
- ✓ src/lib/editor/pda-history.property.test.ts (5 tests) 1860ms
- ✓ src/lib/questions/check.wasm.test.ts (27 tests) 443ms
- ✓ src/lib/questions/load.test.ts (32 tests) 350ms
- ✓ src/lib/editor/conversion.wasm.test.ts (49 tests) 488ms
- ✓ src/lib/editor/regex-conversion.wasm.test.ts (4 tests) 198ms
- ✓ src/lib/editor/document.wasm.test.ts (10 tests) 2269ms
- ✓ src/lib/share/files.wasm.test.ts (6 tests | 1 skipped) 154ms
- ✓ src/lib/i18n/i18n.test.ts (14 tests) 64ms
- ✓ src/lib/editor/run.wasm.test.ts (29 tests) 188ms
- ✓ src/lib/editor/document.test.ts (32 tests) 212ms
- ✓ src/lib/editor/regex-simplify.wasm.test.ts (6 tests) 203ms
- ✓ src/lib/editor/regex-compile.wasm.test.ts (5 tests) 112ms
- ✓ src/lib/questions/question.test.ts (4 tests) 25ms
- ✓ src/lib/engine/handlers.test.ts (20 tests) 120ms
- ✓ src/lib/lint.test.ts (2 tests) 2718ms
- ✓ src/lib/grammar/grammar-text.wasm.test.ts (31 tests) 172ms
- ✓ src/lib/editor/table.test.ts (22 tests) 75ms
- ✓ src/lib/questions/grade.wasm.test.ts (13 tests) 598ms
- ✓ src/lib/editor/diagram/pda-diagram.test.ts (4 tests) 621ms
-   ✓ PDA diagram adapter (T-039) (4)
-     ✓ F6: 300 random PDA documents on a grid have no overlapping labels, no label on a state, all labels inside bounds, and deterministic output 606ms
- ✓ src/lib/questions/summaries.test.ts (10 tests) 88ms
- ✓ src/lib/editor/history.test.ts (20 tests) 18ms
- ✓ src/lib/editor/interaction/editor.link.test.ts (19 tests) 15ms
- ✓ src/lib/share/image.test.ts (10 tests) 25ms
- ✓ src/lib/engine/client.test.ts (30 tests) 62ms
- ✓ src/lib/storage/autosave.tests-field.test.ts (9 tests) 38ms
- ✓ src/lib/share/open-file.wasm.test.ts (8 tests | 1 skipped) 74ms
- ✓ src/lib/storage/library.test.ts (21 tests) 36ms
- ✓ src/lib/editor/interaction/editor.states.test.ts (17 tests) 18ms
- ✓ src/lib/questions/answer.test.ts (7 tests) 19ms
- ✓ src/lib/storage/machines.test.ts (8 tests) 11ms
- ✓ src/lib/guides/load.test.ts (10 tests) 48ms
- ✓ src/lib/editor/interaction/keys.test.ts (49 tests) 17ms
- ✓ src/lib/storage/autosave.test.ts (12 tests) 17ms
- ✓ src/lib/editor/tester.test.ts (11 tests) 33ms
- ✓ src/lib/questions/machine.test.ts (13 tests) 8ms
- ✓ src/lib/storage/question-work.test.ts (13 tests) 21ms
- ✓ src/lib/examples/examples.wasm.test.ts (6 tests) 5ms
- ✓ src/lib/editor/interaction/camera.test.ts (25 tests) 22ms
- ✓ src/lib/share/open-file.test.ts (13 tests) 10ms
- ✓ src/lib/storage/progress.test.ts (13 tests) 5ms
- ✓ src/lib/storage/tests-field.test.ts (7 tests) 8ms
- ✓ src/lib/share/local-jff.test.ts (6 tests) 6ms
- ✓ src/lib/questions/grade.test.ts (20 tests) 22ms
- ✓ src/lib/editor/layout-client.test.ts (9 tests) 24ms
- ✓ src/lib/editor/regex-conversion.test.ts (13 tests) 9ms
- ✓ src/lib/examples/examples.test.ts (9 tests) 11ms
- ✓ src/lib/storage/autosave.progress.test.ts (8 tests) 15ms
- ✓ src/lib/editor/test-list.test.ts (13 tests) 8ms
- ✓ src/lib/editor/interaction/label.test.ts (14 tests) 10ms
- ✓ src/lib/share/files.test.ts (11 tests) 12ms
- ✓ src/lib/questions/list.test.ts (14 tests) 11ms
- ✓ src/lib/storage/example.test.ts (6 tests) 14ms
- ✓ src/lib/editor/regex-compile.test.ts (15 tests) 9ms
- ✓ src/lib/storage/migrate.test.ts (9 tests) 13ms
- ✓ src/lib/editor/interaction/editor.edges.test.ts (15 tests) 14ms
- ✓ src/lib/editor/interaction/canvas.test.ts (12 tests) 5ms
- ✓ src/lib/questions/feedback-text.test.ts (14 tests) 12ms
- ✓ src/lib/editor/tour.test.ts (8 tests) 9ms
- ✓ src/lib/grammar/presets.test.ts (4 tests) 4ms
- ✓ src/lib/editor/checker.test.ts (6 tests) 8ms
- ✓ src/lib/editor/compare.test.ts (11 tests) 7ms
- ✓ src/lib/editor/regex-simplify.test.ts (12 tests) 8ms
- ✓ src/lib/editor/panel-height.test.ts (12 tests) 8ms
- ✓ src/lib/editor/conversion-text.test.ts (4 tests) 3ms
- ✓ src/lib/language/language-math.test.ts (5 tests) 5ms
- ✓ src/lib/editor/run-text.test.ts (7 tests) 4ms
- ✓ src/lib/grammar/grammar-text.test.ts (19 tests) 9ms
- ✓ src/lib/editor/panel-tab.test.ts (8 tests) 3ms
- ✓ src/lib/questions/statement.test.ts (12 tests) 7ms
- ✓ src/lib/editor/checks.test.ts (7 tests) 6ms
- ✓ src/lib/questions/feedback-view.test.ts (6 tests) 4ms
- ✓ src/lib/editor/layout.test.ts (16 tests) 3262ms
- ✓ src/lib/editor/panel-width.test.ts (13 tests) 7ms
- ✓ src/lib/language/presets.test.ts (2 tests) 5ms
- ✓ src/lib/editor/interaction/editor.apply.test.ts (7 tests) 8ms
- ✓ src/lib/engine/problem.test.ts (5 tests) 3ms
- ✓ src/lib/storage/memory.test.ts (5 tests) 3ms
- ✓ src/lib/editor/regex-math.test.ts (8 tests) 6ms
- ✓ src/lib/guides/list.test.ts (3 tests) 5ms
- ✓ src/lib/editor/interaction/selection.test.ts (11 tests) 9ms
- ✓ src/lib/editor/table-grid.test.ts (4 tests) 3ms
- ✓ src/lib/editor/interaction/placement.test.ts (7 tests) 3ms
- ✓ src/lib/editor/interaction/menu.test.ts (4 tests) 2ms
- ✓ src/lib/questions/statement-fold.test.ts (4 tests) 2ms
- ✓ src/lib/editor/definition.test.ts (10 tests) 5ms
- ✓ src/lib/storage/titles.test.ts (3 tests) 1ms
- ✓ src/lib/seo.test.ts (1 test) 2ms
- ✓ src/lib/editor/interaction/editor.property.test.ts (4 tests) 3328ms
-
- Test Files  97 passed (97)
-      Tests  1229 passed | 2 skipped (1231)
-   Start at  23:02:31
-   Duration  4.21s
+- Full Vitest test suite (`pnpm --filter web exec vitest run`):
 ```
-
-### 4.3 Playwright Diagram Specs (AC9: `e2e/diagram.spec.ts`, `e2e/editor-edges.spec.ts`, `e2e/editor-transitions.spec.ts`, `e2e/editor-view.spec.ts`, `e2e/image-export.spec.ts` on `desktop` and `phone`)
-
-```text
-$ pnpm --filter web exec playwright test e2e/diagram.spec.ts e2e/editor-edges.spec.ts e2e/editor-transitions.spec.ts e2e/editor-view.spec.ts e2e/image-export.spec.ts --project=desktop --project=phone
-
-Running 110 tests using 6 workers
-  ...
-  38 skipped
-  72 passed (1.3m)
+Test Files  101 passed (101)
+     Tests  1248 passed | 2 skipped (1250)
+  Duration  8.41s
 ```
-
-### 4.4 What Was Not Run
-
-- Physical phone testing and live deployment checks (owner-only).
-- Full Playwright cross-browser suite (`pnpm test:e2e`, `pnpm test:e2e:cross`); ran the 5 diagram/edge/label specs on `desktop` and `phone` per AC9 and AGENTS.md verification tiers.
-
----
-
-## 5. Fix round after review of PR 167
-
-Changes: (1) F6 spacing 274 → 420, seeds 300 → 1000, real comment, ADR 0042 line (see 1.6); (2) `pda-diagram.ts`: one internal `formatTransition(t, sep)` used by both `transitionLabel` and `pdaDiagram` (no behavior change; the existing tests pass unchanged).
-
-Re-run after the fix (real output):
-
-```text
-$ pnpm format:check   -> All matched files use Prettier code style!
-$ pnpm check          -> svelte-check found 0 errors and 0 warnings
-$ pnpm lint           -> eslint . (no output, exit 0)
-$ pnpm --filter web exec vitest run
- Test Files  97 passed (97)
-      Tests  1229 passed | 2 skipped (1231)
-   Duration  3.84s
-$ vitest run src/lib/editor/diagram/pda-diagram.test.ts
- ✓ F6: 1000 random PDA documents on a grid ... 463ms
+- Playwright editor specs (`--project=desktop --project=phone`):
+```
+Running 324 tests using 6 workers
+  86 skipped
+  238 passed (4.0m)
 ```

@@ -1,8 +1,8 @@
 // The selection of states: a sorted list of ids, and the small operations on it. The selection is
 // not part of the document and not part of the history (docs/ux/editor-interactions.md).
-import type { MachineDocument } from '../document.ts';
 import { RADIUS } from '../diagram/geometry.ts';
 import type { Point } from './canvas.ts';
+import type { StatesDocument } from './document-view.ts';
 
 export type Selection = readonly number[];
 export type Direction = 'left' | 'right' | 'up' | 'down';
@@ -12,17 +12,17 @@ export const toggle = (selection: Selection, id: number): Selection =>
 		? selection.filter((s) => s !== id)
 		: [...selection, id].sort((a, b) => a - b);
 
-export const selectAll = (doc: MachineDocument): Selection => doc.states.map((s) => s.id);
+export const selectAll = (doc: StatesDocument): Selection => doc.states.map((s) => s.id);
 
 /** The selection without the ids that are no longer in the document (after a delete or an undo). */
-export function prune(selection: Selection, doc: MachineDocument): Selection {
+export function prune(selection: Selection, doc: StatesDocument): Selection {
 	const ids = new Set(doc.states.map((s) => s.id));
 	return selection.filter((id) => ids.has(id));
 }
 
 /** The states whose whole circle is inside the rectangle. A negative width or height is fine. */
 export function inRectangle(
-	doc: MachineDocument,
+	doc: StatesDocument,
 	rect: { x: number; y: number; width: number; height: number }
 ): Selection {
 	const left = Math.min(rect.x, rect.x + rect.width);
@@ -53,7 +53,7 @@ const VECTORS: Record<Direction, Point> = {
  * lowest id.
  */
 export function nearestInDirection(
-	doc: MachineDocument,
+	doc: StatesDocument,
 	fromId: number,
 	direction: Direction
 ): number | undefined {
