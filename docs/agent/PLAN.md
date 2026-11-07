@@ -2225,7 +2225,7 @@ Use the quick loop while you work (one file or pattern) and the whole gate once 
 
 ## Task T-055 — PDA editor, part 6 of 10: the editor frame is shared
 
-**Status:** in-progress
+**Status:** done
 **Owner:** worker
 **Branch:** `task/T-055-editor-frame`
 

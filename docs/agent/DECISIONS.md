@@ -15,6 +15,17 @@ Format:
 
 ---
 
+## 2026-11-08 — Shared editor frame extracted into EditorFrame.svelte (T-055)
+
+- Decider: worker (approved by planner & owner)
+- Context: `Editor.svelte` contained ~220 lines of framing and responsive layout CSS alongside FSM-specific logic; extracting `EditorFrame.svelte` enables sharing editor scaffolding with the PDA editor (`PdaEditor.svelte`) while keeping DOM structure and pixel appearance identical.
+- Decision: Extract `EditorFrame.svelte` owning the outer `.editor` container, tool rail, work area, common bar items (title, count, save status line, fit button, phone history buttons), hint and problem alert lines, stage wrapper, toast, announcer, and responsive phone CSS; FSM-specific content is supplied via snippets (`actionsBeforeFit`, `actions`, `stage`, `coveredContent`, `overlay`, `panel`).
+- Alternatives considered: Duplicating frame markup and CSS in `PdaEditor.svelte` (rejected: duplicates 220 lines of CSS and risks UI drift).
+- Reversible? yes
+- Affects: `web/src/lib/editor/EditorFrame.svelte`, `web/src/lib/editor/Editor.svelte`, `docs/decisions/0046-editor-frame.md`.
+
+---
+
 ## 2026-11-08 — The PDA editor shell is split again: frame, storage, shell (T-055 to T-057)
 
 - Decider: planner
