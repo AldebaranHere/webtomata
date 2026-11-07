@@ -1,252 +1,268 @@
-# Task T-055 Report — PDA editor, part 6 of 10: the editor frame is shared
+# Task T-056 Report — PDA editor, part 7 of 10: saving a PDA on the device
 
-- **Task:** T-055
-- **Branch:** `task/T-055-editor-frame`
+- **Task:** T-056
+- **Branch:** `task/T-056-pda-storage`
 - **Status:** done
 - **Implementation Commits:**
-  - Status start: `6c00fc0` (`docs(agent): set T-055 to in-progress`)
-  - Framework extraction and completion: `f00699d` (`feat(editor): extract shared editor frame`)
-- **PR:** #178 (https://github.com/AldebaranHere/webtomata/pull/178)
+  - Status start: `bbf1ca9` (`docs(agent): set T-056 status to in-progress`)
+  - Implementation & Tests: `b3aa15c` (`feat(storage): save pushdown automata on device in shared store`)
+- **PR:** #180 (to `staging`)
 
 ---
 
-## 1. Pre-flight & Stray Diff Confirmation
+## 1. Hand-Derived Fixtures & Expected Values (Derived Prior to Coding)
 
-Prior to starting implementation on clean `staging`:
-- Confirmed `git diff web/src/lib/editor/pda-label.ts` contained only whitespace / formatting differences from prior commits, safely discarded via `git restore web/src/lib/editor/pda-label.ts`.
-- Validated environment in WSL Ubuntu (Node v24.21.0, Rust, pnpm, wasm-pack).
+### Fixture F1: PDA Record Creation & Autosave
+- **Sample:** `wwrSample()` (kind: `'ndpda'`).
+- **Initial Save at `now = 1000`:**
+  - `id`: valid UUID v4 (36 chars)
+  - `recordVersion`: `1`
+  - `type`: `'pda'`
+  - `title`: `'wwᴿ (palindrom panjang genap)'`
+  - `kind`: `'ndpda'`
+  - `createdAt`: `1000`
+  - `updatedAt`: `1000`
+  - `openedAt`: `1000`
+  - `doc`: `serializePdaDocument(wwrSample())`
+  - `titles`: `undefined`
+  - `tests`: `undefined`
+  - `progress`: `undefined`
+- **Autosave at `now = 2000` on modified `doc2` (title: `'wwr (mod)'`, kind: `'dpda'`):**
+  - `record.title`: `'wwr (mod)'`
+  - `record.kind`: `'dpda'`
+  - `record.updatedAt`: `2000`
+  - `record.createdAt`: `1000` (unchanged)
+  - `record.openedAt`: `1000` (unchanged)
+  - `record.doc`: `serializePdaDocument(doc2)`
 
----
+### Fixture F2: Kind Isolation
+- **Initial store records:**
+  - FSM `A` at `5000` (created `1000`, updated `5000`, opened `5000`)
+  - Question `soal:x` at `6000` (created `1000`, updated `6000`, opened `6000`)
+  - PDA `P1` at `2000` (created `4000`, updated `2000`, opened `2000`)
+  - PDA `P2` at `3000` (created `1000`, updated `3000`, opened `3000`)
+- **Execution:**
+  - `openLatestPda(store, () => 9000)`:
+    - Returns `record.id = 'P2'`, `doc.title = 'PDA 2'`, `skipped = []`
+    - Rewrites `P2.openedAt` to `9000`, leaves `P2.createdAt`, `P2.updatedAt`, `P2.doc` unchanged
+    - Store records `P1`, `A`, and `soal:x` remain byte-identical
+  - On the same store:
+    - `openLatest(store, ...)` returns `A`
+    - `listEntries(store)` returns exactly `['A']` (ignoring `soal:x`, `P1`, `P2`)
 
-## 2. Oracle Baseline & Determinism (F1 & F2)
+### Fixture F3: Unreadable Records
+- **Case (i):**
+  - Store has `P1` (`openedAt = 9000`, corrupt JSON `{"broken`), `P2` (`openedAt = 8000`, good), `P3` (`openedAt = 7000`, version 2).
+  - `openLatestPda` returns `P2`.
+  - `skipped` is exactly `[{ id: 'P1', title: 'P1 Corrupt', reason: 'corrupt' }]`.
+  - `P3` is never read (`p3ReadTimes === initialReads`).
+- **Case (ii):**
+  - Store has only `P1` (`9000`, corrupt), `P3` (`7000`, version 2 newer), `P4` (`6000`, version 0 unsupported).
+  - Fallback empty NDPDA is saved via `createPdaDocument()`.
+  - `skipped` lists `P1` (corrupt), `P3` (newer), `P4` (unsupported) in exact order.
+  - Store has 4 total records; `P1`, `P3`, `P4` are byte-identical.
+- **`readStoredPda` text cases:**
+  - `""`, `"null"`, `"[]"`, `"{}"`, `{"schemaVersion": 1.5}`, transition naming missing state $\to$ each returns `{ ok: false, reason: 'corrupt' }`.
 
-Before modifying any source files, baseline determinism was verified on clean `staging` (commit `5b65deb`) by capturing 16 screenshots (8 desktop @ 1440x900, 8 phone @ Pixel 7) and 16 DOM snapshots (`document.querySelector('.editor').outerHTML` with Svelte comments and whitespace normalized) twice into `~/tmp/oracle-run-1` and `~/tmp/oracle-run-2`.
-Running `node ~/tmp/compare-oracle.mjs ~/tmp/oracle-run-1 ~/tmp/oracle-run-2` confirmed:
-```
-Result: 0 image diffs, 0 DOM diffs.
-```
-This immutable set was stored in `~/tmp/oracle-baseline/`.
+### Fixture F4: Failure Injection
+- **(a)** Store with refusing `put`: autosave sets status to `'failed'`.
+  - Flushing retries `docA` $\to$ status `'saved'`, store has `docA`.
+  - Following with `schedule(docB)` writes `docB`, never `docA`.
+- **(b)** Store with throwing `put`: `openLatestPda` still returns `{ record, doc, skipped }`. Subsequent `schedule` + `flush` reports status `'failed'`.
+- **(c)** Store whose `list()` throws: `openLatestPda` propagates the rejection.
 
-### The 8 States Evaluated:
-1. `/sandbox` empty with first-run card
-2. `/sandbox` with sample machine open and state $q_0$ selected
-3. Label box open on an edge (`Enter` on selected transition edge)
-4. `Tabel` tab open in side panel
-5. `Konversi` tab open in side panel
-6. State deleted, toast notification showing
-7. `/soal/mengandung-101` with editor and Umpan balik tab open
-8. Context menu open on state $q_0$
+### Fixture F5: Burst & Write Serialization
+- Burst of 50 `schedule` calls with 10 ms delay: exactly 2 writes occur, store ends up with 50th document.
+- Slow first `put` (15 ms) followed by immediate second `put`: operations execute strictly sequentially (`start-slow`, `end-slow`, `put-Fast`).
 
-### F1 & F2 Refactor Comparison Output:
-Comparing `oracle-baseline` against the refactored code `oracle-refactor`:
-```
-Comparing 16 images and 16 DOM snapshots between:
-  A: /home/Aldebaran64/tmp/oracle-baseline
-  B: /home/Aldebaran64/tmp/oracle-refactor
-  ✓ desktop-1-empty.html: identical DOM
-  ✓ desktop-2-state-selected.html: identical DOM
-  ✓ desktop-3-label-open.html: identical DOM
-  ✓ desktop-4-tab-table.html: identical DOM
-  ✓ desktop-5-tab-conversion.html: identical DOM
-  ✓ desktop-6-toast.html: identical DOM
-  ✓ desktop-7-soal-feedback.html: identical DOM
-  ✓ desktop-8-context-menu.html: identical DOM
-  ✓ phone-1-empty.html: identical DOM
-  ✓ phone-2-state-selected.html: identical DOM
-  ✓ phone-3-label-open.html: identical DOM
-  ✓ phone-4-tab-table.html: identical DOM
-  ✓ phone-5-tab-conversion.html: identical DOM
-  ✓ phone-6-toast.html: identical DOM
-  ✓ phone-7-soal-feedback.html: identical DOM
-  ✓ phone-8-context-menu.html: identical DOM
-  ✓ desktop-1-empty.png: 0 differing pixels
-  ✓ desktop-2-state-selected.png: 0 differing pixels
-  ✓ desktop-3-label-open.png: 0 differing pixels
-  ✓ desktop-4-tab-table.png: 0 differing pixels
-  ✓ desktop-5-tab-conversion.png: 0 differing pixels
-  ✓ desktop-6-toast.png: 0 differing pixels
-  ✓ desktop-7-soal-feedback.png: 0 differing pixels
-  ✓ desktop-8-context-menu.png: 0 differing pixels
-  ✓ phone-1-empty.png: 0 differing pixels
-  ✓ phone-2-state-selected.png: 0 differing pixels
-  ✓ phone-3-label-open.png: 0 differing pixels
-  ✓ phone-4-tab-table.png: 0 differing pixels
-  ✓ phone-5-tab-conversion.png: 0 differing pixels
-  ✓ phone-6-toast.png: 0 differing pixels
-  ✓ phone-7-soal-feedback.png: 0 differing pixels
-  ✓ phone-8-context-menu.png: 0 differing pixels
-
-Result: 0 image diffs, 0 DOM diffs.
-```
-- **AC1:** 16 of 16 pairs pixel-identical (0 differing pixels).
-- **AC2:** 16 of 16 DOM snapshots identical (0 diffs). Zero wrapper elements added or removed.
-
----
-
-## 3. Deliberate Breaks (AC5)
-
-Four deliberate breaks were made, verified failing, and cleanly restored:
-
-### Break 1: Dropped `.editor { flex-direction: column; }` in phone media query
-- **Break:** Removed `.editor { flex-direction: column; }` from the `@media (max-width: 39.99rem)` block in `EditorFrame.svelte`.
-- **Caught by:** Phone project test execution (`e2e/editor-bar-phone.spec.ts` and `screenshot-oracle.mjs` state 5 on phone). The phone layout broke: `aside.panel` rendered horizontally next to canvas instead of below, causing `button.go` to intercept pointer events and time out.
-- **Restored:** `.editor { flex-direction: column; }` restored in `EditorFrame.svelte`.
-
-### Break 2: Moved `<Toast>` before `<div class="stage">`
-- **Break:** Relocated `<Toast ... />` before `<div class="stage">` in `EditorFrame.svelte`.
-- **Caught by:** F2 DOM snapshot comparison:
-  ```
-  DOM mismatch in desktop-1-empty.html
-  DOM mismatch in desktop-6-toast.html
-  DOM mismatch in phone-1-empty.html
-  DOM mismatch in phone-6-toast.html
-  Result: 1 image diffs, 4 DOM diffs.
-  ```
-- **Restored:** `<Toast>` restored after `<div class="stage">` and overlays in `EditorFrame.svelte`.
-
-### Break 3: Dropped `data-ready` attribute from `<div class="editor">`
-- **Break:** Changed `<div class="editor" data-ready={ready || undefined}>` to `<div class="editor">`.
-- **Caught by:** `e2e/editor.spec.ts:28:1` ("the Sandbox opens with the sample, and the page does not scroll"):
-  ```
-  Error: locator.waitFor: Test timeout of 10000ms exceeded.
-  Call log:
-    - waiting for locator('.editor[data-ready]') to be visible
-     at openSandbox (fixtures.ts:69:44)
-  ```
-- **Restored:** `data-ready={ready || undefined}` restored in `EditorFrame.svelte`.
-
-### Break 4: Dropped `role="alert"` from `.problem` paragraph
-- **Break:** Changed `<p class="problem" role="alert">{t('storage.' + problem + '_hint')}</p>` to `<p class="problem">{t('storage.' + problem + '_hint')}</p>`.
-- **Caught by:** `e2e/cross/storage.spec.ts:145:1` ("a browser that refuses storage: the editor works, with a warning that nothing is saved"):
-  ```
-  Error: expect(locator).toContainText(expected) failed
-  Locator: getByRole('alert')
-  Expected substring: "memblokir penyimpanan"
-  Timeout: 5000ms
-  Error: element(s) not found
-  ```
-- **Restored:** `role="alert"` restored on `<p class="problem">` in `EditorFrame.svelte`.
+### Fixture F6: Size & Boundary Triples
+- `LIMITS.documentBytes` (262,144 chars):
+  - `262,143`: ok
+  - `262,144`: ok
+  - `262,145`: corrupt
+- `LIMITS.nameChars` (32 chars): 31 (ok), 32 (ok), 33 (corrupt)
+- `LIMITS.titleChars` (100 chars): 99 (ok), 100 (ok), 101 (corrupt)
+- `MAX_PDA_STRING` (64 chars): 63 (ok), 64 (ok), 65 (corrupt)
 
 ---
 
-## 4. Deepening Pass (AC6)
+## 2. Real Verification Commands & Unsummarized Outputs
 
-### Component Seam & API: `EditorFrame.svelte`
-`EditorFrame.svelte` exports a single Svelte 5 component with strictly typed props and snippets.
-
-#### Props:
-- `ready?: boolean`: controls `data-ready` attribute on root `.editor`.
-- `tool: Tool`: current active tool passed to `ToolRail`.
-- `canUndo: boolean`: undo capability state passed to `ToolRail` and phone `HistoryButtons`.
-- `canRedo: boolean`: redo capability state passed to `ToolRail` and phone `HistoryButtons`.
-- `ontool: (tool: Tool) => void`: callback for tool selection.
-- `onundo: () => void`: callback for undo action.
-- `onredo: () => void`: callback for redo action.
-- `title: string`: title text in `.bar .title`.
-- `stateCount: number`: state count in `.bar .count`.
-- `saveStatus?: SaveStatus`: status for `SaveStatusLine`.
-- `persistent?: boolean`: persistent storage flag for `SaveStatusLine`.
-- `hasAutosave?: boolean`: whether autosave status should be rendered.
-- `onfit: () => void`: click handler for `.bar .fit` button (delegates to canvas fit).
-- `problem?: 'unavailable' | 'failed' | null`: storage failure alert state.
-- `hintLine?: string | null`: keyboard/interaction hint message.
-- `covered?: boolean`: hides stage when modal canvas is active (e.g. conversions).
-- `toast?: Announcement | null`: active toast message.
-- `ontoastundo?: () => void`: toast undo callback.
-- `ontoastdismiss?: () => void`: toast dismiss callback.
-- `announcement?: Announcement | null`: screen reader announcement.
-
-#### Snippets:
-- `actionsBeforeFit?: Snippet`: FSM auto-layout action button.
-- `actions?: Snippet`: FSM help, share, library dialog buttons.
-- `stage: Snippet`: canvas viewport (`EditorCanvas`).
-- `coveredContent?: Snippet`: conversion canvas overlay.
-- `overlay?: Snippet`: `FirstRun` card and layout notice.
-- `panel?: Snippet`: side workstation panel (`SidePanel`).
-
-#### Audit:
-1. **Public surface:** Only the necessary frame properties and slots are exported. All internals are private to the component.
-2. **Duplication:** Zero duplicate logic. The framing CSS (work area, toolbar, status lines, toast positioning, and phone media query layout) exists in `EditorFrame.svelte` only.
-3. **Casts:** Zero casts (`any`, `@ts-ignore`, `as unknown as`). All types are checked strictly via TypeScript and Svelte 5 runes.
-
----
-
-## 5. Line Counts & Moved CSS (AC4)
-
-- **`web/src/lib/editor/Editor.svelte`**:
-  - Before: 774 lines
-  - After: 640 lines (-134 lines)
-- **`web/src/lib/editor/EditorFrame.svelte`**:
-  - Created: 241 lines
-- **Moved CSS rules from `Editor.svelte` to `EditorFrame.svelte`:**
-  - `.editor`
-  - `.stage`, `.stage[hidden]`
-  - `.work`
-  - `.bar`, `.bar p.title`, `.bar p.count`, `.bar button.fit`
-  - `.phone-history`
-  - `.hint-line`, `.problem`
-  - `.toast-slot`
-  - `@media (max-width: 39.99rem)` responsive phone rules:
-    - `.editor` (column flex, dock reordering)
-    - `.stage` (dock ordering)
-    - `.bar` (order, height, padding, gap)
-    - `.bar p.title` (font size, flex shrink)
-    - `.bar p.count` (display none)
-    - `.bar button.fit` (44px target)
-    - `.phone-history` (display flex)
-
----
-
-## 6. Verification Results
-
-### Static Checks:
+### A. Size Check (Before & After)
+`pnpm build && pnpm size`
 ```
-$ pnpm format:check
-All matched files use Prettier code style!
-
-$ pnpm check
-Loading svelte-check in workspace: /home/Aldebaran64/webtomata/web
-Getting Svelte diagnostics...
-svelte-check found 0 errors and 0 warnings
-
-$ pnpm lint
-$ eslint .
-(clean, 0 errors, 0 warnings)
-
-$ pnpm check:strings
-ok   67 components have no hard-coded text
-
-$ pnpm check:tokens
-ok   69 files use no raw colors
-```
-
-### Unit Tests:
-```
-$ pnpm test:web
- Test Files  104 passed (104)
-      Tests  1278 passed | 2 skipped (1280)
-   Duration  8.44s
-```
-
-### Build & Bundle Size:
-```
-$ pnpm size
-ok   initial JS index.html: 81.8 KB gzip (limit 170 KB)
-ok   initial JS panduan/berakhiran-x.html: 87.1 KB gzip (limit 170 KB)
-ok   initial JS panduan.html: 80.8 KB gzip (limit 170 KB)
-ok   initial JS sandbox.html: 121.3 KB gzip (limit 170 KB)
-ok   initial JS soal/berakhiran-10.html: 120.9 KB gzip (limit 170 KB)
-ok   initial JS soal/jumlah-a-genap.html: 120.9 KB gzip (limit 170 KB)
-ok   initial JS soal/mengandung-101.html: 120.9 KB gzip (limit 170 KB)
-ok   initial JS soal.html: 82.3 KB gzip (limit 170 KB)
-ok   initial JS tentang.html: 80.2 KB gzip (limit 170 KB)
+$ node tools/check-size.mjs
+ok   initial JS index.html: 81.9 KB gzip (limit 170 KB)
+ok   initial JS panduan/berakhiran-x.html: 87.2 KB gzip (limit 170 KB)
+ok   initial JS panduan.html: 81.0 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 121.4 KB gzip (limit 170 KB)
+ok   initial JS soal/berakhiran-10.html: 121.0 KB gzip (limit 170 KB)
+ok   initial JS soal/jumlah-a-genap.html: 121.0 KB gzip (limit 170 KB)
+ok   initial JS soal/mengandung-101.html: 121.0 KB gzip (limit 170 KB)
+ok   initial JS soal.html: 82.4 KB gzip (limit 170 KB)
+ok   initial JS tentang.html: 80.3 KB gzip (limit 170 KB)
 ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
 ok   wasm _app/immutable/workers/assets/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB gzip (limit 250 KB)
 ```
+Gzip size remained identical across all entrypoints and bundles.
 
-### Playwright Area E2E Specs:
-- **Desktop Project (`e2e/editor*.spec.ts`, `e2e/axe*.spec.ts`, `e2e/cross/storage.spec.ts`):**
-  - **134 passed**, 43 skipped (touch-specific tests skipped on desktop), 0 failed.
-- **Phone Project (`e2e/editor*.spec.ts`, `e2e/axe*.spec.ts`):**
-  - **25 passed**, 13 skipped (mouse/desktop-specific tests skipped on phone), 0 failed.
-- Total area specs: 159 passed across desktop and phone configurations.
+### B. Lint, Types & Checks
+`pnpm lint`:
+```
+$ pnpm --filter web lint
+$ eslint .
+```
+(Clean exit code 0, 0 warnings, 0 errors)
+
+`pnpm check`:
+```
+$ pnpm --filter web check
+$ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
+Loading svelte-check in workspace: /home/Aldebaran64/webtomata/web
+Getting Svelte diagnostics...
+
+svelte-check found 0 errors and 0 warnings
+```
+
+`pnpm format:check`:
+```
+$ pnpm --filter web format:check && cargo fmt --check
+$ prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+```
+
+`pnpm check:strings`:
+```
+$ node tools/check-strings.mjs
+ok   67 components have no hard-coded text
+```
+
+`pnpm check:tokens`:
+```
+$ node tools/check-tokens-usage.mjs
+ok   69 files use no raw colors
+```
+
+### C. Playwright Storage Cross-Browser Tests
+Executed locally on `desktop` and `webkit-phone` (Firefox is CI only per Rule 8):
+
+`pnpm --filter web exec playwright test e2e/cross/storage.spec.ts --project=desktop`:
+```
+Running 9 tests using 6 workers
+
+  ✓  6 [desktop] › e2e/cross/storage.spec.ts:44:1 › a change that waits for its delay is saved at once when the page is hidden or closed (5.1s)
+  ✓  5 [desktop] › e2e/cross/storage.spec.ts:22:1 › the first visit saves the sample as the first machine (5.8s)
+  ✓  1 [desktop] › e2e/cross/storage.spec.ts:99:1 › a machine of a newer version is skipped and kept, never overwritten (5.9s)
+  ✓  3 [desktop] › e2e/cross/storage.spec.ts:77:1 › a machine that cannot be read is skipped and kept, with a message (6.6s)
+  ✓  2 [desktop] › e2e/cross/storage.spec.ts:57:1 › leaving the page asks first while a change is not saved, and not after (7.9s)
+  ✓  4 [desktop] › e2e/cross/storage.spec.ts:31:1 › a change is saved on the device, and is there after a reload (8.9s)
+  ✓  7 [desktop] › e2e/cross/storage.spec.ts:122:1 › when every machine is unreadable a new one is made, and none is deleted (4.0s)
+  ✓  9 [desktop] › e2e/cross/storage.spec.ts:145:1 › a browser that refuses storage: the editor works, with a warning that nothing is saved (3.8s)
+  ✓  8 [desktop] › e2e/cross/storage.spec.ts:163:1 › a write that is refused: the warning shows, the work stays, and the next save clears it (6.5s)
+
+  9 passed (15.0s)
+```
+
+`pnpm --filter web exec playwright test e2e/cross/storage.spec.ts --project=webkit-phone`:
+```
+Running 9 tests using 6 workers
+
+  ✓  1 [webkit-phone] › e2e/cross/storage.spec.ts:22:1 › the first visit saves the sample as the first machine (7.9s)
+  ✓  3 [webkit-phone] › e2e/cross/storage.spec.ts:44:1 › a change that waits for its delay is saved at once when the page is hidden or closed (8.2s)
+  ✓  2 [webkit-phone] › e2e/cross/storage.spec.ts:77:1 › a machine that cannot be read is skipped and kept, with a message (8.5s)
+  ✓  4 [webkit-phone] › e2e/cross/storage.spec.ts:99:1 › a machine of a newer version is skipped and kept, never overwritten (8.7s)
+  ✓  5 [webkit-phone] › e2e/cross/storage.spec.ts:31:1 › a change is saved on the device, and is there after a reload (9.5s)
+  ✓  6 [webkit-phone] › e2e/cross/storage.spec.ts:57:1 › leaving the page asks first while a change is not saved, and not after (9.7s)
+  ✓  7 [webkit-phone] › e2e/cross/storage.spec.ts:122:1 › when every machine is unreadable a new one is made, and none is deleted (3.4s)
+  ✓  8 [webkit-phone] › e2e/cross/storage.spec.ts:145:1 › a browser that refuses storage: the editor works, with a warning that nothing is saved (4.3s)
+  ✓  9 [webkit-phone] › e2e/cross/storage.spec.ts:163:1 › a write that is refused: the warning shows, the work stays, and the next save clears it (6.8s)
+
+  9 passed (17.3s)
+```
+
+### D. Full Web Unit Test Suite
+`pnpm --filter web test`:
+```
+ Test Files  107 passed (107)
+      Tests  1298 passed | 2 skipped (1300)
+   Start at  02:45:49
+   Duration  8.73s (tests 74%, transform 19%, import 7%)
+```
+
+---
+
+## 3. F7 Property Tests & 10,000-Case Run Output
+
+Executed `TEST_CASES=10000 pnpm --filter web test src/lib/storage/pda-work.property.test.ts`:
+```
+$ TEST_CASES=10000 vitest run src/lib/storage/pda-work.property.test.ts
+
+ RUN  v5.0.3 /home/Aldebaran64/webtomata/web
+
+ ✓ src/lib/storage/pda-work.property.test.ts (3 tests) 3144ms
+   ✓ F7 — Property tests (round-trip, store integration, never throws) (3)
+     ✓ (a) 10000 random valid PdaDocuments round-trip through readStoredPda 1512ms
+     ✓ (b) 10000 random valid PdaDocuments through memory store + autosave + openLatestPda 1354ms
+     ✓ (c) readStoredPda never throws on 10000 random strings, lone surrogates, and control chars 276ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  02:22:47
+   Duration  3.57s (transform 8%, tests 88%, import 2%, worker 1%)
+```
+
+---
+
+## 4. The Nine Deliberate Breaks (AC5)
+
+Every required break was deliberately tested and observed failing:
+
+| # | Break Description | Targeted Code | Caught by Fixture | Observed Failure / Error |
+|---|---|---|---|---|
+| 1 | `openLatestPda` takes FSM records | Omit `.filter(isPdaRecord)` in `openLatestPda` | F2 | `AssertionError: expected [ { id: 'soal:x', ... } ] to deeply equal []` |
+| 2a | `openLatest` takes PDA records | Omit `isFsmRecord` filter in `openLatest` | F2 | `AssertionError: expected [ { id: 'P2', title: 'PDA 2', reason: 'corrupt' } ] to deeply equal []` |
+| 2b | `listEntries` takes PDA records | Omit `isFsmRecord` filter in `listEntries` | F2 | `AssertionError: expected [ 'A', 'P2', 'P1', ... ] to deeply equal [ 'A' ]` |
+| 3 | Sort by `createdAt` instead of `openedAt` | Change `.sort((a,b) => b.openedAt - a.openedAt)` to `b.createdAt - a.createdAt` | F2 | `AssertionError: expected 'P1' to be 'P2'` |
+| 4 | Empty fallback PDA overwrites unreadable record id | Set `id: records[0].id` instead of `newId()` | F3(ii) | `AssertionError: expected 'P1' not to be 'P1'` |
+| 5 | Drop retry after failure in autosave | Reset `latest = null` in catch block | F4(a) | `AssertionError: expected 'Initial' to be 'Doc A'` |
+| 6 | Two writes at once in autosave | Remove `if (!running) running = loop()` lock | F5 | `AssertionError: expected [ 'start-slow', 'end-slow', 'put-Fast' ] to deeply equal [ 'start-slow', 'put-Fast', 'end-slow' ]` |
+| 7 | `documentBytes` check changed to `>=` | `text.length >= LIMITS.documentBytes` | F6 | `AssertionError: expected { ok: false, reason: 'corrupt' } to deeply equal { ok: true, doc: ... }` |
+| 8 | Drop `type: 'pda'` from new record | Omit `type: 'pda'` in `createPdaMachine` | F1 / F2 | `AssertionError: expected undefined to be 'pda'` |
+| 9 | Do not copy `kind` on document change | Comment out `record.kind = doc.kind` in `pdaDocumentCodec.apply` | F1 | `AssertionError: expected 'ndpda' to be 'dpda'` |
+| 10 | Return core directly for PDA autosave (leaks FSM methods) | Return `createAutosaveCore(...)` for PDA | autosave.pda.test | `AssertionError: expected true to be false` (`'scheduleTests' in pdaSave`) |
+
+---
+
+## 5. The Deepening Pass
+
+1. **New exports and public interfaces:**
+   - `SavedPdaMachine`: Exact record shape for pushdown automata stored in `machines`.
+   - `AnySavedMachine`: Union `SavedFsmMachine | SavedPdaMachine`.
+   - `isPdaRecord(record)`: Guard for `record is SavedPdaMachine`.
+   - `isFsmRecord(record)`: Guard for `record is SavedFsmMachine`.
+   - `DocumentCodec<D, R>`: Serialization & field copy contract (`serialize`, `apply`).
+   - `pdaDocumentCodec`: Codec instance for `PdaDocument` $\to$ `SavedPdaMachine`.
+   - `fsmDocumentCodec`: Codec instance for `MachineDocument` $\to$ `SavedFsmMachine`.
+   - `readStoredPda(text: string)`: Safe document deserializer.
+   - `createPdaMachine(store, doc, now)`: Record creator.
+   - `openLatestPda(store, now)`: Last opened PDA retriever and fallback creator.
+   - `SkippedPda`, `OpenedPda`, `PdaReadResult`, `Unreadable`: Return contract types.
+   - `PdaAutosave`: Type-safe autosave client for PDA omitting FSM tests & progress scheduling.
+
+   *Can any be private?* Internal autosave queue logic is encapsulated in `createAutosaveCore` (private to `autosave.ts`).
+   *Is any logic duplicated?* Autosave debouncing and write serialization logic is shared 100% between FSM and PDA.
+
+2. **Cast Count:**
+   - **Zero (`0`) casts** in all source and test files.
+   - All record narrowing is achieved through honest union discriminators and type guards (`isPdaRecord`, `isFsmRecord`, `getPdaRecord`).
+   - Zero `@ts-ignore` or `any`.
+   - Verified via scan for `' as '` in new files (only comments and plain prose `as saved` appear):
+     ```
+     web/src/lib/storage/autosave.pda.test.ts:27:  it('starts as saved, schedule sets unsaved, flush saves document', async () => {
+     web/src/lib/storage/pda-work.ts:2: // A PDA record lives in the same store as FSM machines ('machines' in IndexedDB),
+     web/src/lib/storage/pda-work.ts:47:  // The text is at least as many bytes as it has units, so this cannot refuse a good document (mirrors migrate.ts).
+     web/src/lib/storage/pda-work.ts:70: /** Saves a PDA document as a new record in the store. */
+     web/src/lib/storage/pda-work.ts:93:  * The PDA machine that was opened last. A record that cannot be read is skipped and kept as it is.
+     web/src/lib/storage/pda-work.ts:94:  * When none can be read or none exists, an empty NDPDA (createPdaDocument()) is saved as a new record.
+     ```

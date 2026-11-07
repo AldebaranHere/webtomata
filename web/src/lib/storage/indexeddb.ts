@@ -2,7 +2,7 @@
 // the part of the API that is used is small. A write resolves when its transaction is complete, so
 // "saved" means that the browser has the record. It is tested in the real browsers
 // (e2e/cross/storage.spec.ts), because IndexedDB is where they differ.
-import type { MachineStore, SavedMachine } from './store.ts';
+import type { AnySavedMachine, MachineStore } from './store.ts';
 
 const DATABASE = 'webtomata';
 const STORE = 'machines';
@@ -72,11 +72,11 @@ export function createIndexedDbStore(factory: IDBFactory = indexedDB): MachineSt
 
 	return {
 		async list() {
-			const all = (await run<SavedMachine[]>('readonly', (s) => s.getAll())) ?? [];
+			const all = (await run<AnySavedMachine[]>('readonly', (s) => s.getAll())) ?? [];
 			return all.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 		},
 		async get(id) {
-			return run<SavedMachine | undefined>('readonly', (s) => s.get(id));
+			return run<AnySavedMachine | undefined>('readonly', (s) => s.get(id));
 		},
 		async put(record) {
 			await run('readwrite', (s) => s.put(record));
