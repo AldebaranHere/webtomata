@@ -4,7 +4,7 @@
 > `todo` means ready: every field is written and the human approved it. Several tasks can be `todo` at the same time. The worker does one task at a time: the one that the human names in the start prompt ("Do task T-xxx"). The worker sets it to `in-progress` in the first commit of its own PR and to `done` in the last. The planner does not open a pull request only to change a status.
 > The blank task template is in `PLAN-TEMPLATE.md`.
 
-**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 (CNF phases in the homework order, after T-029 is merged) is `todo` since the owner approved `design/screens/cnf-stepper-homework-order.md`; T-060 is merged (PR 147). Written on 2026-11-05 after it: T-015 (`todo`: the "versi panjang / versi ringkas" toggle). Written on 2026-11-05 after T-015 merged: T-030, then T-031 (`todo`, the PDA engine: model and validation, then simulation; one after the other, they touch the same engine files). T-032 is `todo` since 2026-11-05 (T-031 merged) T-034 (done) and T-035 (`todo`, T-034 merged); T-036 and T-037 are merged (PRs 161 and 163); P-004 (the PDA editor wireframe) is approved; T-033 is merged (PR 165); T-039, T-049 and T-053 are merged (PRs 167, 169 and 173); T-054 is `todo` since 2026-11-07 (T-055, T-051 and T-052 are `proposed` drafts that follow it); T-038 is a `proposed` draft; the full specs are written when the one before is merged.
+**Suggested order of the `todo` tasks** (the human decides): T-018 (start marker), T-016 (phone layout), T-023 (open the CNF result as a new grammar; after T-016 is merged), then T-026 and T-027 (parser-readable CNF helper names, and `λ` as the empty string; both after T-023 is merged), T-002 (from 2026-11-04), T-050 (CI fast path for docs-only changes), T-005 (from 2026-11-12). T-016 and T-018 need the Playwright browsers in WSL. Written on 2026-11-04 and `todo`: T-019 (one CYK length limit), T-017 (local-reference tests), T-025 (landmarks and tab panels), T-013 (preset text in `id`/`en`, readable rule chips). T-013 and T-025 touch the same two components: do them one after the other. Written on 2026-11-04 after those four were merged and `todo`: T-024 (rule rows with 44 px targets on touch screens), then T-010 (grammar flow e2e; needs T-024 merged), then T-011 (language and switcher e2e). All three touch or test the same two components: one at a time. Written on 2026-11-05: T-029 (`todo`: the CYK tester must space the symbols of a rule). T-060 (CNF phases in the homework order, after T-029 is merged) is `todo` since the owner approved `design/screens/cnf-stepper-homework-order.md`; T-060 is merged (PR 147). Written on 2026-11-05 after it: T-015 (`todo`: the "versi panjang / versi ringkas" toggle). Written on 2026-11-05 after T-015 merged: T-030, then T-031 (`todo`, the PDA engine: model and validation, then simulation; one after the other, they touch the same engine files). T-032 is `todo` since 2026-11-05 (T-031 merged) T-034 (done) and T-035 (`todo`, T-034 merged); T-036 and T-037 are merged (PRs 161 and 163); P-004 (the PDA editor wireframe) is approved; T-033 is merged (PR 165); T-039, T-049 and T-053 are merged (PRs 167, 169 and 173); T-054 is merged (PR 176); T-055 is `todo` since 2026-11-08 (T-056, T-057, T-051 and T-052 are `proposed` drafts that follow it); T-038 is a `proposed` draft; the full specs are written when the one before is merged.
 
 Status legend: `proposed` | `todo` | `in-progress` | `blocked` | `done` | `rejected`
 
@@ -2223,20 +2223,90 @@ Use the quick loop while you work (one file or pattern) and the whole gate once 
 
 ---
 
-## Task T-055 — PDA editor, part 6 of 8: the editor shell and the mode (draft)
+## Task T-055 — PDA editor, part 6 of 10: the editor frame is shared
 
-**Status:** proposed (after T-054)
+**Status:** todo
 **Owner:** worker
+**Branch:** `task/T-055-editor-frame`
 
-**Goal:** `PdaEditor.svelte` (the canvas, the tool rail, the title bar with undo and redo and the save line, the zoom control, the announcer and the toast; no panel yet), the mode switcher item "Otomata Pushdown (PDA)" enabled (`/sandbox?mode=pda`), autosave of the PDA document to the device in its own record kind, an empty canvas with "Mulai dari kanvas kosong", and the phone layout of the bar and the dock. The panel with the tabs comes with T-051. See `design/screens/pda-editor.md`, sections 1, 2 and 9.
+**Goal:** `Editor.svelte` (767 lines) draws the frame of the FSM editor and its contents together: the tool rail, the work column with its bar (title, count, save line, fit, undo and redo on a phone), the notices, the stage, the toast, and the side panel. The PDA editor needs the same frame with other contents, and its layout and phone rules (about 220 lines of CSS, the 40 rem breakpoint, the dock at the bottom of a phone) must not be copied. This task **extracts the frame** into `EditorFrame.svelte`, and the common parts of the bar into the frame, so that `Editor.svelte` keeps only what is FSM: its checks, runner, tester, tables, conversions, first run, library, share and help buttons. **It is a refactor and nothing else:** the FSM editor looks and behaves exactly as before, proven by pixel-identical screenshots and the existing tests. No PDA code. The PDA editor shell is T-057 (T-056 is its storage). See `docs/agent/DECISIONS.md` (2026-11-08), ADR 0043 and 0044.
 
-**Depends on:** T-054.
+**Decisions already made (do not reopen; ask the planner if one looks wrong):**
+
+- **A frame with slots.** `EditorFrame.svelte` owns: the element `.editor` with its `data-ready` mark, the `ToolRail` (its props `tool`, `canUndo`, `canRedo`, `ontool`, `onundo`, `onredo`), the work column, the **bar** with the parts that every editor has (the title text, the count of states, the save line, the fit button, undo and redo for a phone), the `problem` line (`role="alert"`), the Transisi hint line, the `stage` that holds the canvas, the `Toast` (its props `toast`, `onundo`, `ondismiss`), the side panel place, and all the layout and phone CSS that belong to them. Everything that differs comes in through snippets or props: `actions` (the extra buttons of the bar: layout, help, share, the list of machines), `stage` (the canvas), `overlay` (the first-run card and the layout note), `covered` (the stage is hidden while a conversion canvas shows), `panel` (the side panel, optional: the PDA editor has none until T-051). The exact split of the bar is the worker's to propose in the restatement, within these rules: the DOM that the FSM editor renders stays **the same** (same elements, classes, roles, accessible names, order, `hidden` attributes), because the e2e specs and the pictures depend on it.
+- **Tokens only.** The moved CSS keeps using the design tokens; nothing gets a raw color or size. No visual change.
+- **Public behavior of `Editor.svelte` does not change**: its props, its exported `setTitle`, the `bind:this` use in `Sandbox` and `Soal`, and what `/sandbox` and `/soal/[id]` do.
+- **No new dependency, no new message key, no change to any other component** (the canvas, the panel, the rail and the toast keep their own files). If a file other than `Editor.svelte` and the new frame needs a change, say why in the restatement.
+
+**Scope (in):**
+
+- `web/src/lib/editor/EditorFrame.svelte` (new) and `web/src/lib/editor/Editor.svelte` (smaller).
+- The throwaway proof script (see F1), kept in `~/tmp`, not committed.
+- `docs/decisions/0046-editor-frame.md` (the decisions above, short).
+- Tests: no new unit test is expected (the code is markup and CSS); the proof is F1 to F3.
+
+**Non-goals (out):**
+
+- No PDA code, no route, no mode, no storage (T-056, T-057). No change to the FSM editor's behavior or look. No change to `SidePanel`, `ToolRail`, `HistoryButtons`, `SaveStatusLine`, `Toast`, `Announcer` or the canvas, except an import path if one moves (say so). No new test file unless the refactor needs one.
+
+**Fixtures (the oracle; write the procedure down in `REPORT.md` before you change a file):**
+
+- *F1, the pictures do not change.* Before you touch anything, on a clean `staging`, build and serve the site (`pnpm build`, the same preview server that Playwright uses) and, with a throwaway Playwright script, take full-page and editor-region screenshots (PNG, animations disabled, caret hidden, the same viewport, fonts loaded) on the **desktop** and **phone** projects of these eight states: (1) `/sandbox` empty with the first-run card; (2) `/sandbox` with the sample machine open and one state selected; (3) the same with the label box open on an edge (`Enter` on a selected edge); (4) the same with the Tabel tab of the panel open; (5) the same with the Konversi tab open at its list; (6) the same after a state was deleted, so that the toast shows; (7) `/soal/<an id from content/questions>` with its editor and the Umpan balik tab; (8) the context menu open on a state. Save the 16 PNGs. After the refactor, take them again. **Every pair must be pixel-identical** (compare the decoded pixels; zero differing pixels). If one differs, find out why and fix it; do not accept a difference, and do not change a threshold. Report the 16 results.
+- *F2, the DOM does not change.* For the same states, save `document.querySelector('.editor').outerHTML` with the scoped class hashes removed (Svelte adds `svelte-<hash>` classes; strip them), before and after, and compare them: identical, except where the frame legitimately adds no wrapper element. If you must add or remove a wrapper element, list each one in `REPORT.md` and say which e2e selector it could affect; the e2e run (F3) is the check.
+- *F3, nothing else changed.* Every existing test passes unchanged (`vitest run`, and the Playwright specs that drive the editor: `grep -l "editor" web/e2e` finds them) on the desktop and phone projects, plus the `axe` specs. No existing test file is edited. `pnpm size`: every route stays under 170 KB; the FSM routes may grow by at most 0.3 KB gzip.
+
+**Acceptance criteria:**
+- AC1: F1: 16 of 16 pairs pixel-identical.
+- AC2: F2 holds, with the list of wrapper changes (ideally none).
+- AC3: F3: all existing tests pass, no test file edited, size within the limits (report before and after).
+- AC4: `Editor.svelte` is markedly shorter (report the line counts before and after), and no CSS rule that belongs to the frame is left in it (list the rules that moved).
+- AC5: deliberate breaks, each shown failing, then restored: drop one moved CSS rule (for example the phone dock rule: F1 must show a difference on the phone project); change the order of the toast and the stage in the frame (F1 or F2 fails); drop the `data-ready` mark (an e2e spec fails: name it); drop the `role="alert"` of the problem line (an e2e or axe spec fails: name it, or say that none does and add the smallest assertion to an existing spec by adding a test, not by editing one).
+- AC6: the deepening pass of `AGENTS.md` in `REPORT.md`: the props and snippets of `EditorFrame` (each used by `Editor.svelte` now or named for T-057), duplicated code (none expected), casts (zero).
+
+**Verification:**
+
+```
+pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens
+pnpm --filter web exec vitest run
+pnpm build && pnpm size
+pnpm --filter web exec playwright test <the editor specs and the axe specs, desktop and phone>
+```
+
+Follow rule 12 of `AGENTS.md` for every shell command (the Playwright runs are long: run them in the background, read their output, and do not poll more than twice without looking). Paste real output into `REPORT.md`.
+
+**Rollback:** `git revert <sha>`. Nothing else reads the frame yet.
+
+**Depends on:** T-053 (merged).
+
+**Notes for worker:** (1) Read `Editor.svelte` in full, `ToolRail.svelte`, `HistoryButtons.svelte`, `SaveStatusLine.svelte`, `Toast.svelte`, `Announcer.svelte` and `SidePanel.svelte` before you write a line, and state your plan in the restatement: the props and snippets of the frame, which CSS moves, and how you will keep the DOM identical. (2) Svelte scopes CSS to the component that holds the element: a rule in the frame that targets an element rendered from a snippet of `Editor.svelte` needs care (use the frame's own wrapper classes, or move the rule to where the element is). The pictures are the judge. (3) Do the move in small steps and take the screenshots after each; commit when a step is pixel-identical. (4) No `any`, no `@ts-ignore`, no `as unknown as`. (5) Edit with the edit tool, not with `sed` or a script, and run `git diff` after every edit. (6) Your `REPORT.md`, not your chat summary, is the record.
 
 ---
 
-## Task T-051 — PDA editor, part 7 of 8: the panel: tabs, kind switch, badge and checks (draft)
+## Task T-056 — PDA editor, part 7 of 10: saving a PDA on the device (draft)
 
 **Status:** proposed (after T-055)
+**Owner:** worker
+
+**Goal:** The PDA document is saved on the device after each change and opened again, with no screen. `createAutosave` takes a codec (how a document becomes the text of the record) so that one autosave serves both documents; a PDA record has the shape that T-052 will list (`type: 'pda'`, `kind: 'dpda' | 'ndpda'`, `doc` = `serializePdaDocument`) and lives in the same store as the machines, kept out of the FSM list and of the "last machine" rule for now (the way `soal:` records are); `openLatestPda` and `createPda` open the last PDA or make an empty one. Tests include a store that refuses a write (the status becomes `failed`, and a later change or `flush` writes), a record that cannot be read (skipped and kept, never deleted), and the two IndexedDB-less cases (memory store). See `design/screens/pda-editor.md`, section 1.
+
+**Depends on:** T-057.
+
+---
+
+## Task T-057 — PDA editor, part 8 of 10: the editor shell and the mode (draft)
+
+**Status:** proposed (after T-056)
+**Owner:** worker
+
+**Goal:** `PdaEditor.svelte` on top of `EditorFrame` (T-055), `EditorCanvas` (T-053), the label form (T-054) and the saving of T-056: the canvas with the four tools, undo and redo, the title and the save line, the zoom control, the announcer and the toast; the label form as a popover on a laptop and as a sheet at the bottom of the editor on a phone; the context-menu text "Ubah transisi" (`pdaMenuLabels`); `+ n lagi` selects the edge. The mode switcher item "Otomata Pushdown (PDA)" is enabled (`/sandbox?mode=pda`, remembered like the other modes, the code loaded on demand), and an empty PDA canvas shows the hint of the FSM canvas. No panel (T-051), no list or files or examples (T-052), no auto layout (a label-aware layout is a separate proposed task: PDA labels need states about 410 units apart in the worst case, T-039). The e2e specs cover everything that T-053 and T-054 left for this task (their lists are in those blocks): the form opened four ways, typing and sending, Tab order, Escape, leaving by a click, `Ketik ε`, a refused row, adding and deleting rows, deleting every row, the `+ n lagi` press (once, and in the Delete tool), the phone sheet, and axe on the open form. See `design/screens/pda-editor.md`, sections 1, 2, 8 and 9.
+
+**Depends on:** T-056.
+
+---
+
+## Task T-051 — PDA editor, part 9 of 10: the panel: tabs, kind switch, badge and checks (draft)
+
+**Status:** proposed (after T-057)
 **Owner:** worker
 
 **Goal:** The panel of the PDA editor: the DPDA | NDPDA switch, the Tabel tab (alphabets, states, the transition table), the Definisi tab, the determinism badge with its list of competing pairs and "Tunjukkan", and the "Pemeriksaan" line (`validatePda`). See `design/screens/pda-editor.md`, sections 3 to 7.
@@ -2245,7 +2315,7 @@ Use the quick loop while you work (one file or pattern) and the whole gate once 
 
 ---
 
-## Task T-052 — PDA editor, part 8 of 8: saved machines, files and the three examples (draft)
+## Task T-052 — PDA editor, part 10 of 10: saved machines, files and the three examples (draft)
 
 **Status:** proposed (after T-051)
 **Owner:** worker
@@ -2333,7 +2403,7 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-030** PDA data model, JSON, validation and the determinism check: specified in its own block above (`todo`). The three questions are settled from the slides (2026-11-05): the stack starts empty, one acceptance rule (input used up, stack empty, accepting state), `pop` and `push` are lists of named symbols, top first.
 - **T-031** PDA simulation, breadth-first, with a stack trace, budgets and the peak number of configurations: specified in its own block above (`todo`; after T-030).
 - **T-032** PDA `.jff` import and export: specified in its own block above (`todo`; T-030 and T-031 are merged).
-- **T-033** PDA editor, part 1 of 5, the PDA document, its commands and its history: specified in its own block above (`done`, PR 165). **T-039** (the diagram shows a PDA): specified in its own block above (`done`, PR 167). **T-049** (the interaction core works for two kinds of document): specified in its own block above (`done`, PR 169). **T-053** (the canvas works for two kinds of document): specified in its own block above (`done`, PR 173). **T-054** (the label form): specified in its own block above (`todo`, since 2026-11-07). **T-055** (the editor shell and the mode), **T-051** (the panel) and **T-052** (saved machines, files, examples): drafts above (`proposed`), one after the other.
+- **T-033** PDA editor, part 1 of 5, the PDA document, its commands and its history: specified in its own block above (`done`, PR 165). **T-039** (the diagram shows a PDA): specified in its own block above (`done`, PR 167). **T-049** (the interaction core works for two kinds of document): specified in its own block above (`done`, PR 169). **T-053** (the canvas works for two kinds of document): specified in its own block above (`done`, PR 173). **T-054** (the label form): specified in its own block above (`done`, PR 176). **T-055** (the editor frame is shared): specified in its own block above (`todo`, since 2026-11-08). **T-056** (saving a PDA on the device), **T-057** (the editor shell and the mode), **T-051** (the panel) and **T-052** (saved machines, files, examples): drafts above (`proposed`), one after the other.
 - **T-034** CFG to PDA, top-down (slides, `CFGtoPDAtopdown`): specified in its own block above (`todo`, since 2026-11-05; T-032 is merged). Tested by language equivalence, not by structure against JFLAP's file.
 - **T-035** CFG to PDA, bottom-up (slides, shift and reduce): specified in its own block above (`todo`, since 2026-11-05; T-034 is merged).
 - **T-036** PDA to restricted normal form, with a trace: specified in its own block above (`done`, PR 161).
