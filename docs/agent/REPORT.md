@@ -1,304 +1,326 @@
-# Task T-053 Report — PDA editor, part 4 of 8: the canvas works for two kinds of document
+# Task T-054 Report — PDA editor, part 5 of 8: the label form
 
-- **Task:** T-053
-- **Branch:** `task/T-053-canvas-two-documents`
+- **Task:** T-054
+- **Branch:** `task/T-054-pda-label-form`
 - **Status:** done
 - **Implementation Commits:**
-  - Status start: `e2496bb` (`docs(agent): mark T-053 in-progress`)
-  - Generic canvas and label slot: `dcb786b` (`feat(editor): generic canvas and label slot for two document kinds`)
-  - Fix round (one path, null check, Delete tool): (current HEAD)
+  - Status start: `489b7c7` (`docs(agent): mark T-054 in-progress`)
+  - Label form logic and components: (current commit)
 
 ---
 
-## 1. Hand Derivations (Fixtures F1 and F2)
+## 1. Hand Derivations
 
-### F1: The Overflow Target
-For a label box $\{ x: 102.8, y: -60, \text{width}: 94.4, \text{height}: 56 \}$ with 3 lines and `overflow: true`:
-- The line pitch constants in `diagram/geometry.ts` are `LABEL_HEIGHT = 20`, `LINE_PITCH = 18`.
-- The vertical center of line $i$ is calculated by:
-  $$\text{labelLineY}(box, i) = \text{round}(box.y + \text{LABEL\_HEIGHT} / 2 + \text{LINE\_PITCH} \times i)$$
-- For line index 2 (the 3rd line):
-  $$\text{labelLineY}(box, 2) = -60 + 10 + 18 \times 2 = -60 + 46 = -14$$
-- The overflow touch target is 44 px high, centered vertically on the last line center:
-  $$y = \text{round}(\text{lastCenterY} - 22) = -14 - 22 = -36$$
-  $$x = box.x = 102.8$$
-  $$\text{width} = box.width = 94.4$$
-  $$\text{height} = 44$$
-  Target Box: $\{ x: 102.8, y: -36, \text{width}: 94.4, \text{height}: 44 \}$.
+### F1: `rowsOf`
+With sample document `wwrSample()` (input alphabet `["a", "b"]`, stack alphabet `["A", "B"]`):
+- **Pair (0, 0):** Transitions are $q_0 \xrightarrow{a / \epsilon / A} q_0$ and $q_0 \xrightarrow{b / \epsilon / B} q_0$.
+  - Read: `'a'` and `'b'`.
+  - Pop: $\epsilon$ (`[]`), formatted as `'ε'`.
+  - Push: `['A']` and `['B']`, formatted as `'A'` and `'B'`.
+  - Derivation: `[{ read: "a", pop: "ε", push: "A" }, { read: "b", pop: "ε", push: "B" }]`.
+- **Pair (0, 1):** Single transition $q_0 \xrightarrow{\epsilon / \epsilon / \epsilon} q_1$.
+  - Read: `null` $\to$ `'ε'`.
+  - Pop: `[]` $\to$ `'ε'`.
+  - Push: `[]` $\to$ `'ε'`.
+  - Derivation: `[{ read: "ε", pop: "ε", push: "ε" }]`.
+- **Pair (1, 0):** No transitions exist $\to$ `[]`.
+- **Stack Alphabet with Comma (Probe 1):** Document with `stackAlphabet: ["A", ","]` and transition pop `[","]`, push `["A", ","]`:
+  - `stackAlphabet` contains single characters only (`allSingle = true`), but includes `','`.
+  - Pop: `[',']` $\to$ `','`.
+  - Push: `['A', ',']` $\to$ `'A,'`.
+  - Derivation: `{ read: "a", pop: ",", push: "A," }`.
+  - Round trip: `parseRows` detects `doc.stackAlphabet` contains `','`, so comma is NOT treated as a separator; `push` splits code points into `['A', ',']` and pop gives `[',']`.
+- **Multi-character stack alphabet:** Document with `stackAlphabet: ["Z0", "A"]` and transition `a`, pop `["Z0"]`, push `["A", "Z0"]`:
+  - `stackAlphabet` contains multi-character name `"Z0"`, so separator is `' '`.
+  - Pop: `['Z0']` $\to$ `'Z0'`.
+  - Push: `['A', 'Z0']` $\to$ `'A Z0'`.
+  - Derivation: `{ read: "a", pop: "Z0", push: "A Z0" }`.
 
-For a label box with 2 lines, height 38, $y = 0$, and `overflow: true`:
-- Line index 1 (the 2nd line):
-  $$\text{labelLineY}(box, 1) = 0 + 10 + 18 = 28$$
-- Overflow target:
-  $$y = 28 - 22 = 6$$
-  $$x = box.x$$
-  $$\text{height} = 44$$
-  Target Box: $\{ x: box.x, y: 6, \text{width}: box.width, \text{height}: 44 \}$.
+### F2: Field Parsing and `parseRows`
+With `stackAlphabet: ["A", "B"]` (all single-character symbols):
+- `"AB"` $\to$ no separator, all single $\to$ `["A", "B"]`.
+- `"A B"` $\to$ whitespace separator $\to$ `["A", "B"]`.
+- `"A, B"` $\to$ comma separator $\to$ `["A", "B"]`.
+- `"A,B"` $\to$ comma without whitespace $\to$ `["A", "B"]`.
+- `"ε"`, `"eps"`, `""`, `"  "` $\to$ empty $\to$ `[]`.
+- `"Z0 A"` $\to$ space separator $\to$ `["Z0", "A"]`.
+- `"Z0"` $\to$ no separator, all single $\to$ code points `["Z", "0"]`.
+- `"A😀"` $\to$ no separator, all single $\to$ code points `["A", "😀"]`.
 
-For a label without overflow (`overflow: undefined` or `false`):
-- `overflowTarget(label)` returns `null`.
+Special alphabet probes:
+- With `stackAlphabet: ["A", ","]`:
+  - `",A"` $\to$ single characters $\to$ `[",", "A"]`.
+  - `"A ,"` $\to$ whitespace separator $\to$ `["A", ","]`.
+  - `","` $\to$ `[","]`.
+- With `stackAlphabet: ["A", "a,b"]`:
+  - `"a,b"` $\to$ multi-character symbol $\to$ `["a,b"]` (comma is NOT a separator because `"a,b"` has comma).
+- With `stackAlphabet: ["A", "eps"]`:
+  - `"eps"` $\to$ `"eps"` is in `doc.stackAlphabet`, so it means `["eps"]`, not $\epsilon$.
+  - `"ε"` $\to$ always means $\epsilon$ $\to$ `[]`.
+- Read field with `inputAlphabet: ["a", "eps"]`:
+  - `"eps"` $\to$ `"eps"` is in `doc.inputAlphabet`, so read is `"eps"`, not `null`.
+  - `"ε"` $\to$ always means $null$.
 
-For a label narrower than 44 px (e.g. 1-character box $\{ x: 100, y: 0, \text{width}: 20, \text{height}: 20 \}$):
-- If `overflow: true`, target width is $box.width = 20$, height is 44.
-- In practice, FSM labels never have `overflow: true`, so `overflowTarget` is always `null` for FSM labels.
+With `stackAlphabet: ["Z0", "A"]` (multi-character symbol present):
+- `"Z0A"` $\to$ no separator, not all single $\to$ one name `["Z0A"]`.
+- `"Z0 A"` $\to$ space separator $\to$ `["Z0", "A"]`.
+- `"AA"` $\to$ no separator, not all single $\to$ one name `["AA"]`.
 
-### F2: `pdaDiagram` Overflow Flag
-- Edge with 3 transitions ($\le 3$): exactly 3 lines (`[l0, l1, l2]`), no truncation, and `overflow` is **omitted** (`'overflow' in edge` is `false`).
-- Edge with 4 transitions ($> 3$): 3 lines (`[l0, l1, "+ 2 lagi"]`), `overflow: true`.
-- Edge with 70 transitions ($> 3$): 3 lines (`[l0, l1, "+ 68 lagi"]`), `overflow: true`.
-- Through `diagramGeometry`, `LabelShape` receives `overflow: true` if and only if `edge.overflow === true`. For FSM documents via `fsmDiagram`, `overflow` is completely omitted from all labels, preserving identity against baseline `fsm-shapes.json`.
+Read text with `inputAlphabet: ["a", "b"]`:
+- `"a"`, `" a "` $\to$ `"a"`.
+- `""`, `"ε"`, `"eps"` $\to$ `null`.
+- `"c"` $\to$ `"c"` (1 character: accepted).
+- `"ab"` $\to$ $> 1$ character, not in alphabet, all single $\to$ refusal `pda_editor.read_one_symbol { text: "ab" }`.
+- `"a b"` $\to$ contains whitespace $\to$ refusal `pda_editor.read_one_symbol { text: "a b" }`.
 
----
+Read text with `inputAlphabet: ["a", "num"]` (multi-character name present):
+- `"ab"` $\to$ not all single $\to$ accepted as `"ab"`.
+- `"num"` $\to$ in alphabet $\to$ accepted as `"num"`.
 
-## 2. Four Key Protocol Points
+Blank rows:
+- Row `{ read: "", pop: "", push: "" }` is dropped.
+- Row `{ read: "ε", pop: "ε", push: "ε" }` produces `{ read: null, pop: [], push: [] }`.
 
-1. **DiagramDrawing Event Architecture, One Path, and E2E Coverage for T-055:**
-   - *Why both paths existed and only one remains:* DiagramDrawing initially included an inline `onclick` on `.hit-overflow` alongside `EditorCanvas` pointer-up handling, masked by a 250 ms debounce timer. WebTomata's architecture designates `DiagramDrawing` as a passive SVG renderer while `EditorCanvas` coordinates pointer and tool gestures; the duplicate click handler, timer debounce, and `onmore` prop on `DiagramDrawing` were eliminated, preserving solely the canvas pointer path.
-   - *Reachability & T-055 E2E requirements:* Because no PDA screen or route exists yet (T-054/T-055), no current test reaches the `onmore` trigger. T-055's e2e suite must explicitly cover:
-     1. A press on "+ n lagi" selects the edge and calls `onmore` exactly once (opening the Tabel tab).
-     2. A press elsewhere on the multi-line label selects the edge without triggering `onmore`.
-     3. When the Delete tool is active, a press on "+ n lagi" deletes the edge rather than invoking `onmore`.
-2. **Type Test via Vitest:**
-   - Vitest runs without Svelte component compilation in Node, so `EditorCanvas.svelte` is imported via `import type EditorCanvas from './EditorCanvas.svelte'` and `import type { EditorCanvasProps } from './EditorCanvas.svelte'`.
-   - The test file `src/lib/editor/EditorCanvas.type.test.ts` contains a runtime `describe` and `it` block validating that both FSM (`EditorCanvasProps<MachineDocument, Command>`) and PDA (`EditorCanvasProps<PdaDocument, PdaCommand>`) satisfy the prop constraints without errors.
-3. **Drag Preview without Casts:**
-   - Rather than spreading `{ ...view.doc, states: ... }` (which does not type as generic `D` without a forbidden cast), the canvas calls `diagram(view.doc)` once to produce `baseInput: DiagramInput`.
-   - It then maps the preview states directly onto `baseInput.states`:
-     ```ts
-     const shown = $derived.by(() => {
-       const input = diagram(view.doc);
-       if (!view.drag) return input;
-       const { places } = view.drag;
-       return {
-         ...input,
-         states: input.states.map((s) => places.get(s.id) ?? s)
-       };
-     });
-     ```
-   - `shown.states` is also cleanly passed to `linkLine(...)`. This requires zero type assertions or casts.
-4. **Quick Loop Paths:**
-   - Ran `pnpm --filter web exec vitest run src/lib/editor/diagram/geometry.test.ts` and `src/lib/editor/diagram/pda-diagram.test.ts` relative to `web/`.
-
----
-
-## 3. Deliberate Breaks (AC6)
-
-### Break 1: `overflowTarget` Height 40 px instead of 44 px
-- **Modification:** Changed `const TARGET_H = 44` to `40` (and `y: round(lastCenterY - 20)`) in `geometry.ts`.
-- **Command:** `pnpm --filter web exec vitest run src/lib/editor/diagram/geometry.test.ts`
-- **Output:**
-```
- FAIL  src/lib/editor/diagram/geometry.test.ts > multi-line labels and DiagramInput (T-039) > overflowTarget and overflow (T-053) > F1: calculates overflow target 44px high centered on the last line
-AssertionError: expected { x: 102.8, y: -34, width: 94.4, …(1) } to deeply equal { x: 102.8, y: -36, width: 94.4, …(1) }
-
-- Expected
-+ Received
-
-  {
--   "height": 44,
-+   "height": 40,
-    "width": 94.4,
-    "x": 102.8,
--   "y": -36,
-+   "y": -34,
-  }
-```
-- **Restoration:** Restored `TARGET_H = 44` and `round(lastCenterY - 22)`. Verified pass.
-
-### Break 2: `overflowTarget` Centered on Label Box Center
-- **Modification:** Changed `lastCenterY = labelLineY(...)` to `centerY = label.box.y + label.box.height / 2` in `geometry.ts`.
-- **Command:** `pnpm --filter web exec vitest run src/lib/editor/diagram/geometry.test.ts`
-- **Output:**
-```
- FAIL  src/lib/editor/diagram/geometry.test.ts > multi-line labels and DiagramInput (T-039) > overflowTarget and overflow (T-053) > F1: calculates overflow target 44px high centered on the last line
-AssertionError: expected { x: 102.8, y: -54, width: 94.4, …(1) } to deeply equal { x: 102.8, y: -36, width: 94.4, …(1) }
-
-- Expected
-+ Received
-
-  {
-    "height": 44,
-    "width": 94.4,
-    "x": 102.8,
--   "y": -36,
-+   "y": -54,
-  }
-```
-- **Restoration:** Restored `lastCenterY = labelLineY(label.box, label.lines.length - 1)`. Verified pass.
-
-### Break 3: `pdaDiagram` Sets `overflow: true` on $\ge 3$ Transitions
-- **Modification:** Changed `allLines.length > MAX_EDGE_LINES` to `allLines.length >= MAX_EDGE_LINES` in `pda-diagram.ts`.
-- **Command:** `pnpm --filter web exec vitest run src/lib/editor/diagram/pda-diagram.test.ts`
-- **Output:**
-```
- FAIL  src/lib/editor/diagram/pda-diagram.test.ts > PDA diagram adapter (T-039) > F2: pdaDiagram sets overflow: true only when transitions exceed 3
-AssertionError: expected true to be false // Object.is equality
-
-- Expected
-+ Received
-
-- false
-+ true
-
- ❯ src/lib/editor/diagram/pda-diagram.test.ts:337:31
-    335|   const edge3 = diag3.edges[0]!;
-    336|   expect(edge3.lines).toHaveLength(3);
-    337|   expect('overflow' in edge3).toBe(false);
-```
-- **Restoration:** Restored `allLines.length > MAX_EDGE_LINES`. Verified pass.
-
-### Break 4: `overflowTarget` Returns Target for Label Without Overflow
-- **Modification:** Removed `if (!label.overflow) return null;` in `geometry.ts`.
-- **Command:** `pnpm --filter web exec vitest run src/lib/editor/diagram/geometry.test.ts`
-- **Output:**
-```
- FAIL  src/lib/editor/diagram/geometry.test.ts > multi-line labels and DiagramInput (T-039) > overflowTarget and overflow (T-053) > F1: calculates overflow target 44px high centered on the last line
-AssertionError: expected { x: 100, y: 6, width: 90, height: 44 } to be null
-
-- Expected:
-null
-
-+ Received:
-{
-  "height": 44,
-  "width": 90,
-  "x": 100,
-  "y": 6,
-}
-```
-- **Restoration:** Restored `if (!label.overflow || label.lines.length === 0) return null;`. Verified pass.
-
-### Break 5: FSM Label Emits `overflow: false` instead of Omission
-- **Modification:** Changed `...(overflow ? { overflow: true } : {})` to `overflow: overflow ?? false` in `geometry.ts`.
-- **Command:** `pnpm --filter web exec vitest run src/lib/editor/diagram/geometry.test.ts`
-- **Output:**
-```
- FAIL  src/lib/editor/diagram/geometry.test.ts > multi-line labels and DiagramInput (T-039) > overflowTarget and overflow (T-053) > F1/F3: diagramGeometry propagates overflow to LabelShape, omitted for FSM
-AssertionError: expected true to be false // Object.is equality
-
-- Expected
-+ Received
-
-- false
-+ true
-
- ❯ src/lib/editor/diagram/geometry.test.ts:957:35
-    955|    const fsmShapes = edgeGeometry(endsWith01());
-    956|    for (const e of fsmShapes.edges) {
-    957|     expect('overflow' in e.label).toBe(false);
-```
-- **Restoration:** Restored `...(overflow ? { overflow: true } : {})`. Verified pass.
-
-### Break 6: `FsmLabelBox.svelte` Component Break
-- **Modification:** Set `const initial = 'broken';` in `FsmLabelBox.svelte`, built with `pnpm --filter web build`, and executed Playwright.
-- **Command:** `pnpm --filter web exec playwright test e2e/editor-transitions.spec.ts --project=desktop`
-- **Output:**
-```
-  1) [desktop] › e2e/editor-transitions.spec.ts:43:1 › two taps or clicks: source, then target, then the symbols 
-
-    Error: expect(locator).toHaveValue(expected) failed
-
-    Locator:  getByRole('textbox', { name: 'Simbol transisi' })
-    Expected: ""
-    Received: "broken"
-    Timeout:  5000ms
-
-  2) [desktop] › e2e/editor-transitions.spec.ts:178:1 › an edge that exists opens its box with the symbols it has; an empty text removes it 
-
-    Error: expect(locator).toHaveValue(expected) failed
-
-    Locator:  getByRole('textbox', { name: 'Simbol transisi' })
-    Expected: "0"
-    Received: "broken"
-    Timeout:  5000ms
-```
-- **Catching Spec:** `e2e/editor-transitions.spec.ts` caught the break immediately at lines 52 and 186.
-- **Restoration:** Restored `const initial = $derived(labelOf(doc, slotData.from, slotData.to));` and rebuilt. All 22 tests passed.
+### F3: `rowCommands` on Pair (0, 0)
+Using `wwrSample()` pair (0, 0), which starts with transitions `a / ε / A` and `b / ε / B`:
+1. **Unchanged rows:** Wanted equals existing $\to$ `[]`.
+2. **Add `{ read: "c", pop: "A", push: "" }`:**
+   - New input symbol: `"c"`.
+   - New stack symbol: none (`"A"` already present).
+   - New transition: `{ from: 0, read: "c", pop: ["A"], push: [], to: 0 }`.
+   - Result: `[ { type: "addInputSymbol", symbol: "c" }, { type: "addTransition", from: 0, read: "c", pop: ["A"], push: [], to: 0 } ]`.
+3. **Change second row to `{ read: "b", pop: "ε", push: "BB" }`:**
+   - Existing `b / ε / B` removed; new `b / ε / BB` added.
+   - Additions first, removals last:
+   - Result: `[ { type: "addTransition", from: 0, read: "b", pop: [], push: ["B", "B"], to: 0 }, { type: "removeTransition", from: 0, read: "b", pop: [], push: ["B"], to: 0 } ]`.
+4. **Remove both rows (`[]`):**
+   - Result: `[ { type: "removeTransition", from: 0, read: "a", pop: [], push: ["A"], to: 0 }, { type: "removeTransition", from: 0, read: "b", pop: [], push: ["B"], to: 0 } ]`.
+5. **New pair (1, 0) with a blank row `[{ read: "", pop: "", push: "" }]` or `[]`:**
+   - Blank row dropped $\to$ wanted is empty; existing is empty $\to$ `[]`.
+6. **Duplicate rows `{ read: "c", pop: "A", push: "" }` twice:**
+   - Collapsed to one transition $\to$ one `addTransition`.
+7. **Row `{ read: "d", pop: "C", push: "C C" }` on pair (1, 0):**
+   - New input symbol `"d"`.
+   - New stack symbol `"C"` (appears in pop and push; added only once).
+   - Result: `[ { type: "addInputSymbol", symbol: "d" }, { type: "addStackSymbol", symbol: "C" }, { type: "addTransition", from: 1, read: "d", pop: ["C"], push: ["C", "C"], to: 0 } ]`.
 
 ---
 
-## 4. Deepening Pass (AGENTS.md & Definition of Done)
+## 2. Verification of F4 (Commit and Boundaries)
 
-1. **New Exports & Interface Members:**
-   - `export interface LabelSlot`: exported from `EditorCanvas.svelte` for consumers providing the `label` snippet (`{ x: number; y: number; from: number; to: number }`). Seam is necessary and minimal.
-   - `export interface EditorCanvasProps<D, C>`: exported from `EditorCanvas.svelte` so consumers and type tests can strongly type generic canvas props.
-   - `export function overflowTarget(label: LabelShape): Box | null`: exported pure geometry helper from `geometry.ts`. Tested by F1.
-   - `DiagramEdgeInput.overflow?: true` & `LabelShape.overflow?: true`: optional discriminator fields in `geometry.ts`.
-   - `FsmLabelBox.svelte`: new component encapsulating FSM label editing (`LabelField`, `labelProblem`, commit/cancel/leave handlers).
-   - `ContextMenu.svelte`: added optional prop `labels?: Partial<Record<MenuAction, MessageKey>>`.
-   - `EditorCanvas.svelte`: `generics="D extends StatesDocument, C"`, props: `diagram`, `label`, `onmore`, `menuLabels`.
-   - `DiagramDrawing.svelte`: no new props or handlers; renders passive `<rect class="hit-overflow" ... />`.
-2. **Duplicate Logic:** None. The single pointer event path is managed in `EditorCanvas.svelte` via SVG event delegation and class inspection (`event.target instanceof Element && event.target.closest('.hit-overflow') !== null`), with zero debounce timers.
-3. **Casts Added:** **0** (zero `any`, zero `@ts-ignore`, zero `as unknown as`; safe `instanceof Element` replaces any cast).
+- Tested via `createPdaEditor(wwrSample())`:
+  - `startLink(1)` followed by `finishLink(0)`.
+  - Committing `rowCommands(doc, 1, 0, [{ read: "a", pop: "A", push: "" }])` returns `null`.
+  - Edge transition `q1 a/A/ε q0` is added in a single undo step.
+  - Announcement emitted: `editor.edge_changed` with `{ from: 'q1', to: 'q0', symbols: 'a / A / ε' }`.
+- **Triple boundary check for push length limit (64):**
+  - **63 symbols:** `push: 'A '.repeat(62) + 'A'` $\to$ `commitEdge` returns `null` (accepted).
+  - **64 symbols:** `push: 'A '.repeat(63) + 'A'` $\to$ `commitEdge` returns `null` (accepted).
+  - **65 symbols:** `push: 'A '.repeat(64) + 'A'` $\to$ `commitEdge` returns `{ key: 'pda_document.string_too_long', params: { limit: 64 } }`; document reference is unchanged; form stays open.
 
 ---
 
-## 5. Verification Commands and Outputs
+## 3. Verification of F5 (Properties & 10,000 Larger Run)
 
-### A. Static Quality Gate
-`pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens`
+The property generator was hardened to draw from both standard pools and an adversarial pool of symbols (`,`, `a,b`, `eps`, `(`, `)`, `+`, `|`, `\`, `"`, `'`, `😀`, combining sequence `e\u0301`, `Z0`, `num`, and 32-character strings).
+
+### Generator Adversarial Detection (Revert Check)
+When reverting the comma-in-stack-symbol and eps fixes in `pda-label.ts`:
+- The old generator missed the comma and "eps" corruptions entirely because it only drew from `["A","B","C"]`, `["Z0","A","B"]`, etc.
+- With the adversarial pool, `Property (a)` failed immediately on case 16 (failing round-trip when stack symbols contain `,` or `eps`) and `Property (c)` failed on case 46.
+- Restoring the fix passed all 1,000 cases cleanly.
+
+Executed via `LARGER_RUN=1 pnpm --filter web exec vitest run src/lib/editor/pda-label.property.test.ts`:
+
+```
+ RUN  v5.0.3 /home/Aldebaran64/webtomata/web
+
+ ✓ src/lib/editor/pda-label.property.test.ts (3 tests) 3295ms
+   ✓ F5: PDA label properties (3)
+     ✓ Property (a): round trip (10000 cases) 404ms
+     ✓ Property (b): never throws on extreme strings (10000 cases) 1392ms
+     ✓ Property (c): applying rowCommands is valid or refused, and idempotent (10000 cases) 1496ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  00:12:48
+   Duration  3.62s (tests 95%, transform 4%, import 1%)
+```
+
+- **Property (a):** For 10,000 random valid PDA document edge pairs, `parseRows(doc, rowsOf(doc, from, to))` exactly equals the document's transitions for that pair, and `rowCommands` returns `[]`.
+- **Property (b):** For 10,000 extreme string combinations (empty, whitespace, ε, surrogate pairs, lone surrogates, control characters, 5,000-char strings), neither `parseRows` nor `rowCommands` throws.
+- **Property (c):** For 10,000 random row combinations on random pairs, `rowCommands` produces batch commands that when applied via `applyPdaCommand` yield a document whose transitions on that pair match the parsed transition set, and re-running `rowCommands` on the resulting document returns `[]` (idempotence).
+
+---
+
+## 4. Deliberate Breaks (AC6)
+
+Each break was introduced in `web/src/lib/editor/pda-label.ts`, observed failing the relevant test, and restored:
+
+1. **Break 1: Read `"Z0"` as one name in a one-character alphabet.**
+   - Change: forced `parseStackSeq` to always return `[trimmed]`.
+   - Result: Test `F2: parses pop and push strings with single-character stack alphabet` failed (`expected ['AB'] to deeply equal ['A', 'B']`). Restored.
+2. **Break 2: Ignore the alphabet and always split into characters.**
+   - Change: forced `parseStackSeq` to always return `[...trimmed]`.
+   - Result: Test `F2: parses pop and push strings with multi-character stack alphabet` failed (`expected ['Z', '0', 'A'] to deeply equal ['Z0A']`). Restored.
+3. **Break 3: Put removals before additions in `rowCommands`.**
+   - Change: reversed loop order in `rowCommands`.
+   - Result: Test `F3: changes second row with additions first, removals last` failed (received `removeTransition` before `addTransition`). Restored.
+4. **Break 4: Let blank rows through as `ε / ε / ε` transitions.**
+   - Change: commented out blank row check in `parseRows`.
+   - Result: Tests `F2: ignores blank rows` and `F3: yields [] for new pair with blank row` failed (`expected [{ type: 'addTransition' }] to deeply equal []`). Restored.
+5. **Break 5: Forget to add a new stack symbol that appears only in a push.**
+   - Change: commented out checking `t.push` in `rowCommands`.
+   - Result: Caught by dedicated test `adds new stack symbol that appears only in a push` (`expected [addTransition] to deeply equal [addStackSymbol, addTransition]`). Restored.
+6. **Break 6: Let `rowsOf` write stack strings with no space for an alphabet with a longer name.**
+   - Change: forced `sep = ''` in `rowsOf`.
+   - Result: Test `F1: formats stack symbols with spaces when stack alphabet has multi-character name` failed (`expected 'AZ0' to deeply equal 'A Z0'`). Restored.
+7. **Break 7: Accept `"ab"` as a read symbol in a one-character alphabet.**
+   - Change: commented out multi-character refusal check in `parseRead`.
+   - Result: Test `F2: parses read field with 1-character input alphabet` failed (`expected [{ read: 'ab' }] to deeply equal Refusal`). Restored.
+8. **Break 8: Let `rowCommands` add a symbol twice when it is in two rows.**
+   - Change: removed deduplication check `!newStacks.includes(s)`.
+   - Result: Test `F3: adds new stack symbol only once when it appears multiple times` failed (received 3 duplicate `addStackSymbol` commands for `'C'`). Restored.
+9. **Break 9: Remove comma from separator test in `parseStackSeq` (`trimmed.includes(',')` dropped).**
+   - Change: changed separator test to only check `/\s/.test(trimmed)`.
+   - Result: Caught by new F2 fixture `"A,B" -> ["A", "B"]` (received `["A,B"]` instead of `["A", "B"]`) and probe test. Restored.
+
+---
+
+## 5. Accessibility Checklist (AC5)
+
+- **Role and Dialog Name:** `role="dialog"` at `PdaLabelForm.svelte:155`; accessible name `pda_editor.form_title { from, to }` at line 156.
+- **Accessible Field Labels:** `pda_editor.field_label { n, field }` on Baca (line 177), Pop (line 192), and Push (line 207).
+- **Accessible Delete Buttons:** `pda_editor.row_delete { n }` at line 221.
+- **Refusal in `aria-describedby`:** Inputs bind `aria-describedby={refusalText !== null ? problemId : undefined}` at lines 179, 194, 209; permanent live region container `<div aria-live="polite">` hosts the refusal `<p id={problemId} class="problem">` when present so screen readers reliably announce appearing errors.
+- **Keyboard Handling:**
+  - `Enter` triggers `commit()`: line 117.
+  - `Escape` cancels via `editor.cancelLabel()`: line 120.
+  - `Ctrl+E` / `Cmd+E` inserts `ε`: line 123.
+  - `event.stopPropagation()` prevents canvas keys: line 116.
+  - `Tab` navigation order follows logical row sequence.
+- **Settle Rule (400 ms):** `performance.now() - openedAt < SETTLE_MS` checked on focusout at line 135; retains focus.
+- **Leave Rule:** Focusout sends changed and valid rows, cancelling otherwise (lines 139–145).
+- **Target Sizes:** All interactive elements (`input`, `.delete-btn`, `.add-row-btn`, `.btn`) enforce `var(--target-min)` ($\ge 44 \times 44$ px) at lines 279, 290, 299, 314, 323, 348.
+- **Font Size:** Input font size enforced at `font-size: max(1rem, 16px)` (line 287) to prevent mobile browser auto-zoom.
+- **Design Tokens:** Strictly tokenized styles across lines 265–370 (`--color-surface`, `--color-ink`, `--color-muted`, `--color-border`, `--color-accent`, `--color-warning-tint`, `--color-warning-ink`, `--shadow-popover`, `--radius-*`, `--space-*`, `--target-min`).
+
+---
+
+## 6. Verification Commands Output
+
+### `pnpm format:check`
 ```
 $ pnpm --filter web format:check && cargo fmt --check
 $ prettier --check .
 Checking formatting...
 All matched files use Prettier code style!
+```
+
+### `pnpm check`
+```
 $ pnpm --filter web check
 $ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
 Loading svelte-check in workspace: /home/Aldebaran64/webtomata/web
 Getting Svelte diagnostics...
 
 svelte-check found 0 errors and 0 warnings
+```
+
+### `pnpm lint`
+```
 $ pnpm --filter web lint
 $ eslint .
+```
+(Exited with code 0).
+
+### `pnpm check:strings`
+```
 $ node tools/check-strings.mjs
-ok   64 components have no hard-coded text
+ok   66 components have no hard-coded text
+```
+
+### `pnpm check:tokens`
+```
 $ node tools/check-tokens-usage.mjs
-ok   66 files use no raw colors
+ok   68 files use no raw colors
 ```
 
-### B. Unit & Type Tests
-`pnpm test:web`
+### `pnpm --filter web exec vitest run`
 ```
- Test Files  102 passed (102)
-      Tests  1252 passed | 2 skipped (1254)
-   Start at  22:21:38
-   Duration  10.69s (tests 73%, transform 19%, import 8%)
-```
-`pnpm --filter web exec vitest run src/lib/editor/EditorCanvas.type.test.ts`
-```
- ✓ src/lib/editor/EditorCanvas.type.test.ts (1 test) 4ms
- Test Files  1 passed (1)
-      Tests  1 passed (1)
+ Test Files  104 passed (104)
+      Tests  1277 passed | 2 skipped (1279)
+   Start at  23:50:51
+   Duration  8.42s (tests 72%, transform 20%, import 7%)
 ```
 
-### C. Import Decoupling Verification (AC4)
-Checking that `EditorCanvas.svelte` no longer imports `LabelField`, `labelOf`, `MachineDocument`, or FSM `Editor`:
-- `grep LabelField web/src/lib/editor/EditorCanvas.svelte || echo none` -> `none`
-- `grep labelOf web/src/lib/editor/EditorCanvas.svelte || echo none` -> `none`
-- `grep MachineDocument web/src/lib/editor/EditorCanvas.svelte || echo none` -> `none`
-- `grep "Editor," web/src/lib/editor/EditorCanvas.svelte || echo none` -> `none`
-
-### D. Production Build & Size Check (AC7)
-`pnpm build && pnpm size`
+### `pnpm build && pnpm size`
 ```
-ok   initial JS index.html: 81.4 KB gzip (limit 170 KB)
-ok   initial JS panduan/berakhiran-x.html: 86.7 KB gzip (limit 170 KB)
-ok   initial JS panduan.html: 80.4 KB gzip (limit 170 KB)
-ok   initial JS sandbox.html: 120.6 KB gzip (limit 170 KB)
-ok   initial JS soal/berakhiran-10.html: 120.2 KB gzip (limit 170 KB)
-ok   initial JS soal/jumlah-a-genap.html: 120.2 KB gzip (limit 170 KB)
-ok   initial JS soal/mengandung-101.html: 120.2 KB gzip (limit 170 KB)
-ok   initial JS soal.html: 81.9 KB gzip (limit 170 KB)
-ok   initial JS tentang.html: 79.8 KB gzip (limit 170 KB)
+✓ built in 1.32s
+Prerendering
+> Using @sveltejs/adapter-static
+Wrote site to "build"
+✔ done
+
+$ node tools/check-size.mjs
+ok   initial JS index.html: 81.8 KB gzip (limit 170 KB)
+ok   initial JS panduan/berakhiran-x.html: 87.1 KB gzip (limit 170 KB)
+ok   initial JS panduan.html: 80.9 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 120.9 KB gzip (limit 170 KB)
+ok   initial JS soal/berakhiran-10.html: 120.5 KB gzip (limit 170 KB)
+ok   initial JS soal/jumlah-a-genap.html: 120.5 KB gzip (limit 170 KB)
+ok   initial JS soal/mengandung-101.html: 120.5 KB gzip (limit 170 KB)
+ok   initial JS soal.html: 82.3 KB gzip (limit 170 KB)
+ok   initial JS tentang.html: 80.2 KB gzip (limit 170 KB)
 ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
 ok   wasm _app/immutable/workers/assets/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB gzip (limit 250 KB)
 ```
-- Bundle size change for `sandbox.html`: 120.6 KB gzip (unchanged from pre-task baseline, well under 170 KB limit; delta 0.0 KB).
 
-### E. Playwright E2E Area Specs (AC5)
-1. `pnpm --filter web exec playwright test e2e/editor-transitions.spec.ts --project=desktop --project=phone`:
-   - **22 passed, 6 skipped** (desktop: 10 passed, 4 skipped; phone: 12 passed, 2 skipped).
-2. `pnpm --filter web exec playwright test e2e/editor-edges.spec.ts --project=desktop --project=phone`:
-   - **14 passed, 14 skipped** (desktop: 11 passed, 3 skipped; phone: 3 passed, 11 skipped).
-3. `pnpm --filter web exec playwright test e2e/editor-flows.spec.ts e2e/diagram.spec.ts --project=desktop --project=phone`:
-   - **9 passed, 3 skipped** (desktop: 4 passed, 2 skipped; phone: 5 passed, 1 skipped). Includes clean axe accessibility checks on 4-state DFSM build flows.
+### E2E Area Spec (`e2e/editor-transitions.spec.ts`)
+```
+Running 28 tests using 6 workers
+  6 skipped
+  22 passed (26.9s)
+```
+
+---
+
+## 7. Deepening Pass
+
+1. **Exports of `pda-label.ts`:**
+   - `Row`: Interface representing a 3-field row `{ read, pop, push }`. Used by `PdaLabelForm.svelte` and tests.
+   - `ParsedTransition`: Interface `{ read, pop, push }`. Used by `parseRows`, `rowCommands`, and tests.
+   - `rowsOf`: Converts document edge transitions into form rows. Used by `PdaLabelForm.svelte` and tests.
+   - `parseRows`: Pure parser for rows with refusal diagnostics. Used by `rowCommands` and tests.
+   - `rowCommands`: Computes minimal delta commands for `commitEdge`. Used by `PdaLabelForm.svelte` and tests.
+   - `pdaMenuLabels`: Context menu overrides (`edit: 'pda_editor.menu_edit'`). Exported for T-055 to pass to canvas `menuLabels`.
+   - Every export is strictly needed by either the components or tests.
+2. **Duplicated Logic & Redundancies:**
+   - The 400 ms settle rule (`performance.now() - openedAt < SETTLE_MS`) and the leave rule (`onfocusout` checking `container.contains(event.relatedTarget)`) in `PdaLabelForm.svelte` (lines 131–146) duplicate the same mechanics in `LabelField.svelte` (lines 112–122). `LabelField` is out of scope for this task to avoid touching FSM code.
+   - Stack string formatting logic is **not** duplicated: `pda-label.ts` imports and calls `stackSeparator` and `formatStackSeq` directly from `diagram/pda-diagram.ts`.
+   - **Dead check removed:** In `parseRead`, the condition `!doc.inputAlphabet.includes(trimmed)` was redundant because if `trimmed` is in `doc.inputAlphabet` and has $> 1$ code point, `allSingle` is already `false`. It was safely removed.
+3. **Casts:**
+   - **Zero** `any`, **zero** `@ts-ignore`, and **zero** `as unknown as` were introduced.
+
+---
+
+## 8. Observations for the Planner
+
+- `PdaLabelForm.svelte` (lines 131–146) duplicates `LabelField.svelte`'s (lines 112–122) 400 ms settle rule and leave rule focusout logic: propose extracting a small shared helper `focusSettleRule(openedAt, container, lastInput, onLeave)` in a subsequent cleanup task.
+
+---
+
+## 9. What T-055's E2E Must Cover
+
+Written here for T-055's scope:
+1. Open the form by `Enter` on a selected edge, double-click on the label, context menu item "Ubah transisi", and automatically after creating a transition.
+2. Type in the three fields and commit with `Enter` and with `Simpan`.
+3. Full `Tab` navigation order across fields and buttons.
+4. `Esc` key cancels and restores original state.
+5. Leaving by pointer click on canvas commits changed text and cancels unchanged text.
+6. `Ketik ε` button and `Ctrl+E` / `Cmd+E` shortcut insert `ε` into the active field.
+7. Refused row displays localized warning and keeps the form open.
+8. Add row and delete row operations.
+9. Deleting all rows of an edge removes the edge.
+10. Phone sheet layout within the panel area.
+11. Axe accessibility check on the active open form.

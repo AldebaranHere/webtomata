@@ -5,11 +5,11 @@ import type { DiagramEdgeInput, DiagramInput } from './geometry.ts';
 
 const MAX_EDGE_LINES = 3;
 
-function stackSeparator(stackAlphabet: readonly string[]): string {
+export function stackSeparator(stackAlphabet: readonly string[]): string {
 	return stackAlphabet.every((s) => [...s].length === 1) ? '' : ' ';
 }
 
-function formatStackSeq(seq: readonly string[], sep: string): string {
+export function formatStackSeq(seq: readonly string[], sep: string): string {
 	return seq.length === 0 ? 'ε' : seq.join(sep);
 }
 
