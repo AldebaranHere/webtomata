@@ -174,10 +174,7 @@ type CoreCommand<C> = StateCommand | C | { type: 'batch'; commands: CoreCommand<
 
 export function createEditorCore<D extends StatesDocument, C>(
 	initial: D,
-	kind: EditorKind<D, C>,
-	hooks?: {
-		onAskSplit?: (open: { from: number; to: number }, ask: string) => void;
-	}
+	kind: EditorKind<D, C>
 ): EditorCore<D, C> & {
 	setLabelingAsk: (open: { from: number; to: number }, ask: string) => void;
 } {

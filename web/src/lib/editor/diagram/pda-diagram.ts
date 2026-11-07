@@ -27,6 +27,18 @@ export function transitionLabel(doc: PdaDocument, transition: PdaTransitionEntry
 }
 
 /**
+ * Text of all transitions between `from` and `to` in `doc.transitions` order, joined by `; `.
+ * Used by `pdaDiagram` for screen reader edge descriptions and by the PDA editor kind.
+ */
+export function pdaEdgeText(doc: PdaDocument, from: number, to: number): string {
+	const sep = stackSeparator(doc.stackAlphabet);
+	return doc.transitions
+		.filter((t) => t.from === from && t.to === to)
+		.map((t) => formatTransition(t, sep))
+		.join('; ');
+}
+
+/**
  * Turns a `PdaDocument` into a `DiagramInput`. Transitions are grouped by `(from, to)` sorted by
  * `from` then `to`, with lines in `doc.transitions` order (the engine's order). An edge with more
  * than three transitions shows the first two and `more(count - 2)` on the third line, while `text`
@@ -54,7 +66,7 @@ export function pdaDiagram(doc: PdaDocument, more: (count: number) => string): D
 			from,
 			to,
 			lines,
-			text: allLines.join('; ')
+			text: pdaEdgeText(doc, from, to)
 		};
 	});
 
