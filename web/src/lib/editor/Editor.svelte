@@ -31,6 +31,8 @@
 	import type { Titles } from '#lib/storage/store.ts';
 	import { localizedTitle } from '#lib/storage/titles.ts';
 	import EditorCanvas from './EditorCanvas.svelte';
+	import FsmLabelBox from './FsmLabelBox.svelte';
+	import { fsmDiagram } from './diagram/geometry.ts';
 	import FirstRun from './FirstRun.svelte';
 	import type { Example } from '#lib/examples/examples.ts';
 	import HistoryButtons from './HistoryButtons.svelte';
@@ -104,7 +106,7 @@
 	let ready = $state(false);
 	onMount(() => (ready = true));
 	let snapshot = $state(editor.getState());
-	let canvas: EditorCanvas;
+	let canvas: ReturnType<typeof EditorCanvas>;
 	$effect(() => editor.subscribe(() => (snapshot = editor.getState())));
 
 	// The checks: the engine (in its worker) looks at the machine a moment after each change, and
@@ -441,11 +443,16 @@
 				bind:this={canvas}
 				{editor}
 				state={snapshot}
+				diagram={fsmDiagram}
 				{flags}
 				{active}
 				{taken}
 				onlayout={() => void autoLayout()}
-			/>
+			>
+				{#snippet label(slot)}
+					<FsmLabelBox {editor} doc={snapshot.doc} labeling={snapshot.labeling} slotData={slot} />
+				{/snippet}
+			</EditorCanvas>
 		</div>
 		{#if conversionView && covered}
 			<ConversionCanvas doc={conversionView.doc} active={conversionView.active} />

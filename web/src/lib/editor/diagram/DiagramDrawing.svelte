@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { t } from '#lib/i18n/index.svelte.ts';
-	import { INNER_RADIUS, RADIUS, labelLineY } from './geometry.ts';
+	import { INNER_RADIUS, RADIUS, labelLineY, overflowTarget } from './geometry.ts';
 	import type { DiagramShapes, StateShape } from './geometry.ts';
 
 	// The inside of a diagram: the lines, the circles and the labels. The read-only view and the
@@ -70,6 +70,7 @@
 <g class="lines">
 	{#each shapes.edges as edge (`${edge.from}>${edge.to}`)}
 		{#if interactive}
+			{@const target = overflowTarget(edge.label)}
 			<g
 				class="edge"
 				class:chosen={chosen(edge)}
@@ -85,6 +86,16 @@
 					width={edge.label.box.width}
 					height={edge.label.box.height}
 				/>
+				{#if target}
+					<rect
+						class="hit-overflow"
+						x={target.x}
+						y={target.y}
+						width={target.width}
+						height={target.height}
+						aria-hidden="true"
+					/>
+				{/if}
 				<path class="line" d={edge.path} marker-end="url(#{arrow})" />
 			</g>
 		{:else}
@@ -185,7 +196,12 @@
 				y={edge.label.center.y}
 			>
 				{#each edge.label.lines as line, i (i)}
-					<tspan x={edge.label.center.x} y={labelLineY(edge.label.box, i)}>{line}</tspan>
+					<tspan
+						x={edge.label.center.x}
+						y={labelLineY(edge.label.box, i)}
+						class:overflow-line={edge.label.overflow && i === edge.label.lines.length - 1}
+						>{line}</tspan
+					>
 				{/each}
 			</text>
 		{/if}
@@ -245,6 +261,10 @@
 		stroke-width: 4px;
 		stroke-linejoin: round;
 		pointer-events: none;
+	}
+	.overflow-line {
+		fill: var(--color-accent-ink);
+		text-decoration: underline;
 	}
 	.start-label {
 		font-family: var(--font-ui);
@@ -306,6 +326,11 @@
 	.hit-label {
 		fill: transparent;
 		pointer-events: all;
+	}
+	.hit-overflow {
+		fill: transparent;
+		pointer-events: all;
+		cursor: pointer;
 	}
 	.edge.chosen .line,
 	.edge.taken .line {

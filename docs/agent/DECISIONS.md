@@ -15,6 +15,17 @@ Format:
 
 ---
 
+## 2026-11-07 — Editor canvas works for two kinds of document and extracts label box (T-053)
+
+- Decider: worker (approved by planner & owner)
+- Context: `EditorCanvas.svelte` was hardcoded to `MachineDocument`, FSM `Editor`, and FSM `LabelField`; PDA editor (T-055) requires rendering and gesture support for `PdaDocument` without duplicating ~960 lines of canvas code.
+- Decision: Parameterize `EditorCanvas.svelte` with `generics="D extends StatesDocument, C"`, require `diagram: (doc: D) => DiagramInput`, move FSM label editing to `FsmLabelBox.svelte` rendered via snippet `label?: Snippet<[LabelSlot]>`, add `menuLabels` override to `ContextMenu.svelte`, add optional `overflow?: true` to `DiagramEdgeInput` and `LabelShape`, and add a 44 px high hit target `overflowTarget` for the "+ n lagi" overflow line in `DiagramDrawing.svelte` placed after the edge hit-label rect with `onmore` delegation.
+- Alternatives considered: Keeping label editing inside `EditorCanvas.svelte` with branching logic (rejected: tightly couples PDA 3-field form logic to canvas); omitting 44 px overflow hit target (rejected: violates 44 px touch accessibility target rule).
+- Reversible? yes
+- Affects: `web/src/lib/editor/EditorCanvas.svelte`, `Editor.svelte`, `FsmLabelBox.svelte`, `ContextMenu.svelte`, `diagram/geometry.ts`, `diagram/DiagramDrawing.svelte`, `diagram/pda-diagram.ts`, `docs/decisions/0044-canvas-two-documents.md`.
+
+---
+
 ## 2026-11-06 — The PDA editor is built in eight tasks, and the interaction core is shared (T-049)
 
 - Decider: planner

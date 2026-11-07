@@ -58,15 +58,14 @@ export function pdaDiagram(doc: PdaDocument, more: (count: number) => string): D
 
 	const sortedGroups = [...groups.values()].sort((a, b) => a.from - b.from || a.to - b.to);
 	const edges: DiagramEdgeInput[] = sortedGroups.map(({ from, to, allLines }) => {
-		const lines =
-			allLines.length <= MAX_EDGE_LINES
-				? allLines
-				: [allLines[0]!, allLines[1]!, more(allLines.length - 2)];
+		const overflow = allLines.length > MAX_EDGE_LINES;
+		const lines = !overflow ? allLines : [allLines[0]!, allLines[1]!, more(allLines.length - 2)];
 		return {
 			from,
 			to,
 			lines,
-			text: pdaEdgeText(doc, from, to)
+			text: pdaEdgeText(doc, from, to),
+			...(overflow ? { overflow: true } : {})
 		};
 	});
 
