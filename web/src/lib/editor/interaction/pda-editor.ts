@@ -31,5 +31,7 @@ export const pdaKind: EditorKind<PdaDocument, PdaCommand> = {
 };
 
 export function createPdaEditor(initial: PdaDocument): PdaEditor {
-	return createEditorCore(initial, pdaKind);
+	const { setLabelingAsk: _, ...core } = createEditorCore(initial, pdaKind);
+	void _;
+	return core;
 }

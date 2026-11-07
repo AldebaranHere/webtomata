@@ -11,6 +11,7 @@ import type { PdaDocument } from '../pda-document.ts';
 import { wwrSample } from '../pda-samples.ts';
 import type { StateCommand, StatesDocument } from './document-view.ts';
 import { createEditor } from './editor.ts';
+import { createPdaEditor } from './pda-editor.ts';
 import type { Editor, EditorState } from './editor.ts';
 
 const everyStateCommand = [
@@ -54,5 +55,16 @@ describe('the types that the shared core relies on', () => {
 		expect(editor.commitLabel('a')).toBeNull();
 		expect(same).toBe(doc);
 		expect(editor.getState().doc.transitions).toHaveLength(1);
+	});
+
+	it('neither createEditor nor createPdaEditor leak internal setLabelingAsk method', () => {
+		const fsm = build({ alphabet: ['a'], states: [[0, 0, 'q0']] });
+		const pda = wwrSample();
+		const fsmEditor = createEditor(fsm);
+		const pdaEditor = createPdaEditor(pda);
+		expect(Object.keys(fsmEditor)).not.toContain('setLabelingAsk');
+		expect(Object.keys(pdaEditor)).not.toContain('setLabelingAsk');
+		expect('setLabelingAsk' in fsmEditor).toBe(false);
+		expect('setLabelingAsk' in pdaEditor).toBe(false);
 	});
 });

@@ -37,14 +37,19 @@ describe('commitEdge', () => {
 		expect(editor.getState()).toBe(before);
 	});
 
-	it('with no commands closes the box and makes no step', () => {
+	it('with no commands closes the box, makes no step, and leaves announcement unchanged', () => {
 		const editor = opened();
 		const doc = editor.getState().doc;
+		const annBefore = editor.getState().announcement;
 		expect(editor.commitEdge([])).toBeNull();
 		const s = editor.getState();
 		expect(s.labeling).toBeNull();
 		expect(s.doc).toBe(doc);
 		expect(s.canUndo).toBe(false);
+		expect(s.announcement).toBe(annBefore);
+		if (annBefore) {
+			expect(s.announcement?.seq).toBe(annBefore.seq);
+		}
 	});
 
 	it('sends one command, closes the box, and says what the edge has now', () => {

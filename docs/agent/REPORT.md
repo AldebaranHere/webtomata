@@ -309,3 +309,93 @@ Running 324 tests using 6 workers
   238 passed (3.2m)
 ```
 All editor e2e tests passed on both desktop and mobile phone projects.
+
+---
+
+## 5. Review Fixes Round (PR #169 Follow-up)
+
+### 5.1 Elimination of Casts (Zero Casts)
+By making the recursive batch commands array `readonly` in `CoreCommand<C>`:
+```ts
+export type CoreCommand<C> = StateCommand | C | { type: 'batch'; commands: readonly CoreCommand<C>[] };
+```
+TypeScript's array covariance rules allow `GenericHistory<D, C>` to be assigned directly to `GenericHistory<D, CoreCommand<C>>` through method bivariance with **zero casts**:
+```ts
+const history: GenericHistory<D, CoreCommand<C>> = kind.createHistory(initial);
+```
+In addition, `moveStatesCommands` directly returns `StateCommand | { type: 'batch'; commands: readonly CoreCommand<C>[] }` without any cast.
+- `as unknown as GenericHistory<...>` in `editor.ts`: removed.
+- `as unknown as C[]` in `document-view.ts`: removed.
+- Two `as CoreCommand<C>[]` casts in `editor.ts`: removed.
+- **Total casts remaining in `document-view.ts`, `editor.ts`, and `pda-editor.ts`**: **0**.
+
+### 5.2 Test Gap for `commitEdge([])` (Break & Restoration)
+Added explicit assertions to both FSM (`editor.commit-edge.test.ts`) and PDA (`pda-editor.test.ts`, F3) that calling `commitEdge([])` closes the label box, records no history step, and leaves the announcement and its `seq` strictly unchanged (`expect(s.announcement).toBe(annBefore)` and `expect(s.announcement?.seq).toBe(annBefore.seq)`).
+
+**Deliberate Break:**
+In `editor.ts` `commitEdge`, changed the empty commands branch to announce something:
+```ts
+if (commands.length === 0) {
+	closeLabel({ announcement: say('editor.undone') });
+	return null;
+}
+```
+**Failure output:**
+```
+FAIL  src/lib/editor/interaction/editor.commit-edge.test.ts > commitEdge > with no commands closes the box, makes no step, and leaves announcement unchanged
+AssertionError: expected { key: 'editor.undone' } to be { key: 'editor.hint_pick_target' } // Object.is equality
+
+FAIL  src/lib/editor/interaction/pda-editor.test.ts > PDA editor fixtures (T-049) > F3: commitEdge on PDA
+AssertionError: expected { key: 'editor.undone' } to be { key: 'editor.hint_pick_target' } // Object.is equality
+
+Test Files  2 failed (2)
+Tests  2 failed | 10 passed (12)
+```
+**Restoration:**
+Restored back to `closeLabel()` with no announcement patch. All 16 tests in both suites pass cleanly.
+
+### 5.3 Plugged `setLabelingAsk` Runtime Leak
+`createEditor` and `createPdaEditor` now omit `setLabelingAsk` when constructing their returned objects:
+- In `editor.ts`: `const { setLabelingAsk, ...core } = createEditorCore(initial, fsmKind);` and spreads `...core`.
+- In `pda-editor.ts`: `const { setLabelingAsk: _, ...core } = createEditorCore(initial, pdaKind); void _; return core;`.
+- In `document-view.test.ts`: Added test verifying that neither `createEditor(fsm)` nor `createPdaEditor(pda)` contains `setLabelingAsk` in `Object.keys()` or as `'setLabelingAsk' in editor`.
+
+### 5.4 Full Verification Rerun
+- `pnpm format:check`:
+```
+$ pnpm --filter web format:check && cargo fmt --check
+$ prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+```
+- `pnpm check`:
+```
+$ pnpm --filter web check
+$ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
+Loading svelte-check in workspace: /home/Aldebaran64/webtomata/web
+Getting Svelte diagnostics...
+svelte-check found 0 errors and 0 warnings
+```
+- `pnpm lint`:
+```
+$ pnpm --filter web lint
+$ eslint .
+(0 errors, 0 warnings)
+```
+- `pnpm check:strings && pnpm check:tokens`:
+```
+ok   63 components have no hard-coded text
+ok   65 files use no raw colors
+```
+- Full Vitest test suite (`pnpm --filter web exec vitest run`):
+```
+Test Files  101 passed (101)
+     Tests  1248 passed | 2 skipped (1250)
+  Duration  8.41s
+```
+- Playwright editor specs (`--project=desktop --project=phone`):
+```
+Running 324 tests using 6 workers
+  86 skipped
+  238 passed (4.0m)
+```

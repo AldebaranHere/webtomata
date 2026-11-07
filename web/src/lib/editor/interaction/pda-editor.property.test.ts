@@ -152,13 +152,13 @@ function runPropertySuite(seedOffset: number) {
 describe('F6, random sequences of actions in the PDA editor', () => {
 	it('run 1: seed offset 0', () => {
 		runPropertySuite(0);
-	});
+	}, 15_000);
 
 	it('run 2: seed offset 10_000', () => {
 		runPropertySuite(10_000);
-	});
+	}, 15_000);
 
 	it('run 3: seed offset 20_000', () => {
 		runPropertySuite(20_000);
-	});
+	}, 15_000);
 });

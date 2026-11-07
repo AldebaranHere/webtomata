@@ -141,13 +141,18 @@ describe('PDA editor fixtures (T-049)', () => {
 			params: { from: 'q0', to: 'q1', symbols: 'ε / ε / ε; a / A / ε' }
 		});
 
-		// commitEdge([]) closes box and makes no step
+		// commitEdge([]) closes box, makes no step, and leaves announcement unchanged
 		editor.startLink(0);
 		editor.finishLink(1);
 		const canUndoBefore = editor.getState().canUndo;
+		const annBefore = editor.getState().announcement;
 		expect(editor.commitEdge([])).toBeNull();
 		expect(editor.getState().labeling).toBeNull();
 		expect(editor.getState().canUndo).toBe(canUndoBefore);
+		expect(editor.getState().announcement).toBe(annBefore);
+		if (annBefore) {
+			expect(editor.getState().announcement?.seq).toBe(annBefore.seq);
+		}
 
 		// commitEdge with symbol not in alphabet refuses and leaves box open
 		editor.startLink(0);

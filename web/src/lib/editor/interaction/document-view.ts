@@ -32,6 +32,13 @@ export type StateCommand =
 	| { type: 'setTitle'; title: string };
 
 /**
+ * Commands that the core produces internally. Every document command type (FSM `Command`,
+ * `PdaCommand`) supports `StateCommand` and batches.
+ */
+export type CoreCommand<C> =
+	StateCommand | C | { type: 'batch'; commands: readonly CoreCommand<C>[] };
+
+/**
  * What a specific document kind supplies to the generic interaction core.
  * Exactly four members (per DECISIONS.md and PLAN.md).
  */
@@ -47,19 +54,18 @@ export interface EditorKind<D extends StatesDocument, C> {
 }
 
 /**
- * Turns a map of state positions into move commands.
- * Returns either a single `moveState` command or a batch of them.
+ * Turns a map of state positions into move commands for the editor core.
+ * Safe single cast: `Command` and `PdaCommand` both contain identical `moveState`
+ * and batch command shapes.
  */
 export function moveStatesCommands<C>(
 	places: ReadonlyMap<number, Point>
-): StateCommand | { type: 'batch'; commands: C[] } {
+): StateCommand | { type: 'batch'; commands: readonly CoreCommand<C>[] } {
 	const commands: StateCommand[] = [...places].map(([id, p]) => ({
 		type: 'moveState',
 		id,
 		x: p.x,
 		y: p.y
 	}));
-	return commands.length === 1
-		? commands[0]!
-		: { type: 'batch', commands: commands as unknown as C[] };
+	return commands.length === 1 ? commands[0]! : { type: 'batch', commands };
 }

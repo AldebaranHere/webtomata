@@ -16,7 +16,7 @@ import type { GenericHistory } from '../history.ts';
 import type { Message } from '../../engine/types.ts';
 import { LIMIT, dragPlaces } from './canvas.ts';
 import type { Point } from './canvas.ts';
-import type { EditorKind, StateCommand, StatesDocument } from './document-view.ts';
+import type { CoreCommand, EditorKind, StatesDocument } from './document-view.ts';
 import { moveStatesCommands } from './document-view.ts';
 import { labelCommands, labelOf, parseLabel, splitNeeded, splitParts } from './label.ts';
 import { freeSpot } from './placement.ts';
@@ -166,22 +166,13 @@ function refusal(error: Message): Refusal {
 const sameList = (a: readonly number[], b: readonly number[]) =>
 	a.length === b.length && a.every((n, i) => n === b[i]);
 
-/**
- * Commands that the core produces internally. Every document command type (FSM `Command`,
- * `PdaCommand`) supports `StateCommand` and batches.
- */
-type CoreCommand<C> = StateCommand | C | { type: 'batch'; commands: CoreCommand<C>[] };
-
 export function createEditorCore<D extends StatesDocument, C>(
 	initial: D,
 	kind: EditorKind<D, C>
 ): EditorCore<D, C> & {
 	setLabelingAsk: (open: { from: number; to: number }, ask: string) => void;
 } {
-	// Method bivariance allows GenericHistory<D, C> to be treated as GenericHistory<D, CoreCommand<C>>.
-	const history: GenericHistory<D, CoreCommand<C>> = kind.createHistory(
-		initial
-	) as unknown as GenericHistory<D, CoreCommand<C>>;
+	const history: GenericHistory<D, CoreCommand<C>> = kind.createHistory(initial);
 	const listeners = new Set<() => void>();
 	let sequence = 0;
 	let focusRequest = 0;
@@ -420,11 +411,7 @@ export function createEditorCore<D extends StatesDocument, C>(
 		const commands = kind.removeEdge(history.doc, from, to);
 		if (commands.length === 0) return;
 		history.seal();
-		history.execute(
-			commands.length === 1
-				? commands[0]!
-				: { type: 'batch', commands: commands as CoreCommand<C>[] }
-		);
+		history.execute(commands.length === 1 ? commands[0]! : { type: 'batch', commands });
 		const message = say('editor.edge_removed', { from: nameOf(from), to: nameOf(to) });
 		commit({
 			selection: [],
@@ -471,9 +458,7 @@ export function createEditorCore<D extends StatesDocument, C>(
 			return null;
 		}
 		const result = history.execute(
-			commands.length === 1
-				? commands[0]!
-				: { type: 'batch', commands: commands as CoreCommand<C>[] }
+			commands.length === 1 ? commands[0]! : { type: 'batch', commands }
 		);
 		if (!result.ok) {
 			const problem = refusal(result.error);
@@ -743,7 +728,7 @@ export const fsmKind: EditorKind<MachineDocument, Command> = {
 };
 
 export function createEditor(initial: MachineDocument): Editor {
-	const core = createEditorCore(initial, fsmKind);
+	const { setLabelingAsk, ...core } = createEditorCore(initial, fsmKind);
 	return {
 		...core,
 		commitLabel(text, split) {
@@ -755,7 +740,7 @@ export function createEditor(initial: MachineDocument): Editor {
 			} else if (split === undefined) {
 				const long = splitNeeded(core.getState().doc, parts);
 				if (long !== null) {
-					core.setLabelingAsk(open, long);
+					setLabelingAsk(open, long);
 					return { ask: long };
 				}
 			}
