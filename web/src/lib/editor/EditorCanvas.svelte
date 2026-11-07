@@ -73,10 +73,7 @@
 	const uid = $props.id();
 	const arrow = `${uid}-arrow`;
 
-	let lastMoreTime = 0;
 	function triggerMore(from: number, to: number) {
-		if (Date.now() - lastMoreTime < 250) return;
-		lastMoreTime = Date.now();
 		(onmore ?? ((f, t) => editor.selectEdge(f, t)))(from, to);
 	}
 
@@ -435,7 +432,8 @@
 		pressClient = { x: event.clientX, y: event.clientY };
 		panFrom = null;
 		if (edge) {
-			const isOverflow = (event.target as Element | null)?.closest?.('.hit-overflow') !== null;
+			const isOverflow =
+				event.target instanceof Element && event.target.closest('.hit-overflow') !== null;
 			edgeNode(edge)?.focus({ preventScroll: true });
 			press = {
 				kind: 'edge',
@@ -569,10 +567,10 @@
 			}
 		} else if (done.kind === 'edge') {
 			if (done.moved) return;
-			if (done.overflow) {
-				triggerMore(done.edge.from, done.edge.to);
-			} else if (view.tool === 'delete') {
+			if (view.tool === 'delete') {
 				editor.deleteEdge(done.edge.from, done.edge.to);
+			} else if (done.overflow) {
+				triggerMore(done.edge.from, done.edge.to);
 			} else {
 				editor.selectEdge(done.edge.from, done.edge.to);
 			}
@@ -848,7 +846,6 @@
 				{active}
 				{taken}
 				interactive
-				onmore={triggerMore}
 			/>
 			{#if preview}
 				<line

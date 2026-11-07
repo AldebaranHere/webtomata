@@ -5,7 +5,8 @@
 - **Status:** done
 - **Implementation Commits:**
   - Status start: `e2496bb` (`docs(agent): mark T-053 in-progress`)
-  - Generic canvas and label slot: (final commit)
+  - Generic canvas and label slot: `dcb786b` (`feat(editor): generic canvas and label slot for two document kinds`)
+  - Fix round (one path, null check, Delete tool): (current HEAD)
 
 ---
 
@@ -51,10 +52,12 @@ For a label narrower than 44 px (e.g. 1-character box $\{ x: 100, y: 0, \text{wi
 
 ## 2. Four Key Protocol Points
 
-1. **DiagramDrawing `onmore` and SVG Event Stacking Order:**
-   - `DiagramDrawing.svelte` has prop `onmore?: (from: number, to: number) => void`.
-   - `EditorCanvas.svelte` passes `onmore={onmore ?? ((from, to) => editor.selectEdge(from, to))}`.
-   - In `DiagramDrawing.svelte`, `<rect class="hit-overflow" ... />` is rendered immediately **after** `<rect class="hit-label" ... />` within the SVG edge group `<g class="edge">`. In SVG, elements rendered later in the document tree paint on top and win pointer hit testing. Thus, clicks and touches on the bottom 44 px overflow region trigger `onmore(edge.from, edge.to)` rather than selecting the general label.
+1. **DiagramDrawing Event Architecture, One Path, and E2E Coverage for T-055:**
+   - *Why both paths existed and only one remains:* DiagramDrawing initially included an inline `onclick` on `.hit-overflow` alongside `EditorCanvas` pointer-up handling, masked by a 250 ms debounce timer. WebTomata's architecture designates `DiagramDrawing` as a passive SVG renderer while `EditorCanvas` coordinates pointer and tool gestures; the duplicate click handler, timer debounce, and `onmore` prop on `DiagramDrawing` were eliminated, preserving solely the canvas pointer path.
+   - *Reachability & T-055 E2E requirements:* Because no PDA screen or route exists yet (T-054/T-055), no current test reaches the `onmore` trigger. T-055's e2e suite must explicitly cover:
+     1. A press on "+ n lagi" selects the edge and calls `onmore` exactly once (opening the Tabel tab).
+     2. A press elsewhere on the multi-line label selects the edge without triggering `onmore`.
+     3. When the Delete tool is active, a press on "+ n lagi" deletes the edge rather than invoking `onmore`.
 2. **Type Test via Vitest:**
    - Vitest runs without Svelte component compilation in Node, so `EditorCanvas.svelte` is imported via `import type EditorCanvas from './EditorCanvas.svelte'` and `import type { EditorCanvasProps } from './EditorCanvas.svelte'`.
    - The test file `src/lib/editor/EditorCanvas.type.test.ts` contains a runtime `describe` and `it` block validating that both FSM (`EditorCanvasProps<MachineDocument, Command>`) and PDA (`EditorCanvasProps<PdaDocument, PdaCommand>`) satisfy the prop constraints without errors.
@@ -223,10 +226,10 @@ AssertionError: expected true to be false // Object.is equality
    - `DiagramEdgeInput.overflow?: true` & `LabelShape.overflow?: true`: optional discriminator fields in `geometry.ts`.
    - `FsmLabelBox.svelte`: new component encapsulating FSM label editing (`LabelField`, `labelProblem`, commit/cancel/leave handlers).
    - `ContextMenu.svelte`: added optional prop `labels?: Partial<Record<MenuAction, MessageKey>>`.
-   - `DiagramDrawing.svelte`: added optional prop `onmore?: (from: number, to: number) => void`.
    - `EditorCanvas.svelte`: `generics="D extends StatesDocument, C"`, props: `diagram`, `label`, `onmore`, `menuLabels`.
-2. **Duplicate Logic:** None. The calculation of the label screen box is done in one place (`labelSlot` derived state) and passed to the snippet.
-3. **Casts Added:** **0** (zero `any`, zero `@ts-ignore`, zero `as unknown as`).
+   - `DiagramDrawing.svelte`: no new props or handlers; renders passive `<rect class="hit-overflow" ... />`.
+2. **Duplicate Logic:** None. The single pointer event path is managed in `EditorCanvas.svelte` via SVG event delegation and class inspection (`event.target instanceof Element && event.target.closest('.hit-overflow') !== null`), with zero debounce timers.
+3. **Casts Added:** **0** (zero `any`, zero `@ts-ignore`, zero `as unknown as`; safe `instanceof Element` replaces any cast).
 
 ---
 

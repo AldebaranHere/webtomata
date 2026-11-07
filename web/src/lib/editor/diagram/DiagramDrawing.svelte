@@ -20,8 +20,7 @@
 		flags = new Map(),
 		active = new Set<number>(),
 		taken = new Set<string>(),
-		interactive = false,
-		onmore
+		interactive = false
 	}: {
 		shapes: DiagramShapes;
 		/** The id of the arrowhead (it must be unique in the page). */
@@ -36,8 +35,6 @@
 		/** The edges ("from>to") that led to the active states at this step of a run. */
 		taken?: ReadonlySet<string>;
 		interactive?: boolean;
-		/** Callback when "+ n lagi" is clicked or tapped. */
-		onmore?: (from: number, to: number) => void;
 	} = $props();
 
 	const chosen = (edge: { from: number; to: number }) =>
@@ -97,10 +94,6 @@
 						width={target.width}
 						height={target.height}
 						aria-hidden="true"
-						onclick={(e) => {
-							e.stopPropagation();
-							onmore?.(edge.from, edge.to);
-						}}
 					/>
 				{/if}
 				<path class="line" d={edge.path} marker-end="url(#{arrow})" />
