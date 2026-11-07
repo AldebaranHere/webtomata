@@ -2083,7 +2083,7 @@ Paste real output into `REPORT.md`, with the hand derivation of F1 to F4 first.
 
 ## Task T-053 — PDA editor, part 4 of 8: the canvas works for two kinds of document
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-053-canvas-two-documents`
 
