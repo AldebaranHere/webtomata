@@ -1,8 +1,8 @@
 // Where a new state goes when it is added with the keyboard (the key N): at the center of the
 // visible area, or, if a state is already there, at the nearest free spot on a grid of 80.
-import type { MachineDocument } from '../document.ts';
 import { LIMIT } from './canvas.ts';
 import type { Point } from './canvas.ts';
+import type { StatesDocument } from './document-view.ts';
 
 /** A new state is this far (center to center) from every other state, at least. */
 const MIN_DISTANCE = 72;
@@ -11,7 +11,7 @@ const RINGS = 25;
 
 const inside = (p: Point) => Math.abs(p.x) <= LIMIT && Math.abs(p.y) <= LIMIT;
 
-export function freeSpot(doc: MachineDocument, wanted: Point): Point {
+export function freeSpot(doc: StatesDocument, wanted: Point): Point {
 	const spot = { x: Math.round(wanted.x), y: Math.round(wanted.y) };
 	const free = (p: Point) =>
 		inside(p) && doc.states.every((s) => Math.hypot(s.x - p.x, s.y - p.y) >= MIN_DISTANCE);
