@@ -4,6 +4,9 @@ name: CodeQL
 # (injection, unsafe handling of input, and so on). Not a required check: a new finding must not
 # block an unrelated pull request, so it runs on pull requests, on a push to main or staging, weekly,
 # and by hand. It reads the source only (no build), and it is free for a public repository.
+# A change that touches only documents cannot change a finding, so the push trigger skips the same
+# paths as the pull request trigger (tools/check-workflows.mjs keeps the two lists equal to the
+# docs-only allowlist); the weekly run and the manual run still scan the branch.
 on:
   pull_request:
     branches: [main, staging]
@@ -19,12 +22,28 @@ on:
       - 'LICENSE'
   push:
     branches: [main, staging]
+    paths-ignore:
+      - 'docs/**'
+      - 'design/**'
+      - '.antigravity/**'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+      - 'SECURITY.md'
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - 'LICENSE'
   schedule:
     - cron: "17 5 * * 2"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+# A new push to the same pull request cancels the scan that is still running for it. A push to main
+# or staging is never cancelled: that scan is the baseline that later pull requests are compared to.
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   analyze:

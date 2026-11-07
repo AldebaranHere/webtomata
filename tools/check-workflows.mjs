@@ -45,6 +45,8 @@ const OWN_REQUIRED_JOB = 'rust';
 const SCOPE_JOB = 'scope';
 const HEAVY_JOBS = ['rust', 'checks', 'e2e', 'lighthouse', 'cross-browser'];
 const DOCS_FILTERED_WORKFLOWS = ['codeql.yml', 'deploy.yml', 'audit.yml', 'fuzz.yml'];
+/** Workflows that also scan on a push: that trigger must skip documents too (a merge of documents scans nothing new). */
+const PUSH_FILTERED_WORKFLOWS = ['codeql.yml'];
 const BUILD_CODE =
 	/\b(pnpm\s+(--filter\s+\S+\s+)?(build|lint|test|check)\b|cargo\s|wasm-pack|vite\s)/;
 
@@ -59,6 +61,10 @@ export function checkWorkflows(files) {
 		const pathsIgnore = [];
 		const positivePaths = [];
 		let hasPullRequestTrigger = false;
+		let inPush = false;
+		let inPushIgnore = false;
+		let hasPushTrigger = false;
+		const pushPathsIgnore = [];
 
 		let inJobs = false;
 		let job = '';
@@ -78,6 +84,8 @@ export function checkWorkflows(files) {
 				inPullRequest = false;
 				inPathsIgnore = false;
 				inPaths = false;
+				inPush = false;
+				inPushIgnore = false;
 				inJobs = true;
 				return;
 			}
@@ -88,7 +96,38 @@ export function checkWorkflows(files) {
 					hasPullRequestTrigger = true;
 					inPathsIgnore = false;
 					inPaths = false;
+					inPush = false;
+					inPushIgnore = false;
 					return;
+				}
+				if (/^ {2}push:\s*$/.test(line)) {
+					inPush = true;
+					hasPushTrigger = true;
+					inPushIgnore = false;
+					inPullRequest = false;
+					inPathsIgnore = false;
+					inPaths = false;
+					return;
+				}
+				if (inPush) {
+					if (/^ {4}paths-ignore:\s*$/.test(line)) {
+						inPushIgnore = true;
+						return;
+					}
+					if (inPushIgnore) {
+						const itemMatch = line.match(/^ {6}-\s*['"]?([^'"]+)['"]?\s*$/);
+						if (itemMatch) {
+							pushPathsIgnore.push(itemMatch[1]);
+							return;
+						}
+						if (!/^\s*$/.test(line)) {
+							inPushIgnore = false;
+						}
+					}
+					if (/^ {2}[A-Za-z0-9_-]+:/.test(line) || /^\S/.test(line)) {
+						inPush = false;
+						inPushIgnore = false;
+					}
 				}
 				if (inPullRequest) {
 					if (/^ {4}paths-ignore:\s*$/.test(line)) {
@@ -276,6 +315,17 @@ export function checkWorkflows(files) {
 			} else {
 				problems.push(
 					`${name}: pull_request trigger must have paths-ignore equal to the allowlist or positive paths with no allowlisted entry`
+				);
+			}
+		}
+
+		if (PUSH_FILTERED_WORKFLOWS.includes(name) && hasPushTrigger) {
+			const match =
+				pushPathsIgnore.length === WORKFLOW_PATHS_IGNORE.length &&
+				pushPathsIgnore.every((p, idx) => p === WORKFLOW_PATHS_IGNORE[idx]);
+			if (!match) {
+				problems.push(
+					`${name}: push trigger must have paths-ignore equal to the docs-only allowlist (a merge of documents needs no scan)`
 				);
 			}
 		}
