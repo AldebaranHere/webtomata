@@ -325,6 +325,92 @@ jobs:
 	assert.deepEqual(checkWorkflows([{ name: 'codeql.yml', text: codeql }]), []);
 });
 
+test('codeql.yml with the allowlist on both pull_request and push has no problems', () => {
+	const codeql = `
+name: CodeQL
+on:
+  pull_request:
+    branches: [main, staging]
+    paths-ignore:${docsIgnoreList}
+  push:
+    branches: [main, staging]
+    paths-ignore:${docsIgnoreList}
+  schedule:
+    - cron: "17 5 * * 2"
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: ${PIN}
+`;
+	assert.deepEqual(checkWorkflows([{ name: 'codeql.yml', text: codeql }]), []);
+});
+
+test('codeql.yml with a push trigger and no paths-ignore is a problem', () => {
+	const codeql = `
+name: CodeQL
+on:
+  pull_request:
+    branches: [main, staging]
+    paths-ignore:${docsIgnoreList}
+  push:
+    branches: [main, staging]
+  schedule:
+    - cron: "17 5 * * 2"
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: ${PIN}
+`;
+	const problems = checkWorkflows([{ name: 'codeql.yml', text: codeql }]);
+	assert.ok(problems.some((p) => /push trigger must have paths-ignore/.test(p)));
+});
+
+test('codeql.yml with a push paths-ignore that differs from the allowlist is a problem', () => {
+	const codeql = `
+name: CodeQL
+on:
+  push:
+    branches: [main, staging]
+    paths-ignore:
+      - 'docs/**'
+  pull_request:
+    branches: [main, staging]
+    paths-ignore:${docsIgnoreList}
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: ${PIN}
+`;
+	const problems = checkWorkflows([{ name: 'codeql.yml', text: codeql }]);
+	assert.ok(problems.some((p) => /push trigger must have paths-ignore/.test(p)));
+});
+
+test('a push trigger whose paths-ignore comes before pull_request is read for push, not for pull_request', () => {
+	const codeql = `
+name: CodeQL
+on:
+  push:
+    branches: [main, staging]
+    paths-ignore:${docsIgnoreList}
+  pull_request:
+    branches: [main, staging]
+    paths-ignore:${docsIgnoreList}
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: ${PIN}
+`;
+	assert.deepEqual(checkWorkflows([{ name: 'codeql.yml', text: codeql }]), []);
+});
+
 test('codeql.yml or deploy.yml without paths-ignore is a problem', () => {
 	const badCodeql = `
 name: CodeQL
