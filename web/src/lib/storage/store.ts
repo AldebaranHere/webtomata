@@ -3,6 +3,7 @@
 // The list can be shown without reading any document: the title, the kind and the dates are
 // copies in the record. See docs/decisions/0023-saved-machines.md.
 import type { Kind } from '../editor/document.ts';
+import type { PdaKind } from '../editor/pda-document.ts';
 import type { Progress } from './progress.ts';
 
 /** The title of a machine that comes from our own content, in both languages. */
@@ -11,17 +12,21 @@ export interface Titles {
 	en: string;
 }
 
-export interface SavedMachine {
+export interface BaseSavedRecord {
 	id: string;
 	/** The shape of this record (not of the document, which has its own `schemaVersion`). */
 	recordVersion: 1;
 	title: string;
-	kind: Kind;
 	createdAt: number;
 	updatedAt: number;
 	/** When the machine was last opened: the Sandbox opens the one with the biggest value. */
 	openedAt: number;
 	doc: string;
+}
+
+export interface SavedFsmMachine extends BaseSavedRecord {
+	type?: 'fsm';
+	kind: Kind;
 	/**
 	 * Set for a machine that comes from our content (the sample, an example). While the title of the
 	 * document is one of these, the page shows the one of its language. A title that the user
@@ -42,13 +47,32 @@ export interface SavedMachine {
 	progress?: Progress;
 }
 
+export interface SavedPdaMachine extends BaseSavedRecord {
+	type: 'pda';
+	kind: PdaKind;
+	titles?: undefined;
+	tests?: undefined;
+	progress?: undefined;
+}
+
+export type AnySavedMachine = SavedFsmMachine | SavedPdaMachine;
+export type SavedMachine = SavedFsmMachine;
+
+export function isPdaRecord(record: AnySavedMachine): record is SavedPdaMachine {
+	return record.type === 'pda';
+}
+
+export function isFsmRecord(record: AnySavedMachine): record is SavedFsmMachine {
+	return record.type !== 'pda';
+}
+
 /** The place where the records are kept. A write is whole or it is not made. */
 export interface MachineStore {
 	/** Every record, in the order of the ids. */
-	list(): Promise<SavedMachine[]>;
-	get(id: string): Promise<SavedMachine | undefined>;
+	list(): Promise<AnySavedMachine[]>;
+	get(id: string): Promise<AnySavedMachine | undefined>;
 	/** Adds the record, or replaces the one with the same id. */
-	put(record: SavedMachine): Promise<void>;
+	put(record: AnySavedMachine): Promise<void>;
 	/** A record that is not there is not an error. */
 	delete(id: string): Promise<void>;
 }

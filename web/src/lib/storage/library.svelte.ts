@@ -16,6 +16,7 @@ import { createMemoryStore } from './memory.ts';
 import { localizedTitle } from './titles.ts';
 import { openStore } from './index.ts';
 import { readStoredDocument } from './migrate.ts';
+import { isFsmRecord } from './store.ts';
 import type { MachineStore } from './store.ts';
 
 export interface Current {
@@ -128,7 +129,7 @@ class Library {
 			return null;
 		}
 		const record = await store.get(id);
-		if (!record) return this.fail({ key: 'library.missing', params: {} });
+		if (!record || !isFsmRecord(record)) return this.fail({ key: 'library.missing', params: {} });
 		const read = readStoredDocument(record.doc);
 		if (!read.ok) return this.fail({ key: 'library.unreadable', params: {} });
 		await this.leaveCurrent();

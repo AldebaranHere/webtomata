@@ -8,8 +8,8 @@ import { readTests } from '../editor/test-list.ts';
 import { readStoredDocument } from './migrate.ts';
 import { isQuestionRecord } from './question-work.ts';
 import type { Unreadable } from './migrate.ts';
-import { newId } from './store.ts';
-import type { MachineStore, SavedMachine, Titles } from './store.ts';
+import { isFsmRecord, newId } from './store.ts';
+import type { MachineStore, SavedFsmMachine, SavedMachine, Titles } from './store.ts';
 
 /** What a row of the list needs. */
 export interface Entry {
@@ -34,7 +34,9 @@ export interface Problem {
 /** The machines, the one opened last first. A machine that cannot be read is in the list, marked. */
 export async function listEntries(store: MachineStore): Promise<Entry[]> {
 	// The machines of the questions are not in the list of the student (question-work.ts).
-	const records = (await store.list()).filter((record) => !isQuestionRecord(record.id));
+	const records = (await store.list()).filter(
+		(record): record is SavedFsmMachine => isFsmRecord(record) && !isQuestionRecord(record.id)
+	);
 	return records
 		.map((record): Entry => {
 			const read = readStoredDocument(record.doc);
@@ -62,9 +64,9 @@ export async function duplicateMachine(
 	store: MachineStore,
 	id: string,
 	now: () => number = Date.now
-): Promise<SavedMachine | undefined> {
+): Promise<SavedFsmMachine | undefined> {
 	const source = await store.get(id);
-	if (!source) return undefined;
+	if (!source || !isFsmRecord(source)) return undefined;
 	const read = readStoredDocument(source.doc);
 	if (!read.ok) return undefined;
 	const room = LIMITS.titleChars - [...SUFFIX].length;
@@ -72,7 +74,7 @@ export async function duplicateMachine(
 	const titled = applyCommand(read.doc, { type: 'setTitle', title });
 	if (!titled.ok) return undefined;
 	const time = now();
-	const record: SavedMachine = {
+	const record: SavedFsmMachine = {
 		id: newId(),
 		recordVersion: 1,
 		title,
@@ -97,7 +99,7 @@ export async function renameStored(
 	now: () => number = Date.now
 ): Promise<Problem | null> {
 	const source = await store.get(id);
-	if (!source) return { key: 'library.missing', params: {} };
+	if (!source || !isFsmRecord(source)) return { key: 'library.missing', params: {} };
 	const read = readStoredDocument(source.doc);
 	if (!read.ok) return { key: 'library.unreadable', params: {} };
 	const result = applyCommand(read.doc, { type: 'setTitle', title });

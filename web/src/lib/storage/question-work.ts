@@ -10,6 +10,7 @@ import { createDocument, serializeDocument } from '../editor/document.ts';
 import type { MachineDocument } from '../editor/document.ts';
 import type { QuestionType } from '../questions/types.ts';
 import { readStoredDocument } from './migrate.ts';
+import { isFsmRecord } from './store.ts';
 import type { MachineStore, SavedMachine, Titles } from './store.ts';
 
 export const QUESTION_PREFIX = 'soal:';
@@ -62,7 +63,7 @@ export async function openQuestionWork(
 ): Promise<QuestionWork> {
 	const id = questionRecordId(question.id);
 	const found = await store.get(id);
-	if (found) {
+	if (found && isFsmRecord(found)) {
 		const read = readStoredDocument(found.doc);
 		if (read.ok) return { record: found, doc: read.doc, fresh: false, unreadable: false };
 		return { record: found, doc: startDocument(question), fresh: false, unreadable: true };

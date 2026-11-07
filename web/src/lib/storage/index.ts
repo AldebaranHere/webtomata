@@ -4,10 +4,26 @@ import { createMemoryStore } from './memory.ts';
 import type { MachineStore } from './store.ts';
 
 export { createAutosave } from './autosave.ts';
-export type { Autosave, SaveStatus } from './autosave.ts';
+export type {
+	Autosave,
+	BaseAutosave,
+	DocumentCodec,
+	FsmAutosave,
+	PdaAutosave,
+	SaveStatus
+} from './autosave.ts';
 export { createMachine, openLatest } from './machines.ts';
 export type { Opened, Skipped } from './machines.ts';
-export type { MachineStore, SavedMachine } from './store.ts';
+export { createPdaMachine, openLatestPda, pdaDocumentCodec, readStoredPda } from './pda-work.ts';
+export type { OpenedPda, PdaReadResult, SkippedPda } from './pda-work.ts';
+export { isFsmRecord, isPdaRecord } from './store.ts';
+export type {
+	AnySavedMachine,
+	MachineStore,
+	SavedFsmMachine,
+	SavedMachine,
+	SavedPdaMachine
+} from './store.ts';
 
 export interface OpenedStore {
 	store: MachineStore;

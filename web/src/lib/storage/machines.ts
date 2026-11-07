@@ -5,8 +5,8 @@ import { readTests } from '../editor/test-list.ts';
 import { readStoredDocument } from './migrate.ts';
 import type { Unreadable } from './migrate.ts';
 import { isQuestionRecord } from './question-work.ts';
-import { newId } from './store.ts';
-import type { MachineStore, SavedMachine, Titles } from './store.ts';
+import { isFsmRecord, newId } from './store.ts';
+import type { MachineStore, SavedFsmMachine, Titles } from './store.ts';
 
 /** What the Sandbox opens when nothing is saved: a document, and its titles if it is from our content. */
 export interface Sample {
@@ -21,7 +21,7 @@ export interface Skipped {
 }
 
 export interface Opened {
-	record: SavedMachine;
+	record: SavedFsmMachine;
 	doc: MachineDocument;
 	/** The machines that could not be read. They are still in the store, untouched. */
 	skipped: Skipped[];
@@ -34,9 +34,9 @@ export async function createMachine(
 	now: () => number = Date.now,
 	titles?: Titles,
 	tests: readonly string[] = []
-): Promise<SavedMachine> {
+): Promise<SavedFsmMachine> {
 	const time = now();
-	const record: SavedMachine = {
+	const record: SavedFsmMachine = {
 		id: newId(),
 		recordVersion: 1,
 		title: doc.title,
@@ -71,13 +71,18 @@ export async function placeExample(
 	openId: string | undefined,
 	example: Placeable,
 	now: () => number = Date.now
-): Promise<{ record: SavedMachine; replaced: boolean }> {
+): Promise<{ record: SavedFsmMachine; replaced: boolean }> {
 	const current = openId === undefined ? undefined : await store.get(openId);
-	if (current && current.title === '' && readTests(current.tests).length === 0) {
+	if (
+		current &&
+		isFsmRecord(current) &&
+		current.title === '' &&
+		readTests(current.tests).length === 0
+	) {
 		const read = readStoredDocument(current.doc);
 		if (read.ok && read.doc.states.length === 0) {
 			const time = now();
-			const record: SavedMachine = {
+			const record: SavedFsmMachine = {
 				...current,
 				title: example.doc.title,
 				kind: example.doc.kind,
@@ -108,7 +113,7 @@ export async function openLatest(
 ): Promise<Opened> {
 	// The machines of the questions are not machines of the Sandbox (question-work.ts).
 	const records = (await store.list())
-		.filter((r) => !isQuestionRecord(r.id))
+		.filter((r): r is SavedFsmMachine => isFsmRecord(r) && !isQuestionRecord(r.id))
 		.sort((a, b) => b.openedAt - a.openedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 	const skipped: Skipped[] = [];
 	for (const record of records) {
