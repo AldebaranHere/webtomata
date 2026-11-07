@@ -2286,7 +2286,7 @@ Follow rule 12 of `AGENTS.md` for every shell command (the Playwright runs are l
 
 ## Task T-056 — PDA editor, part 7 of 10: saving a PDA on the device
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-056-pda-storage`
 
