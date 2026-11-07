@@ -91,6 +91,10 @@ Why: Windows blocks `wasm-pack` (Device Guard), so the WASM build and the WASM t
 - Naming, folder structure, error handling, accessibility rules: follow what is already there.
 - No new dependencies without a decision entry in `docs/agent/DECISIONS.md`.
 - No silent refactors. If something is out of scope, log it in `PLAN.md` as `proposed`.
+- **Search before you write.** Before adding a helper, a type or a format, search the repository for one that already does it (by name and by behavior). One fact lives in one place: if two functions must agree (a label format, a sort order, a limit), one of them calls the other.
+- **Small public surfaces.** A module exports what its callers need and nothing else. Do not export a function or add a member to an interface only so that a test can reach it: test through the public interface, or name the seam and say why it exists. Do not use `export *` to publish a whole file.
+- **Types are checked, not bypassed.** No `any`, no `@ts-ignore`, no `as unknown as`. If one cast cannot be avoided, put it in one small named helper with a comment that says why it is safe, and name the helper in `REPORT.md`.
+- **Edit with the edit tool.** Do not rewrite a file with `sed`, a script or a whole-file write, and never rewrite `PLAN.md` or another document wholesale. Run `git diff` after every edit and read it (an unquoted `sed` once removed the last letter of 45 document lines).
 
 ## Accessibility rules (non-negotiable)
 
@@ -146,6 +150,8 @@ Stop and write a `blocked` entry (or a question in `REPORT.md`) for any of these
 - Escalates to the human for: product intent ambiguity, scope change, budget concerns, cross-cutting decisions.
 - Decides and logs for: implementation detail ambiguity, minor library choices, ordering within the plan.
 
+The planner reviews every worker pull request with the same checks as the worker's definition of done: the deepening pass, the breaks (the planner also makes its own, and runs property tests with more seeds than the worker did), the boundary values, and the documents (a diff of a document shows only the intended lines).
+
 ### Worker
 
 - Reads `PLAN.md`, finds the task that the human named in the start prompt, and restates it before coding. The task must have `Status: todo`, its date (if it has "not before ...") must have come, and every task it depends on must be `done` and merged. If not, stop and say why.
@@ -181,6 +187,11 @@ A task is done only when:
 - `PLAN.md` task `Status: done` and the commit/branch is recorded.
 - Any new decisions are appended to `DECISIONS.md`.
 - Any out-of-scope observations are logged as `proposed`.
+- **The deepening pass is written in `REPORT.md`** (do it before you open the pull request): (1) list every new export and every new member of a public interface; for each, say whether it can be private, whether something that exists already does the same, and whether any logic is written twice (also inside the new code); remove or merge what you can, and give a reason for each duplicate or test-only export that stays. (2) The interface is smaller than the work behind it. (3) Count the casts you added (the goal is zero).
+- **Every test can fail.** For each rule or property that a new test checks, name a one-line break that would violate it, make the break, see the test fail, and restore it. Report the breaks you tried, and any that the tests did not catch, with what you did about it. A test that cannot fail is not a test.
+- **Limits and boundaries.** Every limit is tested at one below, at, and one above (the exact values, not only a far-over case), and the check runs before the work it protects (before the loop, the allocation or the build), not after.
+- **Random tests are judged on the larger run.** When a constant is tuned with a seeded property test (a spacing, a size, a count), run at least ten times as many seeds as you used to tune it, and paste that result. A value that holds for the seeds it was tuned on is not yet a bound.
+- **Quick loop, full gate once.** While you work, run only the tests that relate to your change (a file, a pattern, `vitest related`); run the whole gate of this file once before you push, and paste its output.
 
 ## Escalation
 
