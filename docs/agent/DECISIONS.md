@@ -15,6 +15,17 @@ Format:
 
 ---
 
+## 2026-11-07 — The PDA label form: no ask_split question, Ketik ε in the form (T-054)
+
+- Decider: planner
+- Context: Writing T-054 showed two details of `design/screens/pda-editor.md` section 8 that do not fit the form of three fields. The FSM's `ask_split` question ("one symbol or several?") would have to split a read field into several rows, and it needs an interface of its own; and the phone picture put `Ketik ε` in the dock while the FSM keeps it inside the label box.
+- Decision: (1) A read field holds one symbol. When the text has several characters, is not in the input alphabet and the alphabet has only one-character names, the row is refused with `pda_editor.read_one_symbol` ("make two rows, or add the name to the input alphabet in the Tabel tab"); a name of several characters is added once in the Tabel tab, after which the check no longer applies. (2) `Ketik ε` is a button of the form on laptop and phone alike. (3) Pop and push text is cut into symbols by one rule: whitespace or a comma makes names; otherwise one-character alphabets read characters; otherwise the text is one name. It round-trips with the label display of T-039.
+- Alternatives considered: keeping the question with a two-button interface inside the form (rejected: more code and a state to test, for a case that the refusal explains in one sentence); `Ketik ε` in the phone dock (rejected: two places for one function, and the form would depend on the shell).
+- Reversible? yes
+- Affects: `design/screens/pda-editor.md` (section 8), `docs/agent/PLAN.md` (T-054), `web/src/lib/editor/pda-label.ts` and the two label components (T-054)
+
+---
+
 ## 2026-11-07 — Editor canvas works for two kinds of document and extracts label box (T-053)
 
 - Decider: worker (approved by planner & owner)
