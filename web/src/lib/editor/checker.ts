@@ -23,27 +23,16 @@ export interface Checker<D = MachineDocument> {
 	dispose(): void;
 }
 
-// Named cast helper: safe because when toItems is omitted, D is constrained to MachineDocument by overloads.
-function castToMachineDocument(doc: unknown): MachineDocument {
-	return doc as MachineDocument;
-}
-
-export function createChecker(options: {
-	validate: (doc: MachineDocument) => Promise<EngineResult<Issue[]>>;
-	toItems?: (issues: readonly Issue[], doc: MachineDocument) => CheckItem[];
-	delayMs?: number;
-}): Checker<MachineDocument>;
-export function createChecker<D>(options: {
-	validate: (doc: D) => Promise<EngineResult<Issue[]>>;
-	toItems: (issues: readonly Issue[], doc: D) => CheckItem[];
-	delayMs?: number;
-}): Checker<D>;
 export function createChecker<D = MachineDocument>(options: {
 	validate: (doc: D) => Promise<EngineResult<Issue[]>>;
 	toItems?: (issues: readonly Issue[], doc: D) => CheckItem[];
 	delayMs?: number;
 }): Checker<D> {
-	const { validate, toItems, delayMs = 200 } = options;
+	const {
+		validate,
+		toItems = checkItems as unknown as (issues: readonly Issue[], doc: D) => CheckItem[],
+		delayMs = 200
+	} = options;
 	let status: CheckStatus = 'idle';
 	let items: CheckItem[] = [];
 	let problem: EngineProblem | undefined;
@@ -66,9 +55,7 @@ export function createChecker<D = MachineDocument>(options: {
 			// A newer document was asked about meanwhile: this answer is old.
 			if (mine !== sequence || disposed) return;
 			if (answer.ok) {
-				items = toItems
-					? toItems(answer.value, doc)
-					: checkItems(answer.value, castToMachineDocument(doc));
+				items = toItems(answer.value, doc);
 				problem = undefined;
 				status = 'ready';
 			} else {

@@ -1,25 +1,7 @@
-<script module lang="ts">
-	import type { MessageKey } from '#lib/i18n/id.ts';
-
-	export interface KindOption<T extends string> {
-		readonly value: T;
-		readonly labelKey: MessageKey;
-	}
-</script>
-
 <script lang="ts" generics="K extends string = Kind">
 	import { t } from '#lib/i18n/index.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/id.ts';
 	import type { Kind } from './document.ts';
-
-	const DEFAULT_OPTIONS = [
-		{ value: 'dfsm', labelKey: 'kind.dfsm' as MessageKey },
-		{ value: 'ndfsm', labelKey: 'kind.ndfsm' as MessageKey }
-	] as const;
-
-	// Named helper for default options cast when K defaults to Kind.
-	function defaultKindOptions<T extends string>(): readonly [KindOption<T>, KindOption<T>] {
-		return DEFAULT_OPTIONS as unknown as readonly [KindOption<T>, KindOption<T>];
-	}
 
 	// "Jenis mesin": DFSM or NDFSM for an FSM, DPDA or NDPDA for a PDA. It is a choice, not a lock:
 	// a wrong choice only gives calm remarks in the checks, and it never blocks editing (docs/ux/wireframes.md,
@@ -27,22 +9,20 @@
 	let {
 		kind,
 		onchange,
-		options = defaultKindOptions<K>()
+		kinds = ['dfsm', 'ndfsm'] as const as unknown as readonly [K, K]
 	}: {
 		kind: K;
 		onchange: (kind: K) => void;
-		options?: readonly [KindOption<K>, KindOption<K>];
+		kinds?: readonly [K, K];
 	} = $props();
 
 	const id = $props.id();
 
 	function onkeydown(event: KeyboardEvent) {
-		const at = options.findIndex((opt) => opt.value === kind);
-		if (at === -1) return;
+		const at = kinds.indexOf(kind);
 		let next: K | undefined;
-		if (event.key === 'ArrowRight' || event.key === 'ArrowDown')
-			next = options[(at + 1) % 2]?.value;
-		if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = options[(at + 1) % 2]?.value;
+		if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = kinds[(at + 1) % 2];
+		if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = kinds[(at + 1) % 2];
 		if (!next) return;
 		event.preventDefault();
 		onchange(next);
@@ -53,16 +33,16 @@
 <div class="kind">
 	<span class="label" id="{id}-label">{t('kind.label')}</span>
 	<div class="group" role="radiogroup" aria-labelledby="{id}-label" {onkeydown} tabindex="-1">
-		{#each options as option (option.value)}
+		{#each kinds as option (option)}
 			<button
 				type="button"
 				role="radio"
-				id="{id}-{option.value}"
-				aria-checked={kind === option.value}
-				tabindex={kind === option.value ? 0 : -1}
-				onclick={() => kind !== option.value && onchange(option.value)}
+				id="{id}-{option}"
+				aria-checked={kind === option}
+				tabindex={kind === option ? 0 : -1}
+				onclick={() => kind !== option && onchange(option)}
 			>
-				{t(option.labelKey)}
+				{t(`kind.${option}` as MessageKey)}
 			</button>
 		{/each}
 	</div>

@@ -397,17 +397,14 @@ AssertionError: expected [ { severity: 'error', …(3) }, …(1) ] to deeply equ
    - `web/src/lib/editor/pda-checks.ts`:
      - `export function pdaCheckItems(issues: readonly Issue[], doc: PdaDocument): readonly CheckItem[]`: maps Rust engine issues to UI check items, handling 1-based row indices for `first` and `second`.
    - `web/src/lib/editor/checker.ts`:
-     - `export interface CheckerOptions<D>`: generalized validator for arbitrary document types `D`.
-     - `export function createChecker<D>(options: CheckerOptions<D>): Checker<D>`
-   - `web/src/lib/editor/KindSwitch.svelte`:
-     - `export interface KindOption<K>`: generalized option structure for radio group.
+     - `export function createChecker<D = MachineDocument>(options: { validate: (doc: D) => Promise<EngineResult<Issue[]>>; toItems?: (issues: readonly Issue[], doc: D) => CheckItem[]; delayMs?: number }): Checker<D>`: generalized validator for arbitrary document types `D` with default `toItems` for FSM. No extra interfaces exported.
    - `web/src/lib/editor/SidePanel.svelte`:
      - `export function show(): void`: imperative trigger to make bottom sheet visible on mobile.
-     - Snippets `simulation` and `conversion` made optional (`Snippet | undefined`).
+     - Snippets made optional (`Snippet | undefined`) with optional call `{@render snippet?.()}` to avoid extra wrapper blocks.
 
 2. **Reused Logic & Zero Duplication**:
    - `pda-table.ts` and `pda-definition.ts` reuse `formatStackSeq` and `stackSeparator` directly from `diagram/pda-diagram.ts`. No duplicate stack symbol formatting was created.
-   - `checker.ts` and `KindSwitch.svelte` are shared across FSM and PDA with zero regression to FSM behavior.
+   - `checker.ts` and `KindSwitch.svelte` are shared across FSM and PDA with zero regression to FSM behavior. `Editor.svelte` has 0 lines diff vs staging.
 
 3. **Duplication between `Editor.svelte` and `PdaEditor.svelte`**:
    - Autosave logic is unified in `useAutosaveBinding`.
@@ -415,28 +412,56 @@ AssertionError: expected [ { severity: 'error', …(3) }, …(1) ] to deeply equ
    - Differences retained: `Editor.svelte` hosts FSM tools, tests, and run modes; `PdaEditor.svelte` hosts PDA label forms, sheet overlay replacement, and PDA table/definition views.
 
 4. **Cast Count**:
-   - `0` casts (`any`, `@ts-ignore`, `as unknown as`). All types are strictly checked.
+   - 2 named safe casts:
+     - In `checker.ts`: `checkItems as unknown as (issues: readonly Issue[], doc: D) => CheckItem[]` for the default `toItems` parameter when `D` defaults to `MachineDocument`.
+     - In `KindSwitch.svelte`: `['dfsm', 'ndfsm'] as const as unknown as readonly [K, K]` for the default `kinds` prop when `K` defaults to `Kind`.
+   - All other types are strictly checked.
 
-5. **Size Numbers Before & After**:
-   - Initial JS `sandbox.html`: **124.8 KB gzip** before (`staging`) -> **125.5 KB gzip** after (`task/T-051-pda-panel`) (+0.7 KB raw, limit 170 KB, within budget).
-   - PDA editor chunk:
-     - Before on `staging`: **14.47 kB raw (5.37 kB gzip)** (chunk `ChakwWL3.js`)
-     - After on `task/T-051-pda-panel`: **18.19 kB raw (6.70 kB gzip)** (chunk `BBg0E02t.js`)
-     - Net increase: +3.72 kB raw (+1.33 kB gzip) for the full panel implementation (tabs, kind switch, checker wiring, table view import, definition view import, and selection sync).
-   - Lazy on-demand chunks (loaded only when their respective panel tab opens):
-     - `PdaTableView`: 2.47 kB raw (1.07 kB gzip)
-     - `PdaDefinitionView`: 2.46 kB raw (1.16 kB gzip)
-   - Engine WASM binary: **237.0 KB gzip** (budget 250 KB, unchanged).
+5. **Size Numbers Before & After (Against Clean Staging Build)**:
+   - **Baseline on clean `staging` (commit `488cf25`)**:
+     - `index.html`: **81.859 KB gzip** (reported as 81.9 KB)
+     - `soal.html`: **84.132 KB gzip** (reported as 84.1 KB)
+     - `sandbox.html`: **124.848 KB gzip** (reported as 124.8 KB)
+   - **Proof of Byte Origin (Building with new i18n keys in `id.ts` / `en.ts` removed)**:
+     - `index.html`: **81.860 KB gzip** (+0.001 KB vs staging)
+     - `soal.html`: **84.133 KB gzip** (+0.001 KB vs staging)
+     - `sandbox.html`: **124.969 KB gzip** (+0.121 KB vs staging)
+     *Conclusion:* The shared i18n dictionary (`id.ts` and `en.ts`) is bundled statically into `CB0UzqGA.js` on every route. Adding the 12 required PDA message keys (`kind.dpda`, `kind.ndpda`, 5 `pda_check.*`, 5 `pda_editor.*`) increases `CB0UzqGA.js` by 458 bytes gzip (+0.447 KB gzip), directly adding +0.42 to +0.45 KB gzip to all routes regardless of editor code.
+   - **PR 186 Round 2 Shared Code Cuts**:
+     - `checker.ts`: removed overloads and `castToMachineDocument`, unified into single generic with default `toItems`, eliminated branching in `run()`.
+     - `Editor.svelte`: restored completely to staging code (0 lines diff vs staging).
+     - `KindSwitch.svelte`: removed `<script module>` with `KindOption`, removed `DEFAULT_OPTIONS` object array and helper, simplified to `kinds = ['dfsm', 'ndfsm'] as const as unknown as readonly [K, K]` iterating `{t(`kind.${option}` as MessageKey)}`.
+     - `SidePanel.svelte`: simplified snippet calls to optional chaining `{@render simulation?.()}`, `{@render table?.()}`, `{@render definition?.()}`, `{@render conversion?.()}` instead of `{#if ...}` wrappers.
+   - **Final Route Numbers After Cuts**:
+     - `index.html`: **82.310 KB gzip** (+0.451 KB vs staging, reported as 82.3 KB)
+     - `soal.html`: **84.581 KB gzip** (+0.449 KB vs staging, reported as 84.6 KB)
+     - `sandbox.html`: **125.388 KB gzip** (+0.540 KB vs staging, reported as 125.4 KB)
+     - PDA editor chunk:
+       - Before on `staging`: **14.47 kB raw (5.37 kB gzip)** (chunk `ChakwWL3.js`)
+       - After on `task/T-051-pda-panel`: **18.16 kB raw (6.68 kB gzip)** (chunk `BdTe0IJB.js`)
+       - Net increase: +3.69 kB raw (+1.31 kB gzip)
+     - Lazy on-demand chunks:
+       - `PdaTableView`: 2.47 kB raw (1.07 kB gzip)
+       - `PdaDefinitionView`: 2.46 kB raw (1.16 kB gzip)
+     - Engine WASM binary: **237.0 KB gzip** (budget 250 KB, unchanged).
 
-6. **Line-by-Line Spec Edits Documentation & Relocated Checks**:
+6. **Line-by-Line Spec Edits Documentation & Relocated Checks (`git diff origin/staging...HEAD -- web/e2e`)**:
    - `web/e2e/cross/pda-storage.spec.ts`:
      - Line 8: Added import of `engineSettled` from `../fixtures.ts`.
-     - Lines 83–86 (S3): Replaced `expect(wasmRequested).toBe(false)` with `await engineSettled(page)`.
-       *Reason:* In T-057 (ADR 0048), S3 checked that the WASM engine was not loaded when visiting PDA mode because PDA had no checker. T-051 (ADR 0049) supersedes this: PDA mode now runs `validatePda` via the engine worker to validate automata and detect competing transitions. The timing constraint (that the engine worker is never requested *before* the first draw) was preserved and relocated to test E8 (`web/e2e/pda-panel.spec.ts:601-625`, verified by deliberate Break 8). S3 now calls `await engineSettled(page)` to allow async checks to cleanly finish without lingering unhandled worker messages.
-     - Lines 110, 125, 128 (S4) & Lines 151, 164, 193 (S5): Adjusted mobile tap $y$-coordinates from $y = 350$ / $450$ to $y = 120$ / $150$.
-       *Reason:* On mobile phones (e.g. Pixel 7 / iPhone 13, viewport height $\approx$ 667–892 px), adding the bottom side panel occupying 40% of the screen height reduced the visible canvas height from 611 px down to 319 px. Tapping at $y = 350$ or $450$ previously landed on the bottom panel area rather than the canvas SVG stage. Placing test states in the upper third of the canvas ($y = 120$–$150$) ensures taps reliably target the interactive canvas across phone screens.
+     - Lines 80–86 (S3): Removed `let wasmRequested = false; page.on('request', ...)` and `expect(wasmRequested).toBe(false)`.
+       *Reason:* In T-057 (ADR 0048), S3 checked that no WASM engine request was made when visiting PDA mode because PDA had no checker. T-051 (ADR 0049) supersedes this: PDA mode now runs `validatePda` via the engine worker to validate automata and detect competing transitions. The timing constraint (that the engine worker is never requested *before* the first draw) was relocated to test E8 (`web/e2e/pda-panel.spec.ts:601-625`, verified by deliberate Break 8).
+     - Lines 110, 125 (S3): Added `await engineSettled(page);` before reload and at test completion to allow async checks to cleanly finish without unhandled worker messages.
+     - Lines 151, 164 (S4): Mobile tap coordinates adjusted:
+       - Line 151: `{ position: { x: 220, y: 220 } }` -> `{ position: { x: 180, y: 100 } }`.
+       - Line 164: `{ position: { x: 340, y: 220 } }` -> `{ position: { x: 260, y: 100 } }`.
+       *Reason:* On mobile phones (e.g. Pixel 7, viewport height 892 px), adding the bottom side panel occupying 40% of the screen height reduced visible canvas height from 611 px to 319 px. Tapping at $y = 220$ previously overlapped the bottom panel area. Placing test states at $y = 100$ ensures taps reliably target the interactive canvas across phone viewports.
+     - Line 193 (S5): Mobile tap coordinate adjusted:
+       - `{ position: { x: 180, y: 180 } }` -> `{ position: { x: 180, y: 100 } }`.
+       *Reason:* Same physical viewport reason as S4.
    - `web/e2e/pda-editor.spec.ts`:
-     - Lines 585, 595 (E8): Adjusted tap $y$-coordinates for mobile bottom sheet test to upper canvas ($y = 120$–$150$) for the exact same physical reason (bottom panel takes 40% height on phone viewport).
+     - Lines 585–586 (E8): Adjusted mobile tap $y$-coordinates from `{ position: { x: 120, y: 250 } }` and `{ position: { x: 260, y: 250 } }` to `y: 120`.
+     - Lines 595–596 (E8): Adjusted touch drag from `{ y: stageBoxBefore.y + 100 }` -> `{ y: stageBoxBefore.y + 350 }` to `{ y: stageBoxBefore.y + 50 }` -> `{ y: stageBoxBefore.y + 180 }`.
+       *Reason:* Bottom panel occupies 40% height on phone viewport; dragging to $+180$ keeps the gesture within the active canvas area above the panel.
 
 ---
 
@@ -468,8 +493,8 @@ ok   73 files use no raw colors
 $ pnpm --filter web exec vitest run
  Test Files  111 passed (111)
       Tests  1311 passed | 2 skipped (1313)
-   Start at  23:09:22
-   Duration  11.79s (tests 73%, transform 20%, import 7%)
+   Start at  00:49:35
+   Duration  8.94s (tests 70%, transform 21%, import 8%)
 ```
 
 ### Build & Size
@@ -478,10 +503,10 @@ $ pnpm build && pnpm size
 ok   initial JS index.html: 82.3 KB gzip (limit 170 KB)
 ok   initial JS panduan/berakhiran-x.html: 89.4 KB gzip (limit 170 KB)
 ok   initial JS panduan.html: 83.1 KB gzip (limit 170 KB)
-ok   initial JS sandbox.html: 125.5 KB gzip (limit 170 KB)
-ok   initial JS soal/berakhiran-10.html: 125.0 KB gzip (limit 170 KB)
-ok   initial JS soal/jumlah-a-genap.html: 125.0 KB gzip (limit 170 KB)
-ok   initial JS soal/mengandung-101.html: 125.0 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 125.4 KB gzip (limit 170 KB)
+ok   initial JS soal/berakhiran-10.html: 124.8 KB gzip (limit 170 KB)
+ok   initial JS soal/jumlah-a-genap.html: 124.8 KB gzip (limit 170 KB)
+ok   initial JS soal/mengandung-101.html: 124.8 KB gzip (limit 170 KB)
 ok   initial JS soal.html: 84.6 KB gzip (limit 170 KB)
 ok   initial JS tentang.html: 82.4 KB gzip (limit 170 KB)
 ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
@@ -492,39 +517,38 @@ ok   wasm _app/immutable/workers/assets/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB g
 `playwright test pda-panel pda-editor pda-storage --project=desktop`
 ```
   4 skipped
-  22 passed (25.1s)
+  22 passed (25.2s)
 ```
 
 ### E2E Phone Suite
 `playwright test pda-panel pda-editor pda-storage --project=phone`
 ```
   9 skipped
-  17 passed (19.5s)
+  17 passed (18.4s)
 ```
 
 ### E2E WebKit Phone Suite
 `playwright test e2e/cross/pda-storage.spec.ts --project=webkit-phone`
 ```
-  6 passed (8.9s)
+  6 passed (6.9s)
 ```
 
 ### Git Diff Stat
 ```
 $ git diff --stat origin/staging
  docs/agent/PLAN.md                          |   2 +-
- docs/agent/REPORT.md                        | 771 +++++++++++++++++-----------
+ docs/agent/REPORT.md                        | 806 ++++++++++++++++++----------
  docs/decisions/0049-pda-panel.md            |  39 ++
  docs/glossary.md                            |   3 +
  web/e2e/cross/pda-storage.spec.ts           |  16 +-
  web/e2e/pda-editor.spec.ts                  |   8 +-
- web/e2e/pda-panel.spec.ts                   | 625 ++++++++++++++++++++++
- web/src/lib/editor/Editor.svelte            |   7 +-
- web/src/lib/editor/KindSwitch.svelte        |  60 ++-
+ web/e2e/pda-panel.spec.ts                   | 625 +++++++++++++++++++++
+ web/src/lib/editor/KindSwitch.svelte        |  24 +-
  web/src/lib/editor/PdaDefinitionView.svelte | 108 ++++
- web/src/lib/editor/PdaEditor.svelte         | 155 +++++-
+ web/src/lib/editor/PdaEditor.svelte         | 151 +++++-
  web/src/lib/editor/PdaTableView.svelte      | 128 +++++
- web/src/lib/editor/SidePanel.svelte         |  39 +-
- web/src/lib/editor/checker.ts               |  30 +-
+ web/src/lib/editor/SidePanel.svelte         |  19 +-
+ web/src/lib/editor/checker.ts               |  21 +-
  web/src/lib/editor/pda-checks.test.ts       | 153 ++++++
  web/src/lib/editor/pda-checks.ts            |  51 ++
  web/src/lib/editor/pda-definition.test.ts   |  96 ++++
@@ -533,6 +557,6 @@ $ git diff --stat origin/staging
  web/src/lib/editor/pda-table.ts             |  37 ++
  web/src/lib/i18n/en.ts                      |  18 +-
  web/src/lib/i18n/id.ts                      |  17 +-
- 22 files changed, 2187 insertions(+), 358 deletions(-)
+ 21 files changed, 2163 insertions(+), 341 deletions(-)
 ```
-Zero files changed in `crates/`.
+Zero files changed in `crates/`. `Editor.svelte` has 0 lines diff against staging.

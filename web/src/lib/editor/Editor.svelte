@@ -24,7 +24,7 @@
 	import { LayoutCancelled, LayoutTimeout, layoutClient } from './layout-client.ts';
 	import { layoutGraph, placeAll, refusalOf } from './layout.ts';
 	import { createChecker } from './checker.ts';
-	import { checkItems, flagsOf } from './checks.ts';
+	import { flagsOf } from './checks.ts';
 	import type { Autosave } from '#lib/storage/index.ts';
 	import type { Titles } from '#lib/storage/store.ts';
 	import { localizedTitle } from '#lib/storage/titles.ts';
@@ -108,10 +108,7 @@
 
 	// The checks: the engine (in its worker) looks at the machine a moment after each change, and
 	// the states that have something to look at get a mark on the diagram.
-	const checker = createChecker({
-		validate: (d) => engine.validate(toMachine(d)),
-		toItems: checkItems
-	});
+	const checker = createChecker({ validate: (d) => engine.validate(toMachine(d)) });
 	let checks = $state.raw({
 		status: checker.status(),
 		items: checker.items(),

@@ -2,7 +2,6 @@
 	import { onMount, untrack } from 'svelte';
 	import type { Component } from 'svelte';
 	import { engine } from '#lib/engine/client.ts';
-	import type { MessageKey } from '#lib/i18n/id.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import type { BaseAutosave } from '#lib/storage/autosave.ts';
 	import { useAutosaveBinding } from './autosave-binding.svelte.ts';
@@ -13,7 +12,7 @@
 	import EditorCanvas, { type LabelSlot } from './EditorCanvas.svelte';
 	import EditorFrame from './EditorFrame.svelte';
 	import { createPdaEditor } from './interaction/pda-editor.ts';
-	import KindSwitch, { type KindOption } from './KindSwitch.svelte';
+	import KindSwitch from './KindSwitch.svelte';
 	import { pdaCheckItems } from './pda-checks.ts';
 	import { toEnginePda } from './pda-document.ts';
 	import type { PdaDocument, PdaKind } from './pda-document.ts';
@@ -112,10 +111,7 @@
 	}
 
 	// Kind switch options: DPDA or NDPDA.
-	const PDA_KIND_OPTIONS: readonly [KindOption<PdaKind>, KindOption<PdaKind>] = [
-		{ value: 'dpda', labelKey: 'kind.dpda' as MessageKey },
-		{ value: 'ndpda', labelKey: 'kind.ndpda' as MessageKey }
-	];
+	const PDA_KINDS: readonly [PdaKind, PdaKind] = ['dpda', 'ndpda'];
 
 	function chooseKind(kind: PdaKind) {
 		editor.apply(
@@ -267,7 +263,7 @@
 		{:else}
 			<SidePanel bind:this={sidePanel} {tab} {tabs} ontab={chooseTab}>
 				{#snippet table()}
-					<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} options={PDA_KIND_OPTIONS} />
+					<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} kinds={PDA_KINDS} />
 					<ChecksList
 						status={checks.status}
 						items={checks.items}
@@ -280,7 +276,7 @@
 					{/if}
 				{/snippet}
 				{#snippet definition()}
-					<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} options={PDA_KIND_OPTIONS} />
+					<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} kinds={PDA_KINDS} />
 					<ChecksList
 						status={checks.status}
 						items={checks.items}

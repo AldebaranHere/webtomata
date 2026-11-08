@@ -268,18 +268,16 @@
 			{/each}
 		</div>
 		<div class="panes" bind:this={panes}>
-			{#if tabs.includes('simulation') && simulation}
-				<div
-					role="tabpanel"
-					id="panel-pane-simulation"
-					aria-labelledby="panel-tab-simulation"
-					class="pane"
-					hidden={tab !== 'simulation'}
-				>
-					{@render simulation()}
-				</div>
-			{/if}
-			{#if feedback && tabs.includes('feedback')}
+			<div
+				role="tabpanel"
+				id="panel-pane-simulation"
+				aria-labelledby="panel-tab-simulation"
+				class="pane"
+				hidden={tab !== 'simulation'}
+			>
+				{@render simulation?.()}
+			</div>
+			{#if feedback}
 				<div
 					role="tabpanel"
 					id="panel-pane-feedback"
@@ -290,23 +288,23 @@
 					{@render feedback()}
 				</div>
 			{/if}
-			{#if tab === 'table' && table}
+			{#if tab === 'table'}
 				<div role="tabpanel" id="panel-pane-table" aria-labelledby="panel-tab-table" class="pane">
-					{@render table()}
+					{@render table?.()}
 				</div>
-			{:else if tab === 'definition' && definition}
+			{:else if tab === 'definition'}
 				<div
 					role="tabpanel"
 					id="panel-pane-definition"
 					aria-labelledby="panel-tab-definition"
 					class="pane"
 				>
-					{@render definition()}
+					{@render definition?.()}
 				</div>
 			{/if}
 			<!-- Konversi stays in the page once it was opened (like Simulasi): a conversion that is under
 			     way is not lost when the student looks at another tab. -->
-			{#if openedConversion && tabs.includes('conversion') && conversion}
+			{#if openedConversion}
 				<div
 					role="tabpanel"
 					id="panel-pane-conversion"
@@ -314,7 +312,7 @@
 					class="pane"
 					hidden={tab !== 'conversion'}
 				>
-					{@render conversion()}
+					{@render conversion?.()}
 				</div>
 			{/if}
 		</div>
