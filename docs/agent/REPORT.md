@@ -301,17 +301,22 @@ Running 56 tests using 2 workers
 Following review of PR 182, three gaps and documentation items were addressed:
 
 1. **E8 Phone Sheet Reveal Test**:
-   - In `web/e2e/pda-editor.spec.ts`, E8 was rewritten so that two states are placed low in the stage (`y=500`), then a transition is added from `q0` to `q1`.
-   - When the sheet opens, the test asserts that the point being edited (midpoint of the two state buttons) is above the sheet (`midY < sheetBox.y`), inside the visible stage (`midY >= stageBox.y`), and bounded horizontally by the stage (`midX >= stageBox.x && midX <= stageBox.x + stageBox.width`).
-   - The conditional `if (count > 0)` assertion was completely removed; assertions are unconditional.
+   - In `web/e2e/pda-editor.spec.ts`, E8 creates two states `q0` and `q1` at `(120, 250)` and `(260, 250)`, switches to the `Pilih` tool, and uses `touchDragAt` to pan the canvas downward (+250px). This ensures `camera` differs from `fitted` so that auto-fit on stage resize does not intervene, placing the edge midpoint low where the sheet will cover it.
+   - When the transition sheet opens, with `revealLabeling={formDisplayMode === 'sheet'}`, `reveal` lifts the camera so that the midpoint is above the sheet (`midY < sheetBox.y`), inside the visible stage (`midY >= stageBox.y`), and bounded horizontally.
    - `EditorCanvas.svelte` remains 100% identical to staging (0 diff).
    - Deliberate Break 10 verified: passing `revealLabeling={false}` in `PdaEditor.svelte` causes E8 to fail with:
      ```
      Error: expect(received).toBeLessThan(expected)
+
      Expected: < 503.5
      Received:   654
+
+       630 | 		const midY = (q0Box.y + q0Box.height / 2 + (q1Box.y + q1Box.height / 2)) / 2;
+       631 |
+     > 632 | 		expect(midY).toBeLessThan(sheetBox.y);
+           | 		             ^
      ```
-   - Restoring `revealLabeling={formDisplayMode === 'sheet'}` results in E8 passing cleanly on `phone`.
+   - Restoring `revealLabeling={formDisplayMode === 'sheet'}` results in E8 passing 12 of 12 runs on `phone` (`--repeat-each=12`, 13.6s).
 
 2. **Reverted Null Guards in PdaLabelForm & PdaLabelPopover**:
    - Reverted `PdaLabelForm.svelte` and `PdaLabelPopover.svelte` null guards to match staging (keeping only the `.pda-label-form` and `.pda-label-popover` CSS classes used by e2e selectors).
@@ -338,6 +343,6 @@ Following review of PR 182, three gaps and documentation items were addressed:
    - In `web/e2e/pda-editor.spec.ts` (E3), removed conditional `if ((await form.count()) > 0)` guard so `Simpan` is clicked unconditionally.
    - Baseline failure measurement: with unconditional Simpan and without the fix, running E3 repeated 12 times failed 5 of 12 (timing out waiting for `.pda-label-form[role="dialog"] .btn-primary` because the form had already auto-committed and unmounted).
    - Root cause: When `Hapus baris 1` is clicked, the focused input or delete button was detached by Svelte when `rows` updated, causing Chromium to dispatch `focusout` with `relatedTarget = null` and focus falling to `document.body`. This triggered `onfocusout` to immediately commit the empty row and close the dialog before the test could click `Simpan`.
-   - Fix in `PdaLabelForm.svelte`: `deleteRow` now proactively moves focus to `.add-row-btn` before mutating `rows` (so focus never leaves the container), and after `await tick()` moves focus to the `baca` input of the target row (or `.add-row-btn` if no rows remain). Additionally, `onfocusout` uses `setTimeout(..., 0)` so microtask focus transitions within the form never trigger an unintentional commit.
-   - Verification: Running E3 repeated 12 times with 6 parallel workers passed 12 of 12 (16.7s). Phone tests (E2, E8) and the full `pda-editor.spec.ts` suite passed cleanly.
+   - Fix in `PdaLabelForm.svelte`: `deleteRow` now proactively moves focus to `.add-row-btn` before mutating `rows` (so focus never leaves the container), and after `await tick()` moves focus to the `baca` input of the target row (or `.add-row-btn` if no rows remain). `onfocusout` logic remains matching staging.
+   - Verification: Running E3 repeated 24 times on desktop passed 24 of 24 (31.0s). Phone tests (E2, E8 repeated 12 times) and the full `pda-editor.spec.ts` suite passed cleanly.
 
