@@ -153,25 +153,17 @@
 		if (event.relatedTarget && container.contains(event.relatedTarget as Node)) {
 			return;
 		}
-		setTimeout(() => {
-			if (!container || !editor.getState().labeling) {
+		if (performance.now() - openedAt < SETTLE_MS) {
+			activeInput?.focus();
+			return;
+		}
+		if (rowsChanged()) {
+			const cmds = rowCommands(doc, labeling.from, labeling.to, rows);
+			if (!('key' in cmds) && editor.commitEdge(cmds) === null) {
 				return;
 			}
-			if (container.contains(document.activeElement)) {
-				return;
-			}
-			if (performance.now() - openedAt < SETTLE_MS) {
-				activeInput?.focus();
-				return;
-			}
-			if (rowsChanged()) {
-				const cmds = rowCommands(doc, labeling.from, labeling.to, rows);
-				if (!('key' in cmds) && editor.commitEdge(cmds) === null) {
-					return;
-				}
-			}
-			editor.cancelLabel();
-		}, 0);
+		}
+		editor.cancelLabel();
 	}
 
 	const keep = (event: MouseEvent) => event.preventDefault();
