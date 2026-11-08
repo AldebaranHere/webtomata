@@ -2519,7 +2519,8 @@ Follow rule 12 of `AGENTS.md` for every shell command and the stuck rule for eve
 
 ## Task T-063 — Load the PDA messages only in the PDA mode
 
-**Status:** in-progress
+**Status:** done
+**Commit:** `32a215d` (the move and ADR 0050; the tests are `0e3182e`, the report is the commit after this one)
 **Owner:** worker
 **Branch:** `task/T-063-lazy-pda-messages`
 

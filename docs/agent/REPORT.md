@@ -1,505 +1,250 @@
-# Task T-051 Report — PDA editor, part 9 of 12: the panel: tabs, kind switch, checks (read-only table and definition)
+# Task T-063 Report — Load the PDA messages only in the PDA mode
 
-- **Task:** T-051
-- **Branch:** `task/T-051-pda-panel`
-- **Status:** done
-- **Implementation Commits:**
-  - `docs(agent): start task T-051 (set status in-progress)`
-  - `refactor(editor): make checker and kind switch generic for PDA and FSM`
-  - `feat(pda): add PDA checks, transition table, and formal definition models`
-  - `feat(pda): add PdaTableView and PdaDefinitionView components`
-  - `feat(pda): add PDA side panel with kind switch, checks, and onmore interaction`
-  - `test(pda): add comprehensive e2e specs for PDA panel (E1 to E8)`
-  - `docs(decisions): add ADR 0049 for PDA side panel architecture`
-  - `docs(glossary): add Indonesian terms for PDA panel`
-  - `docs(agent): mark T-051 as done`
-- **PR:** To `staging` from `task/T-051-pda-panel`
+Branch: `task/T-063-lazy-pda-messages`, cut from `origin/staging` at `f166898`
+(merge of PR 189, the amended spec).
 
----
+Commits:
 
-## 1. Hand Derivations of Fixtures F1 to F4 (Derived Prior to Coding)
+- `0e3182e` `test(i18n): add failing PDA message tests before the split` — the tests
+  first, with the task set to `in-progress`.
+- `32a215d` `feat(i18n): load the PDA messages only in the PDA mode` — the code, the two
+  existing test edits and ADR 0050.
+- The last commit adds this report and sets the task to `done`.
 
-### Fixture F1: `pdaTableOf(F)`
-- **Machine F** (`kind: 'dpda'`):
-  - Input alphabet $\Sigma = \{a, b\}$, stack alphabet $\Gamma = \{A\}$.
-  - States: $q_0$ (id 0, start), $q_1$ (id 1, accepting).
-  - Transitions in canonical order:
-    1. $(q_0, a, \varepsilon \to A, q_0)$
-    2. $(q_0, b, A \to \varepsilon, q_1)$
-    3. $(q_1, b, A \to \varepsilon, q_1)$
-  - Output rows:
-    - Row 1: `q0 | a | ε | A | q0`
-    - Row 2: `q0 | b | A | ε | q1`
-    - Row 3: `q1 | b | A | ε | q1`
-  - Adding stack symbol $Z_0$ and transition $(q_1, \varepsilon, Z_0 \to A Z_0, q_1)$:
-    - In canonical transition ordering (`comparePdaTransitions`), $\varepsilon$-read transitions sort before character reads (`null < 'b'`).
-    - The new row is placed first among $q_1$'s transitions: `q1 | ε | Z0 | A Z0 | q1`.
-    - Because $Z_0$ is a multi-character symbol name, push symbols are formatted with spaces: `A Z0`.
+## 1. What changed, and what did not
 
-### Fixture F2: `pdaDefinitionText(F)`
-- Formal 6-tuple: $M = (K, \Sigma, \Gamma, \Delta, s, A)$
-  - $K = \{q_0, q_1\}$
-  - $\Sigma = \{a, b\}$
-  - $\Gamma = \{A\}$
-  - $s = q_0$
-  - $A = \{q_1\}$
-  - $\Delta$:
-    - `((q0, a, ε), (q0, A))`
-    - `((q0, b, A), (q1, ε))`
-    - `((q1, b, A), (q1, ε))`
-- If start state is missing, $s = \text{–}$. Empty sets display as $\{\}$.
-- Hint: `pda_editor.definition_hint` ("Kiri = puncak stack. ε pada pop: tidak memeriksa stack.").
+Moved exactly 25 keys from `web/src/lib/i18n/id.ts` and `en.ts` to the new lazy module
+`web/src/lib/i18n/pda-messages.ts`, which registers both languages as a side effect and is
+imported once, by `PdaWorkstation.svelte` (`#lib/i18n/pda-messages.ts`). No text and no key
+name changed: the strings in `pda-messages.ts` are copied byte for byte from `id.ts`/`en.ts`.
 
-### Fixture F3: Engine Checks for Machine F (DPDA)
-- Validated against the real WASM engine `engine.validatePda`:
-  - Result: `ok: true, value: []` (0 issues).
-  - Panel displays calm state "lengkap" (reusing `check.all_clear`).
+`translate.ts` gains `addMessages(locale, dictionary)`, which fills a private `extra` table;
+`translate` reads `MESSAGES[locale][key] ?? extra[locale][key] ?? key`. `id` and `en` are
+never mutated (amended decision of 2026-11-09; Vitest runs with `isolate: false`).
 
-### Fixture F4: Engine Checks for Machine G (DPDA vs NDPDA)
-- **Machine G** = Machine F with transition $(q_0, \varepsilon, \varepsilon \to \varepsilon, q_1)$ added:
-  - Canonical sort order: $\varepsilon$-read sorts first, becoming Row 1 (index 0). Rows of F become Rows 2, 3, 4.
-  - On DPDA:
-    - Row 1 $(q_0, \varepsilon, \varepsilon \to \varepsilon, q_1)$ competes with Row 2 $(q_0, a, \varepsilon \to A, q_0)$ (index 0 and 1).
-    - Row 1 $(q_0, \varepsilon, \varepsilon \to \varepsilon, q_1)$ competes with Row 3 $(q_0, b, A \to \varepsilon, q_1)$ (index 0 and 2).
-    - Engine returns 2 error issues for `pda.competing_transitions`.
-    - `pdaCheckItems` maps engine indices (0-based) to 1-based table row numbers: `first: 1, second: 2` and `first: 1, second: 3`. State $q_0$ is mapped from param `from` into `state` and added to `states: [0]`, marking $q_0$ with problem flag on the diagram.
-  - On NDPDA:
-    - Engine returns 0 issues (`ok: true, value: []`). Competing transitions are permitted in NDPDA.
+`MessageKey` is now `keyof typeof id | keyof typeof pdaId`; `pdaId` is imported with
+`import type`, so nothing of the module reaches the first load through the type.
+`en` is typed `Record<keyof typeof id, string>`, `pdaEn` is `Record<keyof typeof pdaId, string>`.
 
----
+Files: new `web/src/lib/i18n/pda-messages.ts`, `web/src/lib/i18n/pda-messages.test.ts`,
+`web/e2e/pda-messages.spec.ts`, `docs/decisions/0050-lazy-pda-messages.md`; edited
+`id.ts`, `en.ts`, `translate.ts`, `PdaWorkstation.svelte`, `diagram/pda-diagram.test.ts`,
+`pda-checks.test.ts`, `i18n.test.ts`, `docs/agent/PLAN.md`. No file in `crates/` and no
+e2e spec other than the new one was touched (`git diff --stat` below).
 
-## 2. Deliberate Breaks (AC5)
+## 2. Planner approvals during the task (2026-11-09)
 
-Every deliberate break was executed on the final codebase, observed failing with exact error output and line numbers captured, and then restored.
+The owner approved these four edits to existing files during the task; the planner folds
+them into `PLAN.md` in review.
 
-### Break 1: Pass `tabs=['simulation','table','definition']` to the PDA panel
-- **File:** `web/src/lib/editor/PdaEditor.svelte:109`
-- **Modification:** Changed `const tabs: readonly PanelTab[] = ['table', 'definition'];` to `const tabs: readonly PanelTab[] = ['simulation', 'table', 'definition'];`.
-- **Intended Failure:** E1 (`e2e/pda-panel.spec.ts`) asserts no Simulasi tab exists on PDA panel.
-- **Observed Output:**
+1. **`i18n.test.ts`** (needed because `MessageKey` is wider than `keyof typeof id`, so
+   `id[key]` is TS7053 under `strict`). Exactly two lines:
+   - line 19: `const keys = Object.keys(id) as MessageKey[];` becomes
+     `const keys = Object.keys(id) as (keyof typeof id)[];`
+   - line 4 `import type { MessageKey } from './id.ts';` is deleted (it was then unused;
+     `@typescript-eslint/no-unused-vars` would fail). No assertion changed.
+2. **`pda-checks.test.ts`**, the two dictionary assertions only (five `pda_check.*` keys
+   leave the shared dictionary):
+   - added `import { pdaEn, pdaId } from '../i18n/pda-messages.ts';`
+   - `expect(Object.hasOwn(id, textKey!), \`id has key ${textKey}\`).toBe(true);` becomes
+     `expect(Object.hasOwn(id, textKey!) || Object.hasOwn(pdaId, textKey!), \`id or pdaId has key ${textKey}\`).toBe(true);`
+   - `expect(Object.hasOwn(en, textKey!), \`en has key ${textKey}\`).toBe(true);` becomes
+     `expect(Object.hasOwn(en, textKey!) || Object.hasOwn(pdaEn, textKey!), \`en or pdaEn has key ${textKey}\`).toBe(true);`
+3. **`pda-diagram.test.ts`**: one added line, `import '#lib/i18n/pda-messages.ts';`
+   (that test calls `translate` with a PDA key). No assertion changed.
+4. **M2**: the empty PDA renders no `<table>`, so `pda_editor.table_title` and the five
+   `pda_editor.col_*` headers cannot be on the page at the same time. M2 asserts the empty
+   state (`Transisi (0)`, `Belum ada transisi.`) and then builds one transition and asserts
+   `Transisi (1)` and the five headers. Both states run the raw-key check.
+
+Not an approval, but recorded because it differs from the spec text: the spec says the
+import line is `import './pda-messages.ts'` in `PdaWorkstation.svelte`. That path resolves
+to `web/src/lib/editor/pda-messages.ts`, which does not exist; `pnpm check` caught it
+immediately (`Cannot find module or type declarations for side-effect import of
+'./pda-messages.ts'`). The line is `import '#lib/i18n/pda-messages.ts';`, the same module
+and the same one line.
+
+## 3. Tests first (AC1): the failing run before the code
+
+Unit tests, before `pda-messages.ts` existed:
+
 ```
-  1) [desktop] › e2e/pda-panel.spec.ts:65:2 › E1: Panel tabs and layout › desktop: exactly two tabs (Tabel, Definisi), Tabel open by default, remembers valid tab
+ RUN  v5.0.3 /home/Aldebaran64/webtomata-ds/web
 
-    Error: expect(locator).toHaveCount(expected) failed
+ ❯ src/lib/i18n/pda-messages.test.ts (0 test)
+ ✓ src/lib/i18n/i18n.test.ts (14 tests) 68ms
 
-    Locator:  getByRole('complementary', { name: 'Panel' }).getByRole('tab', { name: 'Simulasi' })
-    Expected: 0
-    Received: 1
-    Timeout:  5000ms
-
-      78 | 		// PDA panel has exactly two tabs: Tabel and Definisi
-      79 | 		await expect(side.getByRole('tab')).toHaveCount(2);
-    > 80 | 		await expect(panel(page).getByRole('tab', { name: 'Simulasi' })).toHaveCount(0);
-         | 		                                                                 ^
-      81 | 		await expect(panel(page).getByRole('tab', { name: 'Konversi' })).toHaveCount(0);
-        at /home/Aldebaran64/webtomata/web/e2e/pda-panel.spec.ts:80:68
+ FAIL  src/lib/i18n/pda-messages.test.ts [ src/lib/i18n/pda-messages.test.ts ]
+Error: Cannot find module './pda-messages.ts' imported from /home/Aldebaran64/webtomata-ds/web/src/lib/i18n/pda-messages.test.ts
 ```
-- **Status:** Verified and restored.
 
----
+E2E, against the build of the unchanged branch (M1 is the test that must be red; M2 and M3
+describe behaviour that must survive, so they already pass — their guard is B2 and B5):
 
-### Break 2: Make `pdaTableOf` sort by insertion order instead of `doc.transitions`
-- **File:** `web/src/lib/editor/pda-table.ts:25`
-- **Modification:** Changed `doc.transitions.map(...)` to `[...doc.transitions].reverse().map(...)`.
-- **Intended Failure:** F1 unit test (`pda-table.test.ts`) asserts canonical transition order (Row 1 $\varepsilon$ read first).
-- **Observed Output:**
 ```
- FAIL  src/lib/editor/pda-table.test.ts > PDA table model > F1: returns rows in canonical engine order with formatted stack symbols
-AssertionError: expected [ { index: 0, from: 1, …(6) }, …(3) ] to deeply equal [ { index: 0, from: 1, …(6) }, …(3) ]
-
-- Expected
-+ Received
-
-  [
-    {
-      "from": 1,
-      "fromName": "q1",
-      "index": 0,
--     "pop": "Z0",
--     "push": "A Z0",
--     "read": "ε",
-+     "pop": "A",
-+     "push": "ε",
-+     "read": "b",
-      "to": 1,
-      "toName": "q1",
-    },
-...
- ❯ src/lib/editor/pda-table.test.ts:55:22
-```
-- **Status:** Verified and restored.
-
----
-
-### Break 3: Treat `first` and `second` as state IDs in `pdaCheckItems`
-- **File:** `web/src/lib/editor/pda-checks.ts:28-29`
-- **Modification:** Added `'first'` and `'second'` to the state ID condition in `pdaCheckItems`:
-  ```typescript
-  if (
-      (name === 'from' || name === 'state' || name === 'first' || name === 'second') &&
-      typeof value === 'number'
-  )
-  ```
-- **Intended Failure:** F4 unit test (`pda-checks.test.ts`) asserts `first` and `second` remain 1-based table row numbers (1, 2) rather than resolving to state names ("q0", "q1").
-- **Observed Output:**
-```
- FAIL  src/lib/editor/pda-checks.test.ts > pdaCheckItems > F4: G as DPDA produces 2 competing_transitions error items with 1-based row numbers 1, 2 and 1, 3
-AssertionError: expected [ { severity: 'error', …(3) }, …(1) ] to deeply equal [ { severity: 'error', …(3) }, …(1) ]
-
-- Expected
-+ Received
-
-  [
-    {
-      "key": "pda_check.competing_transitions",
-      "params": {
--       "first": 1,
--       "second": 2,
--       "state": "q0",
-+       "state": "q1",
-      },
-      "severity": "error",
-      "states": [
-+       0,
-        0,
-+       1,
-      ],
-    },
-    {
-      "key": "pda_check.competing_transitions",
-      "params": {
--       "first": 1,
--       "second": 3,
--       "state": "q0",
-+       "state": "2",
-      },
-      "severity": "error",
-      "states": [
-+       0,
-        0,
-      ],
-    },
-  ]
-
- ❯ src/lib/editor/pda-checks.test.ts:97:17
-```
-- **Status:** Verified and restored.
-
----
-
-### Break 4: Do not clear `marked` when document changes
-- **File:** `web/src/lib/editor/PdaEditor.svelte:58-60`
-- **Modification:** Omitted `marked = new Set(); markedEdge = null;` when `nextState.doc !== lastDoc`.
-- **Intended Failure:** E5 (`e2e/pda-panel.spec.ts`) verifies that changing the document (switching kind) while an edge is selected clears row marks.
-- **Observed Output:**
-```
-  1) [desktop] › e2e/pda-panel.spec.ts:363:2 › E5: + n lagi interaction › Pilih tool opens table and marks edge rows; Hapus tool deletes without opening panel
-
-    Error: expect(locator).toHaveCount(expected) failed
-
-    Locator:  getByRole('complementary', { name: 'Panel' }).locator('tbody tr[aria-current="true"]')
-    Expected: 0
-    Received: 4
-    Timeout:  5000ms
-
-      417 | 		// Changing document (e.g. kind switch) clears the marks even when edge remains selected
-      418 | 		await page.getByRole('radio', { name: 'DPDA', exact: true }).click();
-    > 419 | 		await expect(markedRows).toHaveCount(0);
-          | 		                         ^
-      420 | 		await page.getByRole('radio', { name: 'NDPDA', exact: true }).click();
-        at /home/Aldebaran64/webtomata/web/e2e/pda-panel.spec.ts:419:28
-```
-- **Status:** Verified and restored.
-
----
-
-### Break 5: Make Hapus call `onmore`
-- **File:** `web/src/lib/editor/EditorCanvas.svelte:594`
-- **Modification:** Added `if (done.overflow) triggerMore(done.edge.from, done.edge.to);` inside `if (view.tool === 'delete')`.
-- **Intended Failure:** E5 (`e2e/pda-panel.spec.ts`) asserts that clicking `+ n lagi` with Hapus tool deletes edge without opening Tabel tab.
-- **Observed Output:**
-```
-  1) [desktop] › e2e/pda-panel.spec.ts:363:2 › E5: + n lagi interaction › Pilih tool opens table and marks edge rows; Hapus tool deletes without opening panel
-
-    Error: expect(locator).toHaveAttribute(expected) failed
-
-    Locator:  getByRole('complementary', { name: 'Panel' }).getByRole('tab', { name: 'Tabel' })
-    Expected: "false"
-    Received: "true"
-    Timeout:  5000ms
-
-      437 | 		// Toast offers Urungkan
-      438 | 		await expect(page.getByRole('status')).toContainText('dihapus');
-    > 439 | 		await expect(tab(page, 'Tabel')).toHaveAttribute('aria-selected', 'false');
-          | 		                                 ^
-        at /home/Aldebaran64/webtomata/web/e2e/pda-panel.spec.ts:439:36
-```
-- **Status:** Verified and restored.
-
----
-
-### Break 6: Send `setKind` as two commands instead of one
-- **File:** `web/src/lib/editor/PdaEditor.svelte:123`
-- **Modification:** Dispatched two consecutive commands on kind switch: `editor.apply({ type: 'setKind', kind }); editor.apply({ type: 'setTitle', title: snapshot.doc.title + '!' });`.
-- **Intended Failure:** E2 (`e2e/pda-panel.spec.ts`) asserts single undo restores previous kind NDPDA.
-- **Observed Output:**
-```
-  1) [desktop] › e2e/pda-panel.spec.ts:143:2 › E2: Kind switch DPDA | NDPDA › default NDPDA, DPDA is one undo step, arrow keys work, G shows competing errors
-
-    Error: expect(locator).toBeChecked() failed
-
-    Locator:  getByRole('complementary', { name: 'Panel' }).getByRole('radio', { name: 'NDPDA', exact: true })
-    Expected: checked
-    Received: unchecked
-    Timeout:  5000ms
-
-      162 | 		const undoBtn = page.getByRole('button', { name: /Urungkan/i });
-      163 | 		await undoBtn.click();
-    > 164 | 		await expect(ndpda).toBeChecked();
-          | 		                    ^
-        at /home/Aldebaran64/webtomata/web/e2e/pda-panel.spec.ts:164:23
-```
-- **Status:** Verified and restored.
-
----
-
-### Break 7: Leave the `flags` prop out of `<EditorCanvas>`
-- **File:** `web/src/lib/editor/PdaEditor.svelte:240`
-- **Modification:** Omitted `{flags}` from `<EditorCanvas ...>`.
-- **Intended Failure:** E2 asserts state $q_0$ has problem flag on diagram when competing transitions exist.
-- **Observed Output:**
-```
-  1) [desktop] › e2e/pda-panel.spec.ts:143:2 › E2: Kind switch DPDA | NDPDA › default NDPDA, DPDA is one undo step, arrow keys work, G shows competing errors
-
-    Error: expect(locator).toHaveCount(expected) failed
-
-    Locator:  locator('svg.world g.flag')
-    Expected: 1
-    Received: 0
-    Timeout:  5000ms
-
-      210 | 		await expect(side.getByText(/transisi baris 1 dan 2 dari q0 bersaing/i)).toBeVisible();
-      211 | 		await expect(side.getByText(/transisi baris 1 dan 3 dari q0 bersaing/i)).toBeVisible();
-    > 212 | 		await expect(page.locator('svg.world g.flag')).toHaveCount(1);
-          | 		                                               ^
-        at /home/Aldebaran64/webtomata/web/e2e/pda-panel.spec.ts:212:50
-```
-- **Status:** Verified and restored.
-
----
-
-### Break 8: Call the engine before the first draw
-- **File:** `web/src/lib/editor/PdaEditor.svelte:84`
-- **Modification:** Added `if (typeof window !== 'undefined') void engine.validatePda(toEnginePda(snapshot.doc));` directly in the top-level `<script>` block outside `$effect`.
-- **Intended Failure:** E8 (`e2e/pda-panel.spec.ts`) asserts the engine worker is never requested before the first draw (`.editor[data-ready]`).
-- **Observed Output:**
-```
-  1) [desktop] › e2e/pda-panel.spec.ts:528:2 › E8: Timing of engine worker request › the engine worker is requested after the first draw, not before
-
+  1) [desktop] › e2e/pda-messages.spec.ts:45:2 › M1: the FSM page downloads the shared dictionary, but none of the PDA messages
     Error: expect(received).toBe(expected) // Object.is equality
-
     Expected: false
     Received: true
+      54 | 		expect(scripts.some((body) => body.includes('Tersimpan di perangkat ini'))).toBe(true);
+    > 55 | 		expect(scripts.some((body) => body.includes('Transisi di antara'))).toBe(false);
+       | 		                                                          ^
+    at .../web/e2e/pda-messages.spec.ts:55:71
 
-      545 | 		firstDrawn = true;
-      546 |
-    > 547 | 		expect(workerRequestedBeforeDraw).toBe(false);
-          | 		                                  ^
-        at /home/Aldebaran64/webtomata/web/e2e/pda-panel.spec.ts:547:37
-```
-- **Status:** Verified and restored.
-
----
-
-### Break K2: Phone `+ n lagi` must show the panel
-- **File:** `web/src/lib/editor/PdaEditor.svelte:142`
-- **Modification:** Omitted `sidePanel?.show();` from `handleMore`.
-- **Intended Failure:** E5 phone test (`e2e/pda-panel.spec.ts:470`) verifies that tapping `+ n lagi` on phone when the bottom panel is hidden causes `sidePanel?.show()` to un-hide the panel, open the Tabel tab, and mark the rows.
-- **Observed Output:**
-```
-  1) [phone] › e2e/pda-panel.spec.ts:470:2 › E5: + n lagi interaction › phone: tap + n lagi in Pilih shows hidden panel, opens Tabel tab, and marks rows
-
-    Error: Timed out 5000ms waiting for expect(locator).toBeVisible()
-
-    Locator: getByRole('complementary', { name: 'Panel' }).getByRole('button', { name: 'Sembunyikan panel' })
-    Expected: visible
-    Received: <element(s) not found>
-
-      512 | 		// The panel is shown (hidden = false), Tabel tab is open, and all 4 rows are marked
-      513 | 		await expect(side.getByRole('button', { name: 'Sembunyikan panel' })).toBeVisible();
-    > 514 | 		await expect(side.locator('.content')).toBeVisible();
-          | 		                                       ^
-        at /home/Aldebaran64/webtomata/web/e2e/pda-panel.spec.ts:514:41
-```
-- **Status:** Verified and restored.
-
----
-
-### Break K3: Another selection must clear the marks
-- **File:** `web/src/lib/editor/PdaEditor.svelte:66`
-- **Modification A (state selection):** Replaced `nextState.selection.length > 0 || differentEdge` with `false || differentEdge`.
-- **Intended Failure A:** E5 desktop test (`e2e/pda-panel.spec.ts:420`) asserts that selecting a state after `+ n lagi` clears `aria-current` marked rows.
-- **Observed Output A:**
-```
-  1) [desktop] › e2e/pda-panel.spec.ts:363:2 › E5: + n lagi interaction › Pilih tool opens table and marks edge rows; Hapus tool deletes without opening panel
-
-    Error: expect(locator).toHaveCount(expected) failed
-
-    Locator:  getByRole('complementary', { name: 'Panel' }).locator('tbody tr[aria-current="true"]')
-    Expected: 0
-    Received: 4
-    Timeout:  5000ms
-
-      420 | 		// Selecting a state clears the marks (Break K3)
-      421 | 		await stateBtn(page, 'q0').click();
-    > 422 | 		await expect(panel(page).locator('tbody tr[aria-current="true"]')).toHaveCount(0);
-          | 		                                                                   ^
-      423 |
-      424 | 		// Mark rows again
-        at /home/Aldebaran64/webtomata/web/e2e/pda-panel.spec.ts:422:70
-```
-- **Modification B (different edge selection):** Replaced `nextState.selection.length > 0 || differentEdge` with `nextState.selection.length > 0 || false`.
-- **Intended Failure B:** E5 desktop test (`e2e/pda-panel.spec.ts:428`) asserts that clicking a different edge (`g[data-edge="1>1"] .hit-label`) clears `aria-current` marked rows.
-- **Observed Output B:**
-```
-  1) [desktop] › e2e/pda-panel.spec.ts:363:2 › E5: + n lagi interaction › Pilih tool opens table and marks edge rows; Hapus tool deletes without opening panel
-
-    Error: expect(locator).toHaveCount(expected) failed
-
-    Locator:  getByRole('complementary', { name: 'Panel' }).locator('tbody tr[aria-current="true"]')
-    Expected: 0
-    Received: 4
-    Timeout:  5000ms
-
-      428 | 		// Selecting a different edge clears the marks (Break K3)
-      429 | 		await page.locator('g[data-edge="1>1"] .hit-label').click();
-    > 430 | 		await expect(panel(page).locator('tbody tr[aria-current="true"]')).toHaveCount(0);
-          | 		                                                                   ^
-      431 |
-      432 | 		// Mark rows again
-        at /home/Aldebaran64/webtomata/web/e2e/pda-panel.spec.ts:430:70
-```
-- **Status:** Verified and restored.
-
----
-
-## 3. Deepening Pass
-
-1. **New Public Exports & Public Interface Additions**:
-   - `web/src/lib/editor/pda-table.ts`:
-     - `export interface PdaTableRow`: 8 fields (`index`, `from`, `fromName`, `read`, `pop`, `push`, `to`, `toName`).
-     - `export interface PdaTableModel`: `{ rows: readonly PdaTableRow[] }`.
-     - `export function pdaTableOf(doc: PdaDocument): PdaTableModel`: pure function mapping document transitions in engine sort order to table rows.
-   - `web/src/lib/editor/pda-definition.ts`:
-     - `export interface PdaDefinitionModel`: formal 6-tuple sets and delta lines.
-     - `export function pdaDefinitionOf(doc: PdaDocument): PdaDefinitionModel`
-     - `export function pdaDefinitionText(doc: PdaDocument): string`: textual formal representation for tests and serialization.
-   - `web/src/lib/editor/pda-checks.ts`:
-     - `export function pdaCheckItems(issues: readonly Issue[], doc: PdaDocument): readonly CheckItem[]`: maps Rust engine issues to UI check items, handling 1-based row indices for `first` and `second`.
-   - `web/src/lib/editor/checker.ts`:
-     - `export function createChecker<D = MachineDocument>(options: { validate: (doc: D) => Promise<EngineResult<Issue[]>>; toItems?: (issues: readonly Issue[], doc: D) => CheckItem[]; delayMs?: number }): Checker<D>`: generalized validator for arbitrary document types `D` with default `toItems` for FSM. No extra interfaces exported.
-   - `web/src/lib/editor/SidePanel.svelte`:
-     - `export function show(): void`: imperative trigger to make bottom sheet visible on mobile.
-     - Snippets made optional (`Snippet | undefined`) with optional call `{@render snippet?.()}` to avoid extra wrapper blocks.
-
-2. **Reused Logic & Zero Duplication**:
-   - `pda-table.ts` and `pda-definition.ts` reuse `formatStackSeq` and `stackSeparator` directly from `diagram/pda-diagram.ts`. No duplicate stack symbol formatting was created.
-   - `checker.ts` and `KindSwitch.svelte` are shared across FSM and PDA with zero regression to FSM behavior. `Editor.svelte` has 0 lines diff vs staging.
-
-3. **Duplication between `Editor.svelte` and `PdaEditor.svelte`**:
-   - Autosave logic is unified in `useAutosaveBinding`.
-   - Checker orchestration follows the exact same reactive pattern (`createChecker`, `$effect`, `read`, `schedule`, `dispose`).
-   - Differences retained: `Editor.svelte` hosts FSM tools, tests, and run modes; `PdaEditor.svelte` hosts PDA label forms, sheet overlay replacement, and PDA table/definition views.
-
-4. **Cast Count**:
-   - 2 named safe casts:
-     - In `checker.ts`: `checkItems as unknown as (issues: readonly Issue[], doc: D) => CheckItem[]` for the default `toItems` parameter when `D` defaults to `MachineDocument`.
-     - In `KindSwitch.svelte`: `['dfsm', 'ndfsm'] as const as unknown as readonly [K, K]` for the default `kinds` prop when `K` defaults to `Kind`.
-   - All other types are strictly checked.
-
-5. **Size Numbers Before & After (Against Clean Staging Build)**:
-   - **Baseline on clean `staging` (commit `488cf25`)**:
-     - `index.html`: **81.859 KB gzip** (reported as 81.9 KB)
-     - `soal.html`: **84.132 KB gzip** (reported as 84.1 KB)
-     - `sandbox.html`: **124.848 KB gzip** (reported as 124.8 KB)
-   - **Proof of Byte Origin (Building with new i18n keys in `id.ts` / `en.ts` removed)**:
-     - `index.html`: **81.860 KB gzip** (+0.001 KB vs staging)
-     - `soal.html`: **84.133 KB gzip** (+0.001 KB vs staging)
-     - `sandbox.html`: **124.969 KB gzip** (+0.121 KB vs staging)
-     *Conclusion:* The shared i18n dictionary (`id.ts` and `en.ts`) is bundled statically into `CB0UzqGA.js` on every route. Adding the 12 required PDA message keys (`kind.dpda`, `kind.ndpda`, 5 `pda_check.*`, 5 `pda_editor.*`) increases `CB0UzqGA.js` by 458 bytes gzip (+0.447 KB gzip), directly adding +0.42 to +0.45 KB gzip to all routes regardless of editor code.
-   - **PR 186 Round 2 Shared Code Cuts**:
-     - `checker.ts`: removed overloads and `castToMachineDocument`, unified into single generic with default `toItems`, eliminated branching in `run()`.
-     - `Editor.svelte`: restored completely to staging code (0 lines diff vs staging).
-     - `KindSwitch.svelte`: removed `<script module>` with `KindOption`, removed `DEFAULT_OPTIONS` object array and helper, simplified to `kinds = ['dfsm', 'ndfsm'] as const as unknown as readonly [K, K]` iterating `{t(`kind.${option}` as MessageKey)}`.
-     - `SidePanel.svelte`: simplified snippet calls to optional chaining `{@render simulation?.()}`, `{@render table?.()}`, `{@render definition?.()}`, `{@render conversion?.()}` instead of `{#if ...}` wrappers.
-   - **Final Route Numbers After Cuts**:
-     - `index.html`: **82.310 KB gzip** (+0.451 KB vs staging, reported as 82.3 KB)
-     - `soal.html`: **84.581 KB gzip** (+0.449 KB vs staging, reported as 84.6 KB)
-     - `sandbox.html`: **125.388 KB gzip** (+0.540 KB vs staging, reported as 125.4 KB)
-     - PDA editor chunk:
-       - Before on `staging`: **14.47 kB raw (5.37 kB gzip)** (chunk `ChakwWL3.js`)
-       - After on `task/T-051-pda-panel`: **18.16 kB raw (6.68 kB gzip)** (chunk `BdTe0IJB.js`)
-       - Net increase: +3.69 kB raw (+1.31 kB gzip)
-     - Lazy on-demand chunks:
-       - `PdaTableView`: 2.47 kB raw (1.07 kB gzip)
-       - `PdaDefinitionView`: 2.46 kB raw (1.16 kB gzip)
-     - Engine WASM binary: **237.0 KB gzip** (budget 250 KB, unchanged).
-
-6. **Line-by-Line Spec Edits Documentation & Relocated Checks (`git diff origin/staging...HEAD -- web/e2e`)**:
-   - `web/e2e/cross/pda-storage.spec.ts`:
-     - Line 8: Added import of `engineSettled` from `../fixtures.ts`.
-     - Lines 80–86 (S3): Removed `let wasmRequested = false; page.on('request', ...)` and `expect(wasmRequested).toBe(false)`.
-       *Reason:* In T-057 (ADR 0048), S3 checked that no WASM engine request was made when visiting PDA mode because PDA had no checker. T-051 (ADR 0049) supersedes this: PDA mode now runs `validatePda` via the engine worker to validate automata and detect competing transitions. The timing constraint (that the engine worker is never requested *before* the first draw) was relocated to test E8 (`web/e2e/pda-panel.spec.ts:601-625`, verified by deliberate Break 8).
-     - Lines 110, 125 (S3): Added `await engineSettled(page);` before reload and at test completion to allow async checks to cleanly finish without unhandled worker messages.
-     - Lines 151, 164 (S4): Mobile tap coordinates adjusted:
-       - Line 151: `{ position: { x: 220, y: 220 } }` -> `{ position: { x: 180, y: 100 } }`.
-       - Line 164: `{ position: { x: 340, y: 220 } }` -> `{ position: { x: 260, y: 100 } }`.
-       *Reason:* On mobile phones (e.g. Pixel 7, viewport height 892 px), adding the bottom side panel occupying 40% of the screen height reduced visible canvas height from 611 px to 319 px. Tapping at $y = 220$ previously overlapped the bottom panel area. Placing test states at $y = 100$ ensures taps reliably target the interactive canvas across phone viewports.
-     - Line 193 (S5): Mobile tap coordinate adjusted:
-       - `{ position: { x: 180, y: 180 } }` -> `{ position: { x: 180, y: 100 } }`.
-       *Reason:* Same physical viewport reason as S4.
-   - `web/e2e/pda-editor.spec.ts`:
-     - Lines 585–586 (E8): Adjusted mobile tap $y$-coordinates from `{ position: { x: 120, y: 250 } }` and `{ position: { x: 260, y: 250 } }` to `y: 120`.
-     - Lines 595–596 (E8): Adjusted touch drag from `{ y: stageBoxBefore.y + 100 }` -> `{ y: stageBoxBefore.y + 350 }` to `{ y: stageBoxBefore.y + 50 }` -> `{ y: stageBoxBefore.y + 180 }`.
-       *Reason:* Bottom panel occupies 40% height on phone viewport; dragging to $+180$ keeps the gesture within the active canvas area above the panel.
-
----
-
-## 4. Verification Command Outputs
-
-### Quality Checks Gate
-```
-$ pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens
-$ pnpm --filter web format:check && cargo fmt --check
-$ prettier --check .
-Checking formatting...
-All matched files use Prettier code style!
-$ pnpm --filter web check
-$ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
-Loading svelte-check in workspace: /home/Aldebaran64/webtomata/web
-Getting Svelte diagnostics...
-
-svelte-check found 0 errors and 0 warnings
-$ pnpm --filter web lint
-$ eslint .
-$ node tools/check-strings.mjs
-ok   71 components have no hard-coded text
-$ node tools/check-tokens-usage.mjs
-ok   73 files use no raw colors
+  1 failed
+  3 skipped
 ```
 
-### Unit Tests
+The spec's M2 originally has no reachable state (section 2, point 4); before that was
+settled the first run of the file also failed on a locator bug of mine
+(`getByRole('radio', { name: 'DPDA' })` matches `NDPDA` too; fixed with `exact: true`).
+That is a test fix, not evidence of the code.
+
+After the change:
+
 ```
-$ pnpm --filter web exec vitest run
- Test Files  111 passed (111)
-      Tests  1311 passed | 2 skipped (1313)
-   Start at  00:49:35
-   Duration  8.94s (tests 70%, transform 21%, import 8%)
+ ✓ src/lib/i18n/pda-messages.test.ts (6 tests) 35ms
+ ✓ src/lib/i18n/i18n.test.ts (14 tests) 91ms
+ Test Files  2 passed (2)
+      Tests  20 passed (20)
 ```
 
-### Build & Size
+## 4. F5 — nothing else moves (AC2)
+
+Unit tests: the full Vitest run that passed after the change (section 8) has
+`src/lib/editor/diagram/pda-diagram.test.ts` and `src/lib/editor/pda-checks.test.ts` green
+with only the lines of section 2 changed. `i18n.test.ts` has only its two lines changed.
+
+Browser specs, on the final build:
+
 ```
-$ pnpm build && pnpm size
+=== pda-messages desktop+phone ===
+  6 passed (7.4s)
+
+=== desktop area (pda-panel pda-editor pda-storage switcher editor-checks) ===
+  6 skipped
+  33 passed (41.4s)
+
+=== phone area (pda-panel pda-editor pda-storage) ===
+  9 skipped
+  17 passed (24.9s)
+
+=== webkit-phone pda-storage ===
+  6 passed (7.9s)
+
+=== phone switcher editor-checks ===
+  10 skipped
+  3 passed (8.6s)
+```
+
+The skips are the existing `test.skip(isMobile)` / `test.skip(!isMobile)` project splits.
+
+## 5. Deliberate breaks (AC5), each on the final code
+
+Each break was made on the committed implementation, run, and restored; `git status` was
+empty between breaks. The line quoted for the failure is the one Vitest or Playwright named.
+
+### B1 — `'pda_editor.save'` back into `id.ts` and `en.ts` (U3 fails)
+
+```
+ FAIL  src/lib/i18n/pda-messages.test.ts > the PDA messages > U3: are not in the shared dictionary, and no key is in both
+AssertionError: id: pda_editor.save: expected true to be false // Object.is equality
+     55|    expect(Object.hasOwn(id, key), `id: ${key}`).toBe(false);
+```
+
+The break (`git diff -U0`; the comma on the preceding value line is required, so the file
+stays valid TypeScript):
+
+```
++	'pda_editor.save': 'Save'
++	'pda_editor.save': 'Simpan'
+```
+
+U4 also failed during this break (`expected 'Simpan' to be 'pda_editor.save'`), because the
+key is then in `MESSAGES` as well; the break's target is U3.
+
+### B2 — delete `import '#lib/i18n/pda-messages.ts';` from `PdaWorkstation.svelte` (M2 fails)
+
+```
+  ✘  1 [desktop] › e2e/pda-messages.spec.ts:59:2 › M2: the PDA mode shows the Tabel panel in Indonesian, and no raw key
+    Locator: getByRole('complementary', { name: 'Panel' }).getByRole('heading', { name: 'Transisi (0)' })
+    Error: element(s) not found
+    > 66 | 		await expect(side.getByRole('heading', { name: 'Transisi (0)' })).toBeVisible();
+```
+
+The failure snapshot of that run shows the raw keys on the page:
+`kind.dpda`, `kind.ndpda`, `pda_editor.table_title`, `pda_editor.table_empty`.
+
+The break:
+
+```
+-	import '#lib/i18n/pda-messages.ts'; // The PDA messages travel with this workstation only (T-063).
+```
+
+### B3 — remove the final `?? key` from `translate` (U4 fails)
+
+```
+ FAIL  src/lib/i18n/pda-messages.test.ts > the PDA messages > U4: a key that is not registered yet gives the key itself, not undefined
+TypeError: Cannot read properties of undefined (reading 'replace')
+ ❯ format src/lib/i18n/translate.ts:26:18
+ ❯ src/lib/i18n/pda-messages.test.ts:67:10
+```
+
+The break:
+
+```
+-	return format(MESSAGES[locale][key] ?? extra[locale][key] ?? key, params);
++	return format(MESSAGES[locale][key] ?? extra[locale][key]!, params);
+```
+
+### B4 — import `pda-messages.ts` from `Editor.svelte` (M1 fails; sizes)
+
+```
+  1) [desktop] › e2e/pda-messages.spec.ts:45:2 › M1: …
+    Error: expect(received).toBe(expected) // Object.is equality
+    Expected: false
+    Received: true
+    > 55 | 		expect(scripts.some((body) => body.includes('Transisi di antara'))).toBe(false);
+```
+
+`pnpm size` with this break: `sandbox.html` 124.5 -> 125.5 KB gzip,
+`soal/berakhiran-10.html` 123.9 -> 124.9 KB; `index.html` 81.4, `panduan.html` 82.3 and
+`soal.html` 83.7 are unchanged (they do not load `Editor.svelte`). It is the +1.0 KB on the
+editor routes that the task removes.
+
+The break:
+
+```
++	import '#lib/i18n/pda-messages.ts';
+```
+
+### B5 — register only `pdaId` (M3 fails)
+
+```
+  ✘  1 [desktop] › e2e/pda-messages.spec.ts:84:2 › M3: with English saved, the PDA mode shows the English texts
+    Locator: getByRole('complementary', { name: 'Panel' }).getByRole('heading', { name: 'Transitions (0)' })
+    Error: element(s) not found
+    > 89 | 		await expect(side.getByRole('heading', { name: 'Transitions (0)' })).toBeVisible();
+```
+
+The English page showed the raw keys (`pda_editor.table_title`, `pda_editor.table_empty`,
+`kind.dpda`, `kind.ndpda`), which is the fallback of `translate` doing its job.
+
+The break:
+
+```
+-addMessages('en', pdaEn);
+```
+
+## 6. Sizes (AC3)
+
+Both builds on this machine, same commands. The baseline was built on `HEAD 3322b86` with
+`git diff origin/staging --stat` empty (`git status --short` empty before and after);
+build output and the wasm package are git-ignored.
+
+`pnpm size`, baseline `origin/staging`:
+
+```
 ok   initial JS index.html: 82.3 KB gzip (limit 170 KB)
 ok   initial JS panduan/berakhiran-x.html: 89.4 KB gzip (limit 170 KB)
 ok   initial JS panduan.html: 83.1 KB gzip (limit 170 KB)
@@ -513,50 +258,222 @@ ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzi
 ok   wasm _app/immutable/workers/assets/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB gzip (limit 250 KB)
 ```
 
-### E2E Desktop Suite
-`playwright test pda-panel pda-editor pda-storage --project=desktop`
+`pnpm size`, this branch:
+
 ```
-  4 skipped
-  22 passed (25.2s)
+ok   initial JS index.html: 81.4 KB gzip (limit 170 KB)
+ok   initial JS panduan/berakhiran-x.html: 88.5 KB gzip (limit 170 KB)
+ok   initial JS panduan.html: 82.3 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 124.5 KB gzip (limit 170 KB)
+ok   initial JS soal/berakhiran-10.html: 123.9 KB gzip (limit 170 KB)
+ok   initial JS soal/jumlah-a-genap.html: 123.9 KB gzip (limit 170 KB)
+ok   initial JS soal/mengandung-101.html: 123.9 KB gzip (limit 170 KB)
+ok   initial JS soal.html: 83.7 KB gzip (limit 170 KB)
+ok   initial JS tentang.html: 81.6 KB gzip (limit 170 KB)
+ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
+ok   wasm _app/immutable/workers/assets/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB gzip (limit 250 KB)
 ```
 
-### E2E Phone Suite
-`playwright test pda-panel pda-editor pda-storage --project=phone`
+| Route | before | after | change |
+| --- | --- | --- | --- |
+| `index.html` | 82.3 | 81.4 | −0.9 |
+| `sandbox.html` | 125.4 | 124.5 | −0.9 |
+| `soal.html` | 84.6 | 83.7 | −0.9 |
+| `panduan.html` | 83.1 | 82.3 | −0.8 |
+| `soal/berakhiran-10.html` | 124.8 | 123.9 | −0.9 |
+
+No route grew. `sandbox.html` shrank 0.9 KB, more than the 0.5 KB floor.
+
+The shared chunk that holds the dictionary (found by searching the build for a text that
+every route has, `Tersimpan di perangkat ini`; it is referenced by all nine `.html` files):
+
+| chunk | before | after |
+| --- | --- | --- |
+| dictionary | `CB0UzqGA.js` raw 114,808 B; gzip 32,099 B; gzip -9 31,986 B | `-1oaGXnc.js` raw 111,884 B; gzip 31,234 B; gzip -9 31,129 B |
+| PDA chunk (`PdaWorkstation`/`PdaEditor`/label/table + the lazy messages) | `BdTe0IJB.js` raw 18,163 B; gzip 6,657 B; gzip -9 6,655 B | `BrEhgw_x.js` raw 21,185 B; gzip 7,533 B; gzip -9 7,528 B |
+| definition view (unchanged, separate lazy chunk) | `ydtHyXdc.js` raw 2,793 B; gzip 1,163 B | `45qCLec_.js` raw 2,793 B; gzip 1,161 B |
+
+The lazy messages add 3,022 raw / 876 gzip bytes to the PDA chunk, which no route loads
+unless the PDA mode opens; in the dictionary they cost 865 gzip bytes on every route.
+(gzip here is `gzip -c`, the zlib default that `tools/check-size.mjs` uses; `gzip -9` given
+too because the numbers are unrounded.)
+
+## 7. The texts are out of every other chunk (AC4)
+
+Each text searched as a whole literal, with its delimiters (the build writes some strings
+with double quotes and some with backticks):
+
 ```
-  9 skipped
-  17 passed (18.4s)
+#!/bin/bash
+cd web/build/_app/immutable
+maps() {
+	local text="$1"
+	for d in '"' "'" '`'; do
+		grep -rlF "$d$text$d" . --include='*.js' 2>/dev/null | sed 's|^\./||'
+	done | sort -u
+}
+while IFS=$'\t' read -r key text; do
+	printf '%-32s %s\n' "$key" "$(maps "$text" | tr '\n' ' ')"
+done < /tmp/ac4-texts.tsv        # the 25 key/text pairs, read from pda-messages.ts
 ```
 
-### E2E WebKit Phone Suite
-`playwright test e2e/cross/pda-storage.spec.ts --project=webkit-phone`
+Output on the final build:
+
 ```
-  6 passed (6.9s)
+kind.dpda                        chunks/BrEhgw_x.js
+kind.ndpda                       chunks/BrEhgw_x.js
+pda_editor.edge_more             chunks/BrEhgw_x.js
+pda_editor.form_title            chunks/BrEhgw_x.js
+pda_editor.col_read              chunks/BrEhgw_x.js
+pda_editor.col_pop               chunks/BrEhgw_x.js
+pda_editor.col_push              chunks/BrEhgw_x.js
+pda_editor.field_label           chunks/BrEhgw_x.js
+pda_editor.row_delete            chunks/BrEhgw_x.js
+pda_editor.add_row               chunks/BrEhgw_x.js
+pda_editor.label_hint            chunks/BrEhgw_x.js
+pda_editor.save                  chunks/BrEhgw_x.js
+pda_editor.cancel                chunks/-1oaGXnc.js chunks/BrEhgw_x.js
+pda_editor.menu_edit             chunks/BrEhgw_x.js
+pda_editor.read_one_symbol       chunks/BrEhgw_x.js
+pda_check.no_accepting_state     chunks/BrEhgw_x.js
+pda_check.duplicate_transition   chunks/BrEhgw_x.js
+pda_check.pop_never_pushed       chunks/BrEhgw_x.js
+pda_check.competing_transitions  chunks/BrEhgw_x.js
+pda_check.accepting_state_free_move chunks/BrEhgw_x.js
+pda_editor.col_from              chunks/-1oaGXnc.js chunks/BrEhgw_x.js
+pda_editor.col_to                chunks/-1oaGXnc.js chunks/BrEhgw_x.js
+pda_editor.table_title           chunks/BrEhgw_x.js
+pda_editor.table_empty           chunks/-1oaGXnc.js chunks/BrEhgw_x.js
+pda_editor.definition_hint       chunks/BrEhgw_x.js
 ```
 
-### Git Diff Stat
+The 21 texts that belong only to the moved keys are in `BrEhgw_x.js` and nowhere else. The
+four that stay in the shared dictionary belong to keys that stay too:
+
+- `pda_editor.cancel` "Batal" — kept by `soal.reset_cancel`
+- `pda_editor.col_from` "Dari" — kept by `convert.col_from`
+- `pda_editor.col_to` "Ke" — kept by `convert.col_to`
+- `pda_editor.table_empty` "Belum ada transisi." — kept by `definition.no_transitions`
+
+All 25 texts are in the PDA chunk. No `.html` in `build/` contains any of the 25 (same
+script against `web/build/*.html web/build/*/*.html`, no output), and no `.html` references
+`BrEhgw_x.js`, so the chunk is only reached from the PDA mode.
+
+## 8. The gate (AC6)
+
 ```
-$ git diff --stat origin/staging
- docs/agent/PLAN.md                          |   2 +-
- docs/agent/REPORT.md                        | 806 ++++++++++++++++++----------
- docs/decisions/0049-pda-panel.md            |  39 ++
- docs/glossary.md                            |   3 +
- web/e2e/cross/pda-storage.spec.ts           |  16 +-
- web/e2e/pda-editor.spec.ts                  |   8 +-
- web/e2e/pda-panel.spec.ts                   | 625 +++++++++++++++++++++
- web/src/lib/editor/KindSwitch.svelte        |  24 +-
- web/src/lib/editor/PdaDefinitionView.svelte | 108 ++++
- web/src/lib/editor/PdaEditor.svelte         | 151 +++++-
- web/src/lib/editor/PdaTableView.svelte      | 128 +++++
- web/src/lib/editor/SidePanel.svelte         |  19 +-
- web/src/lib/editor/checker.ts               |  21 +-
- web/src/lib/editor/pda-checks.test.ts       | 153 ++++++
- web/src/lib/editor/pda-checks.ts            |  51 ++
- web/src/lib/editor/pda-definition.test.ts   |  96 ++++
- web/src/lib/editor/pda-definition.ts        |  51 ++
- web/src/lib/editor/pda-table.test.ts        | 131 +++++
- web/src/lib/editor/pda-table.ts             |  37 ++
- web/src/lib/i18n/en.ts                      |  18 +-
- web/src/lib/i18n/id.ts                      |  17 +-
- 21 files changed, 2163 insertions(+), 341 deletions(-)
+$ pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens
+$ prettier --check .
+All matched files use Prettier code style!
+$ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
+svelte-check found 0 errors and 0 warnings
+$ eslint .
+$ node tools/check-strings.mjs
+ok   71 components have no hard-coded text
+$ node tools/check-tokens-usage.mjs
+ok   73 files use no raw colors
 ```
-Zero files changed in `crates/`. `Editor.svelte` has 0 lines diff against staging.
+
+`pnpm build && pnpm size`: the build finished (`Wrote site to "build"`, exit 0) and the
+`pnpm size` lines are in section 6.
+
+No `crates/` change:
+
+```
+$ git diff --stat f166898 -- crates/
+(empty)
+```
+
+**Vitest, full run.** One full run passed after the change:
+
+```
+ Test Files  112 passed (112)
+      Tests  1316 passed | 3 skipped (1319)
+   Duration  14.25s
+```
+
+The later full runs did not pass, and not because of this task: two pre-existing heavy
+property tests sit close to the 5 s default timeout, and the machine was carrying a load
+average of 3.7 to 17.8 from the other worker's checkout. The failing tests move between
+runs and none of them imports the i18n modules. The last run (load average 3.70) had
+`1315 passed | 1 failed`, the one failure being `editor.property.test.ts` timing out at 5 s.
+
+```
+ FAIL  src/lib/editor/layout.test.ts > placing the states > property: any machine of up to 40 states …
+Error: Test timed out in 5000ms.
+ FAIL  src/lib/editor/interaction/editor.property.test.ts > random sequences of actions in the editor …
+Error: Test timed out in 5000ms.
+
+ FAIL  src/lib/editor/diagram/geometry.test.ts > the whole drawing > draws the worst case, 600 random edges …
+AssertionError: expected 1081.3778720000003 to be less than 1000
+ ❯ src/lib/editor/diagram/geometry.test.ts:585:16
+```
+
+In the passing run those two property tests took 3,971 ms and 4,930 ms; alone on an idle
+machine they take 1,712 ms and 1,824 ms (run with
+`pnpm --filter web exec vitest run src/lib/editor/layout.test.ts src/lib/editor/interaction/editor.property.test.ts`,
+20 tests passed). Running the full suite without the new test file gives the same timeouts,
+so the new file is not the cause. I did not raise a timeout or skip a test: CI, on a
+dedicated runner, is the arbiter for these numbers.
+
+## 9. Deepening pass
+
+1. **New exports and their use.**
+   - `pdaId` (new module): needed by `id.ts` for the type union (type-only) and by the
+     tests; keep.
+   - `pdaEn` (new module): the English half of the pair, used by `addMessages` and by
+     `pda-checks.test.ts`; keep as data, not as a test seam.
+   - `addMessages` (`translate.ts`): one caller today (`pda-messages.ts`), cannot be
+     private (another module calls it), and the alternative — importing the PDA dictionary
+     into `translate.ts` — would put the texts back in the shared chunk. It is the seam
+     that T-061, T-062 and T-052 use.
+   - No new member of a public interface. `MESSAGES` keeps its name and its users;
+     its value type becomes `Partial<Record<MessageKey, string>>` so a missing key is
+     expressible (callers already had to accept `string | undefined` under
+     `noUncheckedIndexedAccess`).
+   - Logic written twice: U2 repeats the "never empty / same parameters" checks of
+     `i18n.test.ts` for the new dictionary. Deliberate: the shared test must not import the
+     lazy module, because with `isolate: false` its result would then depend on the order of
+     the test files. The `PDA_KEYS` list in the test is the task's oracle, not a copy of the
+     implementation.
+2. **The interface is smaller than the work behind it.** Callers keep `t` and `translate`;
+   the only new call is `addMessages`, and the PDA module exports plain data.
+3. **Casts added: zero.** The two casts in `pda-diagram.test.ts` are unchanged from before.
+
+## 10. The 25 keys and where they are used (AC6 table)
+
+Every shipped user is in the PDA chunk; the tests are not built.
+
+| key | files |
+| --- | --- |
+| `kind.dpda`, `kind.ndpda` | no literal (``t(`kind.${option}`)`` in `KindSwitch.svelte:45`, called with `dpda`/`ndpda` from `PdaEditor.svelte:114,119,266,279`) |
+| `pda_editor.edge_more` | `PdaEditor.svelte:160`; `diagram/pda-diagram.test.ts:154,157` |
+| `pda_editor.form_title` | `PdaEditor.svelte:259`, `PdaLabelForm.svelte:176` |
+| `pda_editor.col_read`, `col_pop`, `col_push` | `PdaTableView.svelte:30,31,32`, `PdaLabelForm.svelte:180,181,182,196,212,228` |
+| `pda_editor.field_label` | `PdaLabelForm.svelte:196,212,228` |
+| `pda_editor.row_delete` | `PdaLabelForm.svelte:242` |
+| `pda_editor.add_row` | `PdaLabelForm.svelte:263` |
+| `pda_editor.label_hint` | `PdaLabelForm.svelte:266` |
+| `pda_editor.save`, `cancel` | `PdaLabelForm.svelte:283,280` |
+| `pda_editor.menu_edit` | `pda-label.ts:24`; `pda-label.test.ts:385,387` |
+| `pda_editor.read_one_symbol` | `pda-label.ts:69,80`; `pda-label.test.ts:129,134,304` |
+| `pda_editor.col_from`, `col_to` | `PdaTableView.svelte:29,33` |
+| `pda_editor.table_title` | `PdaTableView.svelte:18,25` |
+| `pda_editor.table_empty` | `PdaTableView.svelte:20` |
+| `pda_editor.definition_hint` | `PdaDefinitionView.svelte:48` |
+| `pda_check.no_accepting_state` etc. (5) | `pda-checks.ts:12,14,15,16,17`; `pda-checks.test.ts:53,62,68,74,80,100,106,132,149,150` |
+
+No key is used outside the PDA chunk in shipped code (`grep -rnF` over the repository,
+excluding `web/src/lib/i18n`).
+
+## 11. Not run, and why
+
+- Firefox and the full Playwright suite: `AGENTS.md` forbids the full suite locally and the
+  Firefox project is the small cross set; CI runs both.
+- Lighthouse and `pnpm smoke`: not part of this task's verification.
+- The phone itself and the live site: the owner's.
+
+## 12. Rollback
+
+`git revert 32a215d` restores the 25 keys to `id.ts`/`en.ts`; the two test edits of
+section 2 go back with it. Nothing else depends on the change.
