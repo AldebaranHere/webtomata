@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import '#lib/i18n/pda-messages.ts';
 import type { MessageKey } from '#lib/i18n/id.ts';
 import { translate } from '#lib/i18n/translate.ts';
 import { applyPdaCommand } from '../pda-commands.ts';
