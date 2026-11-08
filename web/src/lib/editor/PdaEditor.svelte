@@ -59,13 +59,11 @@
 				marked = new Set();
 				markedEdge = null;
 			} else if (marked.size > 0) {
-				if (
-					nextState.selection.length > 0 ||
-					!nextState.edge ||
-					!markedEdge ||
-					nextState.edge.from !== markedEdge.from ||
-					nextState.edge.to !== markedEdge.to
-				) {
+				const differentEdge =
+					nextState.edge !== null &&
+					markedEdge !== null &&
+					(nextState.edge.from !== markedEdge.from || nextState.edge.to !== markedEdge.to);
+				if (nextState.selection.length > 0 || differentEdge) {
 					marked = new Set();
 					markedEdge = null;
 				}
@@ -168,6 +166,8 @@
 	// On a phone (max-width: 39.99rem), the form is rendered as a bottom sheet in the frame's panel slot.
 	// On a laptop/desktop, it is rendered as a popover over the edge through the canvas label slot.
 	// The choice is determined when the form opens and kept until it closes.
+	// We preserve stable non-null copies of `labeling` and `slot` while the form is open so child components
+	// are never passed null props during unmount / reactive flush.
 	let formDisplayMode = $state<'popover' | 'sheet' | null>(null);
 	let activeLabeling = $state<{ from: number; to: number } | null>(null);
 	let lastSlot: LabelSlot | null = null;

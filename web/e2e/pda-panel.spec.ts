@@ -369,6 +369,9 @@ test.describe('E5: + n lagi interaction', () => {
 
 		// Create q0 with self-loop of 4 transitions
 		await addState(page, 200, 200);
+		// Create q1 with self-loop of 1 transition to test selecting a different edge
+		await addState(page, 380, 200);
+
 		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
 		await transBtn.click();
 		await stateBtn(page, 'q0').click();
@@ -384,6 +387,14 @@ test.describe('E5: + n lagi interaction', () => {
 		await form.getByRole('textbox', { name: /Baris 3.*Baca/i }).fill('c');
 		await form.getByRole('button', { name: /Transisi lain di antara/i }).click();
 		await form.getByRole('textbox', { name: /Baris 4.*Baca/i }).fill('d');
+		await form.getByRole('button', { name: /Simpan/i }).click();
+
+		// Add transition on q1
+		await transBtn.click();
+		await stateBtn(page, 'q1').click();
+		await stateBtn(page, 'q1').click();
+		await expect(form).toBeVisible();
+		await form.getByRole('textbox', { name: /Baris 1.*Baca/i }).fill('z');
 		await form.getByRole('button', { name: /Simpan/i }).click();
 
 		// In Definisi tab initially
@@ -406,8 +417,16 @@ test.describe('E5: + n lagi interaction', () => {
 		const markedRows = panel(page).locator('tbody tr[aria-current="true"]');
 		await expect(markedRows).toHaveCount(4);
 
-		// Selecting a state clears the marks
+		// Selecting a state clears the marks (Break K3)
 		await stateBtn(page, 'q0').click();
+		await expect(panel(page).locator('tbody tr[aria-current="true"]')).toHaveCount(0);
+
+		// Mark rows again
+		await moreAction.click();
+		await expect(markedRows).toHaveCount(4);
+
+		// Selecting a different edge clears the marks (Break K3)
+		await page.locator('g[data-edge="1>1"] .hit-label').click();
 		await expect(panel(page).locator('tbody tr[aria-current="true"]')).toHaveCount(0);
 
 		// Mark rows again
@@ -433,7 +452,7 @@ test.describe('E5: + n lagi interaction', () => {
 
 		// Click + 2 lagi deletes the edge (doc change) without opening panel / Tabel
 		await moreAction.click();
-		await expect(page.locator('.labels text.label')).toHaveCount(0);
+		await expect(page.locator('.labels text.label').first()).toContainText('z');
 		// Toast offers Urungkan
 		await expect(page.getByRole('status')).toContainText('dihapus');
 		await expect(tab(page, 'Tabel')).toHaveAttribute('aria-selected', 'false');
@@ -444,8 +463,59 @@ test.describe('E5: + n lagi interaction', () => {
 			.getByRole('toolbar', { name: 'Alat editor' })
 			.getByRole('button', { name: 'Urungkan' })
 			.click();
-		await expect(page.locator('.labels text.label')).toHaveCount(1);
+		await expect(page.locator('.labels text.label')).toHaveCount(2);
 		await expect(markedRows).toHaveCount(0);
+	});
+
+	test('phone: tap + n lagi in Pilih shows hidden panel, opens Tabel tab, and marks rows', async ({
+		page,
+		isMobile
+	}) => {
+		test.skip(!isMobile, 'phone test');
+		await openPdaSandbox(page);
+
+		// Add state q0 with self-loop of 4 transitions (positions in upper canvas: y = 120)
+		await addState(page, 150, 120);
+		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
+		await transBtn.click();
+		await stateBtn(page, 'q0').click();
+		await stateBtn(page, 'q0').click();
+
+		const form = page.locator('.pda-label-form[role="dialog"]');
+		await expect(form).toBeVisible();
+		await form.getByRole('textbox', { name: /Baris 1.*Baca/i }).fill('a');
+		await form.getByRole('button', { name: /Transisi lain di antara/i }).click();
+		await form.getByRole('textbox', { name: /Baris 2.*Baca/i }).fill('b');
+		await form.getByRole('button', { name: /Transisi lain di antara/i }).click();
+		await form.getByRole('textbox', { name: /Baris 3.*Baca/i }).fill('c');
+		await form.getByRole('button', { name: /Transisi lain di antara/i }).click();
+		await form.getByRole('textbox', { name: /Baris 4.*Baca/i }).fill('d');
+		await form.getByRole('button', { name: /Simpan/i }).click();
+
+		// Hide the panel using the drag bar / hide button
+		const side = panel(page);
+		const hideBtn = side.getByRole('button', { name: 'Sembunyikan panel' });
+		await expect(hideBtn).toBeVisible();
+		await hideBtn.click();
+		// Panel is now hidden: button says "Tampilkan panel"
+		await expect(side.getByRole('button', { name: 'Tampilkan panel' })).toBeVisible();
+		await expect(side.locator('.content')).toBeHidden();
+
+		// Switch to Pilih tool
+		const selectBtn = page.getByRole('button', { name: /^Pilih/ });
+		await selectBtn.click();
+
+		// Tap + 2 lagi
+		const moreAction = page.locator('.hit-overflow').first();
+		await expect(moreAction).toBeVisible();
+		await moreAction.click();
+
+		// The panel is shown (hidden = false), Tabel tab is open, and all 4 rows are marked
+		await expect(side.getByRole('button', { name: 'Sembunyikan panel' })).toBeVisible();
+		await expect(side.locator('.content')).toBeVisible();
+		await expect(tab(page, 'Tabel')).toHaveAttribute('aria-selected', 'true');
+		const markedRows = side.locator('tbody tr[aria-current="true"]');
+		await expect(markedRows).toHaveCount(4);
 	});
 });
 

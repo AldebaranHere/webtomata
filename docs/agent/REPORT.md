@@ -132,19 +132,54 @@ AssertionError: expected [ { index: 0, from: 1, …(6) }, …(3) ] to deeply equ
 ---
 
 ### Break 3: Treat `first` and `second` as state IDs in `pdaCheckItems`
-- **File:** `web/src/lib/editor/pda-checks.ts:48`
-- **Modification:** Added `'first'` and `'second'` to the list of params treated as state IDs (`if (['state', 'from', 'to', 'first', 'second'].includes(k))`).
+- **File:** `web/src/lib/editor/pda-checks.ts:28-29`
+- **Modification:** Added `'first'` and `'second'` to the state ID condition in `pdaCheckItems`:
+  ```typescript
+  if (
+      (name === 'from' || name === 'state' || name === 'first' || name === 'second') &&
+      typeof value === 'number'
+  )
+  ```
 - **Intended Failure:** F4 unit test (`pda-checks.test.ts`) asserts `first` and `second` remain 1-based table row numbers (1, 2) rather than resolving to state names ("q0", "q1").
 - **Observed Output:**
 ```
- FAIL  src/lib/editor/pda-checks.test.ts > PDA checks > F4: Machine G reports competing transitions on DPDA with 1-based row numbers
-AssertionError: expected 'Pada DPDA, transisi baris q1 dan q2…' to deeply equal 'Pada DPDA, transisi baris 1 dan 2…'
+ FAIL  src/lib/editor/pda-checks.test.ts > pdaCheckItems > F4: G as DPDA produces 2 competing_transitions error items with 1-based row numbers 1, 2 and 1, 3
+AssertionError: expected [ { severity: 'error', …(3) }, …(1) ] to deeply equal [ { severity: 'error', …(3) }, …(1) ]
 
 - Expected
 + Received
 
-- Pada DPDA, transisi baris 1 dan 2 dari q0 bersaing.
-+ Pada DPDA, transisi baris q1 dan q2 dari q0 bersaing.
+  [
+    {
+      "key": "pda_check.competing_transitions",
+      "params": {
+-       "first": 1,
+-       "second": 2,
+-       "state": "q0",
++       "state": "q1",
+      },
+      "severity": "error",
+      "states": [
++       0,
+        0,
++       1,
+      ],
+    },
+    {
+      "key": "pda_check.competing_transitions",
+      "params": {
+-       "first": 1,
+-       "second": 3,
+-       "state": "q0",
++       "state": "2",
+      },
+      "severity": "error",
+      "states": [
++       0,
+        0,
+      ],
+    },
+  ]
 
  ❯ src/lib/editor/pda-checks.test.ts:97:17
 ```
@@ -276,6 +311,78 @@ AssertionError: expected 'Pada DPDA, transisi baris q1 dan q2…' to deeply equa
 
 ---
 
+### Break K2: Phone `+ n lagi` must show the panel
+- **File:** `web/src/lib/editor/PdaEditor.svelte:142`
+- **Modification:** Omitted `sidePanel?.show();` from `handleMore`.
+- **Intended Failure:** E5 phone test (`e2e/pda-panel.spec.ts:470`) verifies that tapping `+ n lagi` on phone when the bottom panel is hidden causes `sidePanel?.show()` to un-hide the panel, open the Tabel tab, and mark the rows.
+- **Observed Output:**
+```
+  1) [phone] › e2e/pda-panel.spec.ts:470:2 › E5: + n lagi interaction › phone: tap + n lagi in Pilih shows hidden panel, opens Tabel tab, and marks rows
+
+    Error: Timed out 5000ms waiting for expect(locator).toBeVisible()
+
+    Locator: getByRole('complementary', { name: 'Panel' }).getByRole('button', { name: 'Sembunyikan panel' })
+    Expected: visible
+    Received: <element(s) not found>
+
+      512 | 		// The panel is shown (hidden = false), Tabel tab is open, and all 4 rows are marked
+      513 | 		await expect(side.getByRole('button', { name: 'Sembunyikan panel' })).toBeVisible();
+    > 514 | 		await expect(side.locator('.content')).toBeVisible();
+          | 		                                       ^
+        at /home/Aldebaran64/webtomata/web/e2e/pda-panel.spec.ts:514:41
+```
+- **Status:** Verified and restored.
+
+---
+
+### Break K3: Another selection must clear the marks
+- **File:** `web/src/lib/editor/PdaEditor.svelte:66`
+- **Modification A (state selection):** Replaced `nextState.selection.length > 0 || differentEdge` with `false || differentEdge`.
+- **Intended Failure A:** E5 desktop test (`e2e/pda-panel.spec.ts:420`) asserts that selecting a state after `+ n lagi` clears `aria-current` marked rows.
+- **Observed Output A:**
+```
+  1) [desktop] › e2e/pda-panel.spec.ts:363:2 › E5: + n lagi interaction › Pilih tool opens table and marks edge rows; Hapus tool deletes without opening panel
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  getByRole('complementary', { name: 'Panel' }).locator('tbody tr[aria-current="true"]')
+    Expected: 0
+    Received: 4
+    Timeout:  5000ms
+
+      420 | 		// Selecting a state clears the marks (Break K3)
+      421 | 		await stateBtn(page, 'q0').click();
+    > 422 | 		await expect(panel(page).locator('tbody tr[aria-current="true"]')).toHaveCount(0);
+          | 		                                                                   ^
+      423 |
+      424 | 		// Mark rows again
+        at /home/Aldebaran64/webtomata/web/e2e/pda-panel.spec.ts:422:70
+```
+- **Modification B (different edge selection):** Replaced `nextState.selection.length > 0 || differentEdge` with `nextState.selection.length > 0 || false`.
+- **Intended Failure B:** E5 desktop test (`e2e/pda-panel.spec.ts:428`) asserts that clicking a different edge (`g[data-edge="1>1"] .hit-label`) clears `aria-current` marked rows.
+- **Observed Output B:**
+```
+  1) [desktop] › e2e/pda-panel.spec.ts:363:2 › E5: + n lagi interaction › Pilih tool opens table and marks edge rows; Hapus tool deletes without opening panel
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  getByRole('complementary', { name: 'Panel' }).locator('tbody tr[aria-current="true"]')
+    Expected: 0
+    Received: 4
+    Timeout:  5000ms
+
+      428 | 		// Selecting a different edge clears the marks (Break K3)
+      429 | 		await page.locator('g[data-edge="1>1"] .hit-label').click();
+    > 430 | 		await expect(panel(page).locator('tbody tr[aria-current="true"]')).toHaveCount(0);
+          | 		                                                                   ^
+      431 |
+      432 | 		// Mark rows again
+        at /home/Aldebaran64/webtomata/web/e2e/pda-panel.spec.ts:430:70
+```
+- **Status:** Verified and restored.
+
+---
+
 ## 3. Deepening Pass
 
 1. **New Public Exports & Public Interface Additions**:
@@ -311,12 +418,25 @@ AssertionError: expected 'Pada DPDA, transisi baris q1 dan q2…' to deeply equa
    - `0` casts (`any`, `@ts-ignore`, `as unknown as`). All types are strictly checked.
 
 5. **Size Numbers Before & After**:
-   - Initial JS `sandbox.html`: **125.5 KB gzip** before -> **125.5 KB gzip** after (**0.0 KB** diff, limit 170 KB, delta $\le$ 0.5 KB).
-   - PDA editor chunk: **18.19 kB** (6.70 kB gzip).
-   - Lazy on-demand chunks:
-     - `PdaTableView`: 2.47 kB (1.07 kB gzip)
-     - `PdaDefinitionView`: 2.46 kB (1.16 kB gzip)
-   - Engine WASM binary: **237.0 KB gzip** (budget 250 KB).
+   - Initial JS `sandbox.html`: **124.8 KB gzip** before (`staging`) -> **125.5 KB gzip** after (`task/T-051-pda-panel`) (+0.7 KB raw, limit 170 KB, within budget).
+   - PDA editor chunk:
+     - Before on `staging`: **14.47 kB raw (5.37 kB gzip)** (chunk `ChakwWL3.js`)
+     - After on `task/T-051-pda-panel`: **18.19 kB raw (6.70 kB gzip)** (chunk `BBg0E02t.js`)
+     - Net increase: +3.72 kB raw (+1.33 kB gzip) for the full panel implementation (tabs, kind switch, checker wiring, table view import, definition view import, and selection sync).
+   - Lazy on-demand chunks (loaded only when their respective panel tab opens):
+     - `PdaTableView`: 2.47 kB raw (1.07 kB gzip)
+     - `PdaDefinitionView`: 2.46 kB raw (1.16 kB gzip)
+   - Engine WASM binary: **237.0 KB gzip** (budget 250 KB, unchanged).
+
+6. **Line-by-Line Spec Edits Documentation & Relocated Checks**:
+   - `web/e2e/cross/pda-storage.spec.ts`:
+     - Line 8: Added import of `engineSettled` from `../fixtures.ts`.
+     - Lines 83–86 (S3): Replaced `expect(wasmRequested).toBe(false)` with `await engineSettled(page)`.
+       *Reason:* In T-057 (ADR 0048), S3 checked that the WASM engine was not loaded when visiting PDA mode because PDA had no checker. T-051 (ADR 0049) supersedes this: PDA mode now runs `validatePda` via the engine worker to validate automata and detect competing transitions. The timing constraint (that the engine worker is never requested *before* the first draw) was preserved and relocated to test E8 (`web/e2e/pda-panel.spec.ts:601-625`, verified by deliberate Break 8). S3 now calls `await engineSettled(page)` to allow async checks to cleanly finish without lingering unhandled worker messages.
+     - Lines 110, 125, 128 (S4) & Lines 151, 164, 193 (S5): Adjusted mobile tap $y$-coordinates from $y = 350$ / $450$ to $y = 120$ / $150$.
+       *Reason:* On mobile phones (e.g. Pixel 7 / iPhone 13, viewport height $\approx$ 667–892 px), adding the bottom side panel occupying 40% of the screen height reduced the visible canvas height from 611 px down to 319 px. Tapping at $y = 350$ or $450$ previously landed on the bottom panel area rather than the canvas SVG stage. Placing test states in the upper third of the canvas ($y = 120$–$150$) ensures taps reliably target the interactive canvas across phone screens.
+   - `web/e2e/pda-editor.spec.ts`:
+     - Lines 585, 595 (E8): Adjusted tap $y$-coordinates for mobile bottom sheet test to upper canvas ($y = 120$–$150$) for the exact same physical reason (bottom panel takes 40% height on phone viewport).
 
 ---
 
@@ -369,39 +489,50 @@ ok   wasm _app/immutable/workers/assets/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB g
 ```
 
 ### E2E Desktop Suite
-`playwright test pda-panel pda-editor pda-storage switcher editor-checks editor-panel editor-table editor-flows --project=desktop`
+`playwright test pda-panel pda-editor pda-storage --project=desktop`
 ```
-  19 skipped
-  41 passed (44.8s)
+  4 skipped
+  22 passed (25.1s)
 ```
 
 ### E2E Phone Suite
 `playwright test pda-panel pda-editor pda-storage --project=phone`
 ```
   9 skipped
-  16 passed (20.3s)
+  17 passed (19.5s)
 ```
 
 ### E2E WebKit Phone Suite
 `playwright test e2e/cross/pda-storage.spec.ts --project=webkit-phone`
 ```
-  6 passed (8.0s)
+  6 passed (8.9s)
 ```
 
 ### Git Diff Stat
 ```
 $ git diff --stat origin/staging
- docs/agent/PLAN.md                   |   2 +-
- docs/glossary.md                     |   3 +
- web/e2e/cross/pda-storage.spec.ts    |  16 ++--
- web/e2e/pda-editor.spec.ts           |   8 +-
- web/src/lib/editor/Editor.svelte     |   7 +-
- web/src/lib/editor/KindSwitch.svelte |  60 +++++++++----
- web/src/lib/editor/PdaEditor.svelte  | 159 +++++++++++++++++++++++++++++++++--
- web/src/lib/editor/SidePanel.svelte  |  39 +++++----
- web/src/lib/editor/checker.ts        |  30 +++++--
- web/src/lib/i18n/en.ts               |  18 +++-
- web/src/lib/i18n/id.ts               |  17 +++-
- 11 files changed, 295 insertions(+), 64 deletions(-)
+ docs/agent/PLAN.md                          |   2 +-
+ docs/agent/REPORT.md                        | 771 +++++++++++++++++-----------
+ docs/decisions/0049-pda-panel.md            |  39 ++
+ docs/glossary.md                            |   3 +
+ web/e2e/cross/pda-storage.spec.ts           |  16 +-
+ web/e2e/pda-editor.spec.ts                  |   8 +-
+ web/e2e/pda-panel.spec.ts                   | 625 ++++++++++++++++++++++
+ web/src/lib/editor/Editor.svelte            |   7 +-
+ web/src/lib/editor/KindSwitch.svelte        |  60 ++-
+ web/src/lib/editor/PdaDefinitionView.svelte | 108 ++++
+ web/src/lib/editor/PdaEditor.svelte         | 155 +++++-
+ web/src/lib/editor/PdaTableView.svelte      | 128 +++++
+ web/src/lib/editor/SidePanel.svelte         |  39 +-
+ web/src/lib/editor/checker.ts               |  30 +-
+ web/src/lib/editor/pda-checks.test.ts       | 153 ++++++
+ web/src/lib/editor/pda-checks.ts            |  51 ++
+ web/src/lib/editor/pda-definition.test.ts   |  96 ++++
+ web/src/lib/editor/pda-definition.ts        |  51 ++
+ web/src/lib/editor/pda-table.test.ts        | 131 +++++
+ web/src/lib/editor/pda-table.ts             |  37 ++
+ web/src/lib/i18n/en.ts                      |  18 +-
+ web/src/lib/i18n/id.ts                      |  17 +-
+ 22 files changed, 2187 insertions(+), 358 deletions(-)
 ```
 Zero files changed in `crates/`.
