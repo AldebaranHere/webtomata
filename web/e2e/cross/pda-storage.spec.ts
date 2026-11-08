@@ -17,14 +17,18 @@ const openPdaSandbox = async (page: Page) => {
 
 const status = (page: Page) => page.locator('.save');
 
-test('S1: first visit to PDA mode saves empty PDA record with type pda and kind ndpda', async ({ page }) => {
+test('S1: first visit to PDA mode saves empty PDA record with type pda and kind ndpda', async ({
+	page
+}) => {
 	await openPdaSandbox(page);
 	await expect(status(page)).toHaveClass(/saved/);
 
-	await expect.poll(async () => {
-		const all = await records(page);
-		return all.some((r) => r.type === 'pda');
-	}).toBe(true);
+	await expect
+		.poll(async () => {
+			const all = await records(page);
+			return all.some((r) => r.type === 'pda');
+		})
+		.toBe(true);
 
 	const all = await records(page);
 	const pdaRec = all.find((r) => r.type === 'pda');
@@ -57,11 +61,13 @@ test('S2: PDA change is saved on device and is there after reload', async ({ pag
 	await expect(status(page)).toHaveClass(/saved/);
 
 	// Verify DB has state q0 in PDA record
-	await expect.poll(async () => {
-		const all = await records(page);
-		const pda = all.find((r) => r.type === 'pda');
-		return pda?.doc ?? '';
-	}).toContain('"name":"q0"');
+	await expect
+		.poll(async () => {
+			const all = await records(page);
+			const pda = all.find((r) => r.type === 'pda');
+			return pda?.doc ?? '';
+		})
+		.toContain('"name":"q0"');
 
 	// Reload
 	await page.reload();
@@ -69,10 +75,16 @@ test('S2: PDA change is saved on device and is there after reload', async ({ pag
 	await expect(page.getByRole('button', { name: /^State q0/ })).toBeVisible();
 });
 
-test('S3: unreadable PDA records are skipped, notice says so, and records are preserved', async ({ page }) => {
+test('S3: unreadable PDA records are skipped, notice says so, and records are preserved', async ({
+	page
+}) => {
 	// Pre-seed an unreadable PDA record and a schemaVersion: 2 record
 	const time = Date.now();
-	await page.goto('/sandbox'); // initialize db
+	let wasmRequested = false;
+	page.on('request', (req) => {
+		if (req.url().endsWith('.wasm')) wasmRequested = true;
+	});
+	await page.goto('/sandbox?mode=pda');
 	await page.locator('.editor[data-ready]').waitFor();
 
 	await putRow(page, {
@@ -98,8 +110,8 @@ test('S3: unreadable PDA records are skipped, notice says so, and records are pr
 		recordVersion: 1
 	});
 
-	// Visit PDA mode
-	await page.goto('/sandbox?mode=pda');
+	// Reload in PDA mode so unreadable records are processed
+	await page.reload();
 	await page.locator('.editor[data-ready]').waitFor();
 
 	// Notice says records were skipped
@@ -113,9 +125,14 @@ test('S3: unreadable PDA records are skipped, notice says so, and records are pr
 	const newer = all.find((r) => r.id === 'newer-pda');
 	expect(corrupt?.doc).toBe('not json');
 	expect(newer?.doc).toBe(JSON.stringify({ schemaVersion: 2, title: 'Versi Baru' }));
+	// In PDA mode, no engine WASM request is ever made
+	expect(wasmRequested).toBe(false);
 });
 
-test('S4: refused write shows Belum tersimpan warning and next save clears it', async ({ page, isMobile }) => {
+test('S4: refused write shows Belum tersimpan warning and next save clears it', async ({
+	page,
+	isMobile
+}) => {
 	await openPdaSandbox(page);
 
 	// Inject write failure on IDBObjectStore.prototype.put (same pattern as storage.spec.ts)
@@ -156,7 +173,10 @@ test('S4: refused write shows Belum tersimpan warning and next save clears it', 
 	await expect(page.locator('.problem[role="alert"]')).toHaveCount(0);
 });
 
-test('S5: browser with no storage allows editor to work with warning', async ({ page, isMobile }) => {
+test('S5: browser with no storage allows editor to work with warning', async ({
+	page,
+	isMobile
+}) => {
 	// Prevent IndexedDB from opening successfully
 	await page.addInitScript(() => {
 		delete (window as unknown as { indexedDB?: IDBFactory }).indexedDB;
@@ -180,34 +200,46 @@ test('S5: browser with no storage allows editor to work with warning', async ({ 
 	await expect(page.getByRole('button', { name: /^State q0/ })).toBeVisible();
 });
 
-test('S6: in FSM mode, Mesin saya never lists PDA records and FSM openLatest is not PDA', async ({ page }) => {
+test('S6: in FSM mode, Mesin saya never lists PDA records and FSM openLatest is not PDA', async ({
+	page,
+	isMobile
+}) => {
 	// First ensure a PDA record exists
 	await openPdaSandbox(page);
 	await expect(status(page)).toHaveClass(/saved/);
 
 	// Switch to FSM mode
 	const trigger = page.locator('.switcher-trigger');
-	await trigger.click();
-	const fsmOption = page.locator('.switcher-popover[role="listbox"]').getByRole('option', { name: /^Mesin FSM/ });
-	await fsmOption.click();
+	if (isMobile) await trigger.tap();
+	else await trigger.click();
+	const fsmOption = page
+		.locator('.switcher-popover[role="listbox"]')
+		.getByRole('option', { name: /^Mesin FSM/ });
+	if (isMobile) await fsmOption.tap();
+	else await fsmOption.click();
 	await page.locator('.editor[data-ready]').waitFor();
 
 	// Open "Mesin saya" library dialog
-	const libBtn = page.getByRole('button', { name: /Mesin saya/ });
-	await libBtn.click();
-	const dialog = page.locator('.dialog[role="dialog"]');
-	await expect(dialog).toBeVisible();
+	const libBtn = page.getByRole('button', { name: /^Mesin saya \(\d+\)$/ });
+	if (isMobile) await libBtn.tap();
+	else await libBtn.click();
+	const libDialog = page.getByRole('dialog', { name: 'Mesin saya' });
+	await expect(libDialog).toBeVisible();
 
 	// Every entry in the list is an FSM machine, none is PDA
-	const rows = dialog.locator('.entry');
+	const rows = libDialog.getByRole('listitem');
 	const count = await rows.count();
 	for (let i = 0; i < count; i++) {
 		const text = await rows.nth(i).innerText();
 		expect(text).not.toContain('Otomata Pushdown');
+		expect(text).not.toContain('ndpda');
+		expect(text).not.toContain('dpda');
 	}
 
 	// Close library
-	await dialog.getByRole('button', { name: /Tutup/i }).click();
+	const closeBtn = libDialog.getByRole('button', { name: 'Tutup' });
+	if (isMobile) await closeBtn.tap();
+	else await closeBtn.click();
 
 	// Ensure FSM editor open document is FSM, not PDA
 	const all = await records(page);

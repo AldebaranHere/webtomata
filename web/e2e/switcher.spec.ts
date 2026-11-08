@@ -112,9 +112,7 @@ test.describe('workstation mode switcher - keyboard, mouse, and state', () => {
 		await expect(optFsm).toBeFocused();
 	});
 
-	test('disabled item (TM) is never focused and clicking it does nothing', async ({
-		page
-	}) => {
+	test('disabled item (TM) is never focused and clicking it does nothing', async ({ page }) => {
 		await page.setViewportSize({ width: 1280, height: 800 });
 		const trigger = await openSandbox(page);
 

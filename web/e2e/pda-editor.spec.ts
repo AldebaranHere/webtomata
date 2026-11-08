@@ -50,7 +50,7 @@ test.describe('E1: Mode switcher and URL persistence', () => {
 		const editor = page.locator('.editor[data-ready]');
 		await expect(editor).toBeVisible();
 		await expect(editor.locator('.rail')).toBeVisible();
-		await expect(editor.locator('.hint')).toHaveText('Pilih alat Tambah state atau klik ganda untuk mulai.');
+		await expect(editor.locator('.hint')).toHaveText('Pilih alat Tambah state, lalu klik kanvas.');
 		await expect(page.locator('.first-run')).toHaveCount(0);
 		await expect(page.locator('.tab-strip')).toHaveCount(0);
 
@@ -62,7 +62,9 @@ test.describe('E1: Mode switcher and URL persistence', () => {
 
 		// Return to FSM
 		await trigger.click();
-		const fsmOption = page.locator('.switcher-popover[role="listbox"]').getByRole('option', { name: /^Mesin FSM/ });
+		const fsmOption = page
+			.locator('.switcher-popover[role="listbox"]')
+			.getByRole('option', { name: /^Mesin FSM/ });
 		await fsmOption.click();
 		await expect(page).not.toHaveURL(/mode=pda/);
 		await expect(page.locator('.trigger-current')).toHaveText('Mesin FSM');
@@ -70,11 +72,11 @@ test.describe('E1: Mode switcher and URL persistence', () => {
 });
 
 test.describe('E2: Label form opening mechanisms', () => {
-	test.beforeEach(({ isMobile }) => {
+	test('desktop: Enter on edge, double click label, menu item, and tool creation', async ({
+		page,
+		isMobile
+	}) => {
 		test.skip(isMobile, 'desktop project for 4 opening mechanisms');
-	});
-
-	test('desktop: Enter on edge, double click label, menu item, and tool creation', async ({ page }) => {
 		await openSandbox(page, '?mode=pda');
 
 		// Add state q0 and q1
@@ -85,7 +87,7 @@ test.describe('E2: Label form opening mechanisms', () => {
 		await stage.click({ position: { x: 350, y: 200 } });
 
 		// Connect q0 to q1 with Transisi tool
-		const transBtn = page.getByRole('button', { name: /^Transisi/ });
+		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
 		await transBtn.click();
 		const q0 = page.getByRole('button', { name: /^State q0/ });
 		const q1 = page.getByRole('button', { name: /^State q1/ });
@@ -95,7 +97,9 @@ test.describe('E2: Label form opening mechanisms', () => {
 		// Opening 1: Automatically opens after making transition with Transisi tool
 		const form = page.locator('.pda-label-form[role="dialog"]');
 		await expect(form).toBeVisible();
-		await page.keyboard.press('Escape');
+		// Put ε in read field so edge 0>1 exists in the document
+		await form.getByRole('button', { name: /Ketik ε/i }).click();
+		await form.getByRole('button', { name: /Simpan/i }).click();
 		await expect(form).toHaveCount(0);
 
 		// Switch back to Select tool
@@ -103,22 +107,21 @@ test.describe('E2: Label form opening mechanisms', () => {
 		await selectBtn.click();
 
 		// Opening 2: Enter on selected edge
-		const edge = page.locator('.edge-node[data-edge="0>1"]');
-		await edge.click();
+		const edgeLabel = page.locator('.labels text.label').first();
+		await edgeLabel.click({ force: true });
 		await page.keyboard.press('Enter');
 		await expect(form).toBeVisible();
 		await page.keyboard.press('Escape');
 		await expect(form).toHaveCount(0);
 
 		// Opening 3: Double click on label
-		const labelText = page.locator('.labels text.label').first();
-		await labelText.dblclick();
+		await edgeLabel.dblclick({ force: true });
 		await expect(form).toBeVisible();
 		await page.keyboard.press('Escape');
 		await expect(form).toHaveCount(0);
 
 		// Opening 4: Context menu item "Ubah transisi"
-		await edge.click({ button: 'right' });
+		await edgeLabel.click({ button: 'right', force: true });
 		const menu = page.locator('.menu[role="menu"]');
 		await expect(menu).toBeVisible();
 		const menuItem = menu.getByRole('menuitem', { name: 'Ubah transisi' });
@@ -141,7 +144,7 @@ test.describe('E2: Label form opening mechanisms', () => {
 		await stage.tap({ position: { x: 260, y: 150 } });
 
 		// Transisi tool
-		const transBtn = page.getByRole('button', { name: /^Transisi/ });
+		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
 		await transBtn.tap();
 		const q0 = page.getByRole('button', { name: /^State q0/ });
 		const q1 = page.getByRole('button', { name: /^State q1/ });
@@ -174,7 +177,7 @@ test.describe('E3: Typing and sending transitions', () => {
 		await stage.click({ position: { x: 200, y: 200 } });
 		await stage.click({ position: { x: 380, y: 200 } });
 
-		const transBtn = page.getByRole('button', { name: /^Transisi/ });
+		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
 		await transBtn.click();
 		await page.getByRole('button', { name: /^State q0/ }).click();
 		await page.getByRole('button', { name: /^State q1/ }).click();
@@ -229,8 +232,7 @@ test.describe('E3: Typing and sending transitions', () => {
 
 		// Reopen by Enter and test refusal
 		await page.getByRole('button', { name: /^Pilih/ }).click();
-		const edge = page.locator('.edge-node[data-edge="0>1"]');
-		await edge.click();
+		await page.locator('.labels text.label').first().click({ force: true });
 		await page.keyboard.press('Enter');
 		await expect(form).toBeVisible();
 
@@ -241,7 +243,7 @@ test.describe('E3: Typing and sending transitions', () => {
 
 		// Form stays open with refusal message
 		await expect(form).toBeVisible();
-		const refusalAlert = form.locator('.form-problem[role="alert"]');
+		const refusalAlert = form.locator('.problem');
 		await expect(refusalAlert).toBeVisible();
 		await expect(refusalAlert).toContainText('ab');
 
@@ -253,10 +255,9 @@ test.describe('E3: Typing and sending transitions', () => {
 		await expect(page.locator('.edge-node[data-edge="0>1"]')).toHaveCount(0);
 
 		// Urungkan restores edge
-		const toast = page.locator('.toast');
-		await expect(toast).toBeVisible();
-		await toast.getByRole('button', { name: /Urungkan/i }).click();
-		await expect(page.locator('.edge-node[data-edge="0>1"]')).toBeVisible();
+		const undoBtn = page.getByRole('button', { name: /^Urungkan/ });
+		await undoBtn.click();
+		await expect(page.locator('.labels text.label').first()).toBeVisible();
 	});
 });
 
@@ -274,7 +275,7 @@ test.describe('E4: + n lagi overflow button behavior', () => {
 		const stage = page.locator('.stage svg');
 		await stage.click({ position: { x: 250, y: 250 } });
 
-		const transBtn = page.getByRole('button', { name: /^Transisi/ });
+		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
 		await transBtn.click();
 		const q0 = page.getByRole('button', { name: /^State q0/ });
 		await q0.click();
@@ -351,7 +352,7 @@ test.describe('E5: Building wwᴿ sample automaton', () => {
 		}
 
 		// Connect q0 -> q1 with ε / ε / ε
-		const transBtn = page.getByRole('button', { name: /^Transisi/ });
+		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
 		if (isMobile) await transBtn.tap();
 		else await transBtn.click();
 
@@ -369,6 +370,11 @@ test.describe('E5: Building wwᴿ sample automaton', () => {
 			? page.locator('aside.pda-sheet .pda-label-form')
 			: page.locator('.pda-label-form[role="dialog"]');
 		await expect(form).toBeVisible();
+
+		// Put ε in read field so transition 0 -> 1 is ε / ε / ε
+		const epsBtn = form.getByRole('button', { name: /Ketik ε/i });
+		if (isMobile) await epsBtn.tap();
+		else await epsBtn.click();
 
 		// Save default ε / ε / ε
 		const saveBtn = form.getByRole('button', { name: /Simpan/i });
@@ -412,30 +418,31 @@ test.describe('E5: Building wwᴿ sample automaton', () => {
 		else await saveBtn.click();
 		await expect(form).toHaveCount(0);
 
-		// Set q0 as start state (already default start 0, or right click context menu)
-		// Toggle q1 accepting: select q1 and press 'a'
+		// Set q0 as start state and q1 as accepting state
 		const selectBtn = page.getByRole('button', { name: /^Pilih/ });
 		if (isMobile) await selectBtn.tap();
 		else await selectBtn.click();
+
+		if (isMobile) await q0.tap();
+		else await q0.click();
+		await page.keyboard.press('m'); // set start state
 
 		if (isMobile) await q1.tap();
 		else await q1.click();
 		await page.keyboard.press('a'); // toggle accepting shortcut
 
 		// Undo everything with undo button
-		const undoBtn = page.locator('.rail button').filter({ hasText: /Urungkan/i }).or(page.locator('button.phone-undo'));
-		const undoTarget = undoBtn.first();
-		while (await undoTarget.isEnabled()) {
-			if (isMobile) await undoTarget.tap();
-			else await undoTarget.click();
+		const undoBtn = page.getByRole('button', { name: /^Urungkan/ }).filter({ visible: true });
+		while (await undoBtn.isEnabled()) {
+			if (isMobile) await undoBtn.tap();
+			else await undoBtn.click();
 		}
 
 		// Redo everything
-		const redoBtn = page.locator('.rail button').filter({ hasText: /Ulangi/i }).or(page.locator('button.phone-redo'));
-		const redoTarget = redoBtn.first();
-		while (await redoTarget.isEnabled()) {
-			if (isMobile) await redoTarget.tap();
-			else await redoTarget.click();
+		const redoBtn = page.getByRole('button', { name: /^Ulangi/ }).filter({ visible: true });
+		while (await redoBtn.isEnabled()) {
+			if (isMobile) await redoBtn.tap();
+			else await redoBtn.click();
 		}
 
 		// Wait for save
@@ -478,7 +485,9 @@ test.describe('E6: Flush on mode switch', () => {
 		test.skip(isMobile, 'desktop project');
 	});
 
-	test('edits flush immediately on mode switch and remain when switching back', async ({ page }) => {
+	test('edits flush immediately on mode switch and remain when switching back', async ({
+		page
+	}) => {
 		await openSandbox(page, '?mode=pda');
 
 		// Add state q0
@@ -487,9 +496,13 @@ test.describe('E6: Flush on mode switch', () => {
 		await page.locator('.stage svg').click({ position: { x: 250, y: 250 } });
 
 		// Immediately switch to FSM mode without waiting for autosave delay
-		await switchToPda(page); // switcher opens
-		const fsmOption = page.locator('.switcher-popover[role="listbox"]').getByRole('option', { name: /^Mesin FSM/ });
+		const trigger = page.locator('.switcher-trigger');
+		await trigger.click();
+		const popover = page.locator('.switcher-popover[role="listbox"]');
+		await expect(popover).toBeVisible();
+		const fsmOption = popover.getByRole('option', { name: /^Mesin FSM/ });
 		await fsmOption.click();
+		await expect(page.locator('.editor[data-ready]')).toBeVisible();
 
 		// Immediately switch back to PDA mode
 		await switchToPda(page);
@@ -500,7 +513,10 @@ test.describe('E6: Flush on mode switch', () => {
 });
 
 test.describe('E7: Accessibility via Axe', () => {
-	test('zero axe violations on empty PDA editor, with popover, and context menu', async ({ page, isMobile }) => {
+	test('zero axe violations on empty PDA editor, with popover, and context menu', async ({
+		page,
+		isMobile
+	}) => {
 		await openSandbox(page, '?mode=pda');
 
 		// 1. Empty PDA editor
@@ -526,7 +542,7 @@ test.describe('E7: Accessibility via Axe', () => {
 		}
 
 		// Connect self loop to open form
-		const transBtn = page.getByRole('button', { name: /^Transisi/ });
+		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
 		if (isMobile) {
 			await transBtn.tap();
 			await q0.tap();
@@ -545,7 +561,10 @@ test.describe('E7: Accessibility via Axe', () => {
 });
 
 test.describe('E8: Phone sheet dimensions and labeled edge in view', () => {
-	test('phone sheet styling, bounding box height, and edge visibility', async ({ page, isMobile }) => {
+	test('phone sheet styling, bounding box height, and edge visibility', async ({
+		page,
+		isMobile
+	}) => {
 		test.skip(!isMobile, 'phone project only');
 		await openSandbox(page, '?mode=pda');
 
@@ -556,7 +575,7 @@ test.describe('E8: Phone sheet dimensions and labeled edge in view', () => {
 		await stage.tap({ position: { x: 150, y: 150 } });
 		await stage.tap({ position: { x: 280, y: 150 } });
 
-		const transBtn = page.getByRole('button', { name: /^Transisi/ });
+		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
 		await transBtn.tap();
 		const q0 = page.getByRole('button', { name: /^State q0/ });
 		const q1 = page.getByRole('button', { name: /^State q1/ });
@@ -584,7 +603,7 @@ test.describe('E8: Phone sheet dimensions and labeled edge in view', () => {
 		// Labeled edge is inside visible stage rectangle
 		const stageBox = (await stage.boundingBox())!;
 		const edgeLabel = page.locator('.labels text.label').first();
-		if (await edgeLabel.count() > 0) {
+		if ((await edgeLabel.count()) > 0) {
 			const labelBox = (await edgeLabel.boundingBox())!;
 			expect(labelBox.y).toBeGreaterThanOrEqual(stageBox.y);
 			expect(labelBox.y + labelBox.height).toBeLessThanOrEqual(stageBox.y + stageBox.height);
