@@ -70,13 +70,18 @@ test.describe('workstation mode switcher - keyboard, mouse, and state', () => {
 		await expect(popover).toBeVisible();
 
 		const enabledOptions = popover.locator('button.switcher-item[role="option"]');
-		await expect(enabledOptions).toHaveCount(3);
+		await expect(enabledOptions).toHaveCount(4);
 
 		const optFsm = enabledOptions.nth(0); // Mesin FSM
-		const optLanguage = enabledOptions.nth(1); // Bahasa & Enumerasi
-		const optGrammar = enabledOptions.nth(2); // Tata Bahasa (CFG & CNF)
+		const optPda = enabledOptions.nth(1); // Otomata Pushdown (PDA)
+		const optLanguage = enabledOptions.nth(2); // Bahasa & Enumerasi
+		const optGrammar = enabledOptions.nth(3); // Tata Bahasa (CFG & CNF)
 
 		await expect(optFsm).toBeFocused();
+
+		// ArrowDown moves to PDA
+		await page.keyboard.press('ArrowDown');
+		await expect(optPda).toBeFocused();
 
 		// ArrowDown moves to Language
 		await page.keyboard.press('ArrowDown');
@@ -98,12 +103,16 @@ test.describe('workstation mode switcher - keyboard, mouse, and state', () => {
 		await page.keyboard.press('ArrowUp');
 		await expect(optLanguage).toBeFocused();
 
+		// ArrowUp moves to PDA
+		await page.keyboard.press('ArrowUp');
+		await expect(optPda).toBeFocused();
+
 		// ArrowUp moves to FSM
 		await page.keyboard.press('ArrowUp');
 		await expect(optFsm).toBeFocused();
 	});
 
-	test('disabled items (PDA, TM) are never focused and clicking them does nothing', async ({
+	test('disabled item (TM) is never focused and clicking it does nothing', async ({
 		page
 	}) => {
 		await page.setViewportSize({ width: 1280, height: 800 });
@@ -114,29 +123,23 @@ test.describe('workstation mode switcher - keyboard, mouse, and state', () => {
 		await expect(popover).toBeVisible();
 
 		const disabledItems = popover.locator('.switcher-item.disabled');
-		await expect(disabledItems).toHaveCount(2);
+		await expect(disabledItems).toHaveCount(1);
 
-		// Both disabled items have aria-disabled="true"
+		// Disabled item has aria-disabled="true"
 		await expect(disabledItems.nth(0)).toHaveAttribute('aria-disabled', 'true');
-		await expect(disabledItems.nth(1)).toHaveAttribute('aria-disabled', 'true');
 
-		// ArrowDown moves through enabled items only, skipping disabled items
+		// ArrowDown moves through enabled items only, skipping disabled item
 		const optFsm = popover.locator('button.switcher-item[role="option"]').nth(0);
-		const optLanguage = popover.locator('button.switcher-item[role="option"]').nth(1);
+		const optPda = popover.locator('button.switcher-item[role="option"]').nth(1);
 		await expect(optFsm).toBeFocused();
 		await page.keyboard.press('ArrowDown');
-		await expect(optLanguage).toBeFocused();
+		await expect(optPda).toBeFocused();
 
-		// Neither disabled item should be focused
+		// Disabled item should not be focused
 		await expect(disabledItems.nth(0)).not.toBeFocused();
-		await expect(disabledItems.nth(1)).not.toBeFocused();
 
-		// Clicking disabled items does nothing: popover remains open and mode does not change
+		// Clicking disabled item does nothing: popover remains open and mode does not change
 		await disabledItems.nth(0).click({ force: true });
-		await expect(popover).toBeVisible();
-		await expect(page.locator('.editor[data-ready]')).toBeVisible();
-
-		await disabledItems.nth(1).click({ force: true });
 		await expect(popover).toBeVisible();
 		await expect(page.locator('.editor[data-ready]')).toBeVisible();
 	});
@@ -291,7 +294,7 @@ test.describe('workstation mode switcher - phone targets and responsive layout',
 
 		const allItems = popover.locator('.switcher-item');
 		const itemCount = await allItems.count();
-		expect(itemCount).toBe(5); // 3 enabled + 2 disabled
+		expect(itemCount).toBe(5); // 4 enabled + 1 disabled
 
 		for (let i = 0; i < itemCount; i++) {
 			const itemBox = (await allItems.nth(i).boundingBox())!;

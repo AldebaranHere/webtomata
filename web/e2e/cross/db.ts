@@ -5,6 +5,7 @@ import type { Page } from '@playwright/test';
 export interface Row {
 	id: string;
 	recordVersion: number;
+	type?: string;
 	title: string;
 	kind: string;
 	createdAt: number;
