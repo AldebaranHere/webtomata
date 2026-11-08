@@ -2356,7 +2356,7 @@ Use the quick loop while you work (one file or pattern) and the whole gate once 
 
 ## Task T-057 — PDA editor, part 8 of 10: the editor shell and the mode
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-057-pda-editor-shell`
 
