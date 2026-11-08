@@ -11,27 +11,32 @@ import type { MachineDocument } from './document.ts';
 /** idle: nothing was asked yet. checking: a change is waiting or the engine is working. ready: `items` are for the newest document. failed: the engine did not answer. */
 export type CheckStatus = 'idle' | 'checking' | 'ready' | 'failed';
 
-export interface Checker {
+export interface Checker<D = MachineDocument> {
 	status(): CheckStatus;
 	items(): CheckItem[];
 	/** What to tell the user when the engine failed (with a way to try again). */
 	problem(): EngineProblem | undefined;
 	subscribe(listener: () => void): () => void;
-	schedule(doc: MachineDocument): void;
+	schedule(doc: D): void;
 	/** Asks again for the newest document (the button of the notice). */
 	retry(): void;
 	dispose(): void;
 }
 
-export function createChecker(options: {
-	validate: (doc: MachineDocument) => Promise<EngineResult<Issue[]>>;
+export function createChecker<D = MachineDocument>(options: {
+	validate: (doc: D) => Promise<EngineResult<Issue[]>>;
+	toItems?: (issues: readonly Issue[], doc: D) => CheckItem[];
 	delayMs?: number;
-}): Checker {
-	const { validate, delayMs = 200 } = options;
+}): Checker<D> {
+	const {
+		validate,
+		toItems = checkItems as unknown as (issues: readonly Issue[], doc: D) => CheckItem[],
+		delayMs = 200
+	} = options;
 	let status: CheckStatus = 'idle';
 	let items: CheckItem[] = [];
 	let problem: EngineProblem | undefined;
-	let newest: MachineDocument | null = null;
+	let newest: D | null = null;
 	let sequence = 0;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let disposed = false;
@@ -50,7 +55,7 @@ export function createChecker(options: {
 			// A newer document was asked about meanwhile: this answer is old.
 			if (mine !== sequence || disposed) return;
 			if (answer.ok) {
-				items = checkItems(answer.value, doc);
+				items = toItems(answer.value, doc);
 				problem = undefined;
 				status = 'ready';
 			} else {

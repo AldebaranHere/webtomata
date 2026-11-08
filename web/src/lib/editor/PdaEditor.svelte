@@ -1,20 +1,31 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
+	import type { Component } from 'svelte';
+	import { engine } from '#lib/engine/client.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import type { BaseAutosave } from '#lib/storage/autosave.ts';
 	import { useAutosaveBinding } from './autosave-binding.svelte.ts';
+	import { createChecker } from './checker.ts';
+	import { flagsOf } from './checks.ts';
+	import ChecksList from './ChecksList.svelte';
 	import { pdaDiagram } from './diagram/pda-diagram.ts';
 	import EditorCanvas, { type LabelSlot } from './EditorCanvas.svelte';
 	import EditorFrame from './EditorFrame.svelte';
 	import { createPdaEditor } from './interaction/pda-editor.ts';
-	import type { PdaDocument } from './pda-document.ts';
+	import KindSwitch from './KindSwitch.svelte';
+	import { pdaCheckItems } from './pda-checks.ts';
+	import { toEnginePda } from './pda-document.ts';
+	import type { PdaDocument, PdaKind } from './pda-document.ts';
 	import PdaLabelForm from './PdaLabelForm.svelte';
 	import PdaLabelPopover from './PdaLabelPopover.svelte';
 	import { pdaMenuLabels } from './pda-label.ts';
+	import { readTab, saveTab } from './panel-tab.ts';
+	import type { PanelTab } from './panel-tab.ts';
+	import SidePanel from './SidePanel.svelte';
 
-	// The editor of a pushdown automaton: the tools, the canvas and the title bar.
+	// The editor of a pushdown automaton: the tools, the canvas, the title bar and the side panel.
 	// Starts from `doc`. Changes are debounced-saved to storage with `autosave`.
-	// See docs/agent/PLAN.md (Task T-057) and design/screens/pda-editor.md.
+	// See docs/agent/PLAN.md (Task T-051 and T-057) and design/screens/pda-editor.md.
 	let {
 		doc,
 		autosave,
@@ -30,7 +41,108 @@
 	onMount(() => (ready = true));
 	let snapshot = $state(editor.getState());
 	let canvas: ReturnType<typeof EditorCanvas>;
-	$effect(() => editor.subscribe(() => (snapshot = editor.getState())));
+	let sidePanel = $state<ReturnType<typeof SidePanel>>();
+
+	// Marked rows in the table: row indices with accent bar and aria-current="true".
+	// Cleared when the document changes or when another edge or state is selected.
+	let marked = $state<ReadonlySet<number>>(new Set());
+	let markedEdge: { from: number; to: number } | null = null;
+	let lastDoc = untrack(() => editor.getState().doc);
+
+	$effect(() => {
+		const stop = editor.subscribe(() => {
+			const nextState = editor.getState();
+			snapshot = nextState;
+			if (nextState.doc !== lastDoc) {
+				lastDoc = nextState.doc;
+				marked = new Set();
+				markedEdge = null;
+			} else if (marked.size > 0) {
+				const differentEdge =
+					nextState.edge !== null &&
+					markedEdge !== null &&
+					(nextState.edge.from !== markedEdge.from || nextState.edge.to !== markedEdge.to);
+				if (nextState.selection.length > 0 || differentEdge) {
+					marked = new Set();
+					markedEdge = null;
+				}
+			}
+		});
+		return stop;
+	});
+
+	// The checks: the engine worker validates the PDA a moment after each change, and
+	// the states with checks get flags on the diagram. Requested after the first draw.
+	const checker = createChecker<PdaDocument>({
+		validate: (d) => engine.validatePda(toEnginePda(d)),
+		toItems: pdaCheckItems
+	});
+	let checks = $state.raw({
+		status: checker.status(),
+		items: checker.items(),
+		problem: checker.problem()
+	});
+	$effect(() => {
+		const read = () =>
+			(checks = { status: checker.status(), items: checker.items(), problem: checker.problem() });
+		const stop = checker.subscribe(read);
+		let last = untrack(() => editor.getState().doc);
+		const stopEditor = editor.subscribe(() => {
+			const next = editor.getState().doc;
+			if (next === last) return;
+			last = next;
+			checker.schedule(next);
+		});
+		checker.schedule(last);
+		return () => {
+			stop();
+			stopEditor();
+			checker.dispose();
+		};
+	});
+	const flags = $derived(flagsOf(checks.items));
+
+	// The panel tabs: Tabel then Definisi.
+	const tabs: readonly PanelTab[] = ['table', 'definition'];
+	let tab = $state<PanelTab>(untrack(() => readTab(undefined, tabs)));
+	function chooseTab(next: PanelTab) {
+		tab = next;
+		saveTab(next);
+	}
+
+	// Kind switch options: DPDA or NDPDA.
+	const PDA_KINDS: readonly [PdaKind, PdaKind] = ['dpda', 'ndpda'];
+
+	function chooseKind(kind: PdaKind) {
+		editor.apply(
+			{ type: 'setKind', kind },
+			{ say: { key: 'editor.kind_set', params: { kind: t(`kind.${kind}`) } } }
+		);
+	}
+
+	// Table and Definition views are loaded on demand when their respective tab opens.
+	let Table = $state<Component<{ doc: PdaDocument; marked?: ReadonlySet<number> }> | null>(null);
+	let Definition = $state<Component<{ doc: PdaDocument }> | null>(null);
+	$effect(() => {
+		if (tab === 'table' && !Table) {
+			void import('./PdaTableView.svelte').then((module) => (Table = module.default));
+		}
+		if (tab === 'definition' && !Definition) {
+			void import('./PdaDefinitionView.svelte').then((module) => (Definition = module.default));
+		}
+	});
+
+	function handleMore(from: number, to: number) {
+		editor.selectEdge(from, to);
+		chooseTab('table');
+		sidePanel?.show();
+		const rows: number[] = [];
+		markedEdge = { from, to };
+		editor.getState().doc.transitions.forEach((t, i) => {
+			if (t.from === from && t.to === to) rows.push(i);
+		});
+		marked = new Set(rows);
+	}
 
 	// Shared autosave binding: schedules writes, flushes on visibility/pagehide/unmount,
 	// handles beforeunload warning, and computes saveStatus & problem indications.
@@ -121,6 +233,8 @@
 			state={snapshot}
 			diagram={diagramAdapter}
 			menuLabels={pdaMenuLabels}
+			{flags}
+			onmore={handleMore}
 			revealLabeling={formDisplayMode === 'sheet'}
 		>
 			{#snippet label(slot)}
@@ -146,6 +260,35 @@
 			>
 				<PdaLabelForm {editor} doc={snapshot.doc} labeling={currentLabeling} />
 			</aside>
+		{:else}
+			<SidePanel bind:this={sidePanel} {tab} {tabs} ontab={chooseTab}>
+				{#snippet table()}
+					<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} kinds={PDA_KINDS} />
+					<ChecksList
+						status={checks.status}
+						items={checks.items}
+						problem={checks.problem}
+						onretry={() => checker.retry()}
+						onselect={(id) => editor.focusState(id, { keepSelection: false })}
+					/>
+					{#if Table}
+						<Table doc={snapshot.doc} {marked} />
+					{/if}
+				{/snippet}
+				{#snippet definition()}
+					<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} kinds={PDA_KINDS} />
+					<ChecksList
+						status={checks.status}
+						items={checks.items}
+						problem={checks.problem}
+						onretry={() => checker.retry()}
+						onselect={(id) => editor.focusState(id, { keepSelection: false })}
+					/>
+					{#if Definition}
+						<Definition doc={snapshot.doc} />
+					{/if}
+				{/snippet}
+			</SidePanel>
 		{/if}
 	{/snippet}
 </EditorFrame>

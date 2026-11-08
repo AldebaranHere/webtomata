@@ -42,10 +42,10 @@
 	}: {
 		tab: PanelTab;
 		ontab: (tab: PanelTab) => void;
-		simulation: Snippet;
-		table: Snippet;
-		definition: Snippet;
-		conversion: Snippet;
+		simulation?: Snippet;
+		table?: Snippet;
+		definition?: Snippet;
+		conversion?: Snippet;
 		/** The tab Umpan balik (only on the page of a question). It stays in the page, so that a result is not lost. */
 		feedback?: Snippet;
 		/** The tabs that this panel has, in order. */
@@ -180,6 +180,9 @@
 	function toggle() {
 		setHidden(!hidden);
 	}
+	export function show() {
+		setHidden(false);
+	}
 	function setHidden(value: boolean) {
 		hidden = value;
 		try {
@@ -272,7 +275,7 @@
 				class="pane"
 				hidden={tab !== 'simulation'}
 			>
-				{@render simulation()}
+				{@render simulation?.()}
 			</div>
 			{#if feedback}
 				<div
@@ -287,7 +290,7 @@
 			{/if}
 			{#if tab === 'table'}
 				<div role="tabpanel" id="panel-pane-table" aria-labelledby="panel-tab-table" class="pane">
-					{@render table()}
+					{@render table?.()}
 				</div>
 			{:else if tab === 'definition'}
 				<div
@@ -296,7 +299,7 @@
 					aria-labelledby="panel-tab-definition"
 					class="pane"
 				>
-					{@render definition()}
+					{@render definition?.()}
 				</div>
 			{/if}
 			<!-- Konversi stays in the page once it was opened (like Simulasi): a conversion that is under
@@ -309,7 +312,7 @@
 					class="pane"
 					hidden={tab !== 'conversion'}
 				>
-					{@render conversion()}
+					{@render conversion?.()}
 				</div>
 			{/if}
 		</div>

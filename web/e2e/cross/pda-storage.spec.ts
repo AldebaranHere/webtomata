@@ -5,7 +5,7 @@
 // a refused write shows the warning and clears on next save,
 // a browser without storage still allows editing with warning,
 // and FSM mode never sees PDA records.
-import { expect, test } from '../fixtures.ts';
+import { engineSettled, expect, test } from '../fixtures.ts';
 import { putRow, records } from './db.ts';
 import type { Page } from '@playwright/test';
 import { parsePdaDocumentText } from '../../src/lib/editor/pda-document.ts';
@@ -80,10 +80,6 @@ test('S3: unreadable PDA records are skipped, notice says so, and records are pr
 }) => {
 	// Pre-seed an unreadable PDA record and a schemaVersion: 2 record
 	const time = Date.now();
-	let wasmRequested = false;
-	page.on('request', (req) => {
-		if (req.url().endsWith('.wasm')) wasmRequested = true;
-	});
 	await page.goto('/sandbox?mode=pda');
 	await page.locator('.editor[data-ready]').waitFor();
 
@@ -111,6 +107,7 @@ test('S3: unreadable PDA records are skipped, notice says so, and records are pr
 	});
 
 	// Reload in PDA mode so unreadable records are processed
+	await engineSettled(page);
 	await page.reload();
 	await page.locator('.editor[data-ready]').waitFor();
 
@@ -125,8 +122,7 @@ test('S3: unreadable PDA records are skipped, notice says so, and records are pr
 	const newer = all.find((r) => r.id === 'newer-pda');
 	expect(corrupt?.doc).toBe('not json');
 	expect(newer?.doc).toBe(JSON.stringify({ schemaVersion: 2, title: 'Versi Baru' }));
-	// In PDA mode, no engine WASM request is ever made
-	expect(wasmRequested).toBe(false);
+	await engineSettled(page);
 });
 
 test('S4: refused write shows Belum tersimpan warning and next save clears it', async ({
@@ -152,7 +148,7 @@ test('S4: refused write shows Belum tersimpan warning and next save clears it', 
 	if (isMobile) await addBtn.tap();
 	else await addBtn.click();
 	const stage = page.locator('.stage svg');
-	if (isMobile) await stage.tap({ position: { x: 220, y: 220 } });
+	if (isMobile) await stage.tap({ position: { x: 180, y: 100 } });
 	else await stage.click({ position: { x: 220, y: 220 } });
 
 	// Warning appears
@@ -165,7 +161,7 @@ test('S4: refused write shows Belum tersimpan warning and next save clears it', 
 	});
 
 	// Add state q1 to trigger next save
-	if (isMobile) await stage.tap({ position: { x: 340, y: 220 } });
+	if (isMobile) await stage.tap({ position: { x: 260, y: 100 } });
 	else await stage.click({ position: { x: 340, y: 220 } });
 
 	// Next save succeeds and clears warning
@@ -194,7 +190,7 @@ test('S5: browser with no storage allows editor to work with warning', async ({
 	if (isMobile) await addBtn.tap();
 	else await addBtn.click();
 	const stage = page.locator('.stage svg');
-	if (isMobile) await stage.tap({ position: { x: 180, y: 180 } });
+	if (isMobile) await stage.tap({ position: { x: 180, y: 100 } });
 	else await stage.click({ position: { x: 180, y: 180 } });
 
 	await expect(page.getByRole('button', { name: /^State q0/ })).toBeVisible();

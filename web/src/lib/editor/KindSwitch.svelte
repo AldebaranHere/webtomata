@@ -1,18 +1,26 @@
-<script lang="ts">
+<script lang="ts" generics="K extends string = Kind">
 	import { t } from '#lib/i18n/index.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/id.ts';
 	import type { Kind } from './document.ts';
 
-	// "Jenis mesin": DFSM or NDFSM. It is a choice, not a lock: a wrong choice only gives calm
-	// remarks in the checks, and it never blocks editing (docs/ux/wireframes.md, decision 4). It is
-	// a radio group, so the arrow keys move the choice, and an undo brings the old one back.
-	let { kind, onchange }: { kind: Kind; onchange: (kind: Kind) => void } = $props();
+	// "Jenis mesin": DFSM or NDFSM for an FSM, DPDA or NDPDA for a PDA. It is a choice, not a lock:
+	// a wrong choice only gives calm remarks in the checks, and it never blocks editing (docs/ux/wireframes.md,
+	// decision 4). It is a radio group, so the arrow keys move the choice, and an undo brings the old one back.
+	let {
+		kind,
+		onchange,
+		kinds = ['dfsm', 'ndfsm'] as const as unknown as readonly [K, K]
+	}: {
+		kind: K;
+		onchange: (kind: K) => void;
+		kinds?: readonly [K, K];
+	} = $props();
 
-	const kinds = ['dfsm', 'ndfsm'] as const;
 	const id = $props.id();
 
 	function onkeydown(event: KeyboardEvent) {
 		const at = kinds.indexOf(kind);
-		let next: Kind | undefined;
+		let next: K | undefined;
 		if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = kinds[(at + 1) % 2];
 		if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = kinds[(at + 1) % 2];
 		if (!next) return;
@@ -34,7 +42,7 @@
 				tabindex={kind === option ? 0 : -1}
 				onclick={() => kind !== option && onchange(option)}
 			>
-				{t(`kind.${option}`)}
+				{t(`kind.${option}` as MessageKey)}
 			</button>
 		{/each}
 	</div>
