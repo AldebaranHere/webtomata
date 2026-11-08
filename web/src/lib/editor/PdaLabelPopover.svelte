@@ -59,7 +59,7 @@
 	});
 </script>
 
-<div class="popover" bind:this={box} style:left="{posX}px" style:top="{posY}px">
+<div class="popover pda-label-popover" bind:this={box} style:left="{posX}px" style:top="{posY}px">
 	<PdaLabelForm {editor} {doc} {labeling} />
 </div>
 
