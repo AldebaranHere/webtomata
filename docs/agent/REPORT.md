@@ -1,120 +1,136 @@
-# Task T-056 Report — PDA editor, part 7 of 10: saving a PDA on the device
+# Task T-057 Report — PDA editor, part 8 of 10: the editor shell and the mode
 
-- **Task:** T-056
-- **Branch:** `task/T-056-pda-storage`
+- **Task:** T-057
+- **Branch:** `task/T-057-pda-editor-shell`
 - **Status:** done
 - **Implementation Commits:**
-  - Status start: `bbf1ca9` (`docs(agent): set T-056 status to in-progress`)
-  - Implementation & Tests: `b3aa15c` (`feat(storage): save pushdown automata on device in shared store`)
-- **PR:** #180 (to `staging`)
+  - Status start: `36cadf4` (`chore(plan): start task T-057 (PDA editor shell and mode)`)
+  - Mode reader: `cad7134` (`feat(editor): add workstation-mode reader and types`)
+  - Shared autosave: `8f5e648` (`refactor(editor): extract shared autosave binding`)
+  - Canvas reveal: `ded8ea6` (`feat(editor): add opt-in revealLabeling prop to EditorCanvas`)
+  - Workstation & Shell: `4bd8e67` (`feat(editor): add PDA workstation, editor shell, and mode switcher item`)
+  - E2E specs: `1962724` (`test(pda): add e2e specs for PDA editor shell and storage`)
+  - Formatting: `501d960` (`style(editor): format autosave binding and mode tests`)
+  - Dismissal guard: `689eba1` (`fix(editor): guard label form against null labeling during dismissal`)
+  - Storage spec updates: `2b24328` (`test(pda): update e2e specs for label form interactions and no-wasm storage`)
+  - ADR 0048: `3bce2d9` (`docs(decisions): record ADR 0048 for PDA editor shell and mode`)
+  - SlotData guard: `9e56718` (`fix(editor): guard popover slotData during edge removal`)
+- **PR:** To `staging`
 
 ---
 
 ## 1. Hand-Derived Fixtures & Expected Values (Derived Prior to Coding)
 
-### Fixture F1: PDA Record Creation & Autosave
-- **Sample:** `wwrSample()` (kind: `'ndpda'`).
-- **Initial Save at `now = 1000`:**
-  - `id`: valid UUID v4 (36 chars)
-  - `recordVersion`: `1`
-  - `type`: `'pda'`
-  - `title`: `'wwᴿ (palindrom panjang genap)'`
-  - `kind`: `'ndpda'`
-  - `createdAt`: `1000`
-  - `updatedAt`: `1000`
-  - `openedAt`: `1000`
-  - `doc`: `serializePdaDocument(wwrSample())`
-  - `titles`: `undefined`
-  - `tests`: `undefined`
-  - `progress`: `undefined`
-- **Autosave at `now = 2000` on modified `doc2` (title: `'wwr (mod)'`, kind: `'dpda'`):**
-  - `record.title`: `'wwr (mod)'`
-  - `record.kind`: `'dpda'`
-  - `record.updatedAt`: `2000`
-  - `record.createdAt`: `1000` (unchanged)
-  - `record.openedAt`: `1000` (unchanged)
-  - `record.doc`: `serializePdaDocument(doc2)`
+### Fixture F1: `readMode(search, saved)`
+- Pure function `readMode(search: string, saved: string | null): WorkstationMode`
+- `('?mode=pda', null)` → `'pda'`
+- `('?mode=pda', 'grammar')` → `'pda'` (the query parameter wins over localStorage)
+- `('', 'pda')` → `'pda'` (saved value used when query absent)
+- `('?mode=xyz', 'pda')` → `'pda'` (invalid query falls back to saved value)
+- `('?mode=', 'language')` → `'language'` (empty query value falls back to saved value)
+- `('', 'tm')` → `'fsm'` (`'tm'` is not yet an enabled/valid workstation mode, falls back to default)
+- `('', null)` → `'fsm'` (default mode when query and saved are empty)
+- `('?mode=PDA', null)` → `'fsm'` (case sensitive: `'PDA'` is invalid query, falls back to default)
+- `('?mode=pda&mode=fsm', null)` → `'pda'` (first query parameter wins)
+- `('?mode=fsm', 'pda')` → `'fsm'` (valid query wins over saved value)
+- Identity checks: each of `fsm`, `language`, `grammar`, `pda` alone with empty saved returns itself.
+- Adversarial fuzzing: 1,000 random strings with special characters, symbols, lone surrogates, and 1 MB strings always evaluate to one of `('fsm' | 'pda' | 'language' | 'grammar')` without throwing.
 
-### Fixture F2: Kind Isolation
-- **Initial store records:**
-  - FSM `A` at `5000` (created `1000`, updated `5000`, opened `5000`)
-  - Question `soal:x` at `6000` (created `1000`, updated `6000`, opened `6000`)
-  - PDA `P1` at `2000` (created `4000`, updated `2000`, opened `2000`)
-  - PDA `P2` at `3000` (created `1000`, updated `3000`, opened `3000`)
-- **Execution:**
-  - `openLatestPda(store, () => 9000)`:
-    - Returns `record.id = 'P2'`, `doc.title = 'PDA 2'`, `skipped = []`
-    - Rewrites `P2.openedAt` to `9000`, leaves `P2.createdAt`, `P2.updatedAt`, `P2.doc` unchanged
-    - Store records `P1`, `A`, and `soal:x` remain byte-identical
-  - On the same store:
-    - `openLatest(store, ...)` returns `A`
-    - `listEntries(store)` returns exactly `['A']` (ignoring `soal:x`, `P1`, `P2`)
-
-### Fixture F3: Unreadable Records
-- **Case (i):**
-  - Store has `P1` (`openedAt = 9000`, corrupt JSON `{"broken`), `P2` (`openedAt = 8000`, good), `P3` (`openedAt = 7000`, version 2).
-  - `openLatestPda` returns `P2`.
-  - `skipped` is exactly `[{ id: 'P1', title: 'P1 Corrupt', reason: 'corrupt' }]`.
-  - `P3` is never read (`p3ReadTimes === initialReads`).
-- **Case (ii):**
-  - Store has only `P1` (`9000`, corrupt), `P3` (`7000`, version 2 newer), `P4` (`6000`, version 0 unsupported).
-  - Fallback empty NDPDA is saved via `createPdaDocument()`.
-  - `skipped` lists `P1` (corrupt), `P3` (newer), `P4` (unsupported) in exact order.
-  - Store has 4 total records; `P1`, `P3`, `P4` are byte-identical.
-- **`readStoredPda` text cases:**
-  - `""`, `"null"`, `"[]"`, `"{}"`, `{"schemaVersion": 1.5}`, transition naming missing state $\to$ each returns `{ ok: false, reason: 'corrupt' }`.
-
-### Fixture F4: Failure Injection
-- **(a)** Store with refusing `put`: autosave sets status to `'failed'`.
-  - Flushing retries `docA` $\to$ status `'saved'`, store has `docA`.
-  - Following with `schedule(docB)` writes `docB`, never `docA`.
-- **(b)** Store with throwing `put`: `openLatestPda` still returns `{ record, doc, skipped }`. Subsequent `schedule` + `flush` reports status `'failed'`.
-- **(c)** Store whose `list()` throws: `openLatestPda` propagates the rejection.
-
-### Fixture F5: Burst & Write Serialization
-- Burst of 50 `schedule` calls with 10 ms delay: exactly 2 writes occur, store ends up with 50th document.
-- Slow first `put` (15 ms) followed by immediate second `put`: operations execute strictly sequentially (`start-slow`, `end-slow`, `put-Fast`).
-
-### Fixture F6: Size & Boundary Triples
-- `LIMITS.documentBytes` (262,144 chars):
-  - `262,143`: ok
-  - `262,144`: ok
-  - `262,145`: corrupt
-- `LIMITS.nameChars` (32 chars): 31 (ok), 32 (ok), 33 (corrupt)
-- `LIMITS.titleChars` (100 chars): 99 (ok), 100 (ok), 101 (corrupt)
-- `MAX_PDA_STRING` (64 chars): 63 (ok), 64 (ok), 65 (corrupt)
+### Fixture E5: Hand Derivation of `wwrSample()` Construction
+- Sample: `wwrSample()` in `pda-samples.ts`
+- States:
+  - `q0` (id 0, name 'q0', x: 180, y: 200, start: true, accepting: false)
+  - `q1` (id 1, name 'q1', x: 440, y: 200, start: false, accepting: true)
+- Transitions:
+  - 1: `q0 -> q0, read: "a", pop: "ε", push: "A"`
+  - 2: `q0 -> q0, read: "b", pop: "ε", push: "B"`
+  - 3: `q0 -> q1, read: "ε", pop: "ε", push: "ε"`
+  - 4: `q1 -> q1, read: "a", pop: "A", push: "ε"`
+  - 5: `q1 -> q1, read: "b", pop: "B", push: "ε"`
+- Verification: The saved document in IndexedDB parses to transitions matching the sample's transitions grouped by source and target state names.
 
 ---
 
-## 2. Real Verification Commands & Unsummarized Outputs
+## 2. Decision on E4 (`+ n lagi` Overflow Button Behavior)
 
-### A. Size Check (Before & After)
-`pnpm build && pnpm size`
-```
-$ node tools/check-size.mjs
-ok   initial JS index.html: 81.9 KB gzip (limit 170 KB)
-ok   initial JS panduan/berakhiran-x.html: 87.2 KB gzip (limit 170 KB)
-ok   initial JS panduan.html: 81.0 KB gzip (limit 170 KB)
-ok   initial JS sandbox.html: 121.4 KB gzip (limit 170 KB)
-ok   initial JS soal/berakhiran-10.html: 121.0 KB gzip (limit 170 KB)
-ok   initial JS soal/jumlah-a-genap.html: 121.0 KB gzip (limit 170 KB)
-ok   initial JS soal/mengandung-101.html: 121.0 KB gzip (limit 170 KB)
-ok   initial JS soal.html: 82.4 KB gzip (limit 170 KB)
-ok   initial JS tentang.html: 80.3 KB gzip (limit 170 KB)
-ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
-ok   wasm _app/immutable/workers/assets/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB gzip (limit 250 KB)
-```
-Gzip size remained identical across all entrypoints and bundles.
+During implementation of E4, the behavior of clicking the overflow label (`+ n lagi`) was evaluated across tools:
+- In the **Pilih** (`select`) tool: clicking `+ n lagi` selects the edge and announces its selection (`editor.edge_selected`).
+- In the **Hapus** (`delete`) tool: clicking anywhere on the edge or its label (including `+ n lagi`) deletes the whole edge (all 4 transitions), announces edge removal, and shows the Urungkan toast. Clicking Urungkan immediately restores the edge and all 4 transitions as a single undo step.
+- Per planner confirmation, this replaces the older "does not delete" phrasing and aligns with the deletion safety model of the canvas.
 
-### B. Lint, Types & Checks
-`pnpm lint`:
-```
-$ pnpm --filter web lint
-$ eslint .
-```
-(Clean exit code 0, 0 warnings, 0 errors)
+---
 
-`pnpm check`:
+## 3. Deliberate Breaks (AC5)
+
+| # | Break Description | Intended Test Failure | Observed Result / Command Output |
+|---|-------------------|----------------------|-----------------------------------|
+| 1 | In `readMode`, ignore saved value (return `'fsm'` on null query). | F1 (`('', 'pda') -> 'pda'`) fails. | Fails: expected `'pda'`, received `'fsm'`. Restored. |
+| 2 | In `WorkstationSwitcher.svelte`, leave `pda` item disabled (`disabled: true`). | E1 (`switcher.spec.ts` & `pda-editor.spec.ts`) fails. | Fails: button has `aria-disabled="true"`, not interactable. Restored. |
+| 3 | In `PdaEditor.svelte`, drop `menuLabels={pdaMenuLabels}`. | E2 (context menu item text check) fails. | Fails: menu shows default FSM text "Ubah label" instead of "Ubah transisi". Restored. |
+| 4 | In `PdaEditor.svelte`, force `formDisplayMode = 'popover'` on phone. | E8 (phone sheet test) fails. | Fails: `expect(sheet).toBeVisible()` times out (popover rendered instead). Restored. |
+| 5 | In `autosave-binding.svelte.ts`, drop cleanup flush (`autosave()?.flush()`). | E6 (flush on mode switch) fails. | Fails: edits made within debounce window are lost upon rapid switch. Restored. |
+| 6 | In `PdaEditor.svelte`, hardcode `persistent={true}` to `EditorFrame`. | S5 (ephemeral storage warning) fails. | Fails: "Tidak tersimpan" warning is missing when storage is unavailable. Restored. |
+| 7 | In `+page.svelte`, suppress skipped notice for PDA mode. | S3 (unreadable PDA notice) fails. | Fails: skipped notice container is not rendered. Restored. |
+| 8 | In `PdaEditor.svelte`, remove `max-height: 60%` from `.pda-sheet`. | E8 (sheet height limit assertion) fails. | Fails: sheet height exceeds 60% viewport height. Restored. |
+| 9 | In `PdaWorkstation.svelte`, call `openLatest` instead of `openLatestPda`. | S1 / S6 (kind isolation test) fails. | Fails: FSM record opened instead of PDA record. Restored. |
+
+---
+
+## 4. Deepening Pass
+
+1. **New Public Exports & Public Interface Additions**:
+   - `web/src/lib/workstation-mode.ts`:
+     - `type WorkstationMode = 'fsm' | 'pda' | 'language' | 'grammar'`
+     - `function readMode(search: string, saved: string | null): WorkstationMode`
+     - Evaluated: public and consumed by `+page.svelte` and `WorkstationSwitcher.svelte`.
+   - `web/src/lib/editor/autosave-binding.svelte.ts`:
+     - `function useAutosaveBinding<D, C>(options: AutosaveBindingOptions<D, C>)`
+     - Evaluated: shared rune hook consumed by `Editor.svelte` (FSM) and `PdaEditor.svelte` (PDA).
+   - `web/src/lib/editor/EditorCanvas.svelte`:
+     - Added optional prop `revealLabeling?: boolean` (defaults to `false`).
+     - Evaluated: opt-in canvas prop used only by `PdaEditor` when the phone bottom sheet is active, preserving FSM canvas behavior completely unchanged.
+   - `web/src/lib/storage/index.ts`:
+     - Exported `pdaDocumentCodec` from `pda-work.ts`.
+
+2. **Interface Surface & Duplication Review**:
+   - `Editor.svelte` and `PdaEditor.svelte`:
+     - The debounced autosave scheduling, flush on pagehide/visibilitychange/unmount, `beforeunload` warning, and computed `saveStatus`/`problem` indicators are unified in `useAutosaveBinding`.
+     - `Editor.svelte` retains FSM-specific test/progress autosave calls.
+     - `PdaEditor.svelte` renders `EditorFrame` and `EditorCanvas` with PDA-specific diagram adapter (`pdaDiagram`), context menu labels (`pdaMenuLabels`), and phone sheet layout (`aside.pda-sheet`).
+   - Zero duplicated autosave or history logic.
+
+3. **Casts & Type Safety**:
+   - Zero `any`.
+   - Zero `@ts-ignore`.
+   - Zero `as unknown as`.
+
+4. **Architectural Isolation Check**:
+   - `PdaEditor.svelte` does NOT import the engine client or `MachineDocument`.
+   - `PdaWorkstation.svelte` does NOT import `library.svelte.ts`.
+   - Engine WASM is NOT loaded when running or storing in PDA mode (`wasmRequested === false`).
+
+---
+
+## 5. Modified Existing Spec Lines
+
+Only `web/e2e/switcher.spec.ts` was modified, in accordance with the spec:
+- Lines 73, 106, 117, 120-121, 139-142: Updated navigation and arrow wrapping to account for 4 enabled workstation items (`fsm`, `pda`, `language`, `grammar`) and 1 disabled item (`tm`).
+- Line 294: Updated item count assertion from 5 items (3 enabled + 2 disabled) to 5 items (4 enabled + 1 disabled).
+- `web/e2e/cross/db.ts`: Added optional `type?: 'fsm' | 'pda'` filter parameter to `countStoredMachines` and `readStoredRecord` (defaults to `'fsm'`, completely backwards compatible).
+
+---
+
+## 6. Verification Gate Outputs (Pasted)
+
+### 1. Format Check (`pnpm format:check`)
+```
+$ pnpm --filter web format:check && cargo fmt --check
+$ prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+```
+
+### 2. Svelte Check (`pnpm check`)
 ```
 $ pnpm --filter web check
 $ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
@@ -124,145 +140,157 @@ Getting Svelte diagnostics...
 svelte-check found 0 errors and 0 warnings
 ```
 
-`pnpm format:check`:
+### 3. Lint (`pnpm lint`)
 ```
-$ pnpm --filter web format:check && cargo fmt --check
-$ prettier --check .
-Checking formatting...
-All matched files use Prettier code style!
+$ pnpm --filter web lint
+$ eslint .
 ```
 
-`pnpm check:strings`:
+### 4. String & Token Checks (`pnpm check:strings`, `pnpm check:tokens`)
 ```
 $ node tools/check-strings.mjs
-ok   67 components have no hard-coded text
-```
+ok   69 components have no hard-coded text
 
-`pnpm check:tokens`:
-```
 $ node tools/check-tokens-usage.mjs
-ok   69 files use no raw colors
+ok   71 files use no raw colors
 ```
 
-### C. Playwright Storage Cross-Browser Tests
-Executed locally on `desktop` and `webkit-phone` (Firefox is CI only per Rule 8):
-
-`pnpm --filter web exec playwright test e2e/cross/storage.spec.ts --project=desktop`:
+### 5. Unit Tests (`pnpm test:web`)
 ```
-Running 9 tests using 6 workers
-
-  ✓  6 [desktop] › e2e/cross/storage.spec.ts:44:1 › a change that waits for its delay is saved at once when the page is hidden or closed (5.1s)
-  ✓  5 [desktop] › e2e/cross/storage.spec.ts:22:1 › the first visit saves the sample as the first machine (5.8s)
-  ✓  1 [desktop] › e2e/cross/storage.spec.ts:99:1 › a machine of a newer version is skipped and kept, never overwritten (5.9s)
-  ✓  3 [desktop] › e2e/cross/storage.spec.ts:77:1 › a machine that cannot be read is skipped and kept, with a message (6.6s)
-  ✓  2 [desktop] › e2e/cross/storage.spec.ts:57:1 › leaving the page asks first while a change is not saved, and not after (7.9s)
-  ✓  4 [desktop] › e2e/cross/storage.spec.ts:31:1 › a change is saved on the device, and is there after a reload (8.9s)
-  ✓  7 [desktop] › e2e/cross/storage.spec.ts:122:1 › when every machine is unreadable a new one is made, and none is deleted (4.0s)
-  ✓  9 [desktop] › e2e/cross/storage.spec.ts:145:1 › a browser that refuses storage: the editor works, with a warning that nothing is saved (3.8s)
-  ✓  8 [desktop] › e2e/cross/storage.spec.ts:163:1 › a write that is refused: the warning shows, the work stays, and the next save clears it (6.5s)
-
-  9 passed (15.0s)
-```
-
-`pnpm --filter web exec playwright test e2e/cross/storage.spec.ts --project=webkit-phone`:
-```
-Running 9 tests using 6 workers
-
-  ✓  1 [webkit-phone] › e2e/cross/storage.spec.ts:22:1 › the first visit saves the sample as the first machine (7.9s)
-  ✓  3 [webkit-phone] › e2e/cross/storage.spec.ts:44:1 › a change that waits for its delay is saved at once when the page is hidden or closed (8.2s)
-  ✓  2 [webkit-phone] › e2e/cross/storage.spec.ts:77:1 › a machine that cannot be read is skipped and kept, with a message (8.5s)
-  ✓  4 [webkit-phone] › e2e/cross/storage.spec.ts:99:1 › a machine of a newer version is skipped and kept, never overwritten (8.7s)
-  ✓  5 [webkit-phone] › e2e/cross/storage.spec.ts:31:1 › a change is saved on the device, and is there after a reload (9.5s)
-  ✓  6 [webkit-phone] › e2e/cross/storage.spec.ts:57:1 › leaving the page asks first while a change is not saved, and not after (9.7s)
-  ✓  7 [webkit-phone] › e2e/cross/storage.spec.ts:122:1 › when every machine is unreadable a new one is made, and none is deleted (3.4s)
-  ✓  8 [webkit-phone] › e2e/cross/storage.spec.ts:145:1 › a browser that refuses storage: the editor works, with a warning that nothing is saved (4.3s)
-  ✓  9 [webkit-phone] › e2e/cross/storage.spec.ts:163:1 › a write that is refused: the warning shows, the work stays, and the next save clears it (6.8s)
-
-  9 passed (17.3s)
-```
-
-### D. Full Web Unit Test Suite
-`pnpm --filter web test`:
-```
- Test Files  107 passed (107)
-      Tests  1298 passed | 2 skipped (1300)
-   Start at  02:45:49
-   Duration  8.73s (tests 74%, transform 19%, import 7%)
-```
-
----
-
-## 3. F7 Property Tests & 10,000-Case Run Output
-
-Executed `TEST_CASES=10000 pnpm --filter web test src/lib/storage/pda-work.property.test.ts`:
-```
-$ TEST_CASES=10000 vitest run src/lib/storage/pda-work.property.test.ts
+$ vitest run
 
  RUN  v5.0.3 /home/Aldebaran64/webtomata/web
 
- ✓ src/lib/storage/pda-work.property.test.ts (3 tests) 3144ms
-   ✓ F7 — Property tests (round-trip, store integration, never throws) (3)
-     ✓ (a) 10000 random valid PdaDocuments round-trip through readStoredPda 1512ms
-     ✓ (b) 10000 random valid PdaDocuments through memory store + autosave + openLatestPda 1354ms
-     ✓ (c) readStoredPda never throws on 10000 random strings, lone surrogates, and control chars 276ms
-
- Test Files  1 passed (1)
-      Tests  3 passed (3)
-   Start at  02:22:47
-   Duration  3.57s (transform 8%, tests 88%, import 2%, worker 1%)
+ ✓ src/lib/editor/pda-document.wasm.test.ts (5 tests) 1458ms
+ ✓ src/lib/editor/history.property.test.ts (7 tests) 1530ms
+ ✓ src/lib/editor/diagram/geometry.test.ts (44 tests) 1537ms
+ ✓ src/lib/storage/pda-work.property.test.ts (3 tests) 1640ms
+ ✓ src/lib/editor/pda-history.property.test.ts (5 tests) 1967ms
+ ✓ src/lib/editor/pda-document.test.ts (15 tests) 378ms
+ ✓ src/lib/questions/check.wasm.test.ts (27 tests) 449ms
+ ✓ src/lib/editor/pda-label.property.test.ts (3 tests) 1212ms
+ ✓ src/lib/editor/interaction/editor.test.ts (41 tests) 776ms
+ ✓ src/lib/share/link.test.ts (15 tests) 1368ms
+ ✓ src/lib/editor/document.wasm.test.ts (10 tests) 3061ms
+ ✓ src/lib/editor/diagram/pda-diagram.test.ts (5 tests) 2904ms
+ ✓ src/lib/editor/compare.wasm.test.ts (6 tests) 472ms
+ ✓ src/lib/questions/load.test.ts (32 tests) 509ms
+ ✓ src/lib/editor/document.test.ts (32 tests) 153ms
+ ✓ src/lib/questions/grade.wasm.test.ts (13 tests) 559ms
+ ✓ src/lib/grammar/grammar-text.wasm.test.ts (31 tests) 203ms
+ ✓ src/lib/editor/regex-simplify.wasm.test.ts (6 tests) 378ms
+ ✓ src/lib/editor/pda-commands.test.ts (12 tests) 330ms
+ ✓ src/lib/editor/regex-compile.wasm.test.ts (5 tests) 149ms
+ ✓ src/lib/editor/conversion.wasm.test.ts (49 tests) 437ms
+ ✓ src/lib/workstation-mode.test.ts (2 tests) 83ms
+ ✓ src/lib/lint.test.ts (2 tests) 3108ms
+ ✓ src/lib/editor/regex-conversion.wasm.test.ts (4 tests) 178ms
+ ✓ src/lib/share/files.wasm.test.ts (6 tests | 1 skipped) 119ms
+ ✓ src/lib/storage/autosave.tests-field.test.ts (9 tests) 94ms
+ ✓ src/lib/editor/commands.test.ts (26 tests) 273ms
+ ✓ src/lib/engine/handlers.test.ts (20 tests) 94ms
+ ✓ src/lib/editor/run.wasm.test.ts (29 tests) 137ms
+ ✓ src/lib/questions/summaries.test.ts (10 tests) 99ms
+ ✓ src/lib/storage/autosave.pda.test.ts (6 tests) 103ms
+ ✓ src/lib/storage/pda-work.test.ts (11 tests) 124ms
+ ✓ src/lib/storage/storage.wasm.test.ts (15 tests) 154ms
+ ✓ src/lib/i18n/i18n.test.ts (14 tests) 66ms
+ ...
+ Test Files  108 passed (108)
+      Tests  1301 passed | 2 skipped (1303)
+   Start at  14:13:17
+   Duration  9.36s
 ```
 
----
+### 6. Build (`pnpm --filter web build`)
+```
+$ vite build
+vite v7.3.1 building for production...
+✓ 125 modules transformed.
+vite v7.3.1 building SSR bundle for production...
+✓ 95 modules transformed.
+.svelte-kit/output/client/_app/version.json
+...
+✓ built in 5.61s
+```
 
-## 4. The Nine Deliberate Breaks (AC5)
+### 7. Size Check (`pnpm size`)
+```
+$ node tools/check-size.mjs
+ok   initial JS index.html: 81.9 KB gzip (limit 170 KB)
+ok   initial JS panduan/berakhiran-x.html: 88.9 KB gzip (limit 170 KB)
+ok   initial JS panduan.html: 82.7 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 124.8 KB gzip (limit 170 KB)
+ok   initial JS soal/berakhiran-10.html: 124.3 KB gzip (limit 170 KB)
+ok   initial JS soal/jumlah-a-genap.html: 124.3 KB gzip (limit 170 KB)
+ok   initial JS soal/mengandung-101.html: 124.3 KB gzip (limit 170 KB)
+ok   initial JS soal.html: 84.1 KB gzip (limit 170 KB)
+ok   initial JS tentang.html: 82.0 KB gzip (limit 170 KB)
+ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
+ok   wasm _app/immutable/workers/assets/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB gzip (limit 250 KB)
+```
 
-Every required break was deliberately tested and observed failing:
+### 8. Area E2E Tests (`pda-editor.spec.ts`, `switcher.spec.ts`, `cross/pda-storage.spec.ts`)
+```
+Running 56 tests using 2 workers
 
-| # | Break Description | Targeted Code | Caught by Fixture | Observed Failure / Error |
-|---|---|---|---|---|
-| 1 | `openLatestPda` takes FSM records | Omit `.filter(isPdaRecord)` in `openLatestPda` | F2 | `AssertionError: expected [ { id: 'soal:x', ... } ] to deeply equal []` |
-| 2a | `openLatest` takes PDA records | Omit `isFsmRecord` filter in `openLatest` | F2 | `AssertionError: expected [ { id: 'P2', title: 'PDA 2', reason: 'corrupt' } ] to deeply equal []` |
-| 2b | `listEntries` takes PDA records | Omit `isFsmRecord` filter in `listEntries` | F2 | `AssertionError: expected [ 'A', 'P2', 'P1', ... ] to deeply equal [ 'A' ]` |
-| 3 | Sort by `createdAt` instead of `openedAt` | Change `.sort((a,b) => b.openedAt - a.openedAt)` to `b.createdAt - a.createdAt` | F2 | `AssertionError: expected 'P1' to be 'P2'` |
-| 4 | Empty fallback PDA overwrites unreadable record id | Set `id: records[0].id` instead of `newId()` | F3(ii) | `AssertionError: expected 'P1' not to be 'P1'` |
-| 5 | Drop retry after failure in autosave | Reset `latest = null` in catch block | F4(a) | `AssertionError: expected 'Initial' to be 'Doc A'` |
-| 6 | Two writes at once in autosave | Remove `if (!running) running = loop()` lock | F5 | `AssertionError: expected [ 'start-slow', 'end-slow', 'put-Fast' ] to deeply equal [ 'start-slow', 'put-Fast', 'end-slow' ]` |
-| 7 | `documentBytes` check changed to `>=` | `text.length >= LIMITS.documentBytes` | F6 | `AssertionError: expected { ok: false, reason: 'corrupt' } to deeply equal { ok: true, doc: ... }` |
-| 8 | Drop `type: 'pda'` from new record | Omit `type: 'pda'` in `createPdaMachine` | F1 / F2 | `AssertionError: expected undefined to be 'pda'` |
-| 9 | Do not copy `kind` on document change | Comment out `record.kind = doc.kind` in `pdaDocumentCodec.apply` | F1 | `AssertionError: expected 'ndpda' to be 'dpda'` |
-| 10 | Return core directly for PDA autosave (leaks FSM methods) | Return `createAutosaveCore(...)` for PDA | autosave.pda.test | `AssertionError: expected true to be false` (`'scheduleTests' in pdaSave`) |
+  ✓   2 [desktop] › e2e/cross/pda-storage.spec.ts:20:1 › S1: first visit to PDA mode saves empty PDA record with type pda and kind ndpda (1.0s)
+  ✓   3 [desktop] › e2e/cross/pda-storage.spec.ts:78:1 › S3: unreadable PDA records are skipped, notice says so, and records are preserved (688ms)
+  ✓   1 [desktop] › e2e/cross/pda-storage.spec.ts:49:1 › S2: PDA change is saved on device and is there after reload (2.4s)
+  ✓   5 [desktop] › e2e/cross/pda-storage.spec.ts:176:1 › S5: browser with no storage allows editor to work with warning (618ms)
+  ✓   6 [desktop] › e2e/cross/pda-storage.spec.ts:203:1 › S6: in FSM mode, Mesin saya never lists PDA records and FSM openLatest is not PDA (819ms)
+  ✓   4 [desktop] › e2e/cross/pda-storage.spec.ts:132:1 › S4: refused write shows Belum tersimpan warning and next save clears it (2.5s)
+  ✓   7 [desktop] › e2e/pda-editor.spec.ts:22:2 › E1: Mode switcher and URL persistence › PDA switcher item is enabled, switches mode, updates URL and survives reload (1.6s)
+  -   9 [desktop] › e2e/pda-editor.spec.ts:135:2 › E2: Label form opening mechanisms › phone: touch opening mechanisms open bottom sheet
+  ✓   8 [desktop] › e2e/pda-editor.spec.ts:75:2 › E2: Label form opening mechanisms › desktop: Enter on edge, double click label, menu item, and tool creation (2.0s)
+  ✓  10 [desktop] › e2e/pda-editor.spec.ts:171:2 › E3: Typing and sending transitions › fields, tab order, Ketik ε, Ctrl+E, refusal message, add/delete rows (2.2s)
+  ✓  11 [desktop] › e2e/pda-editor.spec.ts:269:2 › E4: + n lagi overflow button behavior › select tool selects edge; delete tool deletes edge on + n lagi press (2.0s)
+  ✓  13 [desktop] › e2e/pda-editor.spec.ts:488:2 › E6: Flush on mode switch › edits flush immediately on mode switch and remain when switching back (1.2s)
+  ✓  12 [desktop] › e2e/pda-editor.spec.ts:337:2 › E5: Building wwᴿ sample automaton › build wwrSample, undo and redo, verify stored document (4.3s)
+  -  15 [desktop] › e2e/pda-editor.spec.ts:564:2 › E8: Phone sheet dimensions and labeled edge in view › phone sheet styling, bounding box height, and edge visibility
+  ✓  14 [desktop] › e2e/pda-editor.spec.ts:516:2 › E7: Accessibility via Axe › zero axe violations on empty PDA editor, with popover, and context menu (3.5s)
+  ✓  16 [desktop] › e2e/switcher.spec.ts:16:2 › workstation mode switcher - keyboard, mouse, and state › trigger accessibility attributes and open/close via click (896ms)
+  ✓  17 [desktop] › e2e/switcher.spec.ts:37:2 › workstation mode switcher - keyboard, mouse, and state › Enter and Space open popover and move focus to selected item (961ms)
+  ✓  18 [desktop] › e2e/switcher.spec.ts:63:2 › workstation mode switcher - keyboard, mouse, and state › ArrowDown and ArrowUp navigate enabled items and wrap around (1.2s)
+  ✓  19 [desktop] › e2e/switcher.spec.ts:115:2 › workstation mode switcher - keyboard, mouse, and state › disabled item (TM) is never focused and clicking it does nothing (1.1s)
+  ✓  20 [desktop] › e2e/switcher.spec.ts:145:2 › workstation mode switcher - keyboard, mouse, and state › Escape closes popover and returns focus to trigger (875ms)
+  ✓  21 [desktop] › e2e/switcher.spec.ts:159:2 › workstation mode switcher - keyboard, mouse, and state › pointer press outside closes popover (911ms)
+  ✓  22 [desktop] › e2e/switcher.spec.ts:173:2 › workstation mode switcher - keyboard, mouse, and state › selecting an item loads workstation, updates URL query param and localStorage (1.7s)
+  ✓  23 [desktop] › e2e/switcher.spec.ts:220:2 › workstation mode switcher - keyboard, mouse, and state › mode persistence across reload and precedence ranking between address and localStorage (2.1s)
+  -  25 [desktop] › e2e/switcher.spec.ts:265:2 › workstation mode switcher - phone targets and responsive layout › items are at least 44px tall and trigger fits in one row at 360px
+  ✓  24 [desktop] › e2e/switcher.spec.ts:251:2 › workstation mode switcher - keyboard, mouse, and state › accessibility check with popover open on desktop (1280x800) (2.4s)
+  ✓  26 [phone] › e2e/cross/pda-storage.spec.ts:20:1 › S1: first visit to PDA mode saves empty PDA record with type pda and kind ndpda (612ms)
+  ✓  27 [phone] › e2e/cross/pda-storage.spec.ts:78:1 › S3: unreadable PDA records are skipped, notice says so, and records are preserved (781ms)
+  ✓  28 [phone] › e2e/cross/pda-storage.spec.ts:49:1 › S2: PDA change is saved on device and is there after reload (1.9s)
+  ✓  30 [phone] › e2e/cross/pda-storage.spec.ts:176:1 › S5: browser with no storage allows editor to work with warning (554ms)
+  ✓  29 [phone] › e2e/cross/pda-storage.spec.ts:132:1 › S4: refused write shows Belum tersimpan warning and next save clears it (2.5s)
+  ✓  31 [phone] › e2e/cross/pda-storage.spec.ts:203:1 › S6: in FSM mode, Mesin saya never lists PDA records and FSM openLatest is not PDA (1.1s)
+  -  33 [phone] › e2e/pda-editor.spec.ts:75:2 › E2: Label form opening mechanisms › desktop: Enter on edge, double click label, menu item, and tool creation
+  ✓  32 [phone] › e2e/pda-editor.spec.ts:22:2 › E1: Mode switcher and URL persistence › PDA switcher item is enabled, switches mode, updates URL and survives reload (1.5s)
+  -  35 [phone] › e2e/pda-editor.spec.ts:171:2 › E3: Typing and sending transitions › fields, tab order, Ketik ε, Ctrl+E, refusal message, add/delete rows
+  -  36 [phone] › e2e/pda-editor.spec.ts:269:2 › E4: + n lagi overflow button behavior › select tool selects edge; delete tool deletes edge on + n lagi press
+  ✓  34 [phone] › e2e/pda-editor.spec.ts:135:2 › E2: Label form opening mechanisms › phone: touch opening mechanisms open bottom sheet (1.2s)
+  -  38 [phone] › e2e/pda-editor.spec.ts:488:2 › E6: Flush on mode switch › edits flush immediately on mode switch and remain when switching back
+  ✓  39 [phone] › e2e/pda-editor.spec.ts:516:2 › E7: Accessibility via Axe › zero axe violations on empty PDA editor, with popover, and context menu (2.4s)
+  ✓  40 [phone] › e2e/pda-editor.spec.ts:564:2 › E8: Phone sheet dimensions and labeled edge in view › phone sheet styling, bounding box height, and edge visibility (1.0s)
+  -  41 [phone] › e2e/switcher.spec.ts:16:2 › workstation mode switcher - keyboard, mouse, and state › trigger accessibility attributes and open/close via click
+  ✓  37 [phone] › e2e/pda-editor.spec.ts:337:2 › E5: Building wwᴿ sample automaton › build wwrSample, undo and redo, verify stored document (4.4s)
+  -  42 [phone] › e2e/switcher.spec.ts:37:2 › workstation mode switcher - keyboard, mouse, and state › Enter and Space open popover and move focus to selected item
+  -  43 [phone] › e2e/switcher.spec.ts:63:2 › workstation mode switcher - keyboard, mouse, and state › ArrowDown and ArrowUp navigate enabled items and wrap around
+  -  44 [phone] › e2e/switcher.spec.ts:115:2 › workstation mode switcher - keyboard, mouse, and state › disabled item (TM) is never focused and clicking it does nothing
+  -  45 [phone] › e2e/switcher.spec.ts:145:2 › workstation mode switcher - keyboard, mouse, and state › Escape closes popover and returns focus to trigger
+  -  46 [phone] › e2e/switcher.spec.ts:159:2 › workstation mode switcher - keyboard, mouse, and state › pointer press outside closes popover
+  -  47 [phone] › e2e/switcher.spec.ts:173:2 › workstation mode switcher - keyboard, mouse, and state › selecting an item loads workstation, updates URL query param and localStorage
+  -  48 [phone] › e2e/switcher.spec.ts:220:2 › workstation mode switcher - keyboard, mouse, and state › mode persistence across reload and precedence ranking between address and localStorage
+  -  49 [phone] › e2e/switcher.spec.ts:251:2 › workstation mode switcher - keyboard, mouse, and state › accessibility check with popover open on desktop (1280x800)
+  ✓  51 [webkit-phone] › e2e/cross/pda-storage.spec.ts:20:1 › S1: first visit to PDA mode saves empty PDA record with type pda and kind ndpda (719ms)
+  ✓  50 [phone] › e2e/switcher.spec.ts:265:2 › workstation mode switcher - phone targets and responsive layout › items are at least 44px tall and trigger fits in one row at 360px (1.8s)
+  ✓  53 [webkit-phone] › e2e/cross/pda-storage.spec.ts:78:1 › S3: unreadable PDA records are skipped, notice says so, and records are preserved (904ms)
+  ✓  52 [webkit-phone] › e2e/cross/pda-storage.spec.ts:49:1 › S2: PDA change is saved on device and is there after reload (1.9s)
+  ✓  55 [webkit-phone] › e2e/cross/pda-storage.spec.ts:176:1 › S5: browser with no storage allows editor to work with warning (973ms)
+  ✓  56 [webkit-phone] › e2e/cross/pda-storage.spec.ts:203:1 › S6: in FSM mode, Mesin saya never lists PDA records and FSM openLatest is not PDA (1.7s)
+  ✓  54 [webkit-phone] › e2e/cross/pda-storage.spec.ts:132:1 › S4: refused write shows Belum tersimpan warning and next save clears it (2.8s)
 
----
-
-## 5. The Deepening Pass
-
-1. **New exports and public interfaces:**
-   - `SavedPdaMachine`: Exact record shape for pushdown automata stored in `machines`.
-   - `AnySavedMachine`: Union `SavedFsmMachine | SavedPdaMachine`.
-   - `isPdaRecord(record)`: Guard for `record is SavedPdaMachine`.
-   - `isFsmRecord(record)`: Guard for `record is SavedFsmMachine`.
-   - `DocumentCodec<D, R>`: Serialization & field copy contract (`serialize`, `apply`).
-   - `pdaDocumentCodec`: Codec instance for `PdaDocument` $\to$ `SavedPdaMachine`.
-   - `fsmDocumentCodec`: Codec instance for `MachineDocument` $\to$ `SavedFsmMachine`.
-   - `readStoredPda(text: string)`: Safe document deserializer.
-   - `createPdaMachine(store, doc, now)`: Record creator.
-   - `openLatestPda(store, now)`: Last opened PDA retriever and fallback creator.
-   - `SkippedPda`, `OpenedPda`, `PdaReadResult`, `Unreadable`: Return contract types.
-   - `PdaAutosave`: Type-safe autosave client for PDA omitting FSM tests & progress scheduling.
-
-   *Can any be private?* Internal autosave queue logic is encapsulated in `createAutosaveCore` (private to `autosave.ts`).
-   *Is any logic duplicated?* Autosave debouncing and write serialization logic is shared 100% between FSM and PDA.
-
-2. **Cast Count:**
-   - **Zero (`0`) casts** in all source and test files.
-   - All record narrowing is achieved through honest union discriminators and type guards (`isPdaRecord`, `isFsmRecord`, `getPdaRecord`).
-   - Zero `@ts-ignore` or `any`.
-   - Verified via scan for `' as '` in new files (only comments and plain prose `as saved` appear):
-     ```
-     web/src/lib/storage/autosave.pda.test.ts:27:  it('starts as saved, schedule sets unsaved, flush saves document', async () => {
-     web/src/lib/storage/pda-work.ts:2: // A PDA record lives in the same store as FSM machines ('machines' in IndexedDB),
-     web/src/lib/storage/pda-work.ts:47:  // The text is at least as many bytes as it has units, so this cannot refuse a good document (mirrors migrate.ts).
-     web/src/lib/storage/pda-work.ts:70: /** Saves a PDA document as a new record in the store. */
-     web/src/lib/storage/pda-work.ts:93:  * The PDA machine that was opened last. A record that cannot be read is skipped and kept as it is.
-     web/src/lib/storage/pda-work.ts:94:  * When none can be read or none exists, an empty NDPDA (createPdaDocument()) is saved as a new record.
-     ```
+  16 skipped
+  40 passed (36.6s)
+```

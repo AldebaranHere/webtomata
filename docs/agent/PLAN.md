@@ -2356,8 +2356,8 @@ Use the quick loop while you work (one file or pattern) and the whole gate once 
 
 ## Task T-057 — PDA editor, part 8 of 10: the editor shell and the mode
 
-**Status:** in-progress
-**Owner:** worker
+**Status:** done
+**Commit:** `9e56718`
 **Branch:** `task/T-057-pda-editor-shell`
 
 **Goal:** A student can choose **Otomata Pushdown (PDA)** in the mode switcher and build a PDA on the canvas: add, move, rename and delete states, mark the start and accepting states, make transitions with the three-field form, undo and redo, zoom, and have everything saved on the device. This is the first screen of the PDA editor, put together from the parts that are already merged: `EditorFrame` (T-055), `EditorCanvas` with its label slot and `+ n lagi` (T-053), `PdaLabelForm` and `PdaLabelPopover` (T-054), `createPdaEditor` (T-049), `pdaDiagram` (T-039) and the saving of T-056. **No panel yet** (T-051): no tabs, no kind switch, no badge, no checks, no table. No list, files, examples or share link (T-052). No simulation (T-038). No auto layout (a label-aware layout is a separate proposed task: PDA labels need states about 410 units apart in the worst case). See `design/screens/pda-editor.md` sections 1, 2, 8 and 9, `docs/agent/DECISIONS.md` (2026-11-08), ADR 0043, 0044, 0046 and 0047.
