@@ -1,6 +1,7 @@
 import { expect, expectNoAxeViolations, test } from './fixtures.ts';
 import type { Page } from '@playwright/test';
 import { parsePdaDocumentText } from '../src/lib/editor/pda-document.ts';
+import { touchDragAt } from './touch.ts';
 
 async function openSandbox(page: Page, query = '') {
 	await page.goto(`/sandbox${query}`);
@@ -577,13 +578,23 @@ test.describe('E8: Phone sheet dimensions and labeled edge in view', () => {
 		test.skip(!isMobile, 'phone project only');
 		await openSandbox(page, '?mode=pda');
 
-		// Add states q0 and q1 LOW in the stage so that without camera reveal
-		// their position would be covered by the bottom sheet
+		// Add states q0 and q1
 		const addBtn = page.getByRole('button', { name: /^Tambah state/ });
 		await addBtn.tap();
 		const stage = page.locator('.stage svg');
-		await stage.tap({ position: { x: 120, y: 500 } });
-		await stage.tap({ position: { x: 260, y: 500 } });
+		await stage.tap({ position: { x: 120, y: 250 } });
+		await stage.tap({ position: { x: 260, y: 250 } });
+
+		// Pan canvas downward so camera differs from fitted, moving the states
+		// low on the screen where the bottom sheet will cover them
+		const selectBtn = page.getByRole('button', { name: /^Pilih/ });
+		await selectBtn.tap();
+		const stageBoxBefore = (await stage.boundingBox())!;
+		await touchDragAt(
+			page,
+			{ x: stageBoxBefore.x + 50, y: stageBoxBefore.y + 100 },
+			{ x: stageBoxBefore.x + 50, y: stageBoxBefore.y + 350 }
+		);
 
 		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
 		await transBtn.tap();
