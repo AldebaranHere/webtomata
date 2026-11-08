@@ -64,7 +64,9 @@ export function useAutosaveBinding<D>(options: AutosaveBindingOptions<D>): Autos
 		};
 	});
 
-	const problem = $derived(!persistent() ? 'unavailable' : saveStatus === 'failed' ? 'failed' : null);
+	const problem = $derived(
+		!persistent() ? 'unavailable' : saveStatus === 'failed' ? 'failed' : null
+	);
 
 	// Leaving the page loses the changes that are not saved on the device: ask first.
 	const unsaved = $derived(

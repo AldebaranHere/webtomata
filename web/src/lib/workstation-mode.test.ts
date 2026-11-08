@@ -42,9 +42,29 @@ describe('readMode', () => {
 
 	it('never throws and always returns one of the four modes on random strings', () => {
 		const chars = [
-			'a', 'b', 'c', 'p', 'd', 'f', 's', 'm', 't',
-			'?', '&', '=', '%', ' ', '1', '2', '3',
-			'\uD800', '\uDFFF', 'A', 'Z', '\n', '\0'
+			'a',
+			'b',
+			'c',
+			'p',
+			'd',
+			'f',
+			's',
+			'm',
+			't',
+			'?',
+			'&',
+			'=',
+			'%',
+			' ',
+			'1',
+			'2',
+			'3',
+			'\uD800',
+			'\uDFFF',
+			'A',
+			'Z',
+			'\n',
+			'\0'
 		];
 		const randString = (len: number, seed: number) => {
 			let s = '';
@@ -68,4 +88,3 @@ describe('readMode', () => {
 		expect(readMode(hugeQuery, null)).toBe('pda');
 	});
 });
-
