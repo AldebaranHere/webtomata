@@ -311,7 +311,7 @@ test.describe('E4: + n lagi overflow button behavior', () => {
 		const edgeLabel = page.locator('.labels text.label').first();
 		await expect(edgeLabel).toContainText('+ 2 lagi');
 
-		// 1. In Select tool: clicking '+ 2 lagi' selects edge
+		// 1. In Select tool: clicking '+ 2 lagi' selects edge exactly once and stays selected
 		const selectBtn = page.getByRole('button', { name: /^Pilih/ });
 		await selectBtn.click();
 
@@ -330,6 +330,16 @@ test.describe('E4: + n lagi overflow button behavior', () => {
 		await expect(toast).toBeVisible();
 		await toast.getByRole('button', { name: /Urungkan/i }).click();
 		await expect(page.locator('.edge-node[data-edge="0>0"]')).toBeVisible();
+
+		// After Urungkan, verify that all 4 transitions are fully restored
+		await selectBtn.click();
+		await overflowHit.click();
+		await expect(edgeNode).toHaveAttribute('aria-pressed', 'true');
+		await page.keyboard.press('Enter');
+		const reopenedForm = page.locator('.pda-label-form[role="dialog"]');
+		await expect(reopenedForm).toBeVisible();
+		await expect(reopenedForm.locator('.row')).toHaveCount(4);
+		await reopenedForm.getByRole('button', { name: /Batal/i }).click();
 	});
 });
 
@@ -568,12 +578,13 @@ test.describe('E8: Phone sheet dimensions and labeled edge in view', () => {
 		test.skip(!isMobile, 'phone project only');
 		await openSandbox(page, '?mode=pda');
 
-		// Add states q0 and q1
+		// Add states q0 and q1 LOW in the stage so that without camera reveal
+		// their position would be covered by the bottom sheet
 		const addBtn = page.getByRole('button', { name: /^Tambah state/ });
 		await addBtn.tap();
 		const stage = page.locator('.stage svg');
-		await stage.tap({ position: { x: 150, y: 150 } });
-		await stage.tap({ position: { x: 280, y: 150 } });
+		await stage.tap({ position: { x: 120, y: 500 } });
+		await stage.tap({ position: { x: 260, y: 500 } });
 
 		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
 		await transBtn.tap();
@@ -600,14 +611,18 @@ test.describe('E8: Phone sheet dimensions and labeled edge in view', () => {
 		const fontSize = await input.evaluate((el) => parseFloat(window.getComputedStyle(el).fontSize));
 		expect(fontSize).toBeGreaterThanOrEqual(16);
 
-		// Labeled edge is inside visible stage rectangle
+		// The point being edited (middle of the two state buttons) must be above the top of the sheet
+		// and inside the visible stage rectangle. Asserted using bounding boxes of the two state buttons.
 		const stageBox = (await stage.boundingBox())!;
-		const edgeLabel = page.locator('.labels text.label').first();
-		if ((await edgeLabel.count()) > 0) {
-			const labelBox = (await edgeLabel.boundingBox())!;
-			expect(labelBox.y).toBeGreaterThanOrEqual(stageBox.y);
-			expect(labelBox.y + labelBox.height).toBeLessThanOrEqual(stageBox.y + stageBox.height);
-		}
+		const q0Box = (await q0.boundingBox())!;
+		const q1Box = (await q1.boundingBox())!;
+		const midX = (q0Box.x + q0Box.width / 2 + (q1Box.x + q1Box.width / 2)) / 2;
+		const midY = (q0Box.y + q0Box.height / 2 + (q1Box.y + q1Box.height / 2)) / 2;
+
+		expect(midY).toBeLessThan(sheetBox.y);
+		expect(midY).toBeGreaterThanOrEqual(stageBox.y);
+		expect(midX).toBeGreaterThanOrEqual(stageBox.x);
+		expect(midX).toBeLessThanOrEqual(stageBox.x + stageBox.width);
 
 		// Close sheet gives focus back to canvas
 		await sheet.getByRole('button', { name: /Batal/i }).tap();
