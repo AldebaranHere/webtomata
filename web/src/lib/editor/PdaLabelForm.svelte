@@ -38,11 +38,9 @@
 	let activeFieldName = $state<'read' | 'pop' | 'push'>('read');
 
 	const fromName = $derived(
-		labeling ? (doc.states.find((s) => s.id === labeling.from)?.name ?? `q${labeling.from}`) : ''
+		doc.states.find((s) => s.id === labeling.from)?.name ?? `q${labeling.from}`
 	);
-	const toName = $derived(
-		labeling ? (doc.states.find((s) => s.id === labeling.to)?.name ?? `q${labeling.to}`) : ''
-	);
+	const toName = $derived(doc.states.find((s) => s.id === labeling.to)?.name ?? `q${labeling.to}`);
 
 	onMount(async () => {
 		await tick();
@@ -71,7 +69,6 @@
 	}
 
 	function commit(): void {
-		if (!labeling) return;
 		const cmds = rowCommands(doc, labeling.from, labeling.to, rows);
 		if ('key' in cmds) {
 			refusalText = t(cmds.key as MessageKey, cmds.params);
@@ -132,9 +129,6 @@
 	}
 
 	function onfocusout(event: FocusEvent): void {
-		if (!labeling || !container || !editor.getState().labeling) {
-			return;
-		}
 		if (event.relatedTarget && container.contains(event.relatedTarget as Node)) {
 			return;
 		}
