@@ -120,7 +120,7 @@
 		>
 			{#snippet label(slot)}
 				{#if slot}
-					{(activeSlot = slot), ''}
+					{((activeSlot = slot), '')}
 				{/if}
 				{@const currentSlot = slot ?? activeSlot}
 				{#if formDisplayMode === 'popover' && (activeLabeling ?? snapshot.labeling) && currentSlot}
