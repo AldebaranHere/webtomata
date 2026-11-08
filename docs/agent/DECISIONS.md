@@ -428,3 +428,21 @@ Format:
 - Alternatives considered: one task (too large); a TypeScript determinism check to keep the PDA mode free of the WASM (a second implementation of a rule that the engine owns; a wrong answer destroys trust).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md`, `docs/decisions/0048-pda-editor-shell.md` (superseded in one line by 0049), `web/src/lib/editor/PdaEditor.svelte`
+
+## 2026-11-09 — T-051 may add 0.54 KB gzip to the sandbox first load, once
+
+- Decider: owner
+- Context: the spec of T-051 allowed at most 0.5 KB gzip of growth in the first JS of any route. The task needs 12 new message keys (`kind.dpda`, `kind.ndpda`, five `pda_check.*`, five `pda_editor.*`), and the message dictionary is in the first-load JS of every route, so the strings alone cost about 0.42 KB gzip on every route. The planner set the 0.5 KB gate without counting them. On a clean build of `origin/staging` against the T-051 branch: `sandbox.html` 124.8 -> 125.4 KB (+0.54), `soal.html` 84.1 -> 84.6 KB (+0.45), `index.html` 81.9 -> 82.3 KB (+0.45). The shared FSM code was cut until `Editor.svelte` had a zero-line diff.
+- Decision: the owner accepts +0.54 KB on `sandbox.html` for T-051 as a one-time exception. The 170 KB budget of CLAUDE.md is unchanged (the sandbox is at 125.4 KB). The 0.5 KB per-task gate stays for later tasks. A task that adds strings for the PDA mode must not grow the first-load dictionary: T-061 and the tasks after it put their PDA strings in a message module that is loaded only in the PDA mode, or the planner decides first.
+- Alternatives considered: shorten or drop some of the 12 keys (another review round for 0.04 KB); raise the gate to 1 KB (a gate that moves every time is not a gate).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-061, T-062, T-052 specs), `web/src/lib/i18n/`
+
+## 2026-11-09 — Two workers in parallel: the second PR keeps its own `REPORT.md`
+
+- Decider: owner
+- Context: `docs/agent/REPORT.md` is overwritten by every task. A second worker (DeepSeek, trial passed on 2026-11-09 in `~/webtomata-ds`) working at the same time as Gemini means two pull requests change the same file, and the second one merged gets a conflict.
+- Decision: no change to `AGENTS.md`. Whoever merges second rebases, resolves the conflict by keeping their own report, and the older report stays in git history. Parallel tasks must touch different files (the planner checks this in the spec). If two workers become routine, the planner proposes one report file per task.
+- Alternatives considered: one `REPORT-T-xxx.md` per task (no conflicts, but changes `AGENTS.md` and the review steps; not worth it for one trial).
+- Reversible? yes
+- Affects: `docs/agent/REPORT.md`, the specs of tasks given to a second worker
