@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
-
-	type WorkstationMode = 'fsm' | 'language' | 'grammar';
+	import type { WorkstationMode } from '#lib/workstation-mode.ts';
 
 	interface CategoryItem {
 		id: WorkstationMode | string;
@@ -39,7 +38,7 @@
 			categoryKey: 'sandbox.category_automata',
 			items: [
 				{ id: 'fsm', mode: 'fsm', labelKey: 'sandbox.mode_fsm' },
-				{ id: 'pda', labelKey: 'sandbox.mode_pda', disabled: true },
+				{ id: 'pda', mode: 'pda', labelKey: 'sandbox.mode_pda' },
 				{ id: 'tm', labelKey: 'sandbox.mode_tm', disabled: true }
 			]
 		},
@@ -59,6 +58,8 @@
 				return t('sandbox.mode_language');
 			case 'grammar':
 				return t('sandbox.mode_grammar');
+			case 'pda':
+				return t('sandbox.mode_pda');
 			case 'fsm':
 			default:
 				return t('sandbox.mode_fsm');

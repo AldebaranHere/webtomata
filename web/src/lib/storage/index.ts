@@ -3,6 +3,7 @@ import { createIndexedDbStore, indexedDbAvailable } from './indexeddb.ts';
 import { createMemoryStore } from './memory.ts';
 import type { MachineStore } from './store.ts';
 
+export { createMemoryStore } from './memory.ts';
 export { createAutosave } from './autosave.ts';
 export type {
 	Autosave,

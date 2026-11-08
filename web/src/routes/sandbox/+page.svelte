@@ -15,6 +15,9 @@
 	import { library } from '#lib/storage/library.svelte.ts';
 	import { localizedTitle } from '#lib/storage/titles.ts';
 	import WorkstationSwitcher from '#lib/components/WorkstationSwitcher.svelte';
+	import { readMode } from '#lib/workstation-mode.ts';
+	import type { WorkstationMode } from '#lib/workstation-mode.ts';
+	import type { SkippedPda } from '#lib/storage/pda-work.ts';
 
 	const localeTag = $derived(ogLocale(getLocale()));
 	const pageTitle = $derived(`${t('nav.sandbox')} · ${t('app.name')}`);
@@ -25,10 +28,14 @@
 	// place when the machine has been read, so that a reload does not show the card for a moment.
 	let editor = $state<Editor | undefined>();
 	let skipped = $state(true);
-	let activeMode = $state<'fsm' | 'language' | 'grammar'>('fsm');
+	let activeMode = $state<WorkstationMode>('fsm');
+	let pdaSkipped = $state<SkippedPda[]>([]);
 
 	let LanguageWorkstation = $state<Component | null>(null);
 	let GrammarWorkstation = $state<Component | null>(null);
+	let PdaWorkstation = $state<Component<{ onskipped?: (skipped: SkippedPda[]) => void }> | null>(
+		null
+	);
 	$effect(() => {
 		if (activeMode === 'language' && !LanguageWorkstation) {
 			void import('#lib/language/LanguageWorkstation.svelte').then(
@@ -38,6 +45,11 @@
 		if (activeMode === 'grammar' && !GrammarWorkstation) {
 			void import('#lib/grammar/GrammarWorkstation.svelte').then(
 				(module) => (GrammarWorkstation = module.default)
+			);
+		}
+		if (activeMode === 'pda' && !PdaWorkstation) {
+			void import('#lib/editor/PdaWorkstation.svelte').then(
+				(module) => (PdaWorkstation = module.default)
 			);
 		}
 	});
@@ -85,7 +97,7 @@
 				};
 	}
 
-	function selectMode(mode: 'fsm' | 'language' | 'grammar') {
+	function selectMode(mode: WorkstationMode) {
 		activeMode = mode;
 		try {
 			localStorage.setItem('webtomata_sandbox_mode', mode);
@@ -104,19 +116,13 @@
 	onMount(() => {
 		skipped = false;
 		seen = tourSeen();
-		const urlMode = new URLSearchParams(window.location.search).get('mode');
-		if (urlMode === 'language' || urlMode === 'grammar' || urlMode === 'fsm') {
-			activeMode = urlMode;
-		} else {
-			try {
-				const saved = localStorage.getItem('webtomata_sandbox_mode');
-				if (saved === 'language' || saved === 'grammar' || saved === 'fsm') {
-					activeMode = saved;
-				}
-			} catch {
-				// ignore
-			}
+		let saved: string | null = null;
+		try {
+			saved = localStorage.getItem('webtomata_sandbox_mode');
+		} catch {
+			// ignore
 		}
+		activeMode = readMode(window.location.search, saved);
 		void library.start(() => ({ doc: createDocument() })).then(openLink);
 		// A link pasted in a tab that already shows the Sandbox only changes the fragment: the page is not
 		// loaded again, so the change itself must open it.
@@ -230,6 +236,12 @@
 	);
 
 	const notice = $derived.by(() => {
+		if (activeMode === 'pda') {
+			if (pdaSkipped.length === 0) return null;
+			if (pdaSkipped.length > 1) return t('storage.skipped_many', { count: pdaSkipped.length });
+			const [one] = pdaSkipped;
+			return t(`storage.skipped_${one!.reason}` as MessageKey, { title: one!.title });
+		}
 		const list = library.skipped;
 		if (skipped || list.length === 0) return null;
 		if (list.length > 1) return t('storage.skipped_many', { count: list.length });
@@ -265,7 +277,16 @@
 {#if notice}
 	<p class="notice" role="status">
 		<span>{notice}</span>
-		<button type="button" onclick={() => (skipped = true)}>{t('storage.dismiss')}</button>
+		<button
+			type="button"
+			onclick={() => {
+				if (activeMode === 'pda') {
+					pdaSkipped = [];
+				} else {
+					skipped = true;
+				}
+			}}>{t('storage.dismiss')}</button
+		>
 	</p>
 {/if}
 
@@ -282,6 +303,12 @@
 {:else if activeMode === 'grammar'}
 	{#if GrammarWorkstation}
 		<GrammarWorkstation />
+	{:else}
+		<div class="frame" aria-busy="true"></div>
+	{/if}
+{:else if activeMode === 'pda'}
+	{#if PdaWorkstation}
+		<PdaWorkstation onskipped={(s) => (pdaSkipped = s)} />
 	{:else}
 		<div class="frame" aria-busy="true"></div>
 	{/if}

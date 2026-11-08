@@ -21,8 +21,8 @@
 	const WIDTH = 320;
 	let box: HTMLDivElement;
 
-	let targetX = $derived(Math.max(4, slotData.x - WIDTH / 2));
-	let targetY = $derived(Math.max(4, slotData.y - 44));
+	let targetX = $derived(Math.max(4, (slotData?.x ?? 0) - WIDTH / 2));
+	let targetY = $derived(Math.max(4, (slotData?.y ?? 0) - 44));
 	let clampedX = $state<number | null>(null);
 	let clampedY = $state<number | null>(null);
 	let posX = $derived(clampedX ?? targetX);
@@ -31,8 +31,8 @@
 	$effect(() => {
 		void targetX;
 		void targetY;
-		void slotData.x;
-		void slotData.y;
+		void slotData?.x;
+		void slotData?.y;
 
 		void tick().then(() => {
 			if (!box || !box.parentElement) {
@@ -59,7 +59,7 @@
 	});
 </script>
 
-<div class="popover" bind:this={box} style:left="{posX}px" style:top="{posY}px">
+<div class="popover pda-label-popover" bind:this={box} style:left="{posX}px" style:top="{posY}px">
 	<PdaLabelForm {editor} {doc} {labeling} />
 </div>
 

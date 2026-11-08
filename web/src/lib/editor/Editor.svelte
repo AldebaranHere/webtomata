@@ -25,7 +25,7 @@
 	import { layoutGraph, placeAll, refusalOf } from './layout.ts';
 	import { createChecker } from './checker.ts';
 	import { flagsOf } from './checks.ts';
-	import type { Autosave, SaveStatus } from '#lib/storage/index.ts';
+	import type { Autosave } from '#lib/storage/index.ts';
 	import type { Titles } from '#lib/storage/store.ts';
 	import { localizedTitle } from '#lib/storage/titles.ts';
 	import EditorCanvas from './EditorCanvas.svelte';
@@ -37,6 +37,7 @@
 	import type { MachineDocument } from './document.ts';
 	import { createEditor } from './interaction/editor.ts';
 	import EditorFrame from './EditorFrame.svelte';
+	import { useAutosaveBinding } from './autosave-binding.svelte.ts';
 
 	// The editor of a machine: the tools, the canvas and the title bar. It starts from `doc`; later
 	// changes to the prop are not read (the editor owns the document and its history).
@@ -308,51 +309,14 @@
 
 	// Saving: each new document goes to the autosave. When the tab is hidden or closed, what waits
 	// is saved at once.
-	let saveStatus = $state<SaveStatus>(untrack(() => autosave?.status() ?? 'saved'));
-	$effect(() => {
-		if (!autosave) return;
-		const save = autosave;
-		saveStatus = save.status();
-		return save.subscribe(() => (saveStatus = save.status()));
+	const autosaveBinding = useAutosaveBinding({
+		editor,
+		autosave: () => autosave,
+		persistent: () => persistent,
+		dirty: () => snapshot.dirty
 	});
-	// The store is asked, not the reactive copy of its state: that is a proxy, and a proxy of a
-	// document is never the same object as the document.
-	$effect(() => {
-		if (!autosave) return;
-		const save = autosave;
-		let last = editor.getState().doc;
-		return editor.subscribe(() => {
-			const next = editor.getState().doc;
-			if (next === last) return;
-			last = next;
-			save.schedule(next);
-		});
-	});
-	$effect(() => {
-		if (!autosave) return;
-		const save = autosave;
-		const flush = () => void save.flush();
-		const onVisibility = () => document.visibilityState === 'hidden' && flush();
-		document.addEventListener('visibilitychange', onVisibility);
-		window.addEventListener('pagehide', flush);
-		return () => {
-			document.removeEventListener('visibilitychange', onVisibility);
-			window.removeEventListener('pagehide', flush);
-			flush();
-		};
-	});
-	const problem = $derived(!persistent ? 'unavailable' : saveStatus === 'failed' ? 'failed' : null);
-
-	// Leaving the page loses the changes that are not saved on the device: ask first.
-	const unsaved = $derived(
-		autosave ? (persistent ? saveStatus !== 'saved' : snapshot.dirty) : snapshot.dirty
-	);
-	$effect(() => {
-		if (!unsaved) return;
-		const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-		window.addEventListener('beforeunload', warn);
-		return () => window.removeEventListener('beforeunload', warn);
-	});
+	const saveStatus = $derived(autosaveBinding.saveStatus);
+	const problem = $derived(autosaveBinding.problem);
 </script>
 
 <EditorFrame
