@@ -143,7 +143,7 @@
 		const { width, height } = size;
 		if (width <= 0 || height <= 0) return;
 		untrack(() => {
-			if (fitted !== null && camera === fitted && !view.labeling)
+			if (fitted !== null && camera === fitted)
 				camera = fitted = fit(machineBounds(), { width, height });
 		});
 	});
