@@ -57,6 +57,11 @@
 	let activeSlot = $state<LabelSlot | null>(null);
 	let lastLabelingOpen = false;
 
+	function rememberSlot(slot: LabelSlot | null): LabelSlot | null {
+		if (slot) activeSlot = slot;
+		return slot ?? activeSlot;
+	}
+
 	$effect(() => {
 		const open = snapshot.labeling;
 		const isOpen = open !== null;
@@ -119,10 +124,7 @@
 			revealLabeling={formDisplayMode === 'sheet'}
 		>
 			{#snippet label(slot)}
-				{#if slot}
-					{((activeSlot = slot), '')}
-				{/if}
-				{@const currentSlot = slot ?? activeSlot}
+				{@const currentSlot = rememberSlot(slot)}
 				{#if formDisplayMode === 'popover' && (activeLabeling ?? snapshot.labeling) && currentSlot}
 					{@const currentLabeling = (activeLabeling ?? snapshot.labeling)!}
 					<PdaLabelPopover
