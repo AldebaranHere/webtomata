@@ -2517,25 +2517,93 @@ Follow rule 12 of `AGENTS.md` for every shell command and the stuck rule for eve
 
 ---
 
+## Task T-063 — Load the PDA messages only in the PDA mode
+
+**Status:** todo
+**Owner:** worker
+**Branch:** `task/T-063-lazy-pda-messages`
+
+**Goal:** The 25 PDA message keys (`kind.dpda`, `kind.ndpda`, 13 older `pda_editor.*`, 5 newer `pda_editor.*`, 5 `pda_check.*`) leave the shared dictionary in `id.ts` and `en.ts`, which is in the first-load JS of every route, and move to a module that is loaded together with the PDA mode. The FSM pages, the home page, the guides and the questions get smaller; the PDA mode looks and reads exactly as it does now; and T-061, T-062 and T-052 can add their strings without growing any route. This pays back the exception of ADR 0049 (T-051 added 0.54 KB gzip to `sandbox.html`; see `docs/agent/DECISIONS.md`, 2026-11-09).
+
+**Why now:** every PDA task adds strings, and each one grows the first load of every route, including `index.html`, which has no editor. A budget that every task eats a bit more of is not a budget. This is the small structural fix before T-061.
+
+**Decisions (planner, 2026-11-09):**
+
+- **One lazy module for both languages.** `web/src/lib/i18n/pda-messages.ts` exports `pdaId` and `pdaEn` and, as a side effect of being imported, registers them. The module is imported once, by `PdaWorkstation.svelte` (the chunk of the PDA mode), so it is evaluated before `PdaEditor` renders. It is not imported by any file of the FSM editor, the shared frame, the pages or the layout. No loading flag, no `await` in the editor, no flash of keys.
+- **The key type does not change for callers.** `MessageKey` stays one union: `keyof typeof id | keyof typeof pdaId`, so `t('pda_editor.save')` still type-checks and a misspelled key is still a compile error. The second part is `import type` only (it is erased at build time and puts nothing in the first-load JS). `en` is typed `Record<keyof typeof id, string>` and `pdaEn` is typed `Record<keyof typeof pdaId, string>`.
+- **`translate.ts` grows by two things, and nothing else:** `addMessages(locale, dictionary)`, which merges a dictionary into the table that `translate` reads, and a fallback: a key that is not (yet) registered gives the key itself as the text, never `undefined` and never an exception. A visible `pda_editor.save` on the page is a bug that a test and a person can see; a crash is not.
+- **Which keys move:** exactly the 25 listed in the Scope. A key that a file outside the PDA chunk uses (for example one that the sandbox page or "Mesin saya" shows) stays in `id.ts`. If you find that one of the 25 is used outside the PDA chunk, stop and write a `blocked` entry; do not move it and do not import `pda-messages.ts` from the shared code.
+- **Key names do not change.** No renaming; this is a move.
+- **The text of every message does not change.** Not one character in Indonesian or English.
+
+**Scope (files):**
+
+- New: `web/src/lib/i18n/pda-messages.ts`, `web/src/lib/i18n/pda-messages.test.ts`, `web/e2e/pda-messages.spec.ts`, `docs/decisions/0050-lazy-pda-messages.md`.
+- Edit: `web/src/lib/i18n/id.ts` and `en.ts` (remove the 25 keys; `MessageKey` becomes the union), `web/src/lib/i18n/translate.ts` (`addMessages`, the fallback), `web/src/lib/editor/PdaWorkstation.svelte` (one `import './pda-messages.ts'` line), and `web/src/lib/editor/diagram/pda-diagram.test.ts` (one added line, `import '#lib/i18n/pda-messages.ts'`, because that test calls `translate` with a PDA key; no assertion changes). `docs/agent/PLAN.md` (status).
+- The 25 keys: `kind.dpda`, `kind.ndpda`; `pda_editor.edge_more`, `form_title`, `col_read`, `col_pop`, `col_push`, `field_label`, `row_delete`, `add_row`, `label_hint`, `save`, `cancel`, `menu_edit`, `read_one_symbol`; `pda_editor.col_from`, `col_to`, `table_title`, `table_empty`, `definition_hint`; `pda_check.no_accepting_state`, `duplicate_transition`, `pop_never_pushed`, `competing_transitions`, `accepting_state_free_move`.
+
+**Non-goals:** no change to any text, key name, component or style; no lazy loading of the FSM, guide or question messages; no loading of one language only (the lazy module holds both; it is only in the PDA chunk); no change in `crates/`; no new dependency; no change to the 0.5 KB gate or the 170 KB budget.
+
+**Tests (write them first; they must fail before the code):**
+
+- *U1 to U6, `pda-messages.test.ts`* (new): (U1) `pdaId` and `pdaEn` have the same keys; (U2) no message is empty, and both use the same `{parameters}` (the checks of `i18n.test.ts`, repeated for this dictionary); (U3) none of the 25 keys is in `id` or `en` (the shared dictionary), and no key is in both; (U4) `translate('id', 'pda_editor.save')` gives `'pda_editor.save'` before the module is imported (the fallback; the test imports the module with `await import(...)` after this assertion, so keep the order, and reset the registered table if you need the test to be repeatable); (U5) after the import, `translate('id', 'pda_editor.save')` and `translate('en', 'pda_editor.save')` give the text of `pdaId` and `pdaEn`, with parameters filled (`pda_editor.table_title` with `{ count: 3 }`); (U6) `addMessages` for a locale does not remove the keys that were there (the base keys still translate after the import).
+- *M1 to M3, `e2e/pda-messages.spec.ts`* (new, desktop and phone): (M1) open `/sandbox` (the FSM) and collect the body of every `.js` response until `.editor[data-ready]`; none of them contains the Indonesian text of `pda_editor.form_title` (the string "Transisi di antara") or of `pda_check.no_accepting_state`; (M2) open `/sandbox?mode=pda`, wait for the editor, and see the text of the Tabel tab ("Transisi (0)" and the Dari, Baca, Pop, Push and Ke headers) and the two kind buttons "DPDA" and "NDPDA"; no element of the page has a text that matches `/^(pda_editor|pda_check|kind)\.[a-z_]+$/` (a raw key); (M3) the same with `localStorage['webtomata.lang'] = 'en'` set by `addInitScript`: the English text of the table title, read from `en.ts` and written in the test as plain text (do not import the dictionary into the spec). Each assertion is unconditional (rule of `AGENTS.md`).
+- *F5, nothing else moves:* `i18n.test.ts`, every FSM test and every PDA spec of T-053 to T-057 and T-051 (`pda-panel`, `pda-editor`, `pda-storage`, `pda-label`, `pda-diagram` unit) pass with no edit, except the one added import line in `pda-diagram.test.ts`. State that line in the report.
+
+**Acceptance criteria:**
+
+- AC1: U1 to U6 and M1 to M3 pass; they fail before the change (paste the failures from the tests-first run).
+- AC2: F5 above: paste the pass counts of `pda-panel`, `pda-editor`, `pda-storage`, `switcher`, `editor-checks` on desktop and phone, and of `pda-storage` on webkit-phone. The only edited existing test is the one import line of `pda-diagram.test.ts`.
+- AC3: **Sizes, from a clean build of `origin/staging` and a build of the branch, same machine, the lines of `pnpm size` for the routes `index`, `sandbox`, `soal`, `panduan` and one question page, with the unrounded gzip bytes of the shared chunk that holds the dictionary (find it as T-051 did).** No route grows by more than 0.1 KB. `sandbox.html`, `soal.html` and `index.html` are expected to shrink; the report gives how much. If `sandbox.html` shrinks by less than 0.5 KB, stop and tell the planner why before you go on. Also give the size of the PDA chunk and of the lazy messages (raw and gzip) before and after.
+- AC4: after `pnpm build`, none of the 25 Indonesian texts is in any file of `build/_app/immutable` except the PDA chunk that holds `pda-messages.ts`. Show the command you used (a loop of `grep -l` over the 25 texts) and its output.
+- AC5: **Five deliberate breaks, each run on the final code, each shown failing with the failing line and its file:line pasted (a break run before your last change does not count):** (B1) put `'pda_editor.save'` back into `id.ts` and `en.ts` (U3 fails); (B2) delete the `import './pda-messages.ts'` line of `PdaWorkstation.svelte` (M2 fails: raw keys on the page); (B3) remove the fallback of `translate` (`?? key`), so a missing key gives `undefined` (U4 fails); (B4) import `./pda-messages.ts` from `Editor.svelte` (M1 fails, and say what `pnpm size` shows); (B5) register only `pdaId` (M3 fails: the English page shows Indonesian or raw keys). Restore each, and paste the one line of `git diff` that is the break.
+- AC6: `pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens`, Vitest, `pnpm build && pnpm size` pass. No change in `crates/` (`git diff --stat` shows none). The report says, for each of the 25 keys, that it is used only inside the PDA chunk (a table: key, files that use it).
+
+**Verification:**
+
+```
+pnpm --filter web exec vitest run src/lib/i18n
+pnpm build && pnpm size
+pnpm --filter web exec playwright test pda-messages pda-panel pda-editor pda-storage switcher editor-checks --project=desktop
+pnpm --filter web exec playwright test pda-messages pda-panel pda-editor pda-storage --project=phone
+pnpm --filter web exec playwright test pda-storage --project=webkit-phone
+```
+
+Follow the rules of `AGENTS.md` for every shell command (the Playwright runs are long: run them as background tasks, apply the stuck rule).
+
+**Rollback:** `git revert <sha>`. The keys come back to `id.ts` and `en.ts`; nothing else depends on the change.
+
+**Depends on:** T-051 (merged). T-061, T-062 and T-052 depend on this task: their strings go into `pda-messages.ts`, and a task that adds a PDA string to `id.ts` or `en.ts` is refused in review.
+
+**Notes for worker:**
+
+- This is a move and a small change in `translate.ts`. If the diff grows past those, stop and ask.
+- Read `docs/decisions/0049-pda-panel.md` and the 2026-11-09 entry in `docs/agent/DECISIONS.md` first; ADR 0050 says why the dictionary is split and how a later task adds a PDA string.
+- A prerendered page must not break: `pnpm build` prerenders `/sandbox`; check that it still works and that the PDA mode loads from the client only.
+- `check:strings` reads components, not the dictionary; it does not need to change.
+- Another worker may be working in a different folder on a different task at the same time. If your PR is merged second and `docs/agent/REPORT.md` conflicts, rebase and keep your own report (decision of 2026-11-09).
+
+---
+
 ## Task T-061 — PDA editor, part 10 of 12: editing in the Tabel tab (draft)
 
-**Status:** proposed (after T-051)
+**Status:** proposed (after T-051 and T-063)
 **Owner:** worker
 
 **Goal:** The Tabel tab of the PDA editor can do everything the canvas can (it is the accessible alternative to the diagram): the **Alfabet** block (chips for Σ and Γ with `+` and the removal rule of the FSM: the transitions that use a symbol go with it, one undo step, toast with Urungkan), the **State** block (rows with the name, a **mulai** radio, an **accepting** checkbox, delete, and **+ State**), and the **Transisi** block made editable (choosers for Dari, Baca and Ke; Pop and Push as text with the typing rules of the label form, **using its parser, not a second one**; delete; **+ Tambah transisi**; a refused row shows its message under it). Design section 6. See T-051 for the pieces it builds on.
 
-**Depends on:** T-051.
+**Depends on:** T-051, T-063 (its strings go into `pda-messages.ts`).
 
 ---
 
 ## Task T-062 — PDA editor, part 11 of 12: the determinism badge and the competing pairs (draft)
 
-**Status:** proposed (after T-051; T-061 is not needed)
+**Status:** proposed (after T-051 and T-063; T-061 is not needed)
 **Owner:** worker
 
 **Goal:** The badge under the kind switch (design section 5): **Deterministik**, **Non-deterministik · n pasangan bersaing ▾** (neutral) or **Bukan DPDA · n pasangan bersaing ▾** (warning), from `engine.pdaDeterminism`; a disclosure list of pairs, each with the state, the two transitions joined by `↔`, one sentence that says why they compete (`pda_editor.compete_same_read`, `pda_editor.compete_epsilon_read`, built in the UI from the transitions), and **Tunjukkan** (selects the first edge, marks both rows with the accent bar of T-051, focuses the first row; again on the same pair clears it); the note under the list for NDPDA and DPDA; the short badge text on a phone with the full text in `aria-label`. The planner decides then whether the dashed competing edges of a DPDA (design section 2) are drawn; that needs a change in the shared drawing and its own tests.
 
-**Depends on:** T-051.
+**Depends on:** T-051, T-063 (its strings go into `pda-messages.ts`).
 
 ---
 
@@ -2546,7 +2614,7 @@ Follow rule 12 of `AGENTS.md` for every shell command and the stuck rule for eve
 
 **Goal:** "Mesin saya" lists FSMs and PDAs with a type chip and opens a PDA in the PDA mode; the first-run card of the PDA editor with the three examples of T-033; open and export `.jff` and JSON for a PDA (with the calm message for symbols of more than one character); the FSM importer's `jff.unsupported_type { type: "pda" }` offers "Buka di mode PDA". No share link (a later task). See `design/screens/pda-editor.md`, section 1 and "Files and export".
 
-**Depends on:** T-051, T-061, T-062.
+**Depends on:** T-051, T-061, T-062, T-063.
 
 ---
 
