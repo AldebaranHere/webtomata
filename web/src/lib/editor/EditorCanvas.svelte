@@ -51,6 +51,7 @@
 		active?: ReadonlySet<number>;
 		taken?: ReadonlySet<string>;
 		onlayout?: () => void;
+		revealLabeling?: boolean;
 	}
 
 	// The canvas of the editor: the drawing, and the pointer and keyboard. It turns what the user
@@ -67,7 +68,8 @@
 		flags = new Map(),
 		active = new Set<number>(),
 		taken = new Set<string>(),
-		onlayout
+		onlayout,
+		revealLabeling = false
 	}: EditorCanvasProps<D, C> = $props();
 
 	const uid = $props.id();
@@ -143,6 +145,27 @@
 		untrack(() => {
 			if (fitted !== null && camera === fitted)
 				camera = fitted = fit(machineBounds(), { width, height });
+		});
+	});
+
+	// When labeling opens and revealLabeling is enabled (on a phone above the bottom sheet),
+	// bring the labeled edge's center into the visible stage after size/layout updates.
+	$effect(() => {
+		const { width, height } = size;
+		if (!revealLabeling || !view.labeling || width <= 0 || height <= 0) return;
+		untrack(() => {
+			const open = view.labeling;
+			if (!open) return;
+			const edge = shapes.edges.find((e) => e.from === open.from && e.to === open.to);
+			const a = view.doc.states.find((s) => s.id === open.from);
+			const b = view.doc.states.find((s) => s.id === open.to);
+			if (!a || !b) return;
+			const worldCenter = edge
+				? edge.label.center
+				: open.from === open.to
+					? { x: a.x, y: a.y - RADIUS - 60 }
+					: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 - 36 };
+			camera = reveal(camera, worldCenter, { width, height }, 44);
 		});
 	});
 
