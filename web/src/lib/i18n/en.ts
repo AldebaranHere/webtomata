@@ -1,7 +1,7 @@
 // English messages. The keys must be those of `id.ts`.
-import type { MessageKey } from './id.ts';
+import type { id } from './id.ts';
 
-export const en: Record<MessageKey, string> = {
+export const en: Record<keyof typeof id, string> = {
 	'app.name': 'WebTomata',
 	'app.tagline': 'A tool for learning finite state machines, for Theory of Computation students.',
 	'app.privacy': 'No account, no tracking.',
@@ -216,8 +216,6 @@ export const en: Record<MessageKey, string> = {
 	'kind.label': 'Machine type',
 	'kind.dfsm': 'DFSM',
 	'kind.ndfsm': 'NDFSM',
-	'kind.dpda': 'DPDA',
-	'kind.ndpda': 'NDPDA',
 	'editor.kind_set': 'The machine is now {kind}.',
 	'notation.states': 'K',
 	'notation.alphabet': 'Σ',
@@ -1045,33 +1043,5 @@ export const en: Record<MessageKey, string> = {
 	'pda_document.unknown_symbol': 'The symbol "{symbol}" is not in the alphabet.',
 	'pda_document.duplicate_transition': 'That transition already exists.',
 	'pda_document.unsupported_version':
-		'This PDA was made by a newer version of WebTomata (version {version}).',
-	'pda_editor.edge_more': '+ {count} more',
-	'pda_editor.form_title': 'Transitions between {from} and {to}',
-	'pda_editor.col_read': 'Read',
-	'pda_editor.col_pop': 'Pop',
-	'pda_editor.col_push': 'Push',
-	'pda_editor.field_label': 'Row {n}, {field}',
-	'pda_editor.row_delete': 'Delete row {n}',
-	'pda_editor.add_row': '+ Another transition between {from} and {to}',
-	'pda_editor.label_hint': 'Left = top of stack. Pop ε does not check stack.',
-	'pda_editor.save': 'Save',
-	'pda_editor.cancel': 'Cancel',
-	'pda_editor.menu_edit': 'Edit transitions',
-	'pda_editor.read_one_symbol':
-		'One row reads one symbol. For ‘{text}’: make two rows, or add ‘{text}’ to the input alphabet in the Table tab.',
-	'pda_check.no_accepting_state': 'No accepting state yet.',
-	'pda_check.duplicate_transition':
-		'From {state}, there is more than one copy of the same transition.',
-	'pda_check.pop_never_pushed':
-		'From {state}, a transition pops symbol {symbol} from the stack, but no transition ever pushes it.',
-	'pda_check.competing_transitions':
-		'In a DPDA, transitions on rows {first} and {second} from {state} compete.',
-	'pda_check.accepting_state_free_move':
-		'In a DPDA, state {state} is an accepting state but has a transition that reads nothing and pops nothing.',
-	'pda_editor.col_from': 'From',
-	'pda_editor.col_to': 'To',
-	'pda_editor.table_title': 'Transitions ({count})',
-	'pda_editor.table_empty': 'No transitions yet.',
-	'pda_editor.definition_hint': 'Leftmost = top of stack. ε on pop: does not inspect the stack.'
+		'This PDA was made by a newer version of WebTomata (version {version}).'
 };

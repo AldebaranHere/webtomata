@@ -1,4 +1,5 @@
 <script lang="ts">
+	import '#lib/i18n/pda-messages.ts'; // The PDA messages travel with this workstation only (T-063).
 	import { onMount } from 'svelte';
 	import { createMemoryStore, openStore } from '#lib/storage/index.ts';
 	import { createAutosave } from '#lib/storage/autosave.ts';

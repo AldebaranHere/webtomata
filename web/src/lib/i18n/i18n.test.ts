@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { en } from './en.ts';
 import { id } from './id.ts';
-import type { MessageKey } from './id.ts';
 import {
 	DEFAULT_LOCALE,
 	STORAGE_KEY,
@@ -16,7 +15,7 @@ import type { StorageLike } from './translate.ts';
 const parameters = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
 
 describe('the messages', () => {
-	const keys = Object.keys(id) as MessageKey[];
+	const keys = Object.keys(id) as (keyof typeof id)[];
 
 	it('have the same keys in Indonesian and English', () => {
 		expect(Object.keys(en).sort()).toEqual([...keys].sort());

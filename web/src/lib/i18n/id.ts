@@ -1,6 +1,8 @@
 // Indonesian messages. This file is the source of the keys: `en.ts` must have exactly these keys
 // (TypeScript checks it, and i18n.test.ts checks the parameters). Terms follow docs/glossary.md.
 // A parameter is written {name}.
+import type { pdaId } from './pda-messages.ts';
+
 export const id = {
 	'app.name': 'WebTomata',
 	'app.tagline': 'Alat belajar mesin berhingga untuk mahasiswa Teori Bahasa dan Automata.',
@@ -217,8 +219,6 @@ export const id = {
 	'kind.label': 'Jenis mesin',
 	'kind.dfsm': 'DFSM',
 	'kind.ndfsm': 'NDFSM',
-	'kind.dpda': 'DPDA',
-	'kind.ndpda': 'NDPDA',
 	'editor.kind_set': 'Jenis mesin menjadi {kind}.',
 	'notation.states': 'K',
 	'notation.alphabet': 'Σ',
@@ -1046,34 +1046,9 @@ export const id = {
 	'pda_document.unknown_symbol': 'Simbol "{symbol}" belum ada di alfabet.',
 	'pda_document.duplicate_transition': 'Transisi itu sudah ada.',
 	'pda_document.unsupported_version':
-		'PDA ini dibuat oleh WebTomata versi yang lebih baru (versi {version}).',
-	'pda_editor.edge_more': '+ {count} lagi',
-	'pda_editor.form_title': 'Transisi di antara {from} dan {to}',
-	'pda_editor.col_read': 'Baca',
-	'pda_editor.col_pop': 'Pop',
-	'pda_editor.col_push': 'Push',
-	'pda_editor.field_label': 'Baris {n}, {field}',
-	'pda_editor.row_delete': 'Hapus baris {n}',
-	'pda_editor.add_row': '+ Transisi lain di antara {from} dan {to}',
-	'pda_editor.label_hint': 'Kiri = puncak stack. Pop ε tidak memeriksa stack.',
-	'pda_editor.save': 'Simpan',
-	'pda_editor.cancel': 'Batal',
-	'pda_editor.menu_edit': 'Ubah transisi',
-	'pda_editor.read_one_symbol':
-		'Satu baris membaca satu simbol. Untuk ‘{text}’: buat dua baris, atau tambahkan ‘{text}’ ke alfabet input di tab Tabel.',
-	'pda_check.no_accepting_state': 'Belum ada accepting state.',
-	'pda_check.duplicate_transition': 'Dari {state}, ada transisi yang sama lebih dari satu kali.',
-	'pda_check.pop_never_pushed':
-		'Dari {state}, transisi mengambil simbol {symbol} dari stack, tetapi tidak ada transisi yang pernah menaruhnya.',
-	'pda_check.competing_transitions':
-		'Pada DPDA, transisi baris {first} dan {second} dari {state} bersaing.',
-	'pda_check.accepting_state_free_move':
-		'Pada DPDA, state {state} adalah accepting state tetapi memiliki transisi yang tidak membaca input dan tidak mem-pop stack.',
-	'pda_editor.col_from': 'Dari',
-	'pda_editor.col_to': 'Ke',
-	'pda_editor.table_title': 'Transisi ({count})',
-	'pda_editor.table_empty': 'Belum ada transisi.',
-	'pda_editor.definition_hint': 'Kiri = puncak stack. ε pada pop: tidak memeriksa stack.'
+		'PDA ini dibuat oleh WebTomata versi yang lebih baru (versi {version}).'
 } as const;
 
-export type MessageKey = keyof typeof id;
+// The keys of this dictionary, plus the PDA keys that travel with the PDA chunk (`pda-messages.ts`).
+// The second part is a type import only, so it is erased at build time.
+export type MessageKey = keyof typeof id | keyof typeof pdaId;

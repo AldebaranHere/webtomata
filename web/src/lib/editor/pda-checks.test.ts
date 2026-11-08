@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { en } from '../i18n/en.ts';
 import { id } from '../i18n/id.ts';
+import { pdaEn, pdaId } from '../i18n/pda-messages.ts';
 import type { Issue } from '../engine/types.ts';
 import { createPdaDocument } from './pda-document.ts';
 import type { PdaDocument } from './pda-document.ts';
@@ -146,8 +147,14 @@ describe('pdaCheckItems', () => {
 		for (const key of keys) {
 			const textKey = PDA_CHECK_KEYS[key];
 			expect(textKey, `mapping for ${key}`).toBeDefined();
-			expect(Object.hasOwn(id, textKey!), `id has key ${textKey}`).toBe(true);
-			expect(Object.hasOwn(en, textKey!), `en has key ${textKey}`).toBe(true);
+			expect(
+				Object.hasOwn(id, textKey!) || Object.hasOwn(pdaId, textKey!),
+				`id or pdaId has key ${textKey}`
+			).toBe(true);
+			expect(
+				Object.hasOwn(en, textKey!) || Object.hasOwn(pdaEn, textKey!),
+				`en or pdaEn has key ${textKey}`
+			).toBe(true);
 		}
 	});
 });
