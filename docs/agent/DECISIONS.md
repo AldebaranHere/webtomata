@@ -419,3 +419,12 @@ Format:
 - Alternatives considered: adding all four held rules now (more text for the worker to read, no evidence yet).
 - Reversible? yes
 - Affects: `AGENTS.md`
+
+## 2026-11-08 — The PDA panel is three tasks, and the PDA mode loads the engine (T-051, T-061, T-062)
+
+- Decider: planner
+- Context: the panel in `design/screens/pda-editor.md` (tabs, kind switch, checks, a three-block editable table, the determinism badge with pairs) was one task, T-051. With the shared checker, tab panel and kind switch it would be a diff that nobody reviews in one sitting. The checks and the badge also need the engine, while T-057's ADR said that the PDA mode never loads the WASM.
+- Decision: T-051 is the panel, the kind switch, the checks and a read-only table and definition; T-061 makes the table editable; T-062 is the badge, the pairs and "Tunjukkan"; T-052 stays last (now part 12 of 12). The PDA mode loads the engine worker after the first draw, for `validatePda` and `pdaDeterminism`; no check is ported to TypeScript. In T-051 the diagram gets the state marks of the checks only: dashed competing edges and a second selection stroke wait for T-062 (they need a change of the shared drawing).
+- Alternatives considered: one task (too large); a TypeScript determinism check to keep the PDA mode free of the WASM (a second implementation of a rule that the engine owns; a wrong answer destroys trust).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md`, `docs/decisions/0048-pda-editor-shell.md` (superseded in one line by 0049), `web/src/lib/editor/PdaEditor.svelte`

@@ -2432,25 +2432,121 @@ Follow rule 12 of `AGENTS.md` for every shell command (the Playwright runs are l
 
 ---
 
-## Task T-051 — PDA editor, part 9 of 10: the panel: tabs, kind switch, badge and checks (draft)
+## Task T-051 — PDA editor, part 9 of 12: the panel: tabs, kind switch, checks (read-only table and definition)
 
-**Status:** proposed (T-057 and its fixes are merged; the planner writes the full spec next)
+**Status:** todo
 **Owner:** worker
+**Branch:** `task/T-051-pda-panel`
 
-**Goal:** The panel of the PDA editor: the DPDA | NDPDA switch, the Tabel tab (alphabets, states, the transition table), the Definisi tab, the determinism badge with its list of competing pairs and "Tunjukkan", and the "Pemeriksaan" line (`validatePda`). See `design/screens/pda-editor.md`, sections 3 to 7.
+**Goal:** The PDA editor gets its panel, as the FSM editor has one: on a laptop a column next to the canvas, on a phone a panel under it with the drag bar. It has two tabs, **Tabel** and **Definisi**. Above the content of both: the **DPDA | NDPDA** switch (one undo step) and the "Pemeriksaan" line (the checks of `validatePda`, asked of the engine in its worker a moment after each change, with a mark on the states that have a check). The Tabel tab here is a **read-only** table of the transitions (Dari, Baca, Pop, Push, Ke, in the engine's order); T-061 makes it editable, T-062 adds the determinism badge. The Definisi tab is the formal definition `M = (K, Σ, Γ, Δ, s, A)`. Pressing `+ n lagi` on the diagram (Pilih tool) selects that edge and opens the Tabel tab with the rows of the edge marked. This is the slice of `design/screens/pda-editor.md` sections 3, 4 (the switch), 6 (the reading part) and 7; the badge (5) and the editing of the table (6) are T-062 and T-061.
 
-**Depends on:** T-057.
+**Why three tasks and not one:** the panel as designed needs a shared checker, a shared tab panel, a shared kind switch, a table with three blocks and a badge with pairs; that is a diff nobody reviews in one sitting. T-051 is the frame and the reading; T-061 the editing of the table; T-062 the badge. T-052 comes last (it was "part 10 of 10"; the series has twelve tasks now; decision of 2026-11-08 in `DECISIONS.md`).
+
+**Decisions already made (do not reopen; ask the planner if one looks wrong):**
+
+- **The PDA mode loads the engine now.** The checks come from `engine.validatePda` (crates `engine-core`, `pda.rs`, T-030) through `#lib/engine/client.ts`, as `Editor.svelte` does for the FSM: the call is made after the first draw, in the worker, and the panel says "memeriksa…" until it answers. A failed engine shows the same `EngineNotice` with retry; the editor stays usable. This replaces "the PDA mode never loads the WASM" of `docs/decisions/0048-pda-editor-shell.md` (say so in the new ADR). No TypeScript port of any check or of `determinism`: the engine is the one source. **No change in `crates/`**: if a new engine function seems needed, stop and write a `blocked` entry.
+- **One checker for both documents.** `createChecker` (`checker.ts`) is typed for `MachineDocument` and calls `checkItems(answer.value, doc)`. Make it work for any document `D` with the conversion of issues to items passed in (the FSM passes `checkItems`). Its behavior for the FSM must not change: `checker.test.ts` and `editor-checks.spec.ts` pass **without a single edited line**. The PDA gets `pdaCheckItems(issues, doc)` in a new `pda-checks.ts` (the keys of the Rust source map to message keys, like `CHECK_KEYS`; a unit test reads the keys from `pda.rs`, as the FSM's test does, so that a new engine key cannot be forgotten). `ChecksList.svelte` is reused as it is (`onselect(state)` focuses a state); for the checks whose params carry no state, `states` is empty and the row is not pressable, as now.
+- **What a PDA check says** (Indonesian drafts, `TODO(review)` where a term is new; the worker writes `en` too; read `crates/engine-core/src/pda.rs` lines 380 to 480 for the params): `pda.no_start_state` reuses `check.no_start_state`; `pda.unreachable_state { state }` reuses `check.unreachable_state`; new keys `pda_check.no_accepting_state` ("Belum ada accepting state."), `pda_check.duplicate_transition { state }` (the same transition twice), `pda_check.pop_never_pushed { state, symbol }` ("Dari {state}, transisi mengambil simbol {symbol} dari stack, tetapi tidak ada transisi yang pernah menaruhnya."), `pda_check.competing_transitions { state, first, second }` (DPDA only; `first` and `second` are **row numbers of the table, 1-based**, i.e. the engine's index plus one: "Pada DPDA, transisi baris {first} dan {second} dari {state} bersaing."), `pda_check.accepting_state_free_move { state }` (DPDA only; word it from the rule in the Rust comment). The engine's `from` param is shown as the state's name; `first` and `second` are row numbers, not state ids (so `pdaCheckItems` must not treat them as states, which `checkItems` does for the names `state`, `from`, `to`).
+- **The panel is `SidePanel`, with two tabs.** `SidePanel` takes `tabs` already; its snippets `simulation` and `conversion` are required by its type only. Make every snippet optional and render only the tabs in `tabs` (the FSM passes all of them, so nothing changes for it). The PDA passes `tabs=['table','definition']`; `readTab(storage, tabs)` falls back to the first, Tabel, for a saved value that the PDA panel does not have (`simulation`). No disabled tab, no empty tab. T-038 adds Simulasi first and Konversi last later.
+- **The panel is always there in the PDA mode** (there is no first-run card until T-052). On a phone, the label form's sheet **replaces** the panel while it is open (design section 8): in the `panel` snippet of `PdaEditor`, the sheet when a label is being edited, the `SidePanel` otherwise. Nothing typed in the panel is lost by this (the panel has no draft state yet; T-061 must say what it does with its own).
+- **The kind switch is `KindSwitch.svelte`, generalized.** It is typed for `'dfsm' | 'ndfsm'` and the keys `kind.dfsm`, `kind.ndfsm`. Give it optional props for the two options (value and label key) with the FSM ones as the default; the PDA passes `dpda` and `ndpda` (new keys `kind.dpda` "DPDA", `kind.ndpda` "NDPDA"). The label stays `kind.label`. The FSM switch must look and behave exactly as before (its e2e and unit tests pass unedited). The switch sends `{ type: 'setKind', kind }` as one undo step with an announcement; it never blocks: choosing DPDA for a machine with competing pairs only gives checks (errors) in the list.
+- **The read-only table is a component and a pure function.** `pda-table.ts`: `pdaTableOf(doc)` returns the rows in `doc.transitions` order (which is the engine's order: `comparePdaTransitions`), each with the state names, `read` (`ε` for null), `pop` and `push` as text (leftmost on top; `ε` for the empty string; if every stack symbol has one character the symbols are joined without a space, else with a space: reuse the function that `pda-diagram.ts` uses for the lines of a label, do not write a second one), and the index. `PdaTableView.svelte` draws it as a real `<table>` with a `<caption>`/heading "Transisi (n)", the columns Dari, Baca, Pop, Push, Ke, and one row per transition; no editing, no buttons in the rows; an empty machine shows one calm line (`pda_editor.table_empty`). It is loaded on demand like `TableView` (a dynamic `import()` when the tab opens), so the route's first JavaScript does not grow. On a phone it scrolls sideways inside the panel with the first column fixed (the rule of the FSM table; copy its CSS idea, using only tokens).
+- **The definition is a pure function and a component.** `pda-definition.ts`: `pdaDefinitionOf(doc)` and `pdaDefinitionText(doc)` (like `definition.ts`), `PdaDefinitionView.svelte` (like `DefinitionView.svelte`). Content as in the design, section 7: `M = (K, Σ, Γ, Δ, s, A)`, then `K`, `Σ`, `Γ`, `s`, `A` as sets in the document's order, then Δ as one line per transition, `((from, read, pop), (to, push))`, in `--font-mono`, followed by the line `pda_editor.definition_hint` ("Kiri = puncak stack. ε pada pop: tidak memeriksa stack."). An empty start shows `s = –` and an empty set `{}`; a copy button is not part of this task.
+- **Marked rows.** `PdaEditor` keeps `marked: ReadonlySet<number>` (indices of rows; not in the document, not in the history). Pressing `+ n lagi` in the Pilih tool (the `onmore` prop of `EditorCanvas`) does three things in this order: select the edge (`editor.selectEdge(from, to)`, as now), open the Tabel tab (also on a phone, where it makes the panel visible if the drag bar had hidden it: use what the FSM does to show the panel), and set `marked` to the rows of that edge. A row in `marked` has the accent bar at its left (a token; the same bar T-062 uses for "Tunjukkan") and `aria-current="true"`. `marked` is cleared when the document changes or when another edge or a state is selected. **The Hapus tool does not call `onmore`**: its click deletes the edge (decision of 2026-11-08); E4 of T-057 stays green and is not edited.
+- **States with a check get the mark on the diagram,** through the `flags` prop of `EditorCanvas` (`flagsOf(items)`, as `Editor.svelte` does). Nothing else changes in the drawing: **no dashed edges, no second selection stroke** (design section 2 and 5 asked for them; they need a change in the shared drawing and go to T-062 only if the planner says so; written in `DECISIONS.md`).
+- **Message keys.** New keys, each in `id` and `en`: `kind.dpda`, `kind.ndpda`, `pda_check.*` (above), `pda_editor.col_from`, `pda_editor.col_to`, `pda_editor.table_title { count }`, `pda_editor.table_empty`, `pda_editor.definition_hint`, `pda_editor.panel_label` if the panel needs an accessible name. Existing keys reused: `panel.*` for the tab names, `check.*`, `kind.label`, `pda_editor.col_read`, `pda_editor.col_pop`, `pda_editor.col_push`. A term that is not in `docs/glossary.md` is added with `TODO(review)` and named in `REPORT.md`.
+- **Size and budgets.** `pnpm size`: no route's first JavaScript grows by more than 0.5 KB gzip (the PDA chunk may grow; report its size before and after; the engine `.wasm` is unchanged, 245.5 KB gzip now, budget 250). If the PDA chunk with the panel loads the engine worker earlier than after the first draw, that is a defect.
+- **The cross-engine storage specs** (`e2e/cross/pda-storage.spec.ts`, S1 to S6) must pass unedited on desktop, phone and webkit-phone. If a spec becomes flaky because the engine now loads in the PDA mode, say so in the report and fix it with `engineSettled` where the spec needs it; do not weaken an assertion.
+
+**Scope (in):**
+
+- `web/src/lib/editor/PdaEditor.svelte` (the panel snippet, the checker, `marked`, `flags`, `onmore`, the switch).
+- `web/src/lib/editor/checker.ts` (generic) and its test only if the signature needs a new test case (the existing ones unedited); `web/src/lib/editor/Editor.svelte` only for passing `checkItems` to the checker.
+- `web/src/lib/editor/pda-checks.ts`, `pda-table.ts`, `pda-definition.ts` (new, with unit tests), `PdaTableView.svelte`, `PdaDefinitionView.svelte` (new).
+- `web/src/lib/editor/SidePanel.svelte` (optional snippets), `web/src/lib/editor/KindSwitch.svelte` (options), with unit or e2e tests for the new use and **no edit of an existing FSM test**.
+- `web/src/lib/i18n/id.ts`, `en.ts`, `docs/glossary.md` (new keys and terms).
+- `web/e2e/pda-panel.spec.ts` (new). `docs/decisions/0049-pda-panel.md` (short: the decisions above, and that it supersedes the "never loads the WASM" line of 0048).
+
+**Non-goals (out):**
+
+- Editing in the table, the alphabet chips, the state rows, `+ Tambah transisi` (T-061). The determinism badge, the list of competing pairs, "Tunjukkan", the note under the list (T-062). Dashed competing edges and a second selection stroke (T-062 if the planner decides). Simulation, conversions, the stack picture (T-038). "Mesin saya", `.jff` and JSON, examples, first-run card, renaming the title, share link (T-052). Any change in `crates/`, the PDA document, commands, label parsing, storage, `EditorFrame`, or the diagram geometry. No auto layout.
+
+**Fixtures (the oracle; derive each value by hand first and write the derivation in `REPORT.md`):**
+
+- **Machine F** (`kind: 'dpda'`): input alphabet `a, b`; stack alphabet `A`; states `q0` (id 0, start) and `q1` (id 1, accepting); transitions, in the engine's order: row 1 `(q0, a, ε → A, q0)`; row 2 `(q0, b, A → ε, q1)`; row 3 `(q1, b, A → ε, q1)`.
+  - *F1, `pdaTableOf(F)`:* three rows: `q0 | a | ε | A | q0`, `q0 | b | A | ε | q1`, `q1 | b | A | ε | q1`. Add a stack symbol `Z0` to F's stack alphabet and a transition `(q1, ε, Z0 → A Z0, q1)`: the new row reads `q1 | ε | Z0 | A Z0 | q1` (a longer symbol name, so the symbols are joined with a space) and it is the **first** of the rows of q1 (ε reads come first).
+  - *F2, `pdaDefinitionText(F)`:* `M = (K, Σ, Γ, Δ, s, A)`; `K = {q0, q1}`; `Σ = {a, b}`; `Γ = {A}`; `s = q0`; `A = {q1}`; and the three lines `((q0, a, ε), (q0, A))`, `((q0, b, A), (q1, ε))`, `((q1, b, A), (q1, ε))`. A document with no start shows `s = –`.
+  - *F3, the checks of F as DPDA:* the engine returns no issue, so the panel says "lengkap" (use the same wording as the FSM's). **Verify this with the engine first** (a `cargo test` or the existing `pda-document.wasm.test.ts` style test); if it returns something, report it and use what it returns.
+- **Machine G** = F with `kind: 'dpda'` and one more transition `(q0, ε, ε → ε, q1)`. In the engine's order the new transition is row 1 (read ε first), so F's rows become 2, 3, 4. It competes with the `a` row and with the `b` row of q0 (an ε read competes with every read, and an empty pop is a prefix of every pop), so the engine's `determinism` returns two pairs, `(row 1, row 2)` and `(row 1, row 3)`, as indices 0-based `(0, 1)` and `(0, 2)`.
+  - *F4, `pdaCheckItems`:* for G as DPDA: two `error` items `pda_check.competing_transitions` with `state` q0 and row numbers `1, 2` and `1, 3`; as NDPDA: no such items (the engine only reports them for a DPDA). **Verify with the engine, as in F3.** A test also feeds `pdaCheckItems` an issue with an unknown key and gets `check.other` with the code, as the FSM does.
+- *F5, the FSM is untouched:* `checker.test.ts`, `checks.test.ts`, `editor-checks.spec.ts`, `editor-panel*.spec.ts`, `editor-table.spec.ts`, `editor-run.spec.ts` and the kind-switch tests pass with no edited line (paste the counts).
+- *E1, the panel* (laptop and phone): in the PDA mode the panel has two tabs, Tabel and Definisi, in this order, none disabled; Tabel is open the first time (also when the FSM mode had saved `simulation`); a tab remembered by the FSM mode and valid for both (`table`, `definition`) is kept; the arrow keys move between the tabs; on a phone the panel is under the canvas with its drag bar and the sheet replaces it while the label form is open and the panel comes back after Simpan or Batal.
+- *E2, the kind switch* (laptop and phone): the default is NDPDA; choosing DPDA is one undo step and undo brings NDPDA back; the switch is a radio group with the arrow keys; it never blocks an edit; on G (build it with the tools) choosing DPDA makes the checks line show two errors and marks `q0` on the diagram, and choosing NDPDA clears them.
+- *E3, the checks line* (laptop): an empty PDA shows "memeriksa…" and then the two checks that the engine reports for it (no start state; the accepting warning, as the engine says: derive which from `pda.rs`); building F makes it say "lengkap"; pressing a check focuses its state; a simulated engine failure shows the notice with retry, and the editor still takes edits (use the technique of `editor-checks.spec.ts`).
+- *E4, the table and the diagram agree* (laptop and phone): build G with the tools; the Tabel tab shows four rows in the engine's order (the ε row first); make a label with the form on the diagram and the new row appears at its sorted place; undo removes it; on a phone the table scrolls sideways with the first column fixed (assert that its `scrollWidth` is larger than its `clientWidth` and the first column's x does not move after a scroll).
+- *E5, `+ n lagi` opens the table* (laptop and phone): an edge with four transitions shows `+ 2 lagi`; pressing it in Pilih selects the edge, opens Tabel, marks the four rows of the edge (`aria-current="true"`, the accent bar), and selecting a state clears the marks; in Hapus, pressing it deletes the edge and **does not** open the panel.
+- *E6, the definition* (laptop): the Definisi tab shows F2's text for F, and changes after an edit.
+- *E7, axe* (laptop and phone): no violations with each tab open, with the checks list open, and with the sheet open.
+- *E8, nothing slower* : the engine worker is requested after the first draw, not before (the technique of the FSM's engine specs), and `pnpm size` as above.
+
+**Acceptance criteria:**
+
+- AC1: F1 to F4 give exactly the values above (unit tests; F3 and F4 first checked against the engine, with the output in the report).
+- AC2: F5: no existing test edited (paste the pass counts of the named specs on desktop and phone); `pda-storage.spec.ts` passes on desktop, phone and webkit-phone, and on Firefox if the machine has it (say so if it does not).
+- AC3: E1 to E8 pass on the desktop and phone projects as marked (paste the counts).
+- AC4: `pnpm size` as in the decisions (paste the numbers); no `crates/` file changed (`git diff --stat`).
+- AC5: deliberate breaks, each shown failing **on the final code** with the failing line pasted, then restored: pass `tabs=['simulation','table','definition']` to the PDA panel (E1 fails); make `pdaTableOf` sort by the order of insertion instead of `doc.transitions` (F1 fails); treat `first` and `second` as state ids in `pdaCheckItems` (F4 fails); do not clear `marked` when the document changes (E5 fails); make Hapus call `onmore` (E5 fails); send `setKind` as two commands instead of one (E2 fails on undo); leave the `flags` prop out (E2 fails on the mark); call the engine before the first draw (E8 fails).
+- AC6: the deepening pass of `AGENTS.md` in `REPORT.md`: the new props of `SidePanel`, `KindSwitch` and `createChecker` (each used by the FSM and the PDA), duplicated code between `Editor.svelte` and `PdaEditor.svelte` (list what is left and why), casts (zero), and the size numbers.
+
+**Verification:**
+
+```
+pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens
+pnpm --filter web exec vitest run
+pnpm build && pnpm size
+pnpm --filter web exec playwright test pda-panel pda-editor pda-storage switcher editor-checks editor-panel editor-table editor-flows
+```
+
+Follow rule 12 of `AGENTS.md` for every shell command and the stuck rule for every wait. Paste real output into `REPORT.md`, with the hand derivations of F1 to F4 first.
+
+**Rollback:** `git revert <sha>`. The FSM editor changes only by the optional props of `SidePanel` and `KindSwitch` and the generic checker, all with the FSM's tests unedited.
+
+**Depends on:** T-057 (merged, with PR 183).
+
+**Notes for worker:** (1) Read `PdaEditor.svelte`, `Editor.svelte` (all of it), `SidePanel.svelte`, `KindSwitch.svelte`, `ChecksList.svelte`, `checker.ts`, `checks.ts`, `panel-tab.ts`, `definition.ts`, `DefinitionView.svelte`, `TableView.svelte` (its CSS for the phone), `pda-diagram.ts` (the text of a label), `pda-document.ts`, `pda-commands.ts`, `crates/engine-core/src/pda.rs` (the checks and `determinism`), `docs/ux/editor-interactions.md` (the panel), and `e2e/editor-checks.spec.ts` before you restate. (2) The FSM's `chooseKind` and the table of the FSM show how a kind change is announced. (3) The indices of a competition are into the engine's transition list; `toEnginePda(doc)` keeps the document's order; write one test that proves `doc.transitions[i]` is the engine's `transitions[i]` for machine G before you rely on it. (4) The mark of a state on the diagram and the rows' accent bar use tokens only (`check:tokens`); if a token is missing, ask. (5) Do not start T-061 or T-062; they are `proposed` entries below.
 
 ---
 
-## Task T-052 — PDA editor, part 10 of 10: saved machines, files and the three examples (draft)
+## Task T-061 — PDA editor, part 10 of 12: editing in the Tabel tab (draft)
 
 **Status:** proposed (after T-051)
 **Owner:** worker
 
-**Goal:** "Mesin saya" lists FSMs and PDAs with a type chip and opens a PDA in the PDA mode; the first-run card of the PDA editor with the three examples of T-033; open and export `.jff` and JSON for a PDA (with the calm message for symbols of more than one character); the FSM importer's `jff.unsupported_type { type: "pda" }` offers "Buka di mode PDA". No share link (a later task). See `design/screens/pda-editor.md`, section 1 and "Files and export".
+**Goal:** The Tabel tab of the PDA editor can do everything the canvas can (it is the accessible alternative to the diagram): the **Alfabet** block (chips for Σ and Γ with `+` and the removal rule of the FSM: the transitions that use a symbol go with it, one undo step, toast with Urungkan), the **State** block (rows with the name, a **mulai** radio, an **accepting** checkbox, delete, and **+ State**), and the **Transisi** block made editable (choosers for Dari, Baca and Ke; Pop and Push as text with the typing rules of the label form, **using its parser, not a second one**; delete; **+ Tambah transisi**; a refused row shows its message under it). Design section 6. See T-051 for the pieces it builds on.
 
 **Depends on:** T-051.
+
+---
+
+## Task T-062 — PDA editor, part 11 of 12: the determinism badge and the competing pairs (draft)
+
+**Status:** proposed (after T-051; T-061 is not needed)
+**Owner:** worker
+
+**Goal:** The badge under the kind switch (design section 5): **Deterministik**, **Non-deterministik · n pasangan bersaing ▾** (neutral) or **Bukan DPDA · n pasangan bersaing ▾** (warning), from `engine.pdaDeterminism`; a disclosure list of pairs, each with the state, the two transitions joined by `↔`, one sentence that says why they compete (`pda_editor.compete_same_read`, `pda_editor.compete_epsilon_read`, built in the UI from the transitions), and **Tunjukkan** (selects the first edge, marks both rows with the accent bar of T-051, focuses the first row; again on the same pair clears it); the note under the list for NDPDA and DPDA; the short badge text on a phone with the full text in `aria-label`. The planner decides then whether the dashed competing edges of a DPDA (design section 2) are drawn; that needs a change in the shared drawing and its own tests.
+
+**Depends on:** T-051.
+
+---
+
+## Task T-052 — PDA editor, part 12 of 12: saved machines, files and the three examples (draft)
+
+**Status:** proposed (after T-051, T-061 and T-062)
+**Owner:** worker
+
+**Goal:** "Mesin saya" lists FSMs and PDAs with a type chip and opens a PDA in the PDA mode; the first-run card of the PDA editor with the three examples of T-033; open and export `.jff` and JSON for a PDA (with the calm message for symbols of more than one character); the FSM importer's `jff.unsupported_type { type: "pda" }` offers "Buka di mode PDA". No share link (a later task). See `design/screens/pda-editor.md`, section 1 and "Files and export".
+
+**Depends on:** T-051, T-061, T-062.
 
 ---
 
