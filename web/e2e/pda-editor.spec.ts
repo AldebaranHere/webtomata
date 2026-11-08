@@ -1,6 +1,7 @@
 import { expect, expectNoAxeViolations, test } from './fixtures.ts';
 import type { Page } from '@playwright/test';
 import { parsePdaDocumentText } from '../src/lib/editor/pda-document.ts';
+import { touchDragAt } from './touch.ts';
 
 async function openSandbox(page: Page, query = '') {
 	await page.goto(`/sandbox${query}`);
@@ -249,7 +250,6 @@ test.describe('E3: Typing and sending transitions', () => {
 
 		// Delete row: removes edge and toast offers Urungkan
 		await form.getByRole('button', { name: /Hapus baris 1/i }).click();
-		// Row deleted; with no rows left, saving deletes edge
 		await form.getByRole('button', { name: /Simpan/i }).click();
 		await expect(form).toHaveCount(0);
 		await expect(page.locator('.edge-node[data-edge="0>1"]')).toHaveCount(0);
@@ -311,7 +311,7 @@ test.describe('E4: + n lagi overflow button behavior', () => {
 		const edgeLabel = page.locator('.labels text.label').first();
 		await expect(edgeLabel).toContainText('+ 2 lagi');
 
-		// 1. In Select tool: clicking '+ 2 lagi' selects edge
+		// 1. In Select tool: clicking '+ 2 lagi' selects edge exactly once and stays selected
 		const selectBtn = page.getByRole('button', { name: /^Pilih/ });
 		await selectBtn.click();
 
@@ -330,6 +330,16 @@ test.describe('E4: + n lagi overflow button behavior', () => {
 		await expect(toast).toBeVisible();
 		await toast.getByRole('button', { name: /Urungkan/i }).click();
 		await expect(page.locator('.edge-node[data-edge="0>0"]')).toBeVisible();
+
+		// After Urungkan, verify that all 4 transitions are fully restored
+		await selectBtn.click();
+		await overflowHit.click();
+		await expect(edgeNode).toHaveAttribute('aria-pressed', 'true');
+		await page.keyboard.press('Enter');
+		const reopenedForm = page.locator('.pda-label-form[role="dialog"]');
+		await expect(reopenedForm).toBeVisible();
+		await expect(reopenedForm.locator('.row')).toHaveCount(4);
+		await reopenedForm.getByRole('button', { name: /Batal/i }).click();
 	});
 });
 
@@ -572,8 +582,19 @@ test.describe('E8: Phone sheet dimensions and labeled edge in view', () => {
 		const addBtn = page.getByRole('button', { name: /^Tambah state/ });
 		await addBtn.tap();
 		const stage = page.locator('.stage svg');
-		await stage.tap({ position: { x: 150, y: 150 } });
-		await stage.tap({ position: { x: 280, y: 150 } });
+		await stage.tap({ position: { x: 120, y: 250 } });
+		await stage.tap({ position: { x: 260, y: 250 } });
+
+		// Pan canvas downward so camera differs from fitted, moving the states
+		// low on the screen where the bottom sheet will cover them
+		const selectBtn = page.getByRole('button', { name: /^Pilih/ });
+		await selectBtn.tap();
+		const stageBoxBefore = (await stage.boundingBox())!;
+		await touchDragAt(
+			page,
+			{ x: stageBoxBefore.x + 50, y: stageBoxBefore.y + 100 },
+			{ x: stageBoxBefore.x + 50, y: stageBoxBefore.y + 350 }
+		);
 
 		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
 		await transBtn.tap();
@@ -600,14 +621,18 @@ test.describe('E8: Phone sheet dimensions and labeled edge in view', () => {
 		const fontSize = await input.evaluate((el) => parseFloat(window.getComputedStyle(el).fontSize));
 		expect(fontSize).toBeGreaterThanOrEqual(16);
 
-		// Labeled edge is inside visible stage rectangle
+		// The point being edited (middle of the two state buttons) must be above the top of the sheet
+		// and inside the visible stage rectangle. Asserted using bounding boxes of the two state buttons.
 		const stageBox = (await stage.boundingBox())!;
-		const edgeLabel = page.locator('.labels text.label').first();
-		if ((await edgeLabel.count()) > 0) {
-			const labelBox = (await edgeLabel.boundingBox())!;
-			expect(labelBox.y).toBeGreaterThanOrEqual(stageBox.y);
-			expect(labelBox.y + labelBox.height).toBeLessThanOrEqual(stageBox.y + stageBox.height);
-		}
+		const q0Box = (await q0.boundingBox())!;
+		const q1Box = (await q1.boundingBox())!;
+		const midX = (q0Box.x + q0Box.width / 2 + (q1Box.x + q1Box.width / 2)) / 2;
+		const midY = (q0Box.y + q0Box.height / 2 + (q1Box.y + q1Box.height / 2)) / 2;
+
+		expect(midY).toBeLessThan(sheetBox.y);
+		expect(midY).toBeGreaterThanOrEqual(stageBox.y);
+		expect(midX).toBeGreaterThanOrEqual(stageBox.x);
+		expect(midX).toBeLessThanOrEqual(stageBox.x + stageBox.width);
 
 		// Close sheet gives focus back to canvas
 		await sheet.getByRole('button', { name: /Batal/i }).tap();

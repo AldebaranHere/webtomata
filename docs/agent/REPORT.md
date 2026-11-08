@@ -67,12 +67,13 @@ During implementation of E4, the behavior of clicking the overflow label (`+ n l
 | 1 | In `readMode`, ignore saved value (return `'fsm'` on null query). | F1 (`('', 'pda') -> 'pda'`) fails. | Fails: expected `'pda'`, received `'fsm'`. Restored. |
 | 2 | In `WorkstationSwitcher.svelte`, leave `pda` item disabled (`disabled: true`). | E1 (`switcher.spec.ts` & `pda-editor.spec.ts`) fails. | Fails: button has `aria-disabled="true"`, not interactable. Restored. |
 | 3 | In `PdaEditor.svelte`, drop `menuLabels={pdaMenuLabels}`. | E2 (context menu item text check) fails. | Fails: menu shows default FSM text "Ubah label" instead of "Ubah transisi". Restored. |
-| 4 | In `PdaEditor.svelte`, force `formDisplayMode = 'popover'` on phone. | E8 (phone sheet test) fails. | Fails: `expect(sheet).toBeVisible()` times out (popover rendered instead). Restored. |
-| 5 | In `autosave-binding.svelte.ts`, drop cleanup flush (`autosave()?.flush()`). | E6 (flush on mode switch) fails. | Fails: edits made within debounce window are lost upon rapid switch. Restored. |
+| 4 | In `PdaEditor.svelte`, force `formDisplayMode = 'popover'` on phone. | E8 (phone sheet test) fails. | Fails: `Error: expect(locator).toBeVisible() failed; Locator: locator('aside.pda-sheet'); Expected: visible; Timeout: 5000ms`. Restored. |
+| 5 | In `autosave-binding.svelte.ts`, drop cleanup flush (`autosave()?.flush()`). | E6 (flush on mode switch) fails. | Fails: `Error: expect(locator).toBeVisible() failed; Locator: getByRole('button', { name: /^State q0/ }); Expected: visible; Timeout: 5000ms`. Restored. |
 | 6 | In `PdaEditor.svelte`, hardcode `persistent={true}` to `EditorFrame`. | S5 (ephemeral storage warning) fails. | Fails: "Tidak tersimpan" warning is missing when storage is unavailable. Restored. |
 | 7 | In `+page.svelte`, suppress skipped notice for PDA mode. | S3 (unreadable PDA notice) fails. | Fails: skipped notice container is not rendered. Restored. |
 | 8 | In `PdaEditor.svelte`, remove `max-height: 60%` from `.pda-sheet`. | E8 (sheet height limit assertion) fails. | Fails: sheet height exceeds 60% viewport height. Restored. |
 | 9 | In `PdaWorkstation.svelte`, call `openLatest` instead of `openLatestPda`. | S1 / S6 (kind isolation test) fails. | Fails: FSM record opened instead of PDA record. Restored. |
+| 10 | In `PdaEditor.svelte`, pass `revealLabeling={false}`. | E8 (phone sheet test with low states) fails. | Fails: `Error: expect(received).toBeLessThan(expected); Expected: < 503.5; Received: 654`. Restored. |
 
 ---
 
@@ -84,13 +85,11 @@ During implementation of E4, the behavior of clicking the overflow label (`+ n l
      - `function readMode(search: string, saved: string | null): WorkstationMode`
      - Evaluated: public and consumed by `+page.svelte` and `WorkstationSwitcher.svelte`.
    - `web/src/lib/editor/autosave-binding.svelte.ts`:
-     - `function useAutosaveBinding<D, C>(options: AutosaveBindingOptions<D, C>)`
+     - `function useAutosaveBinding<D>(options: AutosaveBindingOptions<D>)`
      - Evaluated: shared rune hook consumed by `Editor.svelte` (FSM) and `PdaEditor.svelte` (PDA).
-   - `web/src/lib/editor/EditorCanvas.svelte`:
-     - Added optional prop `revealLabeling?: boolean` (defaults to `false`).
-     - Evaluated: opt-in canvas prop used only by `PdaEditor` when the phone bottom sheet is active, preserving FSM canvas behavior completely unchanged.
    - `web/src/lib/storage/index.ts`:
      - Exported `pdaDocumentCodec` from `pda-work.ts`.
+     - Exported `createMemoryStore` from `memory.ts` (deviation: exported to allow in-memory storage instantiation in e2e spec `pda-storage.spec.ts`).
 
 2. **Interface Surface & Duplication Review**:
    - `Editor.svelte` and `PdaEditor.svelte`:
@@ -294,3 +293,56 @@ Running 56 tests using 2 workers
   16 skipped
   40 passed (36.6s)
 ```
+
+---
+
+## 7. Fixes after PR 182 Review
+
+Following review of PR 182, three gaps and documentation items were addressed:
+
+1. **E8 Phone Sheet Reveal Test**:
+   - In `web/e2e/pda-editor.spec.ts`, E8 creates two states `q0` and `q1` at `(120, 250)` and `(260, 250)`, switches to the `Pilih` tool, and uses `touchDragAt` to pan the canvas downward (+250px). This ensures `camera` differs from `fitted` so that auto-fit on stage resize does not intervene, placing the edge midpoint low where the sheet will cover it.
+   - When the transition sheet opens, with `revealLabeling={formDisplayMode === 'sheet'}`, `reveal` lifts the camera so that the midpoint is above the sheet (`midY < sheetBox.y`), inside the visible stage (`midY >= stageBox.y`), and bounded horizontally.
+   - `EditorCanvas.svelte` remains 100% identical to staging (0 diff).
+   - Deliberate Break 10 verified: passing `revealLabeling={false}` in `PdaEditor.svelte` causes E8 to fail with:
+     ```
+     Error: expect(received).toBeLessThan(expected)
+
+     Expected: < 503.5
+     Received:   654
+
+       630 | 		const midY = (q0Box.y + q0Box.height / 2 + (q1Box.y + q1Box.height / 2)) / 2;
+       631 |
+     > 632 | 		expect(midY).toBeLessThan(sheetBox.y);
+           | 		             ^
+     ```
+   - Restoring `revealLabeling={formDisplayMode === 'sheet'}` results in E8 passing 12 of 12 runs on `phone` (`--repeat-each=12`, 13.6s).
+
+2. **Reverted Null Guards in PdaLabelForm & PdaLabelPopover**:
+   - Reverted `PdaLabelForm.svelte` and `PdaLabelPopover.svelte` null guards to match staging (keeping only the `.pda-label-form` and `.pda-label-popover` CSS classes used by e2e selectors).
+   - In `web/src/lib/editor/PdaEditor.svelte`, stable non-null copies `activeLabeling` and `lastSlot` are maintained while the label form is mounted, preventing any reactive transient passes of `null` during unmounting.
+
+3. **Strengthened E4 Assertions**:
+   - In `web/e2e/pda-editor.spec.ts` (E4), added assertions verifying that:
+     - In the **Pilih** (`select`) tool, clicking the `+ 2 lagi` overflow hit selects the edge once and stays selected (`expect(edgeNode).toHaveAttribute('aria-pressed', 'true')`).
+     - In the **Hapus** (`delete`) tool, clicking `+ 2 lagi` deletes the edge, toast displays with `Urungkan`, and clicking `Urungkan` restores the edge.
+     - Switching back to **Pilih**, re-selecting the edge via `overflowHit` and pressing `Enter` opens the label dialog and verifies all 4 transition rows are present (`expect(reopenedForm.locator('.row')).toHaveCount(4)`).
+
+4. **Deliberate Breaks 4 & 5 Verification**:
+   - Deliberate break 4 (forcing `formDisplayMode = 'popover'` on phone) was re-run; Playwright failure output captured:
+     `Error: expect(locator).toBeVisible() failed; Locator: locator('aside.pda-sheet'); Expected: visible`.
+   - Deliberate break 5 (dropping `flush()` on unmount in `autosave-binding.svelte.ts`) was re-run; Playwright failure output captured:
+     `Error: expect(locator).toBeVisible() failed; Locator: getByRole('button', { name: /^State q0/ }); Expected: visible`.
+
+5. **Budgets & Deviations**:
+   - Baseline size of `sandbox.html` on `staging` (PR 180 merge) was 124.8 KB gzip. Current size is 124.8 KB gzip (delta < 50 bytes, well within 170 KB limit).
+   - `createMemoryStore` export from `web/src/lib/storage/index.ts` recorded as an intentional test seam for `pda-storage.spec.ts`.
+   - Focus management in `web/src/lib/editor/PdaLabelForm.svelte` (allowed exception to touch): proactively moving focus before row deletion to prevent premature focusout auto-commit.
+
+6. **Fixes after PR 183 Review (E3 Unconditional Simpan & PdaLabelForm Focus Fix)**:
+   - In `web/e2e/pda-editor.spec.ts` (E3), removed conditional `if ((await form.count()) > 0)` guard so `Simpan` is clicked unconditionally.
+   - Baseline failure measurement: with unconditional Simpan and without the fix, running E3 repeated 12 times failed 5 of 12 (timing out waiting for `.pda-label-form[role="dialog"] .btn-primary` because the form had already auto-committed and unmounted).
+   - Root cause: When `Hapus baris 1` is clicked, the focused input or delete button was detached by Svelte when `rows` updated, causing Chromium to dispatch `focusout` with `relatedTarget = null` and focus falling to `document.body`. This triggered `onfocusout` to immediately commit the empty row and close the dialog before the test could click `Simpan`.
+   - Fix in `PdaLabelForm.svelte`: `deleteRow` now proactively moves focus to `.add-row-btn` before mutating `rows` (so focus never leaves the container), and after `await tick()` moves focus to the `baca` input of the target row (or `.add-row-btn` if no rows remain). `onfocusout` logic remains matching staging.
+   - Verification: Running E3 repeated 24 times on desktop passed 24 of 24 (31.0s). Phone tests (E2, E8 repeated 12 times) and the full `pda-editor.spec.ts` suite passed cleanly.
+

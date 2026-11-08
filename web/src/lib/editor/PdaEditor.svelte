@@ -4,7 +4,7 @@
 	import type { BaseAutosave } from '#lib/storage/autosave.ts';
 	import { useAutosaveBinding } from './autosave-binding.svelte.ts';
 	import { pdaDiagram } from './diagram/pda-diagram.ts';
-	import EditorCanvas from './EditorCanvas.svelte';
+	import EditorCanvas, { type LabelSlot } from './EditorCanvas.svelte';
 	import EditorFrame from './EditorFrame.svelte';
 	import { createPdaEditor } from './interaction/pda-editor.ts';
 	import type { PdaDocument } from './pda-document.ts';
@@ -50,27 +50,42 @@
 	// On a phone (max-width: 39.99rem), the form is rendered as a bottom sheet in the frame's panel slot.
 	// On a laptop/desktop, it is rendered as a popover over the edge through the canvas label slot.
 	// The choice is determined when the form opens and kept until it closes.
+	// We preserve stable non-null copies of `labeling` and `slot` while the form is open so child components
+	// are never passed null props during unmount / reactive flush.
 	let formDisplayMode = $state<'popover' | 'sheet' | null>(null);
+	let activeLabeling = $state<{ from: number; to: number } | null>(null);
+	let lastSlot: LabelSlot | null = null;
 	let lastLabelingOpen = false;
 
+	function slotWithFallback(slot: LabelSlot | null): LabelSlot | null {
+		if (slot) lastSlot = slot;
+		return slot ?? lastSlot;
+	}
+
 	$effect(() => {
-		const isOpen = snapshot.labeling !== null;
+		const open = snapshot.labeling;
+		const isOpen = open !== null;
 		if (isOpen && !lastLabelingOpen) {
 			const isPhone = window.matchMedia('(max-width: 39.99rem)').matches;
 			formDisplayMode = isPhone ? 'sheet' : 'popover';
+			activeLabeling = { from: open.from, to: open.to };
+		} else if (isOpen) {
+			activeLabeling = { from: open.from, to: open.to };
 		} else if (!isOpen && lastLabelingOpen) {
 			formDisplayMode = null;
+			activeLabeling = null;
+			lastSlot = null;
 		}
 		lastLabelingOpen = isOpen;
 	});
 
 	const fromStateName = $derived.by(() => {
-		const open = snapshot.labeling;
+		const open = activeLabeling ?? snapshot.labeling;
 		if (!open) return '';
 		return snapshot.doc.states.find((s) => s.id === open.from)?.name ?? `q${open.from}`;
 	});
 	const toStateName = $derived.by(() => {
-		const open = snapshot.labeling;
+		const open = activeLabeling ?? snapshot.labeling;
 		if (!open) return '';
 		return snapshot.doc.states.find((s) => s.id === open.to)?.name ?? `q${open.to}`;
 	});
@@ -109,24 +124,27 @@
 			revealLabeling={formDisplayMode === 'sheet'}
 		>
 			{#snippet label(slot)}
-				{#if formDisplayMode === 'popover' && snapshot.labeling}
+				{@const currentSlot = slotWithFallback(slot)}
+				{#if formDisplayMode === 'popover' && (activeLabeling ?? snapshot.labeling) && currentSlot}
+					{@const currentLabeling = (activeLabeling ?? snapshot.labeling)!}
 					<PdaLabelPopover
 						{editor}
 						doc={snapshot.doc}
-						labeling={snapshot.labeling}
-						slotData={slot}
+						labeling={currentLabeling}
+						slotData={currentSlot}
 					/>
 				{/if}
 			{/snippet}
 		</EditorCanvas>
 	{/snippet}
 	{#snippet panel()}
-		{#if formDisplayMode === 'sheet' && snapshot.labeling}
+		{#if formDisplayMode === 'sheet' && (activeLabeling ?? snapshot.labeling)}
+			{@const currentLabeling = (activeLabeling ?? snapshot.labeling)!}
 			<aside
 				class="pda-sheet"
 				aria-label={t('pda_editor.form_title', { from: fromStateName, to: toStateName })}
 			>
-				<PdaLabelForm {editor} doc={snapshot.doc} labeling={snapshot.labeling} />
+				<PdaLabelForm {editor} doc={snapshot.doc} labeling={currentLabeling} />
 			</aside>
 		{/if}
 	{/snippet}

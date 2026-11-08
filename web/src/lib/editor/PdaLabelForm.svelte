@@ -38,11 +38,9 @@
 	let activeFieldName = $state<'read' | 'pop' | 'push'>('read');
 
 	const fromName = $derived(
-		labeling ? (doc.states.find((s) => s.id === labeling.from)?.name ?? `q${labeling.from}`) : ''
+		doc.states.find((s) => s.id === labeling.from)?.name ?? `q${labeling.from}`
 	);
-	const toName = $derived(
-		labeling ? (doc.states.find((s) => s.id === labeling.to)?.name ?? `q${labeling.to}`) : ''
-	);
+	const toName = $derived(doc.states.find((s) => s.id === labeling.to)?.name ?? `q${labeling.to}`);
 
 	onMount(async () => {
 		await tick();
@@ -71,7 +69,6 @@
 	}
 
 	function commit(): void {
-		if (!labeling) return;
 		const cmds = rowCommands(doc, labeling.from, labeling.to, rows);
 		if ('key' in cmds) {
 			refusalText = t(cmds.key as MessageKey, cmds.params);
@@ -109,12 +106,33 @@
 		});
 	}
 
-	function deleteRow(index: number): void {
+	async function deleteRow(index: number): Promise<void> {
+		const addBtn = container?.querySelector<HTMLButtonElement>('.add-row-btn');
+		addBtn?.focus();
+
 		if (rows.length === 1) {
 			rows[0] = { read: '', pop: '', push: '' };
 		} else {
 			rows.splice(index, 1);
 		}
+
+		await tick();
+		if (!container) return;
+
+		const rowsList = container.querySelectorAll<HTMLElement>('.row');
+		if (rowsList.length > 0) {
+			const targetIndex = Math.min(index, rowsList.length - 1);
+			const targetRow = rowsList[targetIndex];
+			const baca = targetRow?.querySelector<HTMLInputElement>('.row-fields input');
+			if (baca) {
+				baca.focus();
+				activeInput = baca;
+				activeRowIndex = targetIndex;
+				activeFieldName = 'read';
+				return;
+			}
+		}
+		addBtn?.focus();
 	}
 
 	function onkeydown(event: KeyboardEvent): void {
@@ -132,9 +150,6 @@
 	}
 
 	function onfocusout(event: FocusEvent): void {
-		if (!labeling || !container || !editor.getState().labeling) {
-			return;
-		}
 		if (event.relatedTarget && container.contains(event.relatedTarget as Node)) {
 			return;
 		}
