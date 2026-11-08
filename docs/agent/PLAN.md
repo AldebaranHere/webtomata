@@ -2519,7 +2519,7 @@ Follow rule 12 of `AGENTS.md` for every shell command and the stuck rule for eve
 
 ## Task T-063 — Load the PDA messages only in the PDA mode
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-063-lazy-pda-messages`
 
