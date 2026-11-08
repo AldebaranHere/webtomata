@@ -54,12 +54,12 @@
 	// are never passed null props during unmount / reactive flush.
 	let formDisplayMode = $state<'popover' | 'sheet' | null>(null);
 	let activeLabeling = $state<{ from: number; to: number } | null>(null);
-	let activeSlot = $state<LabelSlot | null>(null);
+	let lastSlot: LabelSlot | null = null;
 	let lastLabelingOpen = false;
 
-	function rememberSlot(slot: LabelSlot | null): LabelSlot | null {
-		if (slot) activeSlot = slot;
-		return slot ?? activeSlot;
+	function slotWithFallback(slot: LabelSlot | null): LabelSlot | null {
+		if (slot) lastSlot = slot;
+		return slot ?? lastSlot;
 	}
 
 	$effect(() => {
@@ -74,7 +74,7 @@
 		} else if (!isOpen && lastLabelingOpen) {
 			formDisplayMode = null;
 			activeLabeling = null;
-			activeSlot = null;
+			lastSlot = null;
 		}
 		lastLabelingOpen = isOpen;
 	});
@@ -124,7 +124,7 @@
 			revealLabeling={formDisplayMode === 'sheet'}
 		>
 			{#snippet label(slot)}
-				{@const currentSlot = rememberSlot(slot)}
+				{@const currentSlot = slotWithFallback(slot)}
 				{#if formDisplayMode === 'popover' && (activeLabeling ?? snapshot.labeling) && currentSlot}
 					{@const currentLabeling = (activeLabeling ?? snapshot.labeling)!}
 					<PdaLabelPopover
