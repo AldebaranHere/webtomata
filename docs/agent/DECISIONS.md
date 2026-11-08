@@ -446,3 +446,12 @@ Format:
 - Alternatives considered: one `REPORT-T-xxx.md` per task (no conflicts, but changes `AGENTS.md` and the review steps; not worth it for one trial).
 - Reversible? yes
 - Affects: `docs/agent/REPORT.md`, the specs of tasks given to a second worker
+
+## 2026-11-09 — The PDA messages get their own lazy module first (T-063), and DeepSeek takes it
+
+- Decider: planner
+- Context: after the size exception of T-051, every further PDA task (T-061, T-062, T-052) would add strings to the shared dictionary and grow the first load of every route again. 25 PDA keys are in `id.ts` and `en.ts` now, and nothing outside the PDA chunk uses them. DeepSeek passed the harness trial on 2026-11-09 (it stayed in its folder, ran the commands, restated the five worker rules correctly and stopped). T-063 is small, has numbers that prove it (`pnpm size`, a grep of the build) and no UI change, so it is a safe first real task for a second worker, and Gemini has nothing in flight.
+- Decision: T-063 moves the 25 PDA keys to `web/src/lib/i18n/pda-messages.ts`, which `PdaWorkstation.svelte` imports and which registers both languages; `translate` gets `addMessages` and a fallback that gives the key. `MessageKey` stays one union by `import type`. T-061, T-062 and T-052 depend on T-063 and put their strings in the new module. DeepSeek is the worker of T-063 in its own checkout; Gemini starts T-061 after T-063 is merged.
+- Alternatives considered: put the lazy module inside T-061 (a bigger diff with a UI change in it); a code-split dictionary for the whole site (a larger refactor than the size problem needs); accept the growth for each task (a budget that moves every task).
+- Reversible? yes
+- Affects: `web/src/lib/i18n/`, `web/src/lib/editor/PdaWorkstation.svelte`, the specs of T-061, T-062, T-052
