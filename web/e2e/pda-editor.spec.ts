@@ -249,10 +249,7 @@ test.describe('E3: Typing and sending transitions', () => {
 
 		// Delete row: removes edge and toast offers Urungkan
 		await form.getByRole('button', { name: /Hapus baris 1/i }).click();
-		// If not already auto-committed by focusout, click Simpan
-		if ((await form.count()) > 0) {
-			await form.getByRole('button', { name: /Simpan/i }).click();
-		}
+		await form.getByRole('button', { name: /Simpan/i }).click();
 		await expect(form).toHaveCount(0);
 		await expect(page.locator('.edge-node[data-edge="0>1"]')).toHaveCount(0);
 
