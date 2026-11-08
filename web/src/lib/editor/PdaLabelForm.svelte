@@ -106,12 +106,33 @@
 		});
 	}
 
-	function deleteRow(index: number): void {
+	async function deleteRow(index: number): Promise<void> {
+		const addBtn = container?.querySelector<HTMLButtonElement>('.add-row-btn');
+		addBtn?.focus();
+
 		if (rows.length === 1) {
 			rows[0] = { read: '', pop: '', push: '' };
 		} else {
 			rows.splice(index, 1);
 		}
+
+		await tick();
+		if (!container) return;
+
+		const rowsList = container.querySelectorAll<HTMLElement>('.row');
+		if (rowsList.length > 0) {
+			const targetIndex = Math.min(index, rowsList.length - 1);
+			const targetRow = rowsList[targetIndex];
+			const baca = targetRow?.querySelector<HTMLInputElement>('.row-fields input');
+			if (baca) {
+				baca.focus();
+				activeInput = baca;
+				activeRowIndex = targetIndex;
+				activeFieldName = 'read';
+				return;
+			}
+		}
+		addBtn?.focus();
 	}
 
 	function onkeydown(event: KeyboardEvent): void {
@@ -132,17 +153,25 @@
 		if (event.relatedTarget && container.contains(event.relatedTarget as Node)) {
 			return;
 		}
-		if (performance.now() - openedAt < SETTLE_MS) {
-			activeInput?.focus();
-			return;
-		}
-		if (rowsChanged()) {
-			const cmds = rowCommands(doc, labeling.from, labeling.to, rows);
-			if (!('key' in cmds) && editor.commitEdge(cmds) === null) {
+		setTimeout(() => {
+			if (!container || !editor.getState().labeling) {
 				return;
 			}
-		}
-		editor.cancelLabel();
+			if (container.contains(document.activeElement)) {
+				return;
+			}
+			if (performance.now() - openedAt < SETTLE_MS) {
+				activeInput?.focus();
+				return;
+			}
+			if (rowsChanged()) {
+				const cmds = rowCommands(doc, labeling.from, labeling.to, rows);
+				if (!('key' in cmds) && editor.commitEdge(cmds) === null) {
+					return;
+				}
+			}
+			editor.cancelLabel();
+		}, 0);
 	}
 
 	const keep = (event: MouseEvent) => event.preventDefault();
