@@ -162,6 +162,11 @@ The planner reviews every worker pull request with the same checks as the worker
 - If the plan is wrong or impossible: stop, write a `blocked` defect entry with evidence, hand back.
 - Respects `design/`. Does not invent tokens, spacing, colors, or component patterns.
 - Ends the session by writing `REPORT.md` with actual verification output (paste, do not summarize) and updating `PLAN.md` status.
+- **No conditional assertions.** Never put an `expect` inside an `if`, a `try` or a `.catch`. If a test passes only when it is allowed to skip its check, the code has a bug: report it.
+- **A deliberate break counts only when it is shown failing on the final code.** Re-run each break after the last change to the code under test, and paste the failing line. A break run before a later change does not count.
+- **A change to a file that the FSM editor also uses** (the canvas, the frame, storage, the shared history) needs a test of the FSM side, or it is left out of the task.
+- **The report matches the code.** Names, props, numbers and commands in `REPORT.md` are copied from the code and the output, not from memory.
+- **Stuck rule.** If the same check gives the same result twice, or a command shows no new output for five minutes, stop waiting. Run it once in the foreground with a timeout, read the output, and act on it. If it is still unclear after two tries, write a `blocked` entry and hand back.
 
 ## Definition of ready (planner side)
 

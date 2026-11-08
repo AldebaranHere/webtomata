@@ -401,3 +401,21 @@ Format:
 - Alternatives considered: Horizontal scrolling tab bar or multi-line header navigation.
 - Reversible? yes
 - Affects: `web/src/lib/components/SiteHeader.svelte`, `web/src/lib/components/WorkstationSwitcher.svelte`
+
+## 2026-11-08 — In the Hapus tool, a click on `+ n lagi` deletes the whole edge
+
+- Decider: planner (the owner accepted it in chat)
+- Context: T-057 left open what the overflow line `+ n lagi` of a PDA edge does in the Hapus tool. The worker found that a click anywhere on an edge's label deletes the edge.
+- Decision: in Hapus, a click anywhere on an edge's label, `+ n lagi` included, deletes the whole edge; the toast offers Urungkan, which restores all its transitions as one undo step. In Pilih, one press of `+ n lagi` selects the edge once. The label's reveal on a phone uses the world-space label centre (`edge.label.center`), not the screen-space slot.
+- Alternatives considered: `+ n lagi` does nothing in Hapus (a second, different target for the same label; students would not know which line they delete).
+- Reversible? yes
+- Affects: `web/src/lib/editor/EditorCanvas.svelte`, `web/e2e/pda-editor.spec.ts` (E4), `docs/ux/editor-interactions.md`
+
+## 2026-11-08 — Rules added to AGENTS.md after T-057 (PR 182 and 183)
+
+- Decider: planner
+- Context: PR 182 reached review with a test that never ran its main assertion (an `if` around it), a "deliberate break" that no longer failed, a change in a file shared with the FSM editor that no test covered, a report that did not match the code, and a 30-minute wait on a run that did not exist.
+- Decision: add four worker rules (no conditional assertions; a break must be shown failing on the final code; a change to a shared file needs a test of the other user of that file; the report matches the code) and one stuck rule (stop and read after two identical checks or five minutes without output). The four rules held since 2026-11-07 (discriminated unions, fuzz target for each parser, naive oracle for each algorithm, failure injection for storage) stay held: PR 182 and 183 gave no evidence for them.
+- Alternatives considered: adding all four held rules now (more text for the worker to read, no evidence yet).
+- Reversible? yes
+- Affects: `AGENTS.md`
