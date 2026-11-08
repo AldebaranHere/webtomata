@@ -1,6 +1,6 @@
 # PDA editor: diagram, table, formal definition and the determinism badge (P-004, proposal)
 
-**Status:** approved by the owner on 2026-11-06, with the planner's pick on all five questions at the end. It is built by T-033 (document), T-039 (diagram), T-049 (interaction core), T-053 (canvas), T-054 (label form), T-055 (frame), T-056 (saving), T-057 (shell and mode), T-051 (panel: tabs, kind switch, badge, checks) and T-052 (library, files, examples).
+**Status:** approved by the owner on 2026-11-06, with the planner's pick on all five questions at the end. It is built by T-033 (document), T-039 (diagram), T-049 (interaction core), T-053 (canvas), T-054 (label form), T-055 (frame), T-056 (saving), T-057 (shell and mode), T-051 (panel: tabs, kind switch, checks, read-only table and definition), T-061 (editing in the table), T-062 (badge and competing pairs) and T-052 (library, files, examples).
 **Picture:** `pda-editor.svg` (one sheet, frames A to F; the numbers below are the numbers in the picture).
 **Sources:** the PDA decisions of 2026-11-05 in `docs/agent/DECISIONS.md`; tasks T-030 (model, validation, `determinism`), T-031 (simulation) and T-032 (`.jff`); the FSM editor as built (`docs/ux/editor-interactions.md`, `design/screens/workstation-switcher.md`). The sample machine in the picture is `wwᴿ` (even palindromes): it is non-deterministic, so one picture shows the badge, the list of competing pairs and the table.
 
