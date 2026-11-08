@@ -217,6 +217,8 @@ export const id = {
 	'kind.label': 'Jenis mesin',
 	'kind.dfsm': 'DFSM',
 	'kind.ndfsm': 'NDFSM',
+	'kind.dpda': 'DPDA',
+	'kind.ndpda': 'NDPDA',
 	'editor.kind_set': 'Jenis mesin menjadi {kind}.',
 	'notation.states': 'K',
 	'notation.alphabet': 'Σ',
@@ -1058,7 +1060,20 @@ export const id = {
 	'pda_editor.cancel': 'Batal',
 	'pda_editor.menu_edit': 'Ubah transisi',
 	'pda_editor.read_one_symbol':
-		'Satu baris membaca satu simbol. Untuk ‘{text}’: buat dua baris, atau tambahkan ‘{text}’ ke alfabet input di tab Tabel.'
+		'Satu baris membaca satu simbol. Untuk ‘{text}’: buat dua baris, atau tambahkan ‘{text}’ ke alfabet input di tab Tabel.',
+	'pda_check.no_accepting_state': 'Belum ada accepting state.',
+	'pda_check.duplicate_transition': 'Dari {state}, ada transisi yang sama lebih dari satu kali.',
+	'pda_check.pop_never_pushed':
+		'Dari {state}, transisi mengambil simbol {symbol} dari stack, tetapi tidak ada transisi yang pernah menaruhnya.',
+	'pda_check.competing_transitions':
+		'Pada DPDA, transisi baris {first} dan {second} dari {state} bersaing.',
+	'pda_check.accepting_state_free_move':
+		'Pada DPDA, state {state} adalah accepting state tetapi memiliki transisi yang tidak membaca input dan tidak mem-pop stack.',
+	'pda_editor.col_from': 'Dari',
+	'pda_editor.col_to': 'Ke',
+	'pda_editor.table_title': 'Transisi ({count})',
+	'pda_editor.table_empty': 'Belum ada transisi.',
+	'pda_editor.definition_hint': 'Kiri = puncak stack. ε pada pop: tidak memeriksa stack.'
 } as const;
 
 export type MessageKey = keyof typeof id;

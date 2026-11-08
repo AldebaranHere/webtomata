@@ -2434,7 +2434,7 @@ Follow rule 12 of `AGENTS.md` for every shell command (the Playwright runs are l
 
 ## Task T-051 — PDA editor, part 9 of 12: the panel: tabs, kind switch, checks (read-only table and definition)
 
-**Status:** in-progress
+**Status:** done
 **Owner:** worker
 **Branch:** `task/T-051-pda-panel`
 

@@ -582,8 +582,8 @@ test.describe('E8: Phone sheet dimensions and labeled edge in view', () => {
 		const addBtn = page.getByRole('button', { name: /^Tambah state/ });
 		await addBtn.tap();
 		const stage = page.locator('.stage svg');
-		await stage.tap({ position: { x: 120, y: 250 } });
-		await stage.tap({ position: { x: 260, y: 250 } });
+		await stage.tap({ position: { x: 120, y: 120 } });
+		await stage.tap({ position: { x: 260, y: 120 } });
 
 		// Pan canvas downward so camera differs from fitted, moving the states
 		// low on the screen where the bottom sheet will cover them
@@ -592,8 +592,8 @@ test.describe('E8: Phone sheet dimensions and labeled edge in view', () => {
 		const stageBoxBefore = (await stage.boundingBox())!;
 		await touchDragAt(
 			page,
-			{ x: stageBoxBefore.x + 50, y: stageBoxBefore.y + 100 },
-			{ x: stageBoxBefore.x + 50, y: stageBoxBefore.y + 350 }
+			{ x: stageBoxBefore.x + 50, y: stageBoxBefore.y + 50 },
+			{ x: stageBoxBefore.x + 50, y: stageBoxBefore.y + 180 }
 		);
 
 		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });

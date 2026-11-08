@@ -42,10 +42,10 @@
 	}: {
 		tab: PanelTab;
 		ontab: (tab: PanelTab) => void;
-		simulation: Snippet;
-		table: Snippet;
-		definition: Snippet;
-		conversion: Snippet;
+		simulation?: Snippet;
+		table?: Snippet;
+		definition?: Snippet;
+		conversion?: Snippet;
 		/** The tab Umpan balik (only on the page of a question). It stays in the page, so that a result is not lost. */
 		feedback?: Snippet;
 		/** The tabs that this panel has, in order. */
@@ -180,6 +180,9 @@
 	function toggle() {
 		setHidden(!hidden);
 	}
+	export function show() {
+		setHidden(false);
+	}
 	function setHidden(value: boolean) {
 		hidden = value;
 		try {
@@ -265,16 +268,18 @@
 			{/each}
 		</div>
 		<div class="panes" bind:this={panes}>
-			<div
-				role="tabpanel"
-				id="panel-pane-simulation"
-				aria-labelledby="panel-tab-simulation"
-				class="pane"
-				hidden={tab !== 'simulation'}
-			>
-				{@render simulation()}
-			</div>
-			{#if feedback}
+			{#if tabs.includes('simulation') && simulation}
+				<div
+					role="tabpanel"
+					id="panel-pane-simulation"
+					aria-labelledby="panel-tab-simulation"
+					class="pane"
+					hidden={tab !== 'simulation'}
+				>
+					{@render simulation()}
+				</div>
+			{/if}
+			{#if feedback && tabs.includes('feedback')}
 				<div
 					role="tabpanel"
 					id="panel-pane-feedback"
@@ -285,11 +290,11 @@
 					{@render feedback()}
 				</div>
 			{/if}
-			{#if tab === 'table'}
+			{#if tab === 'table' && table}
 				<div role="tabpanel" id="panel-pane-table" aria-labelledby="panel-tab-table" class="pane">
 					{@render table()}
 				</div>
-			{:else if tab === 'definition'}
+			{:else if tab === 'definition' && definition}
 				<div
 					role="tabpanel"
 					id="panel-pane-definition"
@@ -301,7 +306,7 @@
 			{/if}
 			<!-- Konversi stays in the page once it was opened (like Simulasi): a conversion that is under
 			     way is not lost when the student looks at another tab. -->
-			{#if openedConversion}
+			{#if openedConversion && tabs.includes('conversion') && conversion}
 				<div
 					role="tabpanel"
 					id="panel-pane-conversion"

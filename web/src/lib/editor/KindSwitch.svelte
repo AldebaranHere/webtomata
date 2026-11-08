@@ -1,20 +1,48 @@
-<script lang="ts">
+<script module lang="ts">
+	import type { MessageKey } from '#lib/i18n/id.ts';
+
+	export interface KindOption<T extends string> {
+		readonly value: T;
+		readonly labelKey: MessageKey;
+	}
+</script>
+
+<script lang="ts" generics="K extends string = Kind">
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import type { Kind } from './document.ts';
 
-	// "Jenis mesin": DFSM or NDFSM. It is a choice, not a lock: a wrong choice only gives calm
-	// remarks in the checks, and it never blocks editing (docs/ux/wireframes.md, decision 4). It is
-	// a radio group, so the arrow keys move the choice, and an undo brings the old one back.
-	let { kind, onchange }: { kind: Kind; onchange: (kind: Kind) => void } = $props();
+	const DEFAULT_OPTIONS = [
+		{ value: 'dfsm', labelKey: 'kind.dfsm' as MessageKey },
+		{ value: 'ndfsm', labelKey: 'kind.ndfsm' as MessageKey }
+	] as const;
 
-	const kinds = ['dfsm', 'ndfsm'] as const;
+	// Named helper for default options cast when K defaults to Kind.
+	function defaultKindOptions<T extends string>(): readonly [KindOption<T>, KindOption<T>] {
+		return DEFAULT_OPTIONS as unknown as readonly [KindOption<T>, KindOption<T>];
+	}
+
+	// "Jenis mesin": DFSM or NDFSM for an FSM, DPDA or NDPDA for a PDA. It is a choice, not a lock:
+	// a wrong choice only gives calm remarks in the checks, and it never blocks editing (docs/ux/wireframes.md,
+	// decision 4). It is a radio group, so the arrow keys move the choice, and an undo brings the old one back.
+	let {
+		kind,
+		onchange,
+		options = defaultKindOptions<K>()
+	}: {
+		kind: K;
+		onchange: (kind: K) => void;
+		options?: readonly [KindOption<K>, KindOption<K>];
+	} = $props();
+
 	const id = $props.id();
 
 	function onkeydown(event: KeyboardEvent) {
-		const at = kinds.indexOf(kind);
-		let next: Kind | undefined;
-		if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = kinds[(at + 1) % 2];
-		if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = kinds[(at + 1) % 2];
+		const at = options.findIndex((opt) => opt.value === kind);
+		if (at === -1) return;
+		let next: K | undefined;
+		if (event.key === 'ArrowRight' || event.key === 'ArrowDown')
+			next = options[(at + 1) % 2]?.value;
+		if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = options[(at + 1) % 2]?.value;
 		if (!next) return;
 		event.preventDefault();
 		onchange(next);
@@ -25,16 +53,16 @@
 <div class="kind">
 	<span class="label" id="{id}-label">{t('kind.label')}</span>
 	<div class="group" role="radiogroup" aria-labelledby="{id}-label" {onkeydown} tabindex="-1">
-		{#each kinds as option (option)}
+		{#each options as option (option.value)}
 			<button
 				type="button"
 				role="radio"
-				id="{id}-{option}"
-				aria-checked={kind === option}
-				tabindex={kind === option ? 0 : -1}
-				onclick={() => kind !== option && onchange(option)}
+				id="{id}-{option.value}"
+				aria-checked={kind === option.value}
+				tabindex={kind === option.value ? 0 : -1}
+				onclick={() => kind !== option.value && onchange(option.value)}
 			>
-				{t(`kind.${option}`)}
+				{t(option.labelKey)}
 			</button>
 		{/each}
 	</div>

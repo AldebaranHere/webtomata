@@ -216,6 +216,8 @@ export const en: Record<MessageKey, string> = {
 	'kind.label': 'Machine type',
 	'kind.dfsm': 'DFSM',
 	'kind.ndfsm': 'NDFSM',
+	'kind.dpda': 'DPDA',
+	'kind.ndpda': 'NDPDA',
 	'editor.kind_set': 'The machine is now {kind}.',
 	'notation.states': 'K',
 	'notation.alphabet': 'Σ',
@@ -1057,5 +1059,19 @@ export const en: Record<MessageKey, string> = {
 	'pda_editor.cancel': 'Cancel',
 	'pda_editor.menu_edit': 'Edit transitions',
 	'pda_editor.read_one_symbol':
-		'One row reads one symbol. For ‘{text}’: make two rows, or add ‘{text}’ to the input alphabet in the Table tab.'
+		'One row reads one symbol. For ‘{text}’: make two rows, or add ‘{text}’ to the input alphabet in the Table tab.',
+	'pda_check.no_accepting_state': 'No accepting state yet.',
+	'pda_check.duplicate_transition':
+		'From {state}, there is more than one copy of the same transition.',
+	'pda_check.pop_never_pushed':
+		'From {state}, a transition pops symbol {symbol} from the stack, but no transition ever pushes it.',
+	'pda_check.competing_transitions':
+		'In a DPDA, transitions on rows {first} and {second} from {state} compete.',
+	'pda_check.accepting_state_free_move':
+		'In a DPDA, state {state} is an accepting state but has a transition that reads nothing and pops nothing.',
+	'pda_editor.col_from': 'From',
+	'pda_editor.col_to': 'To',
+	'pda_editor.table_title': 'Transitions ({count})',
+	'pda_editor.table_empty': 'No transitions yet.',
+	'pda_editor.definition_hint': 'Leftmost = top of stack. ε on pop: does not inspect the stack.'
 };
