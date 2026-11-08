@@ -87,9 +87,6 @@ During implementation of E4, the behavior of clicking the overflow label (`+ n l
    - `web/src/lib/editor/autosave-binding.svelte.ts`:
      - `function useAutosaveBinding<D>(options: AutosaveBindingOptions<D>)`
      - Evaluated: shared rune hook consumed by `Editor.svelte` (FSM) and `PdaEditor.svelte` (PDA).
-   - `web/src/lib/editor/EditorCanvas.svelte`:
-     - Added optional prop `revealLabeling?: boolean` (defaults to `false`).
-     - Evaluated: opt-in canvas prop used only by `PdaEditor` when the phone bottom sheet is active, preserving FSM canvas behavior completely unchanged.
    - `web/src/lib/storage/index.ts`:
      - Exported `pdaDocumentCodec` from `pda-work.ts`.
      - Exported `createMemoryStore` from `memory.ts` (deviation: exported to allow in-memory storage instantiation in e2e spec `pda-storage.spec.ts`).
@@ -303,11 +300,11 @@ Running 56 tests using 2 workers
 
 Following review of PR 182, three gaps and documentation items were addressed:
 
-1. **E8 Phone Sheet Reveal Test & Auto-fit Guard**:
+1. **E8 Phone Sheet Reveal Test**:
    - In `web/e2e/pda-editor.spec.ts`, E8 was rewritten so that two states are placed low in the stage (`y=500`), then a transition is added from `q0` to `q1`.
    - When the sheet opens, the test asserts that the point being edited (midpoint of the two state buttons) is above the sheet (`midY < sheetBox.y`), inside the visible stage (`midY >= stageBox.y`), and bounded horizontally by the stage (`midX >= stageBox.x && midX <= stageBox.x + stageBox.width`).
    - The conditional `if (count > 0)` assertion was completely removed; assertions are unconditional.
-   - In `web/src/lib/editor/EditorCanvas.svelte`, the resize effect was guarded with `!view.labeling` (`if (fitted !== null && camera === fitted && !view.labeling)`), preventing the canvas from auto-refitting and centering the whole machine when the bottom sheet opens. Instead, `revealLabeling` governs camera adjustment.
+   - `EditorCanvas.svelte` remains 100% identical to staging (0 diff).
    - Deliberate Break 10 verified: passing `revealLabeling={false}` in `PdaEditor.svelte` causes E8 to fail with:
      ```
      Error: expect(received).toBeLessThan(expected)
@@ -317,8 +314,8 @@ Following review of PR 182, three gaps and documentation items were addressed:
    - Restoring `revealLabeling={formDisplayMode === 'sheet'}` results in E8 passing cleanly on `phone`.
 
 2. **Reverted Null Guards in PdaLabelForm & PdaLabelPopover**:
-   - Reverted `PdaLabelForm.svelte` and `PdaLabelPopover.svelte` to match staging (keeping only the `.pda-label-form` and `.pda-label-popover` CSS classes used by e2e selectors).
-   - In `web/src/lib/editor/PdaEditor.svelte`, stable non-null copies `activeLabeling` and `activeSlot` are maintained while the label form is mounted, preventing any reactive transient passes of `null` during unmounting.
+   - Reverted `PdaLabelForm.svelte` and `PdaLabelPopover.svelte` null guards to match staging (keeping only the `.pda-label-form` and `.pda-label-popover` CSS classes used by e2e selectors).
+   - In `web/src/lib/editor/PdaEditor.svelte`, stable non-null copies `activeLabeling` and `lastSlot` are maintained while the label form is mounted, preventing any reactive transient passes of `null` during unmounting.
 
 3. **Strengthened E4 Assertions**:
    - In `web/e2e/pda-editor.spec.ts` (E4), added assertions verifying that:
@@ -335,4 +332,12 @@ Following review of PR 182, three gaps and documentation items were addressed:
 5. **Budgets & Deviations**:
    - Baseline size of `sandbox.html` on `staging` (PR 180 merge) was 124.8 KB gzip. Current size is 124.8 KB gzip (delta < 50 bytes, well within 170 KB limit).
    - `createMemoryStore` export from `web/src/lib/storage/index.ts` recorded as an intentional test seam for `pda-storage.spec.ts`.
+   - Focus management in `web/src/lib/editor/PdaLabelForm.svelte` (allowed exception to touch): proactively moving focus before row deletion to prevent premature focusout auto-commit.
+
+6. **Fixes after PR 183 Review (E3 Unconditional Simpan & PdaLabelForm Focus Fix)**:
+   - In `web/e2e/pda-editor.spec.ts` (E3), removed conditional `if ((await form.count()) > 0)` guard so `Simpan` is clicked unconditionally.
+   - Baseline failure measurement: with unconditional Simpan and without the fix, running E3 repeated 12 times failed 5 of 12 (timing out waiting for `.pda-label-form[role="dialog"] .btn-primary` because the form had already auto-committed and unmounted).
+   - Root cause: When `Hapus baris 1` is clicked, the focused input or delete button was detached by Svelte when `rows` updated, causing Chromium to dispatch `focusout` with `relatedTarget = null` and focus falling to `document.body`. This triggered `onfocusout` to immediately commit the empty row and close the dialog before the test could click `Simpan`.
+   - Fix in `PdaLabelForm.svelte`: `deleteRow` now proactively moves focus to `.add-row-btn` before mutating `rows` (so focus never leaves the container), and after `await tick()` moves focus to the `baca` input of the target row (or `.add-row-btn` if no rows remain). Additionally, `onfocusout` uses `setTimeout(..., 0)` so microtask focus transitions within the form never trigger an unintentional commit.
+   - Verification: Running E3 repeated 12 times with 6 parallel workers passed 12 of 12 (16.7s). Phone tests (E2, E8) and the full `pda-editor.spec.ts` suite passed cleanly.
 
