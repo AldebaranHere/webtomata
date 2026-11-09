@@ -1,6 +1,69 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { isDocsOnly, isAllowedPath, ALLOWLIST_DIRS, ALLOWLIST_ROOT_FILES, WORKFLOW_PATHS_IGNORE } from './docs-only.mjs';
+
+const SCRIPT_PATH = new URL('./docs-only.mjs', import.meta.url).pathname;
+
+/**
+ * The git variables that a hook exports to the commands it runs (a pre-push hook gets GIT_DIR of the
+ * repository that is being pushed). A fixture repository must not inherit them: with GIT_DIR set, its
+ * commits land in the real repository, and its `git config` rewrites the real configuration.
+ */
+const HOOK_GIT_VARS = [
+	'GIT_DIR',
+	'GIT_WORK_TREE',
+	'GIT_INDEX_FILE',
+	'GIT_OBJECT_DIRECTORY',
+	'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+	'GIT_COMMON_DIR',
+	'GIT_NAMESPACE',
+	'GIT_PREFIX'
+];
+
+/** The environment of a fixture's git commands: a fixed identity, and no variable of another repository. */
+function fixtureEnv(extra = {}) {
+	const env = {
+		...process.env,
+		GIT_CONFIG_NOSYSTEM: '1',
+		GIT_AUTHOR_NAME: 'Test',
+		GIT_AUTHOR_EMAIL: 'test@example.com',
+		GIT_COMMITTER_NAME: 'Test',
+		GIT_COMMITTER_EMAIL: 'test@example.com',
+		...extra
+	};
+	for (const name of HOOK_GIT_VARS) delete env[name];
+	return env;
+}
+
+/** Runs git in `repo` with the fixture's environment. */
+const gitIn =
+	(repo, extra = {}) =>
+	(...args) =>
+		execFileSync('git', args, { cwd: repo, encoding: 'utf8', env: fixtureEnv(extra) });
+
+/**
+ * A repository whose only difference between HEAD~1 and HEAD is a code file renamed into `docs/`.
+ * Returns the directory and a `git` that runs in it.
+ */
+function renameFixture(extra = {}) {
+	const repo = mkdtempSync(join(tmpdir(), 'git-rename-test-'));
+	const git = gitIn(repo, extra);
+	git('init', '-b', 'main');
+	git('config', 'user.name', 'Test');
+	git('config', 'user.email', 'test@example.com');
+	mkdirSync(join(repo, 'web', 'src'), { recursive: true });
+	writeFileSync(join(repo, 'web', 'src', 'a.ts'), 'export const x = 1;\n');
+	git('add', 'web/src/a.ts');
+	git('commit', '-m', 'commit code file');
+	mkdirSync(join(repo, 'docs'), { recursive: true });
+	git('mv', 'web/src/a.ts', 'docs/a.md');
+	git('commit', '-m', 'rename code file into docs');
+	return { repo, git };
+}
 
 test('isAllowedPath: allowed root files', () => {
 	for (const file of ALLOWLIST_ROOT_FILES) {
@@ -70,65 +133,29 @@ test('WORKFLOW_PATHS_IGNORE matches allowlist exactly', () => {
 	assert.deepEqual(WORKFLOW_PATHS_IGNORE, expected);
 });
 
-test('CLI: pipes NUL-separated input and outputs true/false', async () => {
-	const { execFileSync } = await import('node:child_process');
-	const scriptPath = new URL('./docs-only.mjs', import.meta.url).pathname;
-
-	const outTrue = execFileSync(process.execPath, [scriptPath], {
+test('CLI: pipes NUL-separated input and outputs true/false', () => {
+	const outTrue = execFileSync(process.execPath, [SCRIPT_PATH], {
 		input: Buffer.from('docs/a.md\0README.md\0', 'utf8'),
 		encoding: 'utf8',
 	});
 	assert.equal(outTrue, 'true\n');
 
-	const outFalse = execFileSync(process.execPath, [scriptPath], {
+	const outFalse = execFileSync(process.execPath, [SCRIPT_PATH], {
 		input: Buffer.from('docs/a.md\0web/src/a.ts\0', 'utf8'),
 		encoding: 'utf8',
 	});
 	assert.equal(outFalse, 'false\n');
 });
 
-test('rename detection bypass test: git diff --no-renames rejects moved code file', async () => {
-	const { execFileSync } = await import('node:child_process');
-	const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs');
-	const { tmpdir } = await import('node:os');
-	const { join } = await import('node:path');
-	const scriptPath = new URL('./docs-only.mjs', import.meta.url).pathname;
-
-	const testRepo = mkdtempSync(join(tmpdir(), 'git-rename-test-'));
+test('rename detection bypass test: git diff --no-renames rejects moved code file', () => {
+	const { repo: testRepo, git } = renameFixture();
 	try {
-		const git = (...args) =>
-			execFileSync('git', args, {
-				cwd: testRepo,
-				encoding: 'utf8',
-				env: {
-					...process.env,
-					GIT_CONFIG_NOSYSTEM: '1',
-					GIT_AUTHOR_NAME: 'Test',
-					GIT_AUTHOR_EMAIL: 'test@example.com',
-					GIT_COMMITTER_NAME: 'Test',
-					GIT_COMMITTER_EMAIL: 'test@example.com',
-				},
-			});
-
-		git('init', '-b', 'main');
-		git('config', 'user.name', 'Test');
-		git('config', 'user.email', 'test@example.com');
-
-		mkdirSync(join(testRepo, 'web', 'src'), { recursive: true });
-		writeFileSync(join(testRepo, 'web', 'src', 'a.ts'), 'export const x = 1;\n');
-		git('add', 'web/src/a.ts');
-		git('commit', '-m', 'commit code file');
-
-		// Move web/src/a.ts to docs/a.md
-		mkdirSync(join(testRepo, 'docs'), { recursive: true });
-		git('mv', 'web/src/a.ts', 'docs/a.md');
-		git('commit', '-m', 'rename code file into docs');
-
 		// With default rename detection, git diff lists only destination docs/a.md
 		const defaultDiff = execFileSync('git', ['diff', '--name-only', '-z', 'HEAD~1', 'HEAD'], {
 			cwd: testRepo,
+			env: fixtureEnv()
 		});
-		const bypassResult = execFileSync(process.execPath, [scriptPath], {
+		const bypassResult = execFileSync(process.execPath, [SCRIPT_PATH], {
 			input: defaultDiff,
 			encoding: 'utf8',
 		});
@@ -144,9 +171,10 @@ test('rename detection bypass test: git diff --no-renames rejects moved code fil
 			['diff', '--no-renames', '--name-only', '-z', 'HEAD~1', 'HEAD'],
 			{
 				cwd: testRepo,
+				env: fixtureEnv()
 			}
 		);
-		const safeResult = execFileSync(process.execPath, [scriptPath], {
+		const safeResult = execFileSync(process.execPath, [SCRIPT_PATH], {
 			input: safeDiff,
 			encoding: 'utf8',
 		});
@@ -157,3 +185,68 @@ test('rename detection bypass test: git diff --no-renames rejects moved code fil
 });
 
 
+
+test('fixtureEnv: carries no git variable of another repository', () => {
+	// The unit of the fix: whatever the hook exports, the fixture's environment is clean.
+	const saved = HOOK_GIT_VARS.map((name) => [name, process.env[name]]);
+	try {
+		for (const name of HOOK_GIT_VARS) process.env[name] = '/somewhere/else/.git';
+		const leaked = HOOK_GIT_VARS.filter((name) => fixtureEnv()[name] !== undefined);
+		assert.deepEqual(leaked, [], 'the fixture inherits a git variable of another repository');
+	} finally {
+		for (const [name, value] of saved) {
+			if (value === undefined) delete process.env[name];
+			else process.env[name] = value;
+		}
+	}
+});
+
+test('a fixture never commits into the repository that GIT_DIR names (a hook exports it)', () => {
+	// A pre-push hook runs the tests with GIT_DIR of the repository that is being pushed, so the
+	// fixture must not inherit it: with it, "commit code file" landed on a real branch and its
+	// `git config user.name Test` rewrote the real configuration (found in T-061). A decoy
+	// repository stands in for the real one here, so that this test can never touch it.
+	const decoy = mkdtempSync(join(tmpdir(), 'git-rename-decoy-'));
+	const decoyGit = gitIn(decoy);
+	const fixtureDirs = [];
+	try {
+		decoyGit('init', '-b', 'main');
+		decoyGit('config', 'user.name', 'Test');
+		decoyGit('config', 'user.email', 'test@example.com');
+		writeFileSync(join(decoy, 'README.md'), 'decoy\n');
+		decoyGit('add', 'README.md');
+		decoyGit('commit', '-m', 'decoy commit');
+		const before = decoyGit('log', '--format=%H %s');
+
+		// The environment that a hook gives the tests: it names the decoy, not a temporary repository.
+		const saved = HOOK_GIT_VARS.map((name) => [name, process.env[name]]);
+		for (const [name] of saved) delete process.env[name];
+		process.env.GIT_DIR = join(decoy, '.git');
+		let fixture;
+		try {
+			fixture = renameFixture();
+			fixtureDirs.push(fixture.repo);
+		} finally {
+			for (const [name, value] of saved) {
+				if (value === undefined) delete process.env[name];
+				else process.env[name] = value;
+			}
+		}
+
+		// The point of the test: the repository that GIT_DIR names has not moved.
+		assert.equal(
+			decoyGit('log', '--format=%H %s'),
+			before,
+			'the fixture committed into the repository that GIT_DIR names'
+		);
+		// And the fixture really did its work in its own repository.
+		assert.equal(
+			fixture.git('log', '--format=%s').trim().split('\n').length,
+			2,
+			'the fixture repository has its two commits'
+		);
+	} finally {
+		for (const dir of fixtureDirs) rmSync(dir, { recursive: true, force: true });
+		rmSync(decoy, { recursive: true, force: true });
+	}
+});

@@ -19,6 +19,7 @@
 	import PdaLabelForm from './PdaLabelForm.svelte';
 	import PdaLabelPopover from './PdaLabelPopover.svelte';
 	import { pdaMenuLabels } from './pda-label.ts';
+	import type { PdaTableProps } from './pda-table-props.ts';
 	import { readTab, saveTab } from './panel-tab.ts';
 	import type { PanelTab } from './panel-tab.ts';
 	import SidePanel from './SidePanel.svelte';
@@ -121,7 +122,7 @@
 	}
 
 	// Table and Definition views are loaded on demand when their respective tab opens.
-	let Table = $state<Component<{ doc: PdaDocument; marked?: ReadonlySet<number> }> | null>(null);
+	let Table = $state<Component<PdaTableProps> | null>(null);
 	let Definition = $state<Component<{ doc: PdaDocument }> | null>(null);
 	$effect(() => {
 		if (tab === 'table' && !Table) {
@@ -272,7 +273,11 @@
 						onselect={(id) => editor.focusState(id, { keepSelection: false })}
 					/>
 					{#if Table}
-						<Table doc={snapshot.doc} {marked} />
+						<Table
+							doc={snapshot.doc}
+							{marked}
+							onapply={(command, note) => editor.apply(command, note)}
+						/>
 					{/if}
 				{/snippet}
 				{#snippet definition()}

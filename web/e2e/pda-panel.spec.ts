@@ -333,10 +333,10 @@ test.describe('E4: Table and diagram agreement', () => {
 		await expect(rows.nth(0)).toContainText('q0');
 		await expect(rows.nth(0)).toContainText('ε');
 		await expect(rows.nth(0)).toContainText('q1');
-		// Row 2: q0 a ε A q0
+		// Row 2: q0 a ε A q0. The Push cell is a field since T-061, so its text is its value.
 		await expect(rows.nth(1)).toContainText('q0');
 		await expect(rows.nth(1)).toContainText('a');
-		await expect(rows.nth(1)).toContainText('A');
+		await expect(rows.nth(1).getByRole('textbox', { name: /Baris 2.*Push/i })).toHaveValue('A');
 		// Row 3: q0 b A ε q1
 		await expect(rows.nth(2)).toContainText('q0');
 		await expect(rows.nth(2)).toContainText('b');

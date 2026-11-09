@@ -2691,7 +2691,7 @@ Follow the rules of `AGENTS.md` for every shell command; the loaded runs are lon
 
 ## Task T-061 — PDA editor, part 10 of 12: editing in the Tabel tab
 
-**Status:** todo
+**Status:** done (2026-11-09; branch `task/T-061-pda-table-editing`, commits `f4f0c5f`…`5a0c6e0`, plus the fix of the docs-only hook test `a565f0b`. Sizes accepted once by the owner: `sandbox.html` 124.7 KB, `soal/*` 124.1 KB. See `docs/agent/REPORT.md`.)
 **Owner:** worker
 **Branch:** `task/T-061-pda-table-editing`
 
@@ -2858,6 +2858,9 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-017** The two local-reference tests keep only finite automata: specified in its own task block above (`todo`).
 - **T-028** The grammar engine's errors carry Indonesian sentences. `GrammarError` has `Display` with Indonesian text, and `api.invalid_grammar` and `api.cyk_failed` pass it as `detail`, which the grammar UI shows as it is, also in English; for a key without `detail` it shows the raw key. This breaks principle 6 of `CLAUDE.md`. Make the parser, the CNF transformer and CYK return typed errors with a message key and parameters, and translate them in the UI. Larger than T-019 (found while specifying T-019); needs its own spec and a test for every error.
 - **T-029** The CYK tester joins rule symbols with no space, so every CNF result with a helper variable fails in CYK: specified in its own block above (`todo`; found by the worker in T-010 and reproduced by the planner).
+- **T-066** `newStateCommand` in `web/src/lib/editor/table.ts` is typed for `MachineDocument` although it only reads `states`, so the PDA table repeats its six lines in `pda-table-edit.ts` (`addStateCommand`). Widen the parameter to `StatesDocument` and let the PDA call it (found by the worker in T-061; the task's non-goals forbade touching `table.ts`).
+- **T-067** Two e2e locators pick the delete tool with `{ name: /^Hapus/ }` unscoped: `web/e2e/pda-editor.spec.ts:324` and `web/e2e/pda-panel.spec.ts:450`. The first one broke in T-061 as soon as the panel had buttons named "Hapus simbol/state/baris"; the second passes only because the panel is not in the DOM at that point. Make both `{ name: 'Hapus', exact: true }`, as `editor-edges.spec.ts:163` already does.
+- **T-068** `web/src/lib/editor/history.ts` holds both `createHistory` and `createPdaHistory`, so the first load of every route downloads `pda-commands.ts` and `pda-document.ts`. Split the PDA history into its own module and import it only with the PDA mode; it shrinks `index.html`, `soal.html` and `panduan.html`, and it would remove the 0.2 KB that T-061 pays when its lazy table chunk starts importing the PDA commands (found by the worker in T-061, section 8 of its report).
 
 **B. Grammar additions** (a wireframe the owner approves comes first for T-020)
 

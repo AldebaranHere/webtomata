@@ -4,7 +4,8 @@ import { id } from './id.ts';
 import type { MessageKey } from './id.ts';
 import { pdaEn, pdaId } from './pda-messages.ts';
 
-// The 25 keys that T-063 moves out of the shared dictionary (docs/agent/PLAN.md).
+// The 25 keys that T-063 moves out of the shared dictionary, and the 11 that T-061 adds
+// (docs/agent/PLAN.md, T-061: the editable Tabel tab).
 const PDA_KEYS: readonly MessageKey[] = [
 	'kind.dpda',
 	'kind.ndpda',
@@ -30,7 +31,18 @@ const PDA_KEYS: readonly MessageKey[] = [
 	'pda_check.duplicate_transition',
 	'pda_check.pop_never_pushed',
 	'pda_check.competing_transitions',
-	'pda_check.accepting_state_free_move'
+	'pda_check.accepting_state_free_move',
+	'pda_editor.alphabet_input',
+	'pda_editor.alphabet_stack',
+	'pda_editor.add_transition',
+	'pda_editor.state_delete',
+	'pda_editor.state_removed',
+	'pda_editor.row_duplicate',
+	'pda_editor.row_added',
+	'pda_editor.row_changed',
+	'pda_editor.row_removed',
+	'pda_editor.symbol_reserved',
+	'document.duplicate_symbol'
 ];
 
 const parameters = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
