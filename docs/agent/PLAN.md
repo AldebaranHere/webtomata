@@ -3044,7 +3044,7 @@ Follow the rules of `AGENTS.md` for every shell command, and run the heavy ones 
 
 ## Task T-075 — PDA editor, part 12c: open and download `.jff` and JSON for a PDA
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker (DeepSeek: the planner's pick)
 **Branch:** `task/T-075-pda-files`
 
