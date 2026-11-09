@@ -9,20 +9,20 @@
 	import { draftCommand, editRowCommand } from './pda-table-edit.ts';
 	import type { RowFields } from './pda-table-edit.ts';
 	import { pdaTableOf } from './pda-table.ts';
-	import type { PdaTableProps } from './pda-table-props.ts';
+	import type { PdaTableField, PdaTableProps } from './pda-table-props.ts';
 
 	// The editable transitions of the Tabel tab: Dari, Baca, Pop, Push and Ke on every row, in the
 	// engine's order, and a draft row until its Dari and Ke are chosen (T-061).
-	let { doc, marked, onapply }: PdaTableProps = $props();
+	let { doc, marked, onapply, rowFocus }: PdaTableProps = $props();
 
-	type Field = keyof typeof COLUMN;
+	type Field = PdaTableField;
 	const COLUMN = {
 		from: 'pda_editor.col_from',
 		read: 'pda_editor.col_read',
 		pop: 'pda_editor.col_pop',
 		push: 'pda_editor.col_push',
 		to: 'pda_editor.col_to'
-	} as const satisfies Record<string, MessageKey>;
+	} as const satisfies Record<PdaTableField, MessageKey>;
 
 	const uid = $props.id();
 	let container = $state<HTMLDivElement | null>(null);
@@ -83,6 +83,16 @@
 		const element = container?.querySelectorAll<HTMLElement>('tbody tr.row')[index];
 		element?.querySelector<HTMLElement>(`.f-${field}`)?.focus();
 	}
+
+	// "Tunjukkan" of the determinism badge asks for the focus in a row. The request grows with each
+	// ask, so that the same row asked for twice moves the focus twice.
+	let seenFocus = 0;
+	$effect(() => {
+		const ask = rowFocus;
+		if (!ask || ask.request === seenFocus) return;
+		seenFocus = ask.request;
+		void focusRow(ask.index, ask.field ?? 'from');
+	});
 
 	function refusedWith(
 		row: number | 'draft',

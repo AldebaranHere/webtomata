@@ -13,9 +13,25 @@ export type PdaTableApply = (
 	note?: { say?: { key: MessageKey; params?: Params }; toast?: boolean }
 ) => Refusal | null;
 
+/** The five columns of a row of the transitions. */
+export type PdaTableField = 'from' | 'read' | 'pop' | 'push' | 'to';
+
+/**
+ * A request to move the focus to the first control of a row, from "Tunjukkan" of the determinism
+ * badge. `request` grows with each ask, so that the same row can be asked for twice (T-062).
+ */
+export interface PdaRowFocus {
+	/** The index of the row in `doc.transitions`. */
+	readonly index: number;
+	readonly field?: PdaTableField;
+	readonly request: number;
+}
+
 export interface PdaTableProps {
 	doc: PdaDocument;
 	/** The rows (zero-based indices of `doc.transitions`) that the diagram marked with `+ n lagi`. */
 	marked: ReadonlySet<number>;
 	onapply: PdaTableApply;
+	/** The row that the badge asked to focus, or nothing. */
+	rowFocus?: PdaRowFocus | null;
 }

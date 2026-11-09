@@ -500,3 +500,12 @@ Format:
 - Alternatives considered: generalize `checker.ts` to carry the pairs (a change in a file the FSM shares, which needs FSM tests); keep the previous badge while a new answer is awaited (it can say something false about the document on screen); draw the dashed edges in this task (a change of the shared drawing in a task that is already large).
 - Reversible? yes
 - Affects: `web/src/lib/editor/PdaEditor.svelte`, `PdaTableView.svelte`, `PdaTransitionsBlock.svelte`, `web/src/lib/i18n/pda-messages.ts`, `docs/glossary.md`
+
+## 2026-11-09 — T-062 amended after the worker's pre-flight (no edge focus, own live region)
+
+- Decider: planner
+- Context: DeepSeek ran the pairs of machines G, J and K through the real engine: all five fixtures hold, the pairs do not depend on the kind, and `first` and `second` are indices into `doc.transitions`. It found two things the spec got wrong. (1) With the Definisi tab open, the spec wanted the focus on the first transition's edge in the diagram; `EditorCanvas` exports only `zoom`, an edge node is focused only through the shared editor core (`focus.edge`, set in one place), and that core is used by the FSM editor too. (2) `pda_editor.pair_selected` has no channel: the editor core has no public announce, and a second `role="status"` would break `pda-panel` and `pda-table-edit`, which expect exactly one.
+- Decision: with the Definisi tab open the focus stays on the Tunjukkan button (a toggle keeps its focus); the first edge is selected and the rows are announced. With the Tabel tab open the focus goes to the first row, by a request prop of `PdaTableView` (no export on a lazy component). The announcement goes to the badge's own visually hidden `aria-live="polite"` paragraph, never `role="status"`. `pda-table-props.ts` may gain the optional focus-request field. Both rows reading ε take `compete_epsilon_read`. The design's line in section 5 is amended.
+- Alternatives considered: a `focusEdge` in `interaction/editor.ts` plus an FSM test (a shared change for a nicety); `querySelector` on the canvas's class names from `PdaEditor` (couples the PDA editor to the drawing's markup); weakening the test only (leaves a design line that cannot be met).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-062), `design/screens/pda-editor.md` (section 5), `web/src/lib/editor/pda-table-props.ts`
