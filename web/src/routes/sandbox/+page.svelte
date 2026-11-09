@@ -188,34 +188,22 @@
 		exampleFailed = (await library.openExample(buildExample(example, getLocale()))) !== null;
 	}
 
-	// A file of a machine, from "Buka file…": always a new machine, never over the open one. The code that reads
-	// it (and the engine) is loaded only now. A file that cannot be opened is said in the list, which stays open.
-	const known = (key: string) => Object.hasOwn(idMessages, key);
-	async function openFromFile(file: File) {
-		const [{ openFile }, { engine }] = await Promise.all([
-			import('#lib/share/open-file.ts'),
-			import('#lib/engine/client.ts')
-		]);
-		const result = await openFile(file, engine);
-		if (!result.ok) {
-			library.problem = known(result.error.key)
-				? { key: result.error.key, params: result.error.params }
-				: { key: 'import.unreadable', params: {} };
-			return;
-		}
-		const { doc, notes } = result.value;
-		const problem = await library.openDocument(doc);
-		if (problem) return;
-		fileNotes = notes
-			.filter((note) => known(note.key))
-			.map((note) => ({ key: note.key as MessageKey, params: note.params }));
-		linkNote = {
-			key: 'import.opened',
-			params: { title: doc.title || t('editor.untitled') }
-		};
-	}
+	// A file of a machine, from "Buka file…": always a new machine, never over the open one. The code
+	// that reads it (and the engine) is loaded only now, and it is a lazy module that holds both the
+	// FSM path and the PDA path, so the page keeps one hook and its first load stays small.
 	$effect(() => {
-		library.openFile = (file) => void openFromFile(file);
+		library.openFile = (file) =>
+			void import('#lib/share/open-from-file.ts').then((module) =>
+				module.openFromFile(file, {
+					library,
+					mode: () => activeMode,
+					selectMode,
+					notice: (note) => (linkNote = note),
+					notes: (list) => (fileNotes = list),
+					requestPda: (id) => (pdaOpenRequest = { id, seq: ++pdaOpenSeq }),
+					untitled: t('editor.untitled')
+				})
+			);
 	});
 
 	// The share dialog is code that is needed only when it is opened: it is loaded then.

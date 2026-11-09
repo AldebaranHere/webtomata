@@ -63,6 +63,17 @@
 	let canvas: ReturnType<typeof EditorCanvas>;
 	let sidePanel = $state<ReturnType<typeof SidePanel>>();
 
+	// "Unduh": the dialog is code that is needed only when it is opened, and it gets the live document
+	// (what the editor shows now, not the document the workstation opened).
+	let Files = $state<Component<{ doc: PdaDocument; onclose: () => void }> | null>(null);
+	let filesOpen = $state(false);
+	function openFiles() {
+		filesOpen = true;
+		if (!Files) {
+			void import('#lib/share/PdaFileDialog.svelte').then((module) => (Files = module.default));
+		}
+	}
+
 	// Marked rows in the table: row indices with accent bar and aria-current="true".
 	// Cleared when the document changes or when another edge or state is selected.
 	let marked = $state<ReadonlySet<number>>(new Set());
@@ -369,6 +380,19 @@
 				</svg>
 			</button>
 		{/if}
+		{#if snapshot.doc.states.length > 0}
+			<button
+				type="button"
+				class="files"
+				aria-label={t('pda_files.open_button')}
+				onclick={openFiles}
+			>
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+					<path d="M12 4v10m0 0l4-4m-4 4l-4-4" stroke-linecap="round" stroke-linejoin="round" />
+					<path d="M5 18h14" stroke-linecap="round" />
+				</svg>
+			</button>
+		{/if}
 	{/snippet}
 	{#snippet stage()}
 		<EditorCanvas
@@ -440,6 +464,10 @@
 	{/snippet}
 </EditorFrame>
 
+{#if filesOpen && Files}
+	<Files doc={snapshot.doc} onclose={() => (filesOpen = false)} />
+{/if}
+
 <style>
 	/* The place of "Coba contoh": the canvas, under the bar (as in the FSM editor). */
 	.first-run {
@@ -474,6 +502,29 @@
 		background: var(--color-neutral-tint);
 	}
 	.machines svg {
+		stroke: currentColor;
+		stroke-width: 1.8;
+	}
+	/* "Unduh" is in the bar at every width: on a laptop "Mesin saya" is in the site header, so the two
+	   are not neighbours there, and on a phone this button must be reachable like the FSM's "Bagikan". */
+	.files {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		width: var(--target-min);
+		height: var(--target-min);
+		padding: 0;
+		border: 0;
+		border-radius: var(--radius-lg);
+		background: transparent;
+		color: var(--color-ink);
+		cursor: pointer;
+	}
+	.files:hover {
+		background: var(--color-neutral-tint);
+	}
+	.files svg {
 		stroke: currentColor;
 		stroke-width: 1.8;
 	}

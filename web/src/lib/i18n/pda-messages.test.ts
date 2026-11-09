@@ -61,7 +61,15 @@ const PDA_KEYS: readonly MessageKey[] = [
 	'pda_first.wcwr_title',
 	'pda_first.wcwr_description',
 	'pda_first.wwr_title',
-	'pda_first.wwr_description'
+	'pda_first.wwr_description',
+	// The download dialog (T-075).
+	'pda_files.open_button',
+	'pda_files.dialog_title',
+	'pda_files.close',
+	'pda_files.note',
+	'pda_files.download_jff',
+	'pda_files.download_json',
+	'pda_files.saved'
 ];
 
 const parameters = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();

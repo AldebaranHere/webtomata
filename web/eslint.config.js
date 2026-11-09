@@ -41,6 +41,7 @@ export default ts.config(
 			'src/lib/editor/compare.wasm.test.ts',
 			'src/lib/questions/grade.wasm.test.ts',
 			'src/lib/share/open-file.wasm.test.ts',
+			'src/lib/share/pda-files.wasm.test.ts',
 			'src/lib/editor/document.wasm.test.ts',
 			'src/lib/editor/run.wasm.test.ts',
 			'src/lib/examples/examples.wasm.test.ts',

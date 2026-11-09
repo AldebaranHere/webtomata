@@ -72,7 +72,17 @@ export const pdaId = {
 	'pda_first.wcwr_title': 'wcwᴿ',
 	'pda_first.wcwr_description': 'palindrom dengan penanda c di tengah',
 	'pda_first.wwr_title': 'wwᴿ',
-	'pda_first.wwr_description': 'kata dan kebalikannya, panjangnya genap'
+	'pda_first.wwr_description': 'kata dan kebalikannya, panjangnya genap',
+	// The download dialog (T-075). The failure keys are in the shared dictionary; only these travel
+	// with the PDA chunk.
+	'pda_files.open_button': 'Unduh mesin ini sebagai file',
+	'pda_files.dialog_title': 'Unduh PDA ini',
+	'pda_files.close': 'Tutup',
+	'pda_files.note':
+		'File .jff bisa dibuka di JFLAP. JSON menyimpan semuanya, termasuk simbol yang lebih dari satu karakter.',
+	'pda_files.download_jff': 'Unduh .jff (JFLAP)',
+	'pda_files.download_json': 'Unduh JSON',
+	'pda_files.saved': 'File {name} diunduh.'
 } as const;
 
 export const pdaEn: Record<keyof typeof pdaId, string> = {
@@ -136,7 +146,15 @@ export const pdaEn: Record<keyof typeof pdaId, string> = {
 	'pda_first.wcwr_title': 'wcwᴿ',
 	'pda_first.wcwr_description': 'a palindrome with a marker c in the middle',
 	'pda_first.wwr_title': 'wwᴿ',
-	'pda_first.wwr_description': 'a word and its reverse, of even length'
+	'pda_first.wwr_description': 'a word and its reverse, of even length',
+	'pda_files.open_button': 'Download this machine as a file',
+	'pda_files.dialog_title': 'Download this PDA',
+	'pda_files.close': 'Close',
+	'pda_files.note':
+		'The .jff file opens in JFLAP. JSON keeps everything, including symbols of more than one character.',
+	'pda_files.download_jff': 'Download .jff (JFLAP)',
+	'pda_files.download_json': 'Download JSON',
+	'pda_files.saved': 'The file {name} was downloaded.'
 };
 
 addMessages('id', pdaId);

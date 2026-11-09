@@ -165,7 +165,7 @@ export const id = {
 		'WebTomata membuka file .jff (dari JFLAP) dan file JSON dari WebTomata. File ini bukan keduanya. Mesinmu tidak berubah.',
 	'import.unreadable': 'File ini tidak bisa dibaca. Mesinmu tidak berubah.',
 	'jff.unsupported_type':
-		'File JFLAP ini bertipe "{type}". WebTomata baru bisa membuka automaton hingga (tipe fa). Mesinmu tidak berubah.',
+		'File JFLAP ini bertipe "{type}". WebTomata bisa membuka automaton tipe fa dan pda. Mesinmu tidak berubah.',
 	'jff.xml_invalid':
 		'File .jff ini rusak: XML-nya tidak terbaca di baris {line}, kolom {column}. Mesinmu tidak berubah.',
 	'jff.invalid_structure':
