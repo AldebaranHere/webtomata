@@ -11,7 +11,7 @@ The PDA editor is the FSM editor with a different document. The canvas, the four
 ## 1. How a student gets here
 
 - The mode switcher (`WorkstationSwitcher`) enables the item **Otomata Pushdown (PDA)**. The badge "Segera Hadir" goes away. The address is `/sandbox?mode=pda`, and the choice is kept as the other modes are. The page title, the mode bar and the chips use the same strip as the FSM editor.
-- An empty PDA editor shows the same first-run card as the FSM editor ("Coba contoh", "Mulai dari kanvas kosong", "Buka file .jff atau JSON"). The examples are in question 4.
+- An empty PDA editor shows the same first-run card as the FSM editor ("Coba contoh", "Mulai dari kanvas kosong"; "Buka file…" is in "Mesin saya", as in the FSM editor: amended 2026-11-10, T-075). The examples are in question 4.
 - **Mesin saya** lists FSMs and PDAs in one list. A row has the kind chip that the list already shows (DFSM, NDFSM, DPDA, NDPDA), which tells the type as well; opening a PDA switches the page to the PDA mode (question 3; T-074).
 
 ## 2. The diagram (frame A)
@@ -79,8 +79,8 @@ The bar, the dock at the bottom, the panel with its drag bar, the 44 px targets,
 
 ## Files and export
 
-- **Open a file:** the FSM importer already tells a PDA by `jff.unsupported_type { type: "pda" }` (T-032); the PDA editor opens it with `parse_pda_jff`, and the FSM editor offers "Buka di mode PDA". A JSON file is told by its `kind` (`dpda`, `ndpda`).
-- **Export `.jff`** works through `to_pda_jff`. A machine with a stack or input symbol of more than one character (`Z0`, `T_a`, `S0` from the conversions) cannot be exported: the dialog shows `jff.symbol_not_single_character { symbol }` calmly and offers JSON.
+- **Open a file** (amended 2026-11-10, T-075): the page tells a file by its content (a `.jff` of type `pda`, or a JSON file whose `kind` is `dpda` or `ndpda`) and opens it as a new PDA record in the PDA mode; there is no "Buka di mode PDA" button. A PDA file is read with `parse_pda_jff`.
+- **Download** is a button in the header of the PDA editor (next to "Mesin saya") that opens a small dialog with "Unduh .jff" and "Unduh JSON". **Export `.jff`** works through `to_pda_jff`. A machine with a stack or input symbol of more than one character (`Z0`, `T_a`, `S0` from the conversions) cannot be exported: the dialog shows `jff.symbol_not_single_character { symbol }` calmly and offers JSON.
 - **Share link:** not in T-033 (question 3).
 
 ## Message keys (drafts, `id` and `en` both needed; texts are `TODO(review)` until the feedback guide)
