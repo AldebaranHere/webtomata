@@ -111,16 +111,14 @@ describe('U: the commands of the editable table', () => {
 		const after = applied(doc, command);
 		expect(after.stackAlphabet).toEqual(['A']);
 		expect(after.transitions).toHaveLength(3);
-		expect(rowText(after)).toEqual([
-			'0|a|[]|[A,A]|0',
-			'0|b|[A]|[]|1',
-			'1|b|[A]|[]|1'
-		]);
+		expect(rowText(after)).toEqual(['0|a|[]|[A,A]|0', '0|b|[A]|[]|1', '1|b|[A]|[]|1']);
 	});
 
 	it('F2: a row that would equal row 2 is refused with its number, and nothing changes', () => {
 		const doc = machineF();
-		const refusal = asRefusal(editRowCommand(doc, 0, fields({ from: 0, to: 1, read: 'b', pop: 'A' })));
+		const refusal = asRefusal(
+			editRowCommand(doc, 0, fields({ from: 0, to: 1, read: 'b', pop: 'A' }))
+		);
 
 		expect(refusal).toEqual({ key: 'pda_editor.row_duplicate', params: { n: 2 } });
 		// The document is untouched: the module returned no command at all.
@@ -129,7 +127,9 @@ describe('U: the commands of the editable table', () => {
 
 	it('F3: Push AB on row 3 is addStackSymbol(B), remove, then add — one batch', () => {
 		const doc = machineF();
-		const command = asCommand(editRowCommand(doc, 2, fields({ from: 1, to: 1, read: 'b', pop: 'A', push: 'AB' })));
+		const command = asCommand(
+			editRowCommand(doc, 2, fields({ from: 1, to: 1, read: 'b', pop: 'A', push: 'AB' }))
+		);
 
 		expect(command).toEqual({
 			type: 'batch',
@@ -147,7 +147,9 @@ describe('U: the commands of the editable table', () => {
 
 	it('F4: the edited row moves to row 2 of H, in the engine order', () => {
 		const doc = machineH();
-		const command = asCommand(editRowCommand(doc, 0, fields({ from: 1, to: 0, read: 'a', push: 'A' })));
+		const command = asCommand(
+			editRowCommand(doc, 0, fields({ from: 1, to: 0, read: 'a', push: 'A' }))
+		);
 		const after = applied(doc, command);
 
 		expect(rowText(after)).toEqual([
@@ -185,9 +187,18 @@ describe('U: the commands of the editable table', () => {
 
 	it('F6: a complete draft is one addTransition, and it lands at row 1', () => {
 		const doc = machineF();
-		const command = asCommand(draftCommand(doc, fields({ from: 0, to: 1, read: 'ε', pop: '', push: '' })));
+		const command = asCommand(
+			draftCommand(doc, fields({ from: 0, to: 1, read: 'ε', pop: '', push: '' }))
+		);
 
-		expect(command).toEqual({ type: 'addTransition', from: 0, read: null, pop: [], push: [], to: 1 });
+		expect(command).toEqual({
+			type: 'addTransition',
+			from: 0,
+			read: null,
+			pop: [],
+			push: [],
+			to: 1
+		});
 
 		const after = applied(doc, command);
 		expect(rowText(after)[0]).toBe('0|ε|[]|[]|1');
@@ -217,7 +228,9 @@ describe('U: the commands of the editable table', () => {
 
 	it('a draft with a new stack symbol sends the batch with addStackSymbol first', () => {
 		const doc = machineF();
-		const command = asCommand(draftCommand(doc, fields({ from: 0, to: 1, read: 'ε', pop: '', push: 'B' })));
+		const command = asCommand(
+			draftCommand(doc, fields({ from: 0, to: 1, read: 'ε', pop: '', push: 'B' }))
+		);
 
 		expect(command).toEqual({
 			type: 'batch',
@@ -236,7 +249,11 @@ describe('U: the commands of the editable table', () => {
 	});
 
 	it('a new state never lands on another one, and the empty document starts at 200, 200', () => {
-		expect(addStateCommand(pdaDocumentFrom({ states: [] }))).toEqual({ type: 'addState', x: 200, y: 200 });
+		expect(addStateCommand(pdaDocumentFrom({ states: [] }))).toEqual({
+			type: 'addState',
+			x: 200,
+			y: 200
+		});
 
 		const doc = machineF();
 		const command = addStateCommand(doc);
