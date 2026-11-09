@@ -6,8 +6,9 @@
 // (`routes/soal/[id]/+page.svelte` → `storage/index.ts` → `pda-work.ts` → the PDA modules) that
 // Rollup tree-shakes out of the build. This guard is seeded from the layout and the sandbox only,
 // so that chain is not walked; a pass here is not a proof for the soal route.
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, relative, resolve } from 'node:path';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
@@ -33,7 +34,7 @@ const IMPORT = /\bimport\s+(type\s+)?([\s\S]*?)\bfrom\s*['"]([^'"]+)['"]/g;
 const SIDE_EFFECT = /\bimport\s*['"]([^'"]+)['"]/g;
 const EXPORT_FROM =
 	/\bexport\s+(type\s+)?(?:\*(?:\s+as\s+[\w$]+)?|\{[\s\S]*?\})\s+from\s*['"]([^'"]+)['"]/g;
-const SCRIPT = /<script\b[^>]*>([\s\S]*?)<\/script>/g;
+const SCRIPT = /<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi;
 
 /** True when every name in the braces is an inline `type`, so the import is erased. */
 function allInlineTypes(clause: string): boolean {
@@ -132,5 +133,14 @@ describe('the first load', () => {
 		const { chains, unresolved } = walk();
 		expect(unresolved).toEqual([]);
 		expect(chains.map((chain) => chain.join('\n  '))).toEqual([]);
+	});
+
+	it('reads a script block whatever the case of <SCRIPT> and a space before the closing bracket', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'first-load-'));
+		const file = join(dir, 'fixture.svelte');
+		writeFileSync(file, '<SCRIPT lang="ts">\n\timport value from "./value.ts";\n</SCRIPT >\n');
+		const specifiers = valueImportsOf(file);
+		rmSync(dir, { recursive: true, force: true });
+		expect(specifiers).toEqual(['./value.ts']);
 	});
 });

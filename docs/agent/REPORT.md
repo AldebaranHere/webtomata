@@ -10,7 +10,8 @@ Commits:
 - `49eaf6b` `docs(agent): start task T-068` — `PLAN.md` set to `in-progress`.
 - `224ae8a` `feat(editor): split the PDA history out of the first load` — the split, the guard, the
   depth test and ADR 0056.
-- this commit — `docs(agent): record task T-068`.
+- `8700bdd` `docs(agent): record task T-068` — the report and the PLAN status.
+- this commit — `test(editor): read <SCRIPT> blocks in the first-load guard` (the CodeQL fix, section 4).
 
 **Status: AC1–AC5 hold.** The first JS falls by 4,230 bytes on `sandbox.html` and 4,227 on each
 `soal/*.html`, so the exception of ADR 0055 is paid back; no page is larger.
@@ -138,8 +139,11 @@ edges remain and the guard skips them, which is what makes it pass on correct co
 85 modules. It passes on the final code:
 
 ```
- ✓ src/lib/first-load.test.ts (2 tests) 49ms
+ ✓ src/lib/first-load.test.ts (3 tests) 22ms
 ```
+
+**Review fix (PR 214, CodeQL `js/bad-tag-filter`):** the `SCRIPT` regex is now case-insensitive and allows a space
+before the closing `>`; a new guard test reads an upper-case `<SCRIPT lang="ts">` block, which the old regex skipped.
 
 ---
 
@@ -208,8 +212,8 @@ ok   78 files use no raw colors
 ```
 $ pnpm --filter web test
  Test Files  122 passed (122)
-      Tests  1412 passed | 3 skipped (1415)
-   Duration  11.69s
+      Tests  1413 passed | 3 skipped (1416)
+   Duration  10.05s
 ```
 
 ```
@@ -344,7 +348,7 @@ The one existing test line edited:
 +import { createPdaHistory } from './pda-history.ts';
 ```
 
-Tests run: the full `pnpm --filter web test` (122 files, 1412 passed, 3 skipped) and the five PDA
+Tests run: the full `pnpm --filter web test` (122 files, 1413 passed, 3 skipped) and the five PDA
 e2e specs above (61 passed, 13 skipped). The focused history/PDA-history files (35 tests) are in
 section 2. No other existing test changed. The FSM history files (`history.test.ts`,
 `history.property.test.ts`) are untouched and pass.
