@@ -9,7 +9,7 @@ import {
 	toEnginePda
 } from './pda-document.ts';
 import type { PdaDocument } from './pda-document.ts';
-import { createPdaHistory } from './history.ts';
+import { createPdaHistory } from './pda-history.ts';
 import { checkPdaDocument, random, randomPdaCommand } from './testing.ts';
 
 const SEQUENCES = 200;

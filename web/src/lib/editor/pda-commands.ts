@@ -1,6 +1,6 @@
 // The commands that change a PDA document. A command is plain data, so it can be logged, sent and
 // replayed. `applyPdaCommand` is a pure function: it makes a new document and leaves the old one
-// whole (used by `createPdaHistory` in `history.ts`). A command that is not valid is refused with
+// whole (used by `createPdaHistory` in `pda-history.ts`). A command that is not valid is refused with
 // a message, the document stays as it was, and nothing is thrown.
 //
 // A command that would change nothing gives back the same document object, so that the history
