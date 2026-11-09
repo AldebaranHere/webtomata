@@ -2986,7 +2986,7 @@ Follow the rules of `AGENTS.md` for every shell command, and run the heavy ones 
 
 ## Task T-074 — PDA editor, part 12b: "Mesin saya" lists FSMs and PDAs
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-074-pda-library`
 
