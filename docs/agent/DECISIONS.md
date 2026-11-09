@@ -583,3 +583,12 @@ Format:
 - Alternatives considered: keep the routing in the page and ask for a size exception (the page is in every sandbox first load); create the record in the workstation (not mounted); a separate "Buka di mode PDA" button (already dropped).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-075); later `web/src/routes/sandbox/+page.svelte`, `web/src/lib/share/`, `fuzz/`, `web/e2e/open-file.spec.ts`, `web/e2e/cross/open-file.spec.ts`
+
+## 2026-11-10 — T-068 specified (pay back the T-075 size exception by splitting the PDA history)
+
+- Decider: planner
+- Context: the owner granted T-075 a one-time size exception (+696 bytes on `sandbox.html`, +769 on the three `soal/*.html`) because `pda-document.ts` is shared with the first-load chunk through `history.ts` → `pda-commands.ts`. DeepSeek measured the cause and proposed the fix in T-068, which was an unspecified backlog line.
+- Decision: T-068 is a small refactor: `createPdaHistory` and `PdaHistory` move to `pda-history.ts`, the first load stops importing the PDA document and commands, and a static-walk test guards it; the pay-back is measured in bytes against the pre-T-075 numbers (128,324 and 127,607).
+- Alternatives considered: wait for a larger "lazy PDA" task (no, this is the whole cause); lower the budget for the routes (no, the budget stays); drop the guard (the next shared import would silently cost the bytes again).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-068); later `web/src/lib/editor/history.ts`, `pda-history.ts`, `interaction/pda-editor.ts`
