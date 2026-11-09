@@ -1,691 +1,495 @@
-# Task T-061 Report — Editing in the Tabel tab of the PDA editor
+# Task T-062 Report — PDA editor, part 11 of 12: the determinism badge and the competing pairs
 
-Branch: `task/T-061-pda-table-editing`, cut from `origin/staging` at `a49611e` (merge of
-PR 193, the amended T-061 spec).
+Branch: `task/T-062-pda-determinism-badge`, cut from `origin/staging` at `62de20d` (the merge of
+PR 198, the amended T-062 spec).
 
 Commits:
 
-- `f4f0c5f` `feat(editor): add the pure part of the editable PDA table (T-061)` — the pure
-  module, its tests, the messages, the one export of `pda-label.ts`; the task set to
-  `in-progress`.
-- `3007f42` `feat(editor): edit the transitions of a PDA in the Tabel tab (T-061)` — the three
-  blocks, the table view, the editor wiring, the new e2e spec and the one approved edit of
-  `pda-panel`.
-- `a732b4c` `docs(agent): report T-061, its ADR and three proposed tasks`.
-- `a565f0b` `fix(tools): keep the docs-only fixture out of the repository a hook names` — a bug
-  of the pre-push hook found while pushing, fixed in this PR (section 13).
-- `53c7bec` `chore(repo): remove the file the docs-only test used to leave behind` — `docs/a.md`.
-- `5a0c6e0` `test(e2e): pick the delete tool exactly in the PDA edge test (T-061)` — the approved
-  one-line edit of `pda-editor.spec.ts`.
-- The last commit adds the decisions of section 12 and 13 to this report and sets the task to
+- `a6dccd3` `feat(editor): add the determinism badge and the competing pairs` — the module and
+  its two test files, the badge component, the editor wiring, the one optional table prop, the
+  strings, the glossary, the e2e spec; the task set to `in-progress`.
+- The last commit adds the ADR 0052, this report, the amended e2e file and sets the task to
   `done`.
 
-**Status: ready to merge.** The two questions of the first version of this report are answered:
-the owner accepted the sizes of AC3 once (section 8) and approved the one-line edit of
-`pda-editor.spec.ts` (section 2). The pre-push hook could not run at all in this checkout; that
-is fixed in this PR too (section 13). Everything below is the real output, and the deliberate
-breaks were re-run on the final code.
+**Status: ready to review.** Every verification command of the spec passed. One test of the whole
+Vitest suite failed and it is not this task's: `geometry.test.ts` line 585 (`took < 1000`, measured
+1307 ms) is the known T-069 timing test, which fails only while another worker shares the machine
+and passes alone in 577 ms (section 7). It was not touched.
+
+**Round 2 (after the review).** The review approved the code and found three mutants that survived
+it. A test was added for each — U22, and one more assertion in E3 and in E5 — and each mutant was
+run again on the final code (B9 to B11, section 6). One correction to the review: B9 (`pairs = []`
+commented out in `schedule`) does **not** survive on this branch; U15 from the first round already
+fails with it. The numbers of the gate and of the repeats below are the round-2 ones: 22 unit tests
+in `pda-determinism.test.ts`, 1362 Vitest tests, and the whole new spec 5 times on both projects
+after the two new assertions.
+
+## Planner approvals during the task (2026-11-09)
+
+The pre-flight found four things the first spec could not hold; the planner amended T-062 in PR 198
+(`ccf9670`) and ruled:
+
+1. **E4 / the edge focus — option D.** With the Definisi tab open, Tunjukkan selects the first edge
+   (`aria-pressed` on its node) and announces the rows, but **the focus stays on the Tunjukkan
+   button**, which keeps `aria-pressed="true"`. With the Tabel tab open the focus goes to the Dari
+   field of the first marked row. No change to `interaction/editor.ts`, no `querySelector` on the
+   canvas. Implemented as ruled (`PdaEditor.svelte`, `showPair`), and E4 asserts exactly this.
+2. **The announcement — the badge's own live region.** An `aria-live="polite"` paragraph with the
+   `sr-only` class, in the page all the time (in the `head` snippet of `PdaEditor.svelte`), with its
+   text set when the button is pressed. **Never `role="status"`**, because `pda-panel` and
+   `pda-table-edit` select the editor's announcer by that role. E3 asserts it by text.
+3. **The request prop for a row's focus.** `{ index, field, request }`, handled by an `$effect`
+   that reuses `focusRow`, plus the one optional field in `pda-table-props.ts`. That is what was
+   built (`PdaRowFocus`).
+4. **Both transitions reading ε take `compete_epsilon_read`**, as encoded. `pasangan bersaing` goes
+   into the glossary with `TODO(review)`, and both sentence keys are marked `TODO(review)` for the
+   "pop ε adalah awalan dari pop ε" wording.
+
+Everything else in the restatement was approved as written: the eight breaks, `createDeterminism`
+and how it drops a stale answer, the `head` snippet, the badge and the phone design, and the list of
+files to touch and not to touch.
 
 ## 1. What changed
 
-The read-only table of T-051 became the editable Tabel tab of `design/screens/pda-editor.md`,
-section 6, in three blocks under the head block:
+Under the kind switch, in both tabs, a badge reads `engine.pdaDeterminism(toEnginePda(doc))`:
 
-- **Alfabet** (`PdaAlphabetBlock.svelte`): the chips of Σ and of Γ, a field and a button to add
-  a symbol, a remove button on each chip that takes its transitions with a toast and Urungkan.
-  A symbol name that is `eps`, `ε`, or that holds whitespace or a comma is refused before any
-  command, with `pda_editor.symbol_reserved` (the amendment of 2026-11-09).
-- **State** (`PdaStatesBlock.svelte`): one row for each state — the name (press to rename,
-  `Enter` sends, `Esc` cancels), a start radio, an accepting checkbox, a delete button — and
-  `+ State`. The words are the FSM table's (`table.state`, `table.start`, `table.accepting`).
-- **Transisi (n)** (`PdaTransitionsBlock.svelte`): Dari (a chooser of states), Baca (a chooser
-  of the input symbols, ε first), Pop and Push (text fields), Ke (a chooser of states) and a
-  delete button in every row, in the engine's order, and `+ Tambah transisi` for a draft row.
+| The document | The badge |
+| --- | --- |
+| no transition | nothing |
+| no competing pair | **Deterministik**, plain text, success tone |
+| NDPDA with n pairs | a disclosure button, neutral tone, `Non-deterministik · n pasangan bersaing` |
+| DPDA with n pairs | a disclosure button, warning tone, `Bukan DPDA · n pasangan bersaing` |
 
-`pda-table-edit.ts` is the pure part: the counts for the toast, the placement of a new state
-with `freeSpot`, the batch of a row edit, the duplicate check, the draft rule, the reserved
-names. `pda-table-props.ts` holds the props type, so `PdaEditor.svelte` can name the lazily
-loaded component without loading it. `PdaTableView.svelte` keeps its name, stays the lazy
-entry, and is now the container of the three blocks.
+The list under the button holds one `<li>` card per pair, in the engine's order: the state
+(`q0:`), the two transitions as the diagram writes them joined by ` ↔ `, the reason sentence, and
+**Tunjukkan** (44 px, `aria-pressed` on the shown pair). Under the cards, the note of the kind.
+Tunjukkan selects the first edge, puts both rows into T-051's `marked` set, announces
+`pda_editor.pair_selected { first, second }` in the badge's live region, and moves the focus to the
+first row when the Tabel tab is open. A second press clears the marks, the edge and the message, and
+the editor's announcer says `editor.selection_cleared`.
 
-Every edit is one command of the document, so undo, the diagram, the definition, the checks
-and the autosave follow with no new code. A row edit is one `batch` (new symbols, the remove
-of the old row, the add of the new one); a row that would equal another one is refused with its
-number instead of being merged away; the rows are keyed by a JSON tuple of their five values
-(the draft by `'draft'`), and after a command the row's new index comes from a dry run of the
-same command through `applyPdaCommand`, then `tick()` and the focus on the same control.
+The new pure module `pda-determinism.ts`:
 
-Files: new `PdaAlphabetBlock.svelte`, `PdaStatesBlock.svelte`, `PdaTransitionsBlock.svelte`,
-`pda-table-props.ts`, `pda-table-edit.ts`, `pda-table-edit.test.ts`,
-`web/e2e/pda-table-edit.spec.ts`, `docs/decisions/0051-pda-table-editing.md`; edited
-`PdaTableView.svelte`, `PdaEditor.svelte`, `pda-label.ts` (one export), `pda-messages.ts`,
-`pda-messages.test.ts`, `web/e2e/pda-panel.spec.ts` (one approved line), `docs/agent/PLAN.md`.
-No file in `crates/`, no FSM file, and no new string in `id.ts` or `en.ts`.
+- `createDeterminism({ query, delayMs = 200 })` — `status()`, `pairs()`, `subscribe`, `schedule`,
+  `dispose`. The same rules as `checker.ts`, which is not changed.
+- `competitionReason(doc, pair)` — the sentence, from the two transitions; `null` when the pair
+  names no two transitions of the document.
+- `badgeModel(kind, transitions, pairs)` — tone, key, parameters, the phone's short key, and whether
+  it opens a list. `null` when the document has no transition.
 
-## 2. Planner approvals during the task (2026-11-09)
+The head block (kind switch, badge, checks line) was repeated in the two tab snippets; it is one
+`head` snippet now, rendered by both.
 
-These three edits to existing files were approved or forced on 2026-11-09; the planner folds
-them into the plan in review.
+Files: new `pda-determinism.ts`, `pda-determinism.test.ts`, `pda-determinism.wasm.test.ts`,
+`PdaDeterminismBadge.svelte`, `web/e2e/pda-determinism.spec.ts`,
+`docs/decisions/0052-pda-determinism-badge.md`; edited `PdaEditor.svelte`, `PdaTableView.svelte`,
+`PdaTransitionsBlock.svelte`, `pda-table-props.ts` (one optional field), `pda-messages.ts` and its
+key list in `pda-messages.test.ts`, `docs/glossary.md`, `docs/agent/PLAN.md` (status),
+`web/eslint.config.js` (the new WASM test in the list of files that may import the engine — the
+established pattern: every `*.wasm.test.ts` is named there).
 
-1. **`web/e2e/pda-panel.spec.ts`** (approved, option (a) of my pre-flight question). One
-   assertion of E4, because the value of a text field is not text content:
-
-   ```
-   -		// Row 2: q0 a ε A q0
-   +		// Row 2: q0 a ε A q0. The Push cell is a field since T-061, so its text is its value.
-     		await expect(rows.nth(1)).toContainText('q0');
-     		await expect(rows.nth(1)).toContainText('a');
-   -		await expect(rows.nth(1)).toContainText('A');
-   +		await expect(rows.nth(1).getByRole('textbox', { name: /Baris 2.*Push/i })).toHaveValue('A');
-   ```
-
-   Same intent, not weaker: it checks the transition's Push value itself. `tr`, `caption`,
-   `th.from`, `.wrap`, `aria-current`, the five column headers and the heading `Transisi (n)`
-   are unchanged.
-
-2. **`web/src/lib/i18n/pda-messages.test.ts`, U1** (forced by AC5, not optional): U1 asserts
-   that the module holds an exact key list, and the amendment puts 11 more keys in it, so the
-   list must grow or AC5's "`pda-messages.test.ts` passes" cannot hold. The diff is the
-   comment and the 11 literal lines:
-
-   ```
-   -// The 25 keys that T-063 moves out of the shared dictionary (docs/agent/PLAN.md).
-   +// The 25 keys that T-063 moves out of the shared dictionary, and the 11 that T-061 adds
-   +// (docs/agent/PLAN.md, T-061: the editable Tabel tab).
-   ...
-   +	'pda_editor.alphabet_input',
-   +	'pda_editor.alphabet_stack',
-   +	'pda_editor.add_transition',
-   +	'pda_editor.state_delete',
-   +	'pda_editor.state_removed',
-   +	'pda_editor.row_duplicate',
-   +	'pda_editor.row_added',
-   +	'pda_editor.row_changed',
-   +	'pda_editor.row_removed',
-   +	'pda_editor.symbol_reserved',
-   +	'document.duplicate_symbol'
-   ```
-
-   No assertion was weakened: the test still demands an exact set and the two languages.
-
-3. **`web/e2e/pda-editor.spec.ts`** (approved by the owner on 2026-11-09, in the message that
-   carries this report). One locator of E4, which picked the delete tool with an over-broad
-   pattern and then matched 14 buttons (the panel's "Hapus simbol …", "Hapus state …" and
-   "Hapus baris …"):
-
-   ```
-   -		const deleteBtn = page.getByRole('button', { name: /^Hapus/ });
-   +		// The tool itself, exact: the panel's own buttons are named "Hapus simbol …", "Hapus state …"
-   +		// and "Hapus baris …" since T-061, and /^Hapus/ would match all of them.
-   +		const deleteBtn = page.getByRole('button', { name: 'Hapus', exact: true });
-   ```
-
-   The same form that `editor-edges.spec.ts:163` already used for the same tool. No assertion
-   changed; the spec now passes (7 passed, 2 skipped on desktop).
-
-4. **`tools/docs-only.test.mjs`** (a fix the owner asked for on 2026-11-09): the bug of section
-   13, with the two regression tests that hold it. An exception to the "no test edits" rule
-   because the test was broken, not weakened: the two new tests fail on the old code and pass on
-   the new one.
-
-5. **`docs/a.md` removed** (the owner asked for it on 2026-11-09): a one-line JavaScript file in
-   a documentation folder, left there by the bug of section 13.
-
-6. **`web/src/lib/editor/pda-label.ts`, two conditions changed** (reviewed and accepted by the
-   planner on 2026-11-09, after I reported it). The spec allowed one new export there and no
-   behaviour change; I went one step further and made the two ε checks of `parseRead` and
-   `parseStackSeq` use the new list instead of comparing with their own two literals:
-
-   ```
-   -	if (
-   -		trimmed === '' ||
-   -		trimmed === 'ε' ||
-   -		(trimmed === 'eps' && !doc.inputAlphabet.includes('eps'))
-   -	) {
-   +	if (trimmed === '' || (EPSILON_WORDS.includes(trimmed) && !doc.inputAlphabet.includes(trimmed))) {
-   ```
-
-   The behaviour is the same, and the planner checked it: a document cannot hold a symbol named
-   `ε`, so `inputAlphabet.includes('ε')` was always false and the extra `includes` changes
-   nothing; `pda-label.test.ts` (23 tests) is unchanged and passes. It keeps one fact in one
-   place, which is why I did it, but it is beyond what the spec allowed, and **I should have
-   asked first** instead of reporting it afterwards. Recorded here so the next reviewer sees the
-   whole diff and not only the export.
-
-## 3. Tests first
-
-`web/src/lib/editor/pda-table-edit.test.ts` before `pda-table-edit.ts` existed:
+Two files were touched beyond the literal scope list, both unavoidable and named here:
+`pda-table-props.ts` (the planner approved the optional prop, which lives in that file) and
+`web/eslint.config.js` (without the allow-list entry the WASM test is a lint error; the list is the
+only way a test may import the engine).
 
 ```
- ❯ src/lib/editor/pda-table-edit.test.ts (0 test)
-
-⎯⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯⎯
- FAIL  src/lib/editor/pda-table-edit.test.ts [ src/lib/editor/pda-table-edit.test.ts ]
-Error: Cannot find module './pda-table-edit.ts' imported from /home/Aldebaran64/webtomata-ds/web/src/lib/editor/pda-table-edit.test.ts
- ❯ src/lib/editor/pda-table-edit.test.ts:15:1
- Test Files  1 failed (1)
+$ git diff --stat origin/staging
+ docs/agent/PLAN.md                              |   2 +-
+ docs/decisions/0052-pda-determinism-badge.md    |  88 +++++
+ docs/glossary.md                                |   2 +
+ web/e2e/pda-determinism.spec.ts                 | 448 ++++++++++++++++++++++++
+ web/eslint.config.js                            |   3 +-
+ web/src/lib/editor/PdaDeterminismBadge.svelte   | 215 ++++++++++++
+ web/src/lib/editor/PdaEditor.svelte             | 120 ++++++-
+ web/src/lib/editor/PdaTableView.svelte          |   4 +-
+ web/src/lib/editor/PdaTransitionsBlock.svelte   |  18 +-
+ web/src/lib/editor/pda-determinism.test.ts      | 430 +++++++++++++++++++++++
+ web/src/lib/editor/pda-determinism.ts           | 165 +++++++++
+ web/src/lib/editor/pda-determinism.wasm.test.ts | 194 ++++++++++
+ web/src/lib/editor/pda-table-props.ts           |  16 +
+ web/src/lib/i18n/pda-messages.test.ts           |  14 +-
+ web/src/lib/i18n/pda-messages.ts                |  35 +-
+ 15 files changed, 1727 insertions(+), 27 deletions(-)
 ```
 
-`web/e2e/pda-table-edit.spec.ts` before the blocks existed (desktop, `10 failed, 1 skipped`):
+Every protected file is unchanged:
 
 ```
-  ✘   3 [desktop] › e2e/pda-table-edit.spec.ts:99:2 › E1: the Alfabet block › adds c, refuses eps / a b / a,b, … (10.3s)
-  ✘   1 [desktop] › e2e/pda-table-edit.spec.ts:289:2 › E4: the draft row › the draft keeps what was typed … (30.3s)
-  ✘   6 [desktop] › e2e/pda-table-edit.spec.ts:243:2 › E4: the draft row › Dari alone sends nothing, Ke sends it, … (30.3s)
-  ✘   5 [desktop] › e2e/pda-table-edit.spec.ts:217:2 › E3: a row that moves › F4 on H: … (10.6s)
-    Error: expect(locator).toHaveCount(expected) failed
-    Locator:  getByRole('complementary', { name: 'Panel' }).getByRole('group', { name: 'Alfabet input Σ' }).locator('.chip')
-    Expected: 2
-    Received: 0
-      107 | 		// The two alphabets of F, as chips.
-    > 108 | 		await expect(sigma.locator('.chip')).toHaveCount(2);
-           | 		                                     ^
-  10 failed
-   1 skipped
+unchanged  web/src/lib/editor/checker.ts
+unchanged  web/src/lib/editor/KindSwitch.svelte
+unchanged  web/src/lib/editor/SidePanel.svelte
+unchanged  web/src/lib/editor/EditorCanvas.svelte
+unchanged  web/src/lib/editor/diagram/DiagramDrawing.svelte
+unchanged  web/src/lib/editor/Editor.svelte
+unchanged  web/src/lib/editor/TableView.svelte
+unchanged  web/src/lib/editor/table-props.ts
+unchanged  web/src/lib/i18n/id.ts
+unchanged  web/src/lib/i18n/en.ts
+unchanged  crates/
 ```
 
-## 4. U, R and E1 to E8
+## 2. The pre-flight (the four checks the spec asked for, before any code)
+
+Run with the real engine and the real functions; the throwaway test that produced the pairs was
+deleted before the first commit (`pda-determinism.wasm.test.ts` is the permanent form of it).
+
+**(a) The pairs of `pdaDeterminism`.** Both kinds, through `loadPda` → `fromEnginePda` →
+`pdaDeterminism`:
+
+| Machine | kind | `doc.transitions` (labels) | pairs |
+| --- | --- | --- | --- |
+| G | dpda, ndpda | `ε/ε/ε`, `a/ε/A`, `b/A/ε`, `b/A/ε` | `{0,0,1}` `{0,0,2}` |
+| J | dpda, ndpda | `a/A/ε`, `a/AB/ε` | `{0,0,1}` |
+| K | dpda, ndpda | `ε/AB/ε`, `a/A/ε` | `{0,0,1}` |
+| F | dpda, ndpda | `a/ε/A`, `b/A/ε`, `b/A/ε` | `[]` |
+| empty | dpda, ndpda | — | `[]` |
+
+`doc.transitions[i]` was deep-equal to the engine's `transitions[i]` for all six pairs, so `first`
+and `second` are indices into `doc.transitions`. **Nothing differs from F1 to F5.** Two facts the
+spec does not say, both proved: the engine's `determinism` never reads `kind` (`crates/engine-core/
+src/pda.rs:317`), so both kinds give the same pairs and only the badge's tone depends on the kind;
+and `determinism` `break`s when `from` changes (`pda.rs:326`), so it is only correct on a list
+sorted by `from`, which `sort_unstable()` on load (`pda.rs:171`) and `comparePdaTransitions`
+guarantee.
+
+**(b) `competitionReason` against the sentence parameters.**
+
+| Pair | t1 | t2 | Key | Params |
+| --- | --- | --- | --- | --- |
+| G (0,1) | `ε/ε/ε` | `a/ε/A` | `compete_epsilon_read` | `{pop1:'ε', pop2:'ε'}` |
+| G (0,2) | `ε/ε/ε` | `b/A/ε` | `compete_epsilon_read` | `{pop1:'ε', pop2:'A'}` |
+| J (0,1) | `a/A/ε` | `a/AB/ε` | `compete_same_read` | `{read:'a', pop1:'A', pop2:'AB'}` |
+| K (0,1) | `ε/AB/ε` | `a/A/ε` | `compete_epsilon_read` | `{pop1:'A', pop2:'AB'}` (swapped) |
+
+That is F1, F2 and F3 word for word. Both reading ε takes the ε key: ε is not a symbol (`first.read
+!== null && first.read === second.read` is the same-read test).
+
+**(c) The tokens and the contrast guard.** The badge needs `--color-success-tint`/`-ink`,
+`--color-neutral-tint`/`-ink`, `--color-warning-tint`/`-ink`. `tools/check-contrast.mjs` reads
+`web/src/lib/styles/tokens.css` and the `PAIRS` of `tools/contrast-pairs.mjs`, and fails when a
+colour token is in no pair and is not `DECORATIVE` (`--color-border`, `--color-canvas-dot`). All
+three pairs already exist and pass, so **no pair had to be added**:
 
 ```
-$ pnpm --filter web exec vitest run src/lib/editor/pda-table-edit.test.ts src/lib/i18n
- ✓ src/lib/i18n/i18n.test.ts (14 tests) 59ms
- ✓ src/lib/editor/pda-table-edit.test.ts (19 tests) 25ms
- Test Files  3 passed (3)
-      Tests  39 passed (39)
+ok   7.02 (need 4.5)  Success ink on success tint
+ok   8.99 (need 4.5)  Neutral ink on neutral tint (chips)
+ok   8.40 (need 4.5)  Warning ink on warning tint
 ```
 
-`pda-table-edit.test.ts` (U1 to U16, R1 to R3, 19 tests) checks: F1 the batch of a Push edit and no new
-symbol; F2 the duplicate refused with `n` = 2 and the document untouched; F3
-`addStackSymbol(B)`, remove, add, and Γ `["A","B"]`; F4 the edited row at index 1 of H and the
-whole document in `comparePdaTransitions` order; F5 the counts 2 / 3 / 2 and what
-`removeState` really takes; F6 the plain `addTransition` landing at row 1; a row that changes
-nothing gives `null`; an index out of the table gives `null`; a draft with one state or with
-none gives `null`; a draft with a new stack symbol is the batch; a draft that is already a row
-is refused; a new state never within 72 px of another and `{200, 200}` on an empty document;
-the six reserved names refused and five ordinary names accepted; a row that differs from another
-one by its Dari or its Ke is not a duplicate (B8); a change of only Ke is a change (B9); a new
-stack symbol that Pop and Push share is added once (B10); R1/R2 every text the table can show
-has both languages and the same parameters; R3 the 11 new keys are in `pda-messages.ts` only.
+**(d) The focus, the clear method, and the row.** The edge node is
+`<g class="edge-node" data-edge="0>1" role="button" tabindex="0" aria-pressed=…>`
+(`diagram/DiagramDrawing.svelte:161`), reachable in tests as `g.edge-node[data-edge="0>1"]`;
+`EditorCanvas.svelte:201` finds it, and `:747` focuses it only when `view.focus.edge` changes, which
+happens in exactly one private place (`interaction/editor.ts:389`, `closeLabel`). `EditorCanvas`
+exports one function (`zoom`, `:173`). The method that clears the selection is **`clearSelection()`**
+(`editor.ts:512`), and it does clear the edge: `editor.ts:250` `if (patch.selection !== undefined &&
+patch.edge === undefined) state.edge = null;`. A row already has `focusRow(index, field)` in
+`PdaTransitionsBlock.svelte:81`, which focuses `.f-<field>` inside `tbody tr.row[index]`; rows are
+keyed by `keyOf(transition)` (`:47`, `{#each rows as row (row.key)}` at `:213`). This is why the
+amendment's option D was possible and option A was not needed.
 
-The e2e spec (desktop `10 passed, 1 skipped` in the final run; the phone project runs all of
-them): E1 the alphabet, the three reserved names, the removal with its toast and one
-Urungkan; E2 rename with Enter, a name in use refused under the field, the start radio, the
-accepting checkbox, `+ State` 72 px away from the others, delete with its count and Urungkan;
-E3 F4 on H, the row at 2 and the focus on its Dari; E4 the draft (Dari alone sends nothing,
-Ke sends, focus and announcement, the keyboard only, it survives other edits, and a Dari whose
-state is removed goes back to the placeholder); E5 the duplicate under the row (proved against
-the Definisi tab) and 65 symbols with `aria-invalid`; E6 F1 and F3 each one Urungkan; E7 axe
-and the phone sizes; E8 `+ n lagi` marks four rows and an edit clears them.
-
-## 5. The ten deliberate breaks, on the final code
-
-Each was made on the committed code, built, run against the spec that must catch it, and then
-removed (`git checkout --`); the tree was verified clean afterwards.
-
-**B1 — send a Pop edit as separate `apply` calls** (`PdaTransitionsBlock.svelte`):
+**(e) The size baseline** (a clean build of `origin/staging` in `~/tmp/t062-baseline`, removed):
 
 ```
--		const refused = onapply(result, {
--			say: { key: 'pda_editor.row_changed', params: { n: (landed < 0 ? index : landed) + 1 } }
--		});
-+		const pieces = result.type === 'batch' ? result.commands : [result];
-+		const refused = pieces.reduce<{ key: MessageKey; params: Params } | null>(
-+			(sofar, one) => onapply(one) ?? sofar,
-+			null
-+		);
+ok   initial JS index.html: 81.5 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 124.7 KB gzip (limit 170 KB)
+ok   initial JS soal.html: 83.7 KB gzip (limit 170 KB)
+ok   initial JS panduan.html: 82.3 KB gzip (limit 170 KB)
 ```
+The PDA chunk (the one file holding `pda-sheet` and `tidak memeriksa stack`):
+`_app/immutable/chunks/Or7COJGt.js`, **raw 22,069 / gzip 7,745**.
+
+**(f) The selectors the head block could break.** The kind switch: `getByRole('radio', { name:
+'DPDA', exact: true })` and `'NDPDA'` (`pda-panel:149`, `:254`; `pda-messages:68`, `:91`). The checks
+line: `side.getByText('Mesin ini lengkap.')`, `side.getByText('Belum ada start state.')`,
+`side.getByText(/transisi baris 1 dan 2 dari q0 bersaing/i)`, `side.getByText('Engine berhenti.')`,
+`side.getByRole('button', { name: 'Coba lagi' })`. The table: `panel(page).locator('.transitions')`
+→ `tbody tr`, `tbody tr[aria-current="true"]` (`pda-table-edit:12`, `:502`). One more thing this
+found: `page.getByRole('status')` matches exactly one element today, the editor's `Announcer` (the
+toast is `role="group"`), which is why the badge's live region is not `role="status"` (approval 2).
+
+## 3. U — `pda-determinism.test.ts`, 22 tests
 
 ```
-  ✘  [desktop] › e2e/pda-table-edit.spec.ts:395:2 › E6: one edit is one undo step › F1 and F3 are each one Urungkan…
-    Error: expect(locator).toHaveValue(expected) failed
-    Expected: "A"
-    Received: "ε"
-    > 405 | 		await expect(field(page, 1, 'Push')).toHaveValue('A');
+ ✓ src/lib/editor/pda-determinism.test.ts (22 tests) 320ms
 ```
+U1 the transitions of G, J and K are in the order the plan numbers the rows; U2–U3 F1 (equal pops,
+and the empty pop first); U4 F2; U5 F3 (the swap, with the document's own pops checked first);
+U6 both reading ε; U7 a pair that names no transition has no sentence; U8–U12 F5 and the
+boundaries of the model (0, 1 and 2 pairs; 0 transitions gives `null`); U13 one change is one
+request after 200 ms and not before; U14 a burst is one request, for the last document; U15 a new
+document hides the old pairs at once; U16 an answer that arrives late is dropped; U17 an answer that
+arrives before the newer debounce is dropped; U18 a failed answer; U19 a rejecting query; U20
+`dispose` stops the waiting request and later ones; U21 an answer after `dispose` changes nothing;
+U22 (round 2) the pairs of an old document are gone before the answer of the new one, which then
+shows its own — with the answer resolved by hand, so the window is certain and not a matter of
+timing.
 
-**B2 — key the rows by index and do not move the focus** (`PdaTransitionsBlock.svelte`):
+## 4. The pairs of the real engine — `pda-determinism.wasm.test.ts`, 5 tests
 
-```
--		await focusRow(landed < 0 ? index : landed, field);
-+		void landed;
-...
--					{#each rows as row (row.key)}
-+					{#each rows as row, position (position)}
-```
-
-```
-  ✘  [desktop] › e2e/pda-table-edit.spec.ts:248:2 › E3: a row that moves › F4 on H: …
-    Error: expect(locator).toBeFocused() failed
-    Expected: focused
-    Received: inactive
-    > 259 | 		await expect(movedFrom).toBeFocused();
-```
-
-**B3 — remove the duplicate refusal** (`pda-table-edit.ts`):
+This is note 3 for the worker ("write one test that proves `doc.transitions[i]` is the engine's
+`transitions[i]`"), kept as a permanent test instead of a throwaway:
 
 ```
--	const duplicate = duplicateRow(doc, fields.from, fields.to, wanted, index);
--	if (duplicate !== null) return refuse('pda_editor.row_duplicate', { n: duplicate + 1 });
+ ✓ src/lib/editor/pda-determinism.wasm.test.ts (5 tests) 78ms
 ```
+WC1 G gives the two pairs of the plan in both kinds; WC2 J and K give one each, F and an empty PDA
+give none; WC3 the two indices name two transitions that leave the pair's state; WC4 the rows the
+panel marks are rows 1–2 and 1–3 of G; WC5 the sentences of the real pairs are F1, F2 and F3.
+
+## 5. E — `web/e2e/pda-determinism.spec.ts`
 
 ```
-  ✘  [desktop] › e2e/pda-table-edit.spec.ts:361:2 › E5: refusals › F2 shows the duplicate under the row, …
-    Error: expect(locator).toBeVisible() failed
-    Error: element(s) not found
-    > 369 | 		await expect(panel(page).getByText('Transisi itu sudah ada di baris 2.')).toBeVisible();
+$ pnpm --filter web exec playwright test pda-determinism --project=desktop
+  11 passed, 1 skipped
+$ pnpm --filter web exec playwright test pda-determinism --project=phone
+  23 passed, 1 skipped (both projects together)
+```
+E1 the four cases (no transition: no badge; F: **Deterministik** in the success tone and not a
+button; G neutral as an NDPDA and warning as a DPDA, in both tabs), and with every transition
+deleted the badge goes too; E2 the disclosure (closed at the start, `aria-expanded`, the two cards
+with their sentences, both notes, Enter and Space); E3 Tunjukkan in the Tabel tab (first edge
+`aria-pressed`, rows 1 and 2 `aria-current`, focus on row 1's Dari field, the announcement, a second
+press clears everything with `Pilihan dibatalkan.` from the editor, and — round 2 — a third press
+after the focus has moved to the DPDA radio puts it back on row 1's Dari field); E4 the same in the
+Definisi tab (edge pressed, focus stays on the button, no table, the same announcement); E5 an edit
+that removes the pair gives **Deterministik** and forgets the shown pair, an edit that adds a
+competing row to F gives one pair with its sentence, and — round 2 — a competing row added again
+after the machine became deterministic gives a button whose list is closed (`aria-expanded="false"`,
+the cards behind the hidden list); E6 two quick edits with the engine held at the door end on the
+badge of the last document; E7 the phone at 360 px (short visible text, full `aria-label`, 44 px
+targets, no sideways overflow, both tones) and axe in the four badge states.
+
+**E8** is T-051's own E8, run unedited in the same pass:
+```
+✓  64 [desktop] › e2e/pda-panel.spec.ts:601:2 › E8: Timing of engine worker request › the engine
+    worker is requested after the first draw, not before (2.0s)
 ```
 
-**B4 — send the draft as soon as Dari is chosen** (`pda-table-edit.ts`):
+One fixed wait needed a reason: E1's "no badge with no transition" waits 500 ms after the last
+deletion, because the badge is only rendered once the engine's answer is back and a *negative*
+assertion has nothing to wait for. The engine is already loaded by then, so the answer takes a few
+milliseconds.
 
-```
--	if (fields.from === null || fields.to === null) return null;
-+	if (fields.from === null) return null;
-...
--	const duplicate = duplicateRow(doc, fields.from, fields.to, wanted, null);
-+	const duplicate = duplicateRow(doc, fields.from, fields.to ?? fields.from, wanted, null);
-```
+## 6. The breaks, each run on the final code
 
-```
-  ✘  [desktop] › e2e/pda-table-edit.spec.ts:274:2 › E4: the draft row › Dari alone sends nothing, Ke sends it, …
-    Error: expect(locator).toHaveCount(expected) failed
-    Expected: 4
-    Received: 5
-    > 289 | 		await expect(rows(page)).toHaveCount(4);
-```
+Each break was applied to the committed code, run, and restored; `git diff` is the break itself.
 
-**B5 — the toast of a removed symbol with a count of 0** (`PdaAlphabetBlock.svelte`):
+| # | The line that was changed | Fails |
+| --- | --- | --- |
+| B1 | `pda-determinism.ts`: `tone: 'warning',` ↔ `tone: 'neutral',` in the two branches of `badgeModel` | E1, `pda-determinism.spec.ts:147` — `Expected pattern: /tone-neutral/  Received string: "badge tone-warning …"` |
+| B2 | `pda-determinism.ts`: `params: { count: pairs },` → `{ count: pairs + 1 },` | E1, `pda-determinism.spec.ts:145` — `Expected: "Non-deterministik · 2 pasangan bersaing"  Received: "Non-deterministik · 3 pasangan bersaing"` |
+| B3 | `PdaEditor.svelte`: `marked = new Set([pair.first, pair.second]);` → `[pair.first + 1, pair.second + 1]` | E3, `pda-determinism.spec.ts:242` — `aria-current` on `tbody tr` first: `Expected: "true"  Received: ""` |
+| B4 | `pda-determinism.ts`: the line `if (mine !== sequence || disposed) return;` after the `await` deleted | U16 `pda-determinism.test.ts:340` — `expected [ …(2) ] to deeply equal [ { from: +0, first: +0, second: 1 } ]`; U17 and U21 also fail |
+| B5 | `PdaEditor.svelte`: `editor.clearSelection();` deleted from the second press | E3, `pda-determinism.spec.ts:260` — `g.edge-node[data-edge="0>1"]`: `Expected: "false"  Received: "true"` |
+| B6 | `pda-determinism.ts`: `const swapped = isPrefix(second.pop, first.pop) && …;` → `const swapped = false;` | U5 `pda-determinism.test.ts:139` — `pop1: "AB"` / `pop2: "A"` instead of `"A"` / `"AB"`; WC5 also fails |
+| B7 | `pda-determinism.ts`: `if (transitions === 0) return null;` deleted | E1, `pda-determinism.spec.ts:150` — `.pda-determinism`: `Expected: 0  Received: 1`; U11 also fails |
+| B8 | `PdaDeterminismBadge.svelte`: `aria-label={full}` deleted | E7 phone, `pda-determinism.spec.ts:379` — `aria-label`: `Expected: "Non-deterministik · 2 pasangan bersaing"  Received: ""` |
+| B9 | `pda-determinism.ts`: `pairs = [];` in `schedule` commented out | U22 `pda-determinism.test.ts:333` — `expected [ …(2) ] to deeply equal []`; U15 also fails, at `:308` (see below) |
+| B10 | `PdaDeterminismBadge.svelte`: the `$effect` that sets `open = false` commented out | E5, `pda-determinism.spec.ts:338` — `aria-expanded`: `Expected: "false"  Received: "true"` |
+| B11 | `PdaEditor.svelte`: `request: ++rowFocusRequest` → `request: 1` | E3, `pda-determinism.spec.ts:285` — `.f-from` of row 1: `Expected: focused  Received: inactive` |
 
-```
--		const count = symbolUseCount(doc, symbol, kind);
-+		const count = 0;
-```
+B9 to B11 were the reviewer's three surviving mutants, with a new test for each (U22, and the two
+extensions of E5 and E3). Each was run on the final code and restored.
 
-```
-  ✘  [desktop] › e2e/pda-table-edit.spec.ts:130:2 › E1: the Alfabet block › adds c, refuses eps / a b / a,b, …
-    Error: expect(locator).toContainText(expected) failed
-    Expected substring: "Simbol b dihapus, beserta 2 transisi."
-    Received string:    "Simbol b dihapus, beserta 0 transisi. Urungkan"
-    > 170 | 		await expect(toast(page)).toContainText('Simbol b dihapus, beserta 2 transisi.');
-```
+**B9 does not survive on this branch**, contrary to the review: U15 (written in the first round)
+already fails with it, at `pda-determinism.test.ts:308`, because it asserts `pairs()` is empty right
+after `schedule` of a second document. U22 is still the stronger test the review asked for: its
+answer is resolved by hand, so the window between the question and the answer is certain rather than
+a matter of timing, and it also asserts that the new answer then shows its own pairs.
 
-**B6 — the Pop field at 14 px** (`PdaTransitionsBlock.svelte`):
+Two of the first eight needed a second pass, and this is the finding:
 
-```
- 	.f-pop,
- 	.f-push {
- 		width: 5rem;
-+		font-size: 14px;
- 	}
-```
+- **B7 first did not fail E1.** The empty-machine assertion ran before the engine's first answer,
+  so a badge that ignores the transition count still had no badge to show at that moment. E1 now
+  deletes every transition of F and waits for the answer (section 5), and B7 fails it. U11 caught
+  B7 from the start.
+- **B4 does not fail E6, and cannot.** E6's final state is the same with or without the sequence
+  check, because one engine worker answers its questions in the order it was asked: the late answer
+  is always the older one, and the last answer is always the newest document. Out-of-order answers
+  are the fake query's job, and U16, U17 and U21 fail with B4 exactly as AC4 asks ("U fails").
+  E6 still proves its own rule: with the engine held at the door, no badge is shown while
+  `checking`, and the badge that finally appears is the last document's.
 
-```
-  ✘  [phone] › e2e/pda-table-edit.spec.ts:427:2 › E7: touch sizes, sideways scroll and axe › phone: every control …
-    Error: field 2
-    Expected: >= 16
-    Received:    14
-    > 453 | 			expect(size, `field ${i}`).toBeGreaterThanOrEqual(16);
-```
-
-**B7 — delete a state without the toast** (`PdaStatesBlock.svelte`):
-
-```
--		const refused = onapply(
--			{ type: 'removeState', id },
--			{ say: { key: 'pda_editor.state_removed', params: { name, count } }, toast: true }
--		);
-+		void count;
-+		const refused = onapply({ type: 'removeState', id });
-```
-
-```
-  ✘  [desktop] › e2e/pda-table-edit.spec.ts:180:2 › E2: the State block › renames with Enter, refuses a name in use, …
-    Error: expect(locator).toContainText(expected) failed
-    Expected substring: "State q0 dihapus, beserta 2 transisi."
-    Error: element(s) not found
-    > 239 | 		await expect(toast(page)).toContainText('State q0 dihapus, beserta 2 transisi.');
-```
-
-**B8 — the duplicate check ignores the Dari** (`pda-table-edit.ts`, `duplicateRow`), the
-mutation the planner found surviving the unit tests:
-
-```
--			i !== except &&
--			t.from === from &&
--			t.to === to &&
-+			i !== except &&
-+			t.to === to &&
-```
-
-```
-  × a row that differs from another one by its Dari or its Ke is not a duplicate
-  FAIL  src/lib/editor/pda-table-edit.test.ts > U: … > a row that differs from another one by its Dari or its Ke is not a duplicate
-  AssertionError: expected { …(2) } to deeply equal { type: 'batch', …(1) }
-  ❯ src/lib/editor/pda-table-edit.test.ts:306:83
-      305|   // Row 3 is q1|b|A|ε|q1; with Dari q2 it is row 2 in everything but …
-      306|   expect(editRowCommand(doc, 2, fields({ from: 2, to: 1, read: 'b', po…
-```
-
-**B9 — a change of only Ke counts as no change** (`pda-table-edit.ts`, `editRowCommand`):
-
-```
--		old.to === fields.to &&
-+		true &&
-```
-
-```
-  × a change of only Ke of a row is a change, not "nothing to send"
-  FAIL  src/lib/editor/pda-table-edit.test.ts > U: … > a change of only Ke of a row is a change, not "nothing to send"
-  AssertionError: expected null to deeply equal { type: 'batch', …(1) }
-  ❯ src/lib/editor/pda-table-edit.test.ts:328:75
-      327|   // Row 1 is q0|a|ε|A|q0; only its Ke becomes q1.
-      328|   expect(editRowCommand(doc, 0, fields({ read: 'a', push: 'A', to: 1 }…
-```
-
-**B10 — a symbol that Pop and Push share is added twice** (`pda-table-edit.ts`,
-`newSymbolCommands`):
-
-```
--		if (doc.stackAlphabet.includes(symbol) || seen.has(symbol)) continue;
-+		if (doc.stackAlphabet.includes(symbol)) continue;
-```
-
-```
-  × a new stack symbol that Pop and Push share is added once, so the batch is accepted
-  FAIL  src/lib/editor/pda-table-edit.test.ts > U: … > a new stack symbol that Pop and Push share is added once, so the batch is accepted
-  AssertionError: expected { type: 'batch', …(1) } to deeply equal { type: 'batch', …(1) }
-        "type": "addStackSymbol",
-+       "type": "addStackSymbol",
-  ❯ src/lib/editor/pda-table-edit.test.ts:346:19
-      344|    fields({ from: 1, to: 1, read: 'b', pop: 'B', push: 'B' })
-      345|   );
-      346|   expect(command).toEqual({
-```
-
-The three tests were added after the review found these mutations alive, and each one fails on
-its own mutation and passes on the real code (`19 passed`). `git -C ~/webtomata config --local
---list | grep -E "bare|user"` printed only `core.bare=false` before and after every run of B8 to
-B10.
-
-The tree after the ten breaks, with every one removed:
-
-```
-$ git status --short
-?? docs/decisions/0051-pda-table-editing.md
-$ git diff --stat
-(nothing)
-```
-
-## 6. The F-shared specs (AC2)
-
-```
-$ pnpm --filter web exec playwright test pda-table-edit pda-panel pda-editor pda-storage \
-    pda-messages switcher editor-checks editor-panel editor-table --project=desktop
-  1 failed
-  20 skipped
-  52 passed (52.3s)
-  ✘ 34 [desktop] › e2e/pda-editor.spec.ts:269:2 › E4: + n lagi overflow button behavior › select tool selects edge; delete tool deletes edge on + n lagi press
-```
-
-```
-$ pnpm --filter web exec playwright test pda-table-edit pda-panel pda-editor pda-storage \
-    pda-messages --project=phone
-  9 skipped
-  31 passed (34.2s)
-```
-
-```
-$ pnpm --filter web exec playwright test pda-storage --project=webkit-phone
-  6 passed (6.3s)
-```
-
-The one desktop failure is the question of section 12, item 1: `pda-editor` E4 picks the
-delete tool with `page.getByRole('button', { name: /^Hapus/ })`, and three of the new
-accessible names start with "Hapus" (`table.remove_symbol`, `pda_editor.state_delete`,
-`pda_editor.row_delete` — keys the plan tells me to reuse), so the locator matches 14 buttons:
-
-```
-    Error: locator.click: Error: strict mode violation: getByRole('button', { name: /^Hapus/ }) resolved to 14 elements:
-        1) <button … class="tool has-tip">…</button> aka getByRole('button', { name: 'Hapus', exact: true })
-        2) <button … aria-label="Hapus simbol a" class="remove svelte-10iy50m">…</button>
-       10) <button … aria-label="Hapus state q0" class="delete svelte-14vi5dv">…</button>
-    > 324 | 		const deleteBtn = page.getByRole('button', { name: /^Hapus/ });
-```
-
-`pda-panel`, `pda-editor` (E1, E2, E3, E5, E6, E7 and the rest of E4), `pda-messages`,
-`pda-storage`, `switcher`, `editor-checks`, `editor-panel` and `editor-table` pass unedited.
-
-## 7. Checks (AC6)
+## 7. The gate
 
 ```
 $ pnpm format:check
-Checking formatting...
 All matched files use Prettier code style!
-
+$ pnpm lint
+$ eslint .            (no output: clean)
 $ pnpm check
 svelte-check found 0 errors and 0 warnings
-
-$ pnpm lint
-$ eslint .
-(no output: no error)
-
-$ node tools/check-strings.mjs
-ok   74 components have no hard-coded text
-
-$ node tools/check-tokens-usage.mjs
-ok   76 files use no raw colors
+$ pnpm check:strings
+ok   75 components have no hard-coded text
+$ pnpm check:tokens
+ok   77 files use no raw colors
+$ pnpm check:contrast
+ok   4.27 (need 3)  Border strong on surface (input edge)
+ok   3.98 (need 3)  Border strong on ground (input edge)
+$ pnpm test:tools
+ℹ pass 138  ℹ fail 0
 ```
 
-The whole Vitest suite, alone, before the commit (`pnpm --filter web exec vitest run`). The
-first run of the review round hit the known flake that T-064 is for: `interaction/editor.property.test.ts`
-> "keep every rule after every step" timed out at the default 5 s (5607 ms) while the machine was
-busy; the second run, alone, passed. That is the premise of the decision of 2026-11-09 (T-064,
-not merged yet), not something this branch changed:
+`pnpm test:web` (the whole Vitest suite, run alone). On the final tree it passed in full, in both
+rounds:
+```
+ Test Files  115 passed (115)
+      Tests  1362 passed | 3 skipped (1365)
+```
+An earlier run of the same suite, while the other worker was busy, failed one test, and that test
+is not this task's:
+```
+ Test Files  1 failed | 114 passed (115)
+      Tests  1 failed | 1360 passed | 3 skipped (1364)
+
+ FAIL  src/lib/editor/diagram/geometry.test.ts > the whole drawing > draws the worst case, 600
+       random edges across 200 states, in well under a second (96 ms measured)
+AssertionError: expected 1307.4892849999999 to be less than 1000
+ ❯ src/lib/editor/diagram/geometry.test.ts:585:16
+```
+That is the known T-069 test (DECISIONS 2026-11-09: "both runs failed in `geometry.test.ts` … 1304
+and 1983 ms (96 ms on a quiet machine)"), failing because two workers share the machine. Run alone,
+with nothing else on the machine:
+```
+ ✓ src/lib/editor/diagram/geometry.test.ts (44 tests) 577ms
+      Tests  44 passed (44)
+```
+It was not touched.
+
+**One thing the owner must know before pushing.** This folder is a git worktree of `~/webtomata`
+(`git worktree list` shows both), so it shares `.git` — and the pre-push hook with it:
+```
+/home/Aldebaran64/webtomata    eafd82c [task/T-069-no-wall-clock-bounds]
+/home/Aldebaran64/webtomata-ds 2fab0ef [task/T-062-pda-determinism-badge]
+```
+The other worktree is the T-069 fix of the very test above, and it is not merged. So the hook's
+`pnpm test:web` may fail on `geometry.test.ts:585` while that worktree is busy. If it does, run the
+push again when the other worker is idle; that failure is not this branch's (everything the hook
+runs passed here: `cargo fmt --check`, lint, format, check, `test:web`, `test:tools`,
+`check:workflows`, `check:contrast`, `check:tokens`, `check:strings`, `check:questions` — all but
+the one known Vitest test).
+
+**Sizes (AC3).** Clean build of the branch, same machine, against the baseline of section 2(e):
 
 ```
- Test Files  113 passed (113)
-      Tests  1335 passed | 3 skipped (1338)
-   Duration  12.67s
+ok   initial JS index.html: 81.5 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 124.7 KB gzip (limit 170 KB)
+ok   initial JS soal.html: 83.7 KB gzip (limit 170 KB)
+ok   initial JS panduan.html: 82.3 KB gzip (limit 170 KB)
+ok   layout worker …/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
+ok   wasm …/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB gzip (limit 250 KB)
+```
+Every route is byte-for-byte the same as the baseline (0.0 KB, the gate is 0.1 KB). The PDA chunk:
+baseline `Or7COJGt.js` **22,069 raw / 7,745 gzip** → after `CBTSgDAV.js` **28,291 raw / 9,798 gzip**
+(+6,222 raw, +2,053 gzip), all of it in the lazy PDA chunk, as the spec requires.
+
+**The specs of the area** (AC2), all unedited:
+
+```
+$ playwright test pda-determinism pda-panel pda-editor pda-storage pda-messages pda-table-edit
+  switcher editor-checks editor-panel editor-table --project=desktop
+  64 passed, 21 skipped (1.2m)
+$ playwright test pda-determinism pda-panel pda-editor pda-storage pda-messages pda-table-edit
+  --project=phone
+  43 passed, 9 skipped (49.2s)
+$ playwright test pda-storage --project=webkit-phone
+  6 passed (8.0s)
 ```
 
-## 8. Sizes (AC3) — over the gate by 92 bytes, and why
+**Repeats** (the new spec, desktop and phone): 5 times each →
+```
+115 passed (3.9m)     0 failed, 0 flaky
+```
+and the tests that touch the worker and touch (E1's empty machine, E6, the phone E7) 5 more times
+each, reaching 10 →
+```
+25 passed (1.1m)      0 failed
+```
+In the second round the spec grew by the two new assertions, and the whole spec ran 5 times on both
+projects again on the final code →
+```
+115 passed (4.9m)     0 failed, 0 flaky
+```
 
-Same machine, clean builds of `origin/staging` (`3a1c1c9`) and of this branch, in
-`~/tmp/T-061-baseline` and in the working tree:
+## 8. The deepening pass
 
-| route | before (KB gzip) | after (KB gzip) | delta |
-| --- | --- | --- | --- |
-| `index.html` | 81.4 | 81.5 | +0.1 |
-| `panduan.html` | 82.3 | 82.3 | 0 |
-| `sandbox.html` | 124.5 | **124.7** | **+0.2** |
-| `soal.html` | 83.7 | 83.7 | 0 |
-| `soal/berakhiran-10.html` | 123.9 | 124.1 | +0.2 |
-| `soal/jumlah-a-genap.html` | 123.9 | 124.1 | +0.2 |
-| `soal/mengandung-101.html` | 123.9 | 124.1 | +0.2 |
-| `tentang.html` | 81.6 | 81.6 | 0 |
+**New exports.**
 
-Chunks (raw / gzip, zlib level 9):
+- `createDeterminism` — needed by `PdaEditor.svelte`; the type `Determinism` describes it.
+- `competitionReason` — needed by `PdaDeterminismBadge.svelte`. It could be private to the badge,
+  but the sentence is a rule of the definition, not a layout: it is tested on its own (U2–U7), and
+  that is why it is exported.
+- `badgeModel` — needed by `PdaEditor.svelte` (the badge is a `$derived` there, so the badge
+  component does not know about the kind and the counts).
+- Types `DeterminismStatus`, `BadgeTone`, `BadgeModel` — the return types of the three functions.
+- `PdaRowFocus`, `PdaTableField` — the one optional prop and the five column names. `PdaTableField`
+  replaced the local `keyof typeof COLUMN` in `PdaTransitionsBlock.svelte` (`COLUMN` is now
+  `satisfies Record<PdaTableField, MessageKey>`), so one fact lives in one place instead of two
+  unions that must agree.
 
-| role | before | after |
+Is any of it a duplicate of something that exists? `Determinism` has the shape of `Checker`, and
+that is deliberate: the two are the same rule (a debounce, a sequence number, a dispose) on a
+different answer. They were not merged because `checker.ts` is shared with the FSM and typed for
+`Issue[]` — the spec and ADR 0052 name that as the reason, and the alternative (generalising it)
+needs FSM tests and belongs to a task of its own. Inside the new code, nothing is written twice: the
+badge's text comes from `badgeModel`, the card's label comes from `transitionLabel` (not a second
+formatter), and the pop strings come from `formatStackSeq` and `stackSeparator`.
+
+`PdaDeterminismBadge.svelte` exports nothing. The live region is not a prop of the badge but lives
+in `PdaEditor.svelte`'s `head` snippet, so it is in the page even before the first pair exists
+(approval 2).
+
+**The interface is smaller than the work behind it:** three functions and their types (about 30
+lines of signatures) carry 165 lines of module, 215 lines of component and the engine's rules.
+There is no test-only export and no export that a caller does not use.
+
+**Casts: zero.** No `any`, no `@ts-ignore`, no `as`. The one place where a type could have been
+bypassed — the answer of the engine, which is `{ ok: true, value } | { ok: false, error }` — is
+narrowed with `answer.ok`.
+
+## 9. The keys
+
+Twelve new keys, all in `pda-messages.ts` in both languages, none in `id.ts`/`en.ts`:
+
+| Key | id | en |
 | --- | --- | --- |
-| shared dictionary | 111,884 / 31,158 | 111,884 / **31,158** (byte-identical) |
-| PDA mode, incl. `pda-messages` | 21,185 / 7,545 | 22,069 / 7,740 |
-| transitions table (lazy, new) | 2,478 / 1,067 | 19,330 / 5,978 |
-| definition (lazy) | 2,793 / 1,158 | 2,793 / 1,157 |
+| `pda_editor.badge_deterministic` | Deterministik | Deterministic |
+| `pda_editor.badge_nondeterministic {count}` | Non-deterministik · {count} pasangan bersaing | Non-deterministic · {count} competing pairs |
+| `pda_editor.badge_nondeterministic_short {count}` | Non-det. · {count} | Non-det. · {count} |
+| `pda_editor.badge_not_dpda {count}` | Bukan DPDA · {count} pasangan bersaing | Not a DPDA · {count} competing pairs |
+| `pda_editor.badge_not_dpda_short {count}` | Bukan DPDA · {count} | Not a DPDA · {count} |
+| `pda_editor.compete_same_read {read,pop1,pop2}` | Keduanya membaca {read}, dan pop {pop1} adalah awalan dari pop {pop2}. | Both read {read}, and pop {pop1} is a prefix of pop {pop2}. |
+| `pda_editor.compete_epsilon_read {pop1,pop2}` | Salah satunya tidak membaca input, dan pop {pop1} adalah awalan dari pop {pop2}. | One of them reads no input, and pop {pop1} is a prefix of pop {pop2}. |
+| `pda_editor.compete_show` | Tunjukkan | Show |
+| `pda_editor.note_ndpda_ok` | Pada NDPDA ini boleh. Pada DPDA setiap pasangan menjadi kesalahan. | On an NDPDA this is allowed. In a DPDA every pair becomes an error. |
+| `pda_editor.note_dpda_no` | Pada DPDA ini tidak boleh. Ubah salah satu transisi, atau pilih NDPDA. | In a DPDA this is not allowed. Change one of the transitions, or choose NDPDA. |
+| `pda_editor.pair_selected {first,second}` | Baris {first} dan {second} ditunjukkan. | Rows {first} and {second} are shown. |
 
-What the growth is, proved by an experiment: the exact bytes of `sandbox.html`'s first load
-are 127,628 gzip now against 127,432 on `origin/staging` (+196). The set of chunks changed
-like this:
+`badge_not_dpda_short` is the one key the spec's list did not name: the spec says the phone's text
+for a DPDA is `Bukan DPDA · {count} ▾`, which needs a short form of its own ("any other that you
+need … say which"). `pda-messages.test.ts`'s `PDA_KEYS` grew by the twelve, which the spec allows
+("its test if a key list is tested").
 
-```
-GONE  HRPVxpbz.js 32170        (the chunk that held the editor and the PDA document)
-NEW   DGFXRyeR.js 28957        (the same, without pda-document)
-NEW   C9VrHXEV.js  3369        (pda-document, its own chunk)
-NEW   app.* +13, 5.* +27       (the two shared chunks, renumbered)
-```
+The glossary gained: pasangan bersaing (competing pair), deterministik, non-deterministik, Bukan
+DPDA — all `TODO(review)`, and both sentence keys are marked `TODO(review)` for the reason the
+planner gave (equal pops read strangely).
 
-`pda-document.ts` was **already in the sandbox first load** before this task (it sits in
-`D_geX4Vz.js` and in the editor chunk, because `history.ts` holds both `createHistory` and
-`createPdaHistory`). The lazy table chunk now imports `pda-commands.ts` for the dry run, which
-is a third consumer, so Rollup hoists `pda-document` into a chunk of its own: no module enters
-the first load, but the split costs 196 bytes of chunk prologue. Two controls:
+## 10. Out of scope, for a later task
 
-- taking the dry run out entirely gives exactly 127,444 bytes = 124.5 KB = the baseline
-  (`sandbox.html` first JS gzip bytes: 127444 = 124.5 KB), and
-- making the dry run a dynamic import does **not** help (127,657 = 124.7 KB).
-
-So the 0.2 KB is the price of the newly announced row number and of the focus that follows a
-row: both need the row's index *after* the command, i.e. a dry run of the batch before
-`onapply` is called. The 170 KB budget is untouched (124.7 KB), the shared dictionary is
-byte-identical, and no route downloads a module it did not download before. The gate the
-planner set for the task (0.1 KB) is missed by 92 bytes on four routes.
-
-**Decided by the owner on 2026-11-09: accepted once, and no code changes for it.** After T-063,
-`sandbox.html` is still 0.1 KB below where it was before T-051, and the 170 KB budget is far
-away. The numbers and the dry-run proof above stay in this report, and the planner logs the
-decision. `proposed` T-068 (the PDA history in the first load) is how that cost goes away
-without touching this task.
-
-## 9. Deepening pass
-
-New exports and interface members:
-
-| export | can it be private? | already done elsewhere? | duplicated logic |
-| --- | --- | --- | --- |
-| `symbolUseCount(doc, symbol, kind)` | no, the block calls it | the FSM has `removeSymbolNote`, which counts only `on`; the PDA needs the stack side too | no |
-| `stateUseCount(doc, id)` | no, the block calls it | nothing in the repo counts a state's transitions | no |
-| `addStateCommand(doc)` | no, the block calls it | `table.ts`'s `newStateCommand` says the same for `MachineDocument` | **yes, 6 lines**, because the non-goals forbid touching `table.ts`; logged as `proposed` |
-| `editRowCommand(doc, index, fields)` | no | `rowCommands` of the label form is edge-scoped and merges duplicates | no (it calls `parseRows`) |
-| `draftCommand(doc, fields)` | no | no | reuses `newSymbolCommands` and `duplicateRow` internally with `editRowCommand` |
-| `symbolNameRefusal(text)` | no, the block calls it | `pda-label.ts` had the two words inline; it now exports `EPSILON_WORDS` and both use it | no |
-| `RowFields`, `SymbolKind` | types only | — | — |
-| `PdaTableApply`, `PdaTableProps` | types only, needed to name the lazy component | mirrors `TableViewProps` deliberately (the spec says "the same shape") | no |
-| `EPSILON_WORDS` (`pda-label.ts`) | no, the table needs it | it replaced two inline comparisons in the same file, so it is one fact in one place | no |
-
-The interface is smaller than the work behind it: five functions and two types for three
-blocks. Nothing is exported only for a test: the tests call the same five functions the
-components call. Casts added: **one**, in `pda-table-edit.test.ts`, the named helper `textOf`
-that reads a dictionary by a key of the union of both dictionaries, with a comment.
-
-Two duplications that stay, with the reason: (1) `addStateCommand` repeats
-`newStateCommand`'s placement because the FSM file is out of scope — a `proposed` line in
-`PLAN.md` suggests widening `newStateCommand`'s parameter to `StatesDocument` in a later task;
-(2) `PdaTableView.svelte` and `pda-table-props.ts` mirror their FSM twins, which the plan asked
-for by name.
-
-## 10. What I did not run, and why
-
-- The full e2e suite (`pnpm test:e2e`, `pnpm test:e2e:cross`): `AGENTS.md` forbids it on the
-  worker's machine; the area's specs are in sections 6 and 4.
-- Firefox: it does not start on the owner's laptop; CI runs it.
-- Lighthouse and the smoke test: no layout, route or font change; CI runs them.
-
-## 11. Out of scope, logged as `proposed`
-
-1. **T-066** `newStateCommand` of `table.ts` is typed for `MachineDocument` although it only
-   needs `states`; widening it to `StatesDocument` would remove the six duplicated lines.
-2. **T-067** `web/e2e/pda-panel.spec.ts:450` has the same over-broad `{ name: /^Hapus/ }` as
-   `pda-editor.spec.ts:324`. It passes today only because the panel is not in the DOM at that
-   point of the test; it is a trap for the next task that adds a "Hapus …" button.
-3. **T-068** `history.ts` (which the first load needs) imports `pda-commands.ts` and
-   `pda-document.ts` for `createPdaHistory`, so the whole PDA document layer is in the first
-   load of every route. Splitting the two histories would shrink `index.html`, `soal.html` and
-   `panduan.html` and would let this task's dry run cost nothing.
-4. `document.duplicate_symbol` has no text in the shared dictionary, so the FSM table shows the
-   raw key when a symbol is added twice (the PDA table now has a text, in `pda-messages.ts`).
-   The planner already filed that as T-065.
-
-## 12. The decisions that closed the two questions
-
-Both were open questions when this report was first written; the owner answered them on
-2026-11-09 and the answer is in the code, in section 2 and in section 8.
-
-1. **`web/e2e/pda-editor.spec.ts` line 324**: approved — one locator made exact (the tool), no
-   assertion changed. The spec passes now: `7 passed, 2 skipped` on desktop.
-2. **AC3, +0.2 KB**: accepted once, with no code change. The dry run stays, so the announcement
-   says the number the row *now* has and the focus follows the row it moved to.
-
-## 13. The pre-push hook could not run: fixed in this PR
-
-The push failed twice in the same way, so the push stopped. The hook was never bypassed.
-
-```
-✖ rename detection bypass test: git diff --no-renames rejects moved code file
-  AssertionError [ERR_ASSERTION]: reproduced bypass where default diff classifies rename as docs-only
-  + actual  'false\n'
-  - expected 'true\n'
-      at TestContext.<anonymous> (file:///…/tools/docs-only.test.mjs:135:10)
-error: failed to push some refs to 'https://github.com/AldebaranHere/webtomata.git'
-```
-
-The same test passes when it is run alone. The reason is in `tools/docs-only.test.mjs`: it built
-its fixture with `{ ...process.env }`, and a pre-push hook exports `GIT_DIR` (the git directory
-of the repository being pushed). So the fixture's `git init`, `git config`, `git add` and
-`git commit` ran against the **real** repository:
-
-```
-$ git log --oneline 9d6830b..HEAD          (before the reset)
-bd2162c rename code file into docs         ← hook run 2
-3c8129b commit code file                   ← hook run 2
-49343f3 rename code file into docs         ← hook run 1
-73a03ad commit code file                   ← hook run 1
-$ git diff --quiet 9d6830b HEAD && echo "HEAD tree == 9d6830b tree"
-HEAD tree == 9d6830b tree
-```
-
-The same bug explains the two commits that reached `staging` with PR 190 (`2973c9f rename code
-file into docs`), `docs/a.md` on `staging`, and the `Test <test@example.com>` identity of the
-earlier session's commits. The owner repaired the configuration;
-`git -C ~/webtomata config --local --list | grep -E "bare|user"` printed only `core.bare=false`
-before and after every run in this section.
-
-The fix (`a565f0b`) removes `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`,
-`GIT_OBJECT_DIRECTORY`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`, `GIT_COMMON_DIR`, `GIT_NAMESPACE` and
-`GIT_PREFIX` from the environment of every fixture command, including the two raw `git diff`
-calls that used to inherit it. Tests first — before the fix, 12 tests, 2 failed, and the real
-configuration was unchanged by the run:
-
-```
-$ node --test tools/docs-only.test.mjs
-✖ fixtureEnv: carries no git variable of another repository
-  AssertionError [ERR_ASSERTION]: the fixture inherits a git variable of another repository
-✖ a fixture never commits into the repository that GIT_DIR names (a hook exports it)
-  AssertionError [ERR_ASSERTION]: the fixture committed into the repository that GIT_DIR names
-ℹ pass 10
-ℹ fail 2
-```
-
-After the fix, and the deliberate break on that final code (the scrubbing line removed again,
-then restored):
-
-```
-$ node --test tools/docs-only.test.mjs      (after the fix)
-ℹ pass 12
-ℹ fail 0
-
-$ node --test tools/docs-only.test.mjs      (break: removed `for (const name of HOOK_GIT_VARS) delete env[name];`)
-✖ fixtureEnv: carries no git variable of another repository
-      at TestContext.<anonymous> (file:///…/tools/docs-only.test.mjs:194:10)
-✖ a fixture never commits into the repository that GIT_DIR names (a hook exports it)
-      at TestContext.<anonymous> (file:///…/tools/docs-only.test.mjs:236:10)
-ℹ pass 10
-ℹ fail 2
-```
-
-`docs/a.md` is removed from the branch (`53c7bec`). No other test under `tools/` runs git: the
-only other file that copies `process.env` is `tools/install-browser-deps.test.mjs`, which runs a
-bash script with a fake `PATH` and never touches a repository.
-
-The six commits of this branch carried `Test <test@example.com>` as their author, inherited from
-the configuration that the bug above had rewritten. They were rewritten with
-`git rebase origin/staging --exec 'git commit --amend --no-edit --reset-author'`; every author
-and committer is now the global identity:
-
-```
-$ git log --format='%h %an <%ae>' origin/staging..HEAD
-5a0c6e0 Aldebaran Rahman Adhitya <u8521130@anu.edu.au>
-53c7bec Aldebaran Rahman Adhitya <u8521130@anu.edu.au>
-a565f0b Aldebaran Rahman Adhitya <u8521130@anu.edu.au>
-a732b4c Aldebaran Rahman Adhitya <u8521130@anu.edu.au>
-3007f42 Aldebaran Rahman Adhitya <u8521130@anu.edu.au>
-f4f0c5f Aldebaran Rahman Adhitya <u8521130@anu.edu.au>
-```
+- **T-070** (already proposed): the competing edges dashed in a DPDA and the selection stroke on the
+  second edge of a pair-of-pairs that shares an edge. Both need `DiagramDrawing.svelte` and
+  `EditorCanvas.svelte`, which the FSM shares.
+- **The `aria-label` and the phone's short text.** The design asks for an `aria-label` with the full
+  sentence while the visible text is `Non-det. · 2`. Axe's `label-content-name-mismatch` would be
+  the rule that objects (the visible words are not in the accessible name). It does **not** fire:
+  measured on the phone project with the plain spans (no `aria-hidden`) it passes, which is why the
+  spans carry no `aria-hidden` and the markup is exactly the design's. If a later axe version
+  starts reporting it, the fix is to shorten the visible text to a prefix of the sentence
+  (`Non-deterministik · 2`), a one-line change in `pda-messages.ts`.
+- **`checker.ts` and the badge could share one scheduler** if a third query ever appears; today
+  merging them would mean a change in a file the FSM shares for no behaviour change.
+- **A fixed 500 ms wait** in E1 (section 5) is the only place where the new tests wait for nothing
+  in particular. It exists for a negative assertion; if a test-only hook on the query's `status` is
+  ever acceptable, it could go.

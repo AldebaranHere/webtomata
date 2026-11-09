@@ -46,7 +46,8 @@ export default ts.config(
 			'src/lib/examples/examples.wasm.test.ts',
 			'src/lib/questions/check.wasm.test.ts',
 			'src/lib/grammar/grammar-text.wasm.test.ts',
-			'src/lib/editor/pda-document.wasm.test.ts'
+			'src/lib/editor/pda-document.wasm.test.ts',
+			'src/lib/editor/pda-determinism.wasm.test.ts'
 		],
 		rules: {
 			'no-restricted-imports': [

@@ -2,6 +2,7 @@
 	import { onMount, untrack } from 'svelte';
 	import type { Component } from 'svelte';
 	import { engine } from '#lib/engine/client.ts';
+	import type { Competition } from '#lib/engine/types.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import type { BaseAutosave } from '#lib/storage/autosave.ts';
 	import { useAutosaveBinding } from './autosave-binding.svelte.ts';
@@ -14,11 +15,14 @@
 	import { createPdaEditor } from './interaction/pda-editor.ts';
 	import KindSwitch from './KindSwitch.svelte';
 	import { pdaCheckItems } from './pda-checks.ts';
+	import PdaDeterminismBadge from './PdaDeterminismBadge.svelte';
+	import { badgeModel, createDeterminism } from './pda-determinism.ts';
 	import { toEnginePda } from './pda-document.ts';
 	import type { PdaDocument, PdaKind } from './pda-document.ts';
 	import PdaLabelForm from './PdaLabelForm.svelte';
 	import PdaLabelPopover from './PdaLabelPopover.svelte';
 	import { pdaMenuLabels } from './pda-label.ts';
+	import type { PdaRowFocus } from './pda-table-props.ts';
 	import type { PdaTableProps } from './pda-table-props.ts';
 	import { readTab, saveTab } from './panel-tab.ts';
 	import type { PanelTab } from './panel-tab.ts';
@@ -50,6 +54,20 @@
 	let markedEdge: { from: number; to: number } | null = null;
 	let lastDoc = untrack(() => editor.getState().doc);
 
+	// "Tunjukkan" of the determinism badge: the pair that is shown, the sentence the badge says to a
+	// screen reader, and the row whose first control the table must focus. None of it is in the
+	// document or in the history.
+	let shown = $state<Competition | null>(null);
+	let liveMessage = $state('');
+	let rowFocus = $state.raw<PdaRowFocus | null>(null);
+	let rowFocusRequest = 0;
+
+	/** The shown pair goes with the marks: T-051's rule clears both together. */
+	function forgetShown() {
+		shown = null;
+		liveMessage = '';
+	}
+
 	$effect(() => {
 		const stop = editor.subscribe(() => {
 			const nextState = editor.getState();
@@ -58,6 +76,7 @@
 				lastDoc = nextState.doc;
 				marked = new Set();
 				markedEdge = null;
+				forgetShown();
 			} else if (marked.size > 0) {
 				const differentEdge =
 					nextState.edge !== null &&
@@ -66,6 +85,7 @@
 				if (nextState.selection.length > 0 || differentEdge) {
 					marked = new Set();
 					markedEdge = null;
+					forgetShown();
 				}
 			}
 		});
@@ -102,6 +122,63 @@
 		};
 	});
 	const flags = $derived(flagsOf(checks.items));
+
+	// The competing pairs: a second query of the engine, a moment after each change, in the same
+	// way as the checks. The badge shows nothing while a new answer is on its way.
+	const determinism = createDeterminism({
+		query: (d) => engine.pdaDeterminism(toEnginePda(d))
+	});
+	let pairs = $state.raw({ status: determinism.status(), pairs: determinism.pairs() });
+	$effect(() => {
+		const read = () => (pairs = { status: determinism.status(), pairs: determinism.pairs() });
+		const stop = determinism.subscribe(read);
+		let last = untrack(() => editor.getState().doc);
+		const stopEditor = editor.subscribe(() => {
+			const next = editor.getState().doc;
+			if (next === last) return;
+			last = next;
+			determinism.schedule(next);
+		});
+		determinism.schedule(last);
+		return () => {
+			stop();
+			stopEditor();
+			determinism.dispose();
+		};
+	});
+	const badge = $derived(
+		pairs.status === 'ready'
+			? badgeModel(snapshot.doc.kind, snapshot.doc.transitions.length, pairs.pairs.length)
+			: null
+	);
+
+	/**
+	 * "Tunjukkan" on a pair: the first edge is selected and both of its rows are marked, and a second
+	 * press on the same pair clears it. The focus goes to the first row of the table when the Tabel
+	 * tab is open; in the Definisi tab it stays on the button that was pressed.
+	 */
+	function showPair(pair: Competition) {
+		const first = snapshot.doc.transitions[pair.first];
+		if (first === undefined) return;
+
+		if (shown !== null && shown.first === pair.first && shown.second === pair.second) {
+			marked = new Set();
+			markedEdge = null;
+			forgetShown();
+			// The editor says "editor.selection_cleared" and drops the selected edge.
+			editor.clearSelection();
+			return;
+		}
+
+		shown = pair;
+		marked = new Set([pair.first, pair.second]);
+		markedEdge = { from: first.from, to: first.to };
+		liveMessage = t('pda_editor.pair_selected', { first: pair.first + 1, second: pair.second + 1 });
+		editor.selectEdge(first.from, first.to);
+		if (tab === 'table') {
+			rowFocus = { index: pair.first, field: 'from', request: ++rowFocusRequest };
+		}
+	}
 
 	// The panel tabs: Tabel then Definisi.
 	const tabs: readonly PanelTab[] = ['table', 'definition'];
@@ -143,6 +220,7 @@
 			if (t.from === from && t.to === to) rows.push(i);
 		});
 		marked = new Set(rows);
+		forgetShown();
 	}
 
 	// Shared autosave binding: schedules writes, flushes on visibility/pagehide/unmount,
@@ -204,6 +282,29 @@
 	});
 </script>
 
+<!-- The head block of the panel: the kind switch, the determinism badge and the checks, written once
+     and used by both tabs (T-062). The live region of the badge is always in the page, so that the
+     sentence of "Tunjukkan" is announced when the button is pressed. -->
+{#snippet head()}
+	<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} kinds={PDA_KINDS} />
+	<PdaDeterminismBadge
+		kind={snapshot.doc.kind}
+		model={badge}
+		doc={snapshot.doc}
+		pairs={pairs.pairs}
+		{shown}
+		onshow={showPair}
+	/>
+	<p class="pda-live sr-only" aria-live="polite">{liveMessage}</p>
+	<ChecksList
+		status={checks.status}
+		items={checks.items}
+		problem={checks.problem}
+		onretry={() => checker.retry()}
+		onselect={(id) => editor.focusState(id, { keepSelection: false })}
+	/>
+{/snippet}
+
 <EditorFrame
 	{ready}
 	tool={snapshot.tool}
@@ -264,31 +365,18 @@
 		{:else}
 			<SidePanel bind:this={sidePanel} {tab} {tabs} ontab={chooseTab}>
 				{#snippet table()}
-					<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} kinds={PDA_KINDS} />
-					<ChecksList
-						status={checks.status}
-						items={checks.items}
-						problem={checks.problem}
-						onretry={() => checker.retry()}
-						onselect={(id) => editor.focusState(id, { keepSelection: false })}
-					/>
+					{@render head()}
 					{#if Table}
 						<Table
 							doc={snapshot.doc}
 							{marked}
 							onapply={(command, note) => editor.apply(command, note)}
+							{rowFocus}
 						/>
 					{/if}
 				{/snippet}
 				{#snippet definition()}
-					<KindSwitch kind={snapshot.doc.kind} onchange={chooseKind} kinds={PDA_KINDS} />
-					<ChecksList
-						status={checks.status}
-						items={checks.items}
-						problem={checks.problem}
-						onretry={() => checker.retry()}
-						onselect={(id) => editor.focusState(id, { keepSelection: false })}
-					/>
+					{@render head()}
 					{#if Definition}
 						<Definition doc={snapshot.doc} />
 					{/if}

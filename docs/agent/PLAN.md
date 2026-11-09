@@ -2785,7 +2785,7 @@ Follow the rules of `AGENTS.md` for every shell command (the Playwright runs are
 
 ## Task T-062 — PDA editor, part 11 of 12: the determinism badge and the competing pairs
 
-**Status:** todo
+**Status:** done
 **Owner:** worker
 **Branch:** `task/T-062-pda-determinism-badge`
 
@@ -2959,6 +2959,7 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-036** PDA to restricted normal form, with a trace: specified in its own block above (`done`, PR 161).
 - **T-037** PDA in restricted normal form to CFG, with a trace: specified in its own block above (`done`, PR 163). The slides' example `wcwᴿ` is the oracle (76 rules, 15 after cleanup).
 - **T-038** Conversions and simulation panel for the PDA: draft above (`proposed`; after P-004, P-005 and T-033).
+- **T-071** One scheduler for the two engine queries of the PDA panel (`proposed`, found by T-062): `checker.ts` and `pda-determinism.ts` are the same rule (a debounce, a sequence number, a dispose) on two different answers, and the panel now asks the engine twice after every change. One small `createQuery` that both use would remove the second copy, but `checker.ts` is shared with the FSM, so it needs FSM tests and a decision of its own. Not urgent: there is no third query yet, and the copy is 40 lines.
 - **P-004** Wireframe of the PDA editor: planner task above (`done`, approved on 2026-11-06).
 
 **E. Turing machines** (after C; the owner names each step; each has an ADR, differential tests on the owner's `.jff` files, and an approved wireframe before any editor)
