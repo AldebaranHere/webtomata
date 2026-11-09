@@ -3100,7 +3100,7 @@ pnpm size
 
 ## Task T-068 — Keep the PDA code out of the first load (split `createPdaHistory`)
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker (DeepSeek: the planner's pick; it measured the cause in T-075)
 **Branch:** `task/T-068-pda-history-lazy`
 
