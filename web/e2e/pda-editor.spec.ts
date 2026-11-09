@@ -321,7 +321,9 @@ test.describe('E4: + n lagi overflow button behavior', () => {
 		await expect(edgeNode).toHaveAttribute('aria-pressed', 'true');
 
 		// 2. In Delete tool: clicking deletes the edge with toast offering Urungkan
-		const deleteBtn = page.getByRole('button', { name: /^Hapus/ });
+		// The tool itself, exact: the panel's own buttons are named "Hapus simbol …", "Hapus state …"
+		// and "Hapus baris …" since T-061, and /^Hapus/ would match all of them.
+		const deleteBtn = page.getByRole('button', { name: 'Hapus', exact: true });
 		await deleteBtn.click();
 		await overflowHit.click();
 
