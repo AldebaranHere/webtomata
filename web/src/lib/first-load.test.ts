@@ -34,7 +34,7 @@ const IMPORT = /\bimport\s+(type\s+)?([\s\S]*?)\bfrom\s*['"]([^'"]+)['"]/g;
 const SIDE_EFFECT = /\bimport\s*['"]([^'"]+)['"]/g;
 const EXPORT_FROM =
 	/\bexport\s+(type\s+)?(?:\*(?:\s+as\s+[\w$]+)?|\{[\s\S]*?\})\s+from\s*['"]([^'"]+)['"]/g;
-const SCRIPT = /<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi;
+const SCRIPT = /<script\b[^>]*>([\s\S]*?)<\/script\b[^>]*>/gi;
 
 /** True when every name in the braces is an inline `type`, so the import is erased. */
 function allInlineTypes(clause: string): boolean {
@@ -135,12 +135,18 @@ describe('the first load', () => {
 		expect(chains.map((chain) => chain.join('\n  '))).toEqual([]);
 	});
 
-	it('reads a script block whatever the case of <SCRIPT> and a space before the closing bracket', () => {
+	it('reads a script block whatever the case of <SCRIPT> and the shape of the closing tag', () => {
 		const dir = mkdtempSync(join(tmpdir(), 'first-load-'));
-		const file = join(dir, 'fixture.svelte');
-		writeFileSync(file, '<SCRIPT lang="ts">\n\timport value from "./value.ts";\n</SCRIPT >\n');
-		const specifiers = valueImportsOf(file);
+		const sources = [
+			'<SCRIPT lang="ts">\n\timport value from "./value.ts";\n</SCRIPT >\n',
+			'<script lang="ts">\n\timport value from "./value.ts";\n</script\t\n bar>\n'
+		];
+		const specifiers = sources.map((source, index) => {
+			const file = join(dir, `fixture-${index}.svelte`);
+			writeFileSync(file, source);
+			return valueImportsOf(file);
+		});
 		rmSync(dir, { recursive: true, force: true });
-		expect(specifiers).toEqual(['./value.ts']);
+		expect(specifiers).toEqual([['./value.ts'], ['./value.ts']]);
 	});
 });

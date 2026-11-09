@@ -144,6 +144,7 @@ edges remain and the guard skips them, which is what makes it pass on correct co
 
 **Review fix (PR 214, CodeQL `js/bad-tag-filter`):** the `SCRIPT` regex is now case-insensitive and allows a space
 before the closing `>`; a new guard test reads an upper-case `<SCRIPT lang="ts">` block, which the old regex skipped.
+**Second review fix (same alert):** the closing tag now takes anything up to `>` (`</script\b[^>]*>`), and the test's second fixture ends a block with `</script\t\n bar>`.
 
 ---
 
@@ -213,7 +214,7 @@ ok   78 files use no raw colors
 $ pnpm --filter web test
  Test Files  122 passed (122)
       Tests  1413 passed | 3 skipped (1416)
-   Duration  10.05s
+   Duration  10.64s
 ```
 
 ```
