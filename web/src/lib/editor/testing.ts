@@ -298,3 +298,57 @@ export function randomPdaCommand(rng: Random, doc: PdaDocument, depth = 0): PdaC
 	}
 	return { type: 'addState', ...place() };
 }
+
+/** Measures the thread CPU time (user + system) of running `fn` `repeats` times, floored at 50 us (0.05 ms). */
+function measureCpuUs(fn: () => void, repeats: number): number {
+	const startCpu = process.threadCpuUsage();
+	for (let i = 0; i < repeats; i++) {
+		fn();
+	}
+	const diff = process.threadCpuUsage(startCpu);
+	return Math.max(50, diff.user + diff.system);
+}
+
+export interface ScalingRatioOptions {
+	smallRepeats?: number;
+	largeRepeats?: number;
+	samples?: number;
+}
+
+/**
+ * Measures the scaling ratio between two workloads: `cpuRate(large) / cpuRate(small)`.
+ * Runs one warm-up call of each size first to eliminate JIT/first-use costs, then
+ * interleaves 5 samples (small, large, small, large, ...) and takes the best (minimum)
+ * sample of each size. Thread CPU time (user + system) is used so machine load on
+ * other cores does not affect the measurement. A reference time under 0.05 ms (50 us)
+ * is floored to 0.05 ms to prevent division by timer noise.
+ */
+export function scalingRatio(
+	small: () => void,
+	large: () => void,
+	options: ScalingRatioOptions = {}
+): number {
+	const smallRepeats = options.smallRepeats ?? 1;
+	const largeRepeats = options.largeRepeats ?? 1;
+	const samples = options.samples ?? 5;
+
+	// 1. One warm-up call of each size before the samples
+	small();
+	large();
+
+	// 2. Interleave the samples: small, large, small, large, ...
+	let bestSmall = Infinity;
+	let bestLarge = Infinity;
+
+	for (let i = 0; i < samples; i++) {
+		const sCpu = measureCpuUs(small, smallRepeats);
+		if (sCpu < bestSmall) bestSmall = sCpu;
+
+		const lCpu = measureCpuUs(large, largeRepeats);
+		if (lCpu < bestLarge) bestLarge = lCpu;
+	}
+
+	const smallRate = bestSmall / smallRepeats;
+	const largeRate = bestLarge / largeRepeats;
+	return largeRate / smallRate;
+}

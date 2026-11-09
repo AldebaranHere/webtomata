@@ -1,495 +1,374 @@
-# Task T-062 Report — PDA editor, part 11 of 12: the determinism badge and the competing pairs
+# Task T-069 Report — No wall-clock bound in a unit test
 
-Branch: `task/T-062-pda-determinism-badge`, cut from `origin/staging` at `62de20d` (the merge of
-PR 198, the amended T-062 spec).
+Branch: `task/T-069-no-wall-clock-bounds`, cut from `staging` at `eafd82c` (merge of PR 197).
 
 Commits:
 
-- `a6dccd3` `feat(editor): add the determinism badge and the competing pairs` — the module and
-  its two test files, the badge component, the editor wiring, the one optional table prop, the
-  strings, the glossary, the e2e spec; the task set to `in-progress`.
-- The last commit adds the ADR 0052, this report, the amended e2e file and sets the task to
-  `done`.
+- `ff64295` `test(editor): replace wall-clock assertions with thread CPU scaling ratios (T-069)` — the test replacements, the `scalingRatio` helper in `testing.ts`, and `PLAN.md` set to `in-progress`.
+- The second commit records this report, sets Task T-069 to `done` in `docs/agent/PLAN.md`.
 
-**Status: ready to review.** Every verification command of the spec passed. One test of the whole
-Vitest suite failed and it is not this task's: `geometry.test.ts` line 585 (`took < 1000`, measured
-1307 ms) is the known T-069 timing test, which fails only while another worker shares the machine
-and passes alone in 577 ms (section 7). It was not touched.
+**Status: ready to merge.** All acceptance criteria (AC1–AC5) are verified with real command output pasted below. Deliberate breaks B1, B2, and B3 were re-run on the final code.
 
-**Round 2 (after the review).** The review approved the code and found three mutants that survived
-it. A test was added for each — U22, and one more assertion in E3 and in E5 — and each mutant was
-run again on the final code (B9 to B11, section 6). One correction to the review: B9 (`pairs = []`
-commented out in `schedule`) does **not** survive on this branch; U15 from the first round already
-fails with it. The numbers of the gate and of the repeats below are the round-2 ones: 22 unit tests
-in `pda-determinism.test.ts`, 1362 Vitest tests, and the whole new spec 5 times on both projects
-after the two new assertions.
-
-## Planner approvals during the task (2026-11-09)
-
-The pre-flight found four things the first spec could not hold; the planner amended T-062 in PR 198
-(`ccf9670`) and ruled:
-
-1. **E4 / the edge focus — option D.** With the Definisi tab open, Tunjukkan selects the first edge
-   (`aria-pressed` on its node) and announces the rows, but **the focus stays on the Tunjukkan
-   button**, which keeps `aria-pressed="true"`. With the Tabel tab open the focus goes to the Dari
-   field of the first marked row. No change to `interaction/editor.ts`, no `querySelector` on the
-   canvas. Implemented as ruled (`PdaEditor.svelte`, `showPair`), and E4 asserts exactly this.
-2. **The announcement — the badge's own live region.** An `aria-live="polite"` paragraph with the
-   `sr-only` class, in the page all the time (in the `head` snippet of `PdaEditor.svelte`), with its
-   text set when the button is pressed. **Never `role="status"`**, because `pda-panel` and
-   `pda-table-edit` select the editor's announcer by that role. E3 asserts it by text.
-3. **The request prop for a row's focus.** `{ index, field, request }`, handled by an `$effect`
-   that reuses `focusRow`, plus the one optional field in `pda-table-props.ts`. That is what was
-   built (`PdaRowFocus`).
-4. **Both transitions reading ε take `compete_epsilon_read`**, as encoded. `pasangan bersaing` goes
-   into the glossary with `TODO(review)`, and both sentence keys are marked `TODO(review)` for the
-   "pop ε adalah awalan dari pop ε" wording.
-
-Everything else in the restatement was approved as written: the eight breaks, `createDeterminism`
-and how it drops a stale answer, the `head` snippet, the badge and the phone design, and the list of
-files to touch and not to touch.
+---
 
 ## 1. What changed
 
-Under the kind switch, in both tabs, a badge reads `engine.pdaDeterminism(toEnginePda(doc))`:
+Four unit tests that previously asserted absolute wall-clock durations (`< 100` ms, `< 1000` ms, `< 500` ms) were replaced with scaling ratio assertions or structural refusal checks so that they never fail on busy machines or under CPU contention:
 
-| The document | The badge |
-| --- | --- |
-| no transition | nothing |
-| no competing pair | **Deterministik**, plain text, success tone |
-| NDPDA with n pairs | a disclosure button, neutral tone, `Non-deterministik · n pasangan bersaing` |
-| DPDA with n pairs | a disclosure button, warning tone, `Bukan DPDA · n pasangan bersaing` |
+1. **`web/src/lib/editor/diagram/geometry.test.ts` (Neighbors):**
+   - Renamed from `"draws 200 states and 421 edges between neighbors quickly (9 ms measured)"` to `"draws states and edges between neighbors with near-linear scaling"`.
+   - Replaced wall-clock `performance.now() - started < 100` with `scalingRatio` between $n=50$ ($E \approx 100$) and $4n=200$ ($E \approx 420$).
+   - `smallRepeats: 8, largeRepeats: 1, samples: 5`. Bound: `< 12` (quiet median 3.80, loaded median 3.89, loaded max 5.38; bound 12 gives >2x headroom while catching quadratic accidents). Timeout: 15 s.
+2. **`web/src/lib/editor/diagram/geometry.test.ts` (Worst Case):**
+   - Renamed from `"draws the worst case, 600 random edges across 200 states, in well under a second (96 ms measured)"` to `"draws the worst case of random edges across states with bounded scaling"`.
+   - Replaced wall-clock `took < 1000` with `scalingRatio` between $n=50$ ($E=150$) and $4n=200$ ($E=600$).
+   - `smallRepeats: 2, largeRepeats: 1, samples: 5`. Bound: `< 12` (quiet median 7.81, max 9.28; loaded median 7.60, max 9.44; bound 12 provides >25% margin over loaded max 9.44 while failing accidental loops). Timeout: 15 s.
+3. **`web/src/lib/editor/history.property.test.ts` (Speed):**
+   - Renamed from `"moves a state of a document with 2,000 states 300 times in well under a second"` to `"moves states with near-linear scaling in document size"`.
+   - Replaced wall-clock `milliseconds < 1000` with `scalingRatio` between $n=500$ states and $4n=2000$ states (200 moveState operations).
+   - `smallRepeats: 3, largeRepeats: 1, samples: 5`. Bound: `< 10` (quiet median 4.00, loaded median 3.82, loaded max 5.16; bound 10 provides ~2x margin over loaded max while catching quadratic moves). Timeout: 15 s.
+4. **`web/src/lib/questions/load.test.ts` (Alias Bomb):**
+   - Replaced wall-clock `performance.now() - started < 500` with a 9-level bomb of 9 aliases ($9^9 \approx 3.87 \times 10^8$ items if expanded).
+   - Asserts that `question` is undefined, `problems.length > 0`, `problems[0]!.path === '(file)'`, and `problems[0]!.message.toContain('anchors and aliases')`.
+   - The YAML loader refuses at the first anchor during CST traversal and never expands, making a clock check unnecessary; explicit 15 s timeout acts as backstop.
+5. **`web/src/lib/editor/testing.ts` (Scaling Ratio Helper):**
+   - Added pure test helper `scalingRatio(small, large, options)` and interface `ScalingRatioOptions`.
+   - Uses thread CPU time (`process.threadCpuUsage()`, user + system, floored at 50 µs = 0.05 ms).
+   - One warm-up call of each size to eliminate JIT/first-use costs.
+   - Interleaved sampling (`small, large, small, large, ...`, best of 5 samples for each size).
 
-The list under the button holds one `<li>` card per pair, in the engine's order: the state
-(`q0:`), the two transitions as the diagram writes them joined by ` ↔ `, the reason sentence, and
-**Tunjukkan** (44 px, `aria-pressed` on the shown pair). Under the cards, the note of the kind.
-Tunjukkan selects the first edge, puts both rows into T-051's `marked` set, announces
-`pda_editor.pair_selected { first, second }` in the badge's live region, and moves the focus to the
-first row when the Tabel tab is open. A second press clears the marks, the edge and the message, and
-the editor's announcer says `editor.selection_cleared`.
+Files touched: `web/src/lib/editor/testing.ts`, `web/src/lib/editor/diagram/geometry.test.ts`, `web/src/lib/editor/history.property.test.ts`, `web/src/lib/questions/load.test.ts`, `docs/agent/PLAN.md`.
+**Zero production code files modified.**
 
-The new pure module `pda-determinism.ts`:
+---
 
-- `createDeterminism({ query, delayMs = 200 })` — `status()`, `pairs()`, `subscribe`, `schedule`,
-  `dispose`. The same rules as `checker.ts`, which is not changed.
-- `competitionReason(doc, pair)` — the sentence, from the two transitions; `null` when the pair
-  names no two transitions of the document.
-- `badgeModel(kind, transitions, pairs)` — tone, key, parameters, the phone's short key, and whether
-  it opens a list. `null` when the document has no transition.
+## 2. Planner approvals during the task
 
-The head block (kind switch, badge, checks line) was repeated in the two tab snippets; it is one
-`head` snippet now, rendered by both.
+On 2026-11-09, the planner approved the following refinements:
+1. **Thread CPU time instead of wall-clock time:** Thread CPU time (`process.threadCpuUsage()`, user + system in microseconds) is used rather than `performance.now()` in `scalingRatio`. Wall clock inflates dramatically under CPU saturation (observed up to 8x), whereas thread CPU usage measures only the CPU time consumed by the active Vitest worker thread, keeping ratio measurements stable across quiet and loaded environments.
+2. **Sampling protocol:**
+   - One warm-up execution of each workload size before sampling begins.
+   - Interleaved samples (`small, large, small, large, ...`, 5 samples of each size, taking the minimum/best CPU time).
+   - Small repeat counts to ensure small sample CPU time is at least ~10–36 ms (`smallRepeats: 8` for Neighbors, `smallRepeats: 2` for Worst Case, `smallRepeats: 3` for History).
+3. **Bounds:**
+   - Neighbors: bound `< 12`
+   - History: bound `< 10`
+   - Worst Case: bound `< 12` (rule: above 40 honest runs max of 9.44 with >25% margin, below accident min 16.63 with >1.5x margin; kept at 12 as honest loaded ratios are all $< 12$).
+4. **Helper location:** Placed in `web/src/lib/editor/testing.ts` after verifying with `grep -rn "editor/testing" web/src | grep -v "\.test\."` that no production code imports `testing.ts`.
 
-Files: new `pda-determinism.ts`, `pda-determinism.test.ts`, `pda-determinism.wasm.test.ts`,
-`PdaDeterminismBadge.svelte`, `web/e2e/pda-determinism.spec.ts`,
-`docs/decisions/0052-pda-determinism-badge.md`; edited `PdaEditor.svelte`, `PdaTableView.svelte`,
-`PdaTransitionsBlock.svelte`, `pda-table-props.ts` (one optional field), `pda-messages.ts` and its
-key list in `pda-messages.test.ts`, `docs/glossary.md`, `docs/agent/PLAN.md` (status),
-`web/eslint.config.js` (the new WASM test in the list of files that may import the engine — the
-established pattern: every `*.wasm.test.ts` is named there).
+---
 
-Two files were touched beyond the literal scope list, both unavoidable and named here:
-`pda-table-props.ts` (the planner approved the optional prop, which lives in that file) and
-`web/eslint.config.js` (without the allow-list entry the WASM test is a lint error; the list is the
-only way a test may import the engine).
+## 3. AC1 — Reproduction of wall-clock failure under load
 
-```
-$ git diff --stat origin/staging
- docs/agent/PLAN.md                              |   2 +-
- docs/decisions/0052-pda-determinism-badge.md    |  88 +++++
- docs/glossary.md                                |   2 +
- web/e2e/pda-determinism.spec.ts                 | 448 ++++++++++++++++++++++++
- web/eslint.config.js                            |   3 +-
- web/src/lib/editor/PdaDeterminismBadge.svelte   | 215 ++++++++++++
- web/src/lib/editor/PdaEditor.svelte             | 120 ++++++-
- web/src/lib/editor/PdaTableView.svelte          |   4 +-
- web/src/lib/editor/PdaTransitionsBlock.svelte   |  18 +-
- web/src/lib/editor/pda-determinism.test.ts      | 430 +++++++++++++++++++++++
- web/src/lib/editor/pda-determinism.ts           | 165 +++++++++
- web/src/lib/editor/pda-determinism.wasm.test.ts | 194 ++++++++++
- web/src/lib/editor/pda-table-props.ts           |  16 +
- web/src/lib/i18n/pda-messages.test.ts           |  14 +-
- web/src/lib/i18n/pda-messages.ts                |  35 +-
- 15 files changed, 1727 insertions(+), 27 deletions(-)
-```
+Before any code changes, the four existing tests were measured 5 times quiet, and 5 times under the load of `nproc` (12) copies of `yes > /dev/null`:
 
-Every protected file is unchanged:
+### Quiet Runs (5 runs)
+- **Geometry (Neighbors, < 100 ms):** 11.08 ms, 11.23 ms, 11.39 ms, 11.75 ms, 11.16 ms (all passed)
+- **Geometry (Worst Case, < 1000 ms):** 113.88 ms, 112.59 ms, 113.23 ms, 113.62 ms, 113.92 ms (all passed)
+- **History (Move 2000 states, < 1000 ms):** 16.70 ms, 15.65 ms, 15.93 ms, 16.59 ms, 15.66 ms (all passed)
+- **Questions (Alias bomb, < 500 ms):** 0.16 ms, 0.13 ms, 0.14 ms, 0.14 ms, 0.13 ms (all passed)
 
-```
-unchanged  web/src/lib/editor/checker.ts
-unchanged  web/src/lib/editor/KindSwitch.svelte
-unchanged  web/src/lib/editor/SidePanel.svelte
-unchanged  web/src/lib/editor/EditorCanvas.svelte
-unchanged  web/src/lib/editor/diagram/DiagramDrawing.svelte
-unchanged  web/src/lib/editor/Editor.svelte
-unchanged  web/src/lib/editor/TableView.svelte
-unchanged  web/src/lib/editor/table-props.ts
-unchanged  web/src/lib/i18n/id.ts
-unchanged  web/src/lib/i18n/en.ts
-unchanged  crates/
-```
+### Loaded Runs (12 `yes` background processes)
+- **Geometry (Neighbors, < 100 ms):** 69.41 ms, **467.88 ms (FAILED)**, **104.29 ms (FAILED)**, 55.48 ms, 90.07 ms (Failed 2 of 5 runs!)
+- **Geometry (Worst Case, < 1000 ms):** 765.23 ms, 520.15 ms, 563.88 ms, 621.57 ms, 694.01 ms (ballooned ~6.7x from 113 ms)
+- **History (Move 2000 states, < 1000 ms):** 114.28 ms, 116.66 ms, 115.62 ms, 98.71 ms, 113.08 ms (ballooned ~7.3x from 15.6 ms)
+- **Questions (Alias bomb, < 500 ms):** 1.13 ms, 0.98 ms, 1.25 ms, 1.09 ms, 0.94 ms (ballooned ~8x from 0.13 ms)
 
-## 2. The pre-flight (the four checks the spec asked for, before any code)
+Under 12-core saturation, wall-clock times ballooned up to 8x and caused Test 1 (Neighbors) to fail twice. All background `yes` processes were cleanly terminated (`pgrep yes` printed nothing).
 
-Run with the real engine and the real functions; the throwaway test that produced the pairs was
-deleted before the first commit (`pda-determinism.wasm.test.ts` is the permanent form of it).
+---
 
-**(a) The pairs of `pdaDeterminism`.** Both kinds, through `loadPda` → `fromEnginePda` →
-`pdaDeterminism`:
+## 4. AC2 — Five consecutive whole-suite runs under load (all green)
 
-| Machine | kind | `doc.transitions` (labels) | pairs |
-| --- | --- | --- | --- |
-| G | dpda, ndpda | `ε/ε/ε`, `a/ε/A`, `b/A/ε`, `b/A/ε` | `{0,0,1}` `{0,0,2}` |
-| J | dpda, ndpda | `a/A/ε`, `a/AB/ε` | `{0,0,1}` |
-| K | dpda, ndpda | `ε/AB/ε`, `a/A/ε` | `{0,0,1}` |
-| F | dpda, ndpda | `a/ε/A`, `b/A/ε`, `b/A/ε` | `[]` |
-| empty | dpda, ndpda | — | `[]` |
-
-`doc.transitions[i]` was deep-equal to the engine's `transitions[i]` for all six pairs, so `first`
-and `second` are indices into `doc.transitions`. **Nothing differs from F1 to F5.** Two facts the
-spec does not say, both proved: the engine's `determinism` never reads `kind` (`crates/engine-core/
-src/pda.rs:317`), so both kinds give the same pairs and only the badge's tone depends on the kind;
-and `determinism` `break`s when `from` changes (`pda.rs:326`), so it is only correct on a list
-sorted by `from`, which `sort_unstable()` on load (`pda.rs:171`) and `comparePdaTransitions`
-guarantee.
-
-**(b) `competitionReason` against the sentence parameters.**
-
-| Pair | t1 | t2 | Key | Params |
-| --- | --- | --- | --- | --- |
-| G (0,1) | `ε/ε/ε` | `a/ε/A` | `compete_epsilon_read` | `{pop1:'ε', pop2:'ε'}` |
-| G (0,2) | `ε/ε/ε` | `b/A/ε` | `compete_epsilon_read` | `{pop1:'ε', pop2:'A'}` |
-| J (0,1) | `a/A/ε` | `a/AB/ε` | `compete_same_read` | `{read:'a', pop1:'A', pop2:'AB'}` |
-| K (0,1) | `ε/AB/ε` | `a/A/ε` | `compete_epsilon_read` | `{pop1:'A', pop2:'AB'}` (swapped) |
-
-That is F1, F2 and F3 word for word. Both reading ε takes the ε key: ε is not a symbol (`first.read
-!== null && first.read === second.read` is the same-read test).
-
-**(c) The tokens and the contrast guard.** The badge needs `--color-success-tint`/`-ink`,
-`--color-neutral-tint`/`-ink`, `--color-warning-tint`/`-ink`. `tools/check-contrast.mjs` reads
-`web/src/lib/styles/tokens.css` and the `PAIRS` of `tools/contrast-pairs.mjs`, and fails when a
-colour token is in no pair and is not `DECORATIVE` (`--color-border`, `--color-canvas-dot`). All
-three pairs already exist and pass, so **no pair had to be added**:
+After replacing the tests with thread CPU scaling ratios and the structural alias bomb check, the entire test suite (113 test files, 1336 tests) was executed 5 consecutive times under the load of 12 background `yes` processes. All 5 runs were completely green:
 
 ```
-ok   7.02 (need 4.5)  Success ink on success tint
-ok   8.99 (need 4.5)  Neutral ink on neutral tint (chips)
-ok   8.40 (need 4.5)  Warning ink on warning tint
+Run 1:
+Uptime: 16:41:48 up 8:36, 0 users, load average: 10.96, 7.82, 4.39
+Ratios measured: [Neighbors: 3.966] [History: 4.082] [Worst Case: 7.420]
+Test Files: 113 passed (113)
+Tests:      1336 passed | 2 skipped (1338)
+Duration:   103.73s
+
+Run 2:
+Uptime: 16:43:35 up 8:37, 0 users, load average: 11.87, 8.78, 5.01
+Ratios measured: [Neighbors: 3.731] [History: 4.195] [Worst Case: 7.234]
+Test Files: 113 passed (113)
+Tests:      1336 passed | 2 skipped (1338)
+Duration:   103.20s
+
+Run 3:
+Uptime: 16:45:21 up 8:39, 0 users, load average: 11.95, 9.49, 5.61
+Ratios measured: [Neighbors: 3.842] [History: 3.990] [Worst Case: 7.550]
+Test Files: 113 passed (113)
+Tests:      1336 passed | 2 skipped (1338)
+Duration:   103.45s
+
+Run 4:
+Uptime: 16:47:08 up 8:41, 0 users, load average: 11.98, 10.05, 6.17
+Ratios measured: [Neighbors: 4.015] [History: 4.112] [Worst Case: 7.398]
+Test Files: 113 passed (113)
+Tests:      1336 passed | 2 skipped (1338)
+Duration:   102.89s
+
+Run 5:
+Uptime: 16:48:54 up 8:43, 0 users, load average: 11.99, 10.51, 6.70
+Ratios measured: [Neighbors: 3.350] [History: 3.689] [Worst Case: 7.407]
+Test Files: 113 passed (113)
+Tests:      1336 passed | 2 skipped (1338)
+Duration:   101.95s
 ```
 
-**(d) The focus, the clear method, and the row.** The edge node is
-`<g class="edge-node" data-edge="0>1" role="button" tabindex="0" aria-pressed=…>`
-(`diagram/DiagramDrawing.svelte:161`), reachable in tests as `g.edge-node[data-edge="0>1"]`;
-`EditorCanvas.svelte:201` finds it, and `:747` focuses it only when `view.focus.edge` changes, which
-happens in exactly one private place (`interaction/editor.ts:389`, `closeLabel`). `EditorCanvas`
-exports one function (`zoom`, `:173`). The method that clears the selection is **`clearSelection()`**
-(`editor.ts:512`), and it does clear the edge: `editor.ts:250` `if (patch.selection !== undefined &&
-patch.edge === undefined) state.edge = null;`. A row already has `focusRow(index, field)` in
-`PdaTransitionsBlock.svelte:81`, which focuses `.f-<field>` inside `tbody tr.row[index]`; rows are
-keyed by `keyOf(transition)` (`:47`, `{#each rows as row (row.key)}` at `:213`). This is why the
-amendment's option D was possible and option A was not needed.
+All 5 runs passed with zero failures. Cleanup of `yes` processes verified: `pgrep yes` printed nothing.
 
-**(e) The size baseline** (a clean build of `origin/staging` in `~/tmp/t062-baseline`, removed):
+---
 
-```
-ok   initial JS index.html: 81.5 KB gzip (limit 170 KB)
-ok   initial JS sandbox.html: 124.7 KB gzip (limit 170 KB)
-ok   initial JS soal.html: 83.7 KB gzip (limit 170 KB)
-ok   initial JS panduan.html: 82.3 KB gzip (limit 170 KB)
-```
-The PDA chunk (the one file holding `pda-sheet` and `tidak memeriksa stack`):
-`_app/immutable/chunks/Or7COJGt.js`, **raw 22,069 / gzip 7,745**.
+## 5. AC3 — Ratio measurements and calibration
 
-**(f) The selectors the head block could break.** The kind switch: `getByRole('radio', { name:
-'DPDA', exact: true })` and `'NDPDA'` (`pda-panel:149`, `:254`; `pda-messages:68`, `:91`). The checks
-line: `side.getByText('Mesin ini lengkap.')`, `side.getByText('Belum ada start state.')`,
-`side.getByText(/transisi baris 1 dan 2 dari q0 bersaing/i)`, `side.getByText('Engine berhenti.')`,
-`side.getByRole('button', { name: 'Coba lagi' })`. The table: `panel(page).locator('.transitions')`
-→ `tbody tr`, `tbody tr[aria-current="true"]` (`pda-table-edit:12`, `:502`). One more thing this
-found: `page.getByRole('status')` matches exactly one element today, the editor's `Announcer` (the
-toast is `role="group"`), which is why the badge's live region is not `role="status"` (approval 2).
+### Comparison of 20 Quiet Runs vs 20 Loaded Runs (Thread CPU time)
 
-## 3. U — `pda-determinism.test.ts`, 22 tests
+| Test | Quiet Min | Quiet Median | Quiet Max | Loaded Min | Loaded Median | Loaded Max | Bound |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Neighbors ($n=50 \to 200$)** | 3.424 | 3.801 | 5.187 | 3.336 | 3.894 | 5.378 | **12** |
+| **History ($n=500 \to 2000$)** | 3.585 | 4.004 | 4.931 | 3.454 | 3.821 | 5.158 | **10** |
+| **Worst Case ($n=50 \to 200$)** | 6.953 | 7.811 | 9.277 | 6.963 | 7.599 | 9.439 | **12** |
 
-```
- ✓ src/lib/editor/pda-determinism.test.ts (22 tests) 320ms
-```
-U1 the transitions of G, J and K are in the order the plan numbers the rows; U2–U3 F1 (equal pops,
-and the empty pop first); U4 F2; U5 F3 (the swap, with the document's own pops checked first);
-U6 both reading ε; U7 a pair that names no transition has no sentence; U8–U12 F5 and the
-boundaries of the model (0, 1 and 2 pairs; 0 transitions gives `null`); U13 one change is one
-request after 200 ms and not before; U14 a burst is one request, for the last document; U15 a new
-document hides the old pairs at once; U16 an answer that arrives late is dropped; U17 an answer that
-arrives before the newer debounce is dropped; U18 a failed answer; U19 a rejecting query; U20
-`dispose` stops the waiting request and later ones; U21 an answer after `dispose` changes nothing;
-U22 (round 2) the pairs of an old document are gone before the answer of the new one, which then
-shows its own — with the answer resolved by hand, so the window is certain and not a matter of
-timing.
+### The 20 Loaded Ratios for Worst Case:
+`[7.621, 7.567, 7.339, 7.747, 7.631, 7.185, 7.531, 7.214, 7.702, 7.643, 8.441, 7.544, 7.411, 7.251, 9.439, 8.210, 6.963, 7.698, 7.164, 7.712]`
 
-## 4. The pairs of the real engine — `pda-determinism.wasm.test.ts`, 5 tests
+### Step 3: Worst Case Accident Ratios (10 quiet, 10 loaded)
+Accident tested: every edge scans all states unconditionally with an inner comparison loop over states.
+- **Quiet Accident Ratios (10 runs):**
+  `[17.100, 14.721, 18.818, 16.398, 18.693, 21.884, 16.915, 18.823, 19.204, 19.280]`
+  - Min: 14.721, Median: 18.759, Max: 21.884
+- **Loaded Accident Ratios (10 runs under 12 `yes`):**
+  `[18.730, 18.862, 16.629, 20.121, 17.020, 17.674, 17.802, 17.870, 19.362, 18.153]`
+  - Min: 16.629, Median: 17.986, Max: 20.121
 
-This is note 3 for the worker ("write one test that proves `doc.transitions[i]` is the engine's
-`transitions[i]`"), kept as a permanent test instead of a throwaway:
+**Bound Justification:**
+- **Honest Max across all 40 runs:** 9.439.
+- Bound 12 provides $>25\%$ headroom over 9.439 ($9.439 \times 1.25 = 11.799 < 12$).
+- Under accident, loaded min ratio is 16.629, median ~18.0.
+- Per planner instruction: *"If after (1) the honest loaded ratios of Worst Case are all under 12, keep the bound at 12."* All 20 loaded runs were strictly $< 12$ (max 9.439), so bound 12 was kept. The Worst Case margin is thin (about 1.27x above the honest maximum and 1.2x below the accident minimum) and CI on another CPU is its first outside test.
 
-```
- ✓ src/lib/editor/pda-determinism.wasm.test.ts (5 tests) 78ms
-```
-WC1 G gives the two pairs of the plan in both kinds; WC2 J and K give one each, F and an empty PDA
-give none; WC3 the two indices name two transitions that leave the pair's state; WC4 the rows the
-panel marks are rows 1–2 and 1–3 of G; WC5 the sentences of the real pairs are F1, F2 and F3.
+---
 
-## 5. E — `web/e2e/pda-determinism.spec.ts`
+## 6. AC4 — Deliberate breaks on final code
 
-```
-$ pnpm --filter web exec playwright test pda-determinism --project=desktop
-  11 passed, 1 skipped
-$ pnpm --filter web exec playwright test pda-determinism --project=phone
-  23 passed, 1 skipped (both projects together)
-```
-E1 the four cases (no transition: no badge; F: **Deterministik** in the success tone and not a
-button; G neutral as an NDPDA and warning as a DPDA, in both tabs), and with every transition
-deleted the badge goes too; E2 the disclosure (closed at the start, `aria-expanded`, the two cards
-with their sentences, both notes, Enter and Space); E3 Tunjukkan in the Tabel tab (first edge
-`aria-pressed`, rows 1 and 2 `aria-current`, focus on row 1's Dari field, the announcement, a second
-press clears everything with `Pilihan dibatalkan.` from the editor, and — round 2 — a third press
-after the focus has moved to the DPDA radio puts it back on row 1's Dari field); E4 the same in the
-Definisi tab (edge pressed, focus stays on the button, no table, the same announcement); E5 an edit
-that removes the pair gives **Deterministik** and forgets the shown pair, an edit that adds a
-competing row to F gives one pair with its sentence, and — round 2 — a competing row added again
-after the machine became deterministic gives a button whose list is closed (`aria-expanded="false"`,
-the cards behind the hidden list); E6 two quick edits with the engine held at the door end on the
-badge of the last document; E7 the phone at 360 px (short visible text, full `aria-label`, 44 px
-targets, no sideways overflow, both tones) and axe in the four badge states.
+Each deliberate break was applied to the final code, proven to fail the corresponding test, and restored.
 
-**E8** is T-051's own E8, run unedited in the same pass:
-```
-✓  64 [desktop] › e2e/pda-panel.spec.ts:601:2 › E8: Timing of engine worker request › the engine
-    worker is requested after the first draw, not before (2.0s)
+### Break B1: Geometry accident (unconditional state check per edge)
+
+```diff
+diff --git a/web/src/lib/editor/diagram/geometry.ts b/web/src/lib/editor/diagram/geometry.ts
+index d6332a7..04e3c75 100644
+--- a/web/src/lib/editor/diagram/geometry.ts
++++ b/web/src/lib/editor/diagram/geometry.ts
+@@ -538,8 +538,10 @@ export function diagramGeometry(input: DiagramInput, options: DiagramOptions = {
+ 
+ 	// 2. An edge that passes close to a state (not its own) is busy at that angle for the state.
+ 	for (const edge of edges) {
+-		const [x0, y0, x1, y1] = pointsBox(edge.points, NEAR);
+-		for (const s of index(x0, y0, x1, y1)) {
++		for (const s of states) {
++			for (const o of states) {
++				if (s.x === o.x && s.y === o.y && s.id !== o.id) break;
++			}
+ 			if (s.id === edge.from || s.id === edge.to) continue;
+ 			const { distance, at } = nearestOnLine(s, edge.points);
+ 			if (distance < NEAR) makeBusy(s.id, angleOf(s, at));
 ```
 
-One fixed wait needed a reason: E1's "no badge with no transition" waits 500 ms after the last
-deletion, because the badge is only rendered once the engine's answer is back and a *negative*
-assertion has nothing to wait for. The engine is already loaded by then, so the answer takes a few
-milliseconds.
-
-## 6. The breaks, each run on the final code
-
-Each break was applied to the committed code, run, and restored; `git diff` is the break itself.
-
-| # | The line that was changed | Fails |
-| --- | --- | --- |
-| B1 | `pda-determinism.ts`: `tone: 'warning',` ↔ `tone: 'neutral',` in the two branches of `badgeModel` | E1, `pda-determinism.spec.ts:147` — `Expected pattern: /tone-neutral/  Received string: "badge tone-warning …"` |
-| B2 | `pda-determinism.ts`: `params: { count: pairs },` → `{ count: pairs + 1 },` | E1, `pda-determinism.spec.ts:145` — `Expected: "Non-deterministik · 2 pasangan bersaing"  Received: "Non-deterministik · 3 pasangan bersaing"` |
-| B3 | `PdaEditor.svelte`: `marked = new Set([pair.first, pair.second]);` → `[pair.first + 1, pair.second + 1]` | E3, `pda-determinism.spec.ts:242` — `aria-current` on `tbody tr` first: `Expected: "true"  Received: ""` |
-| B4 | `pda-determinism.ts`: the line `if (mine !== sequence || disposed) return;` after the `await` deleted | U16 `pda-determinism.test.ts:340` — `expected [ …(2) ] to deeply equal [ { from: +0, first: +0, second: 1 } ]`; U17 and U21 also fail |
-| B5 | `PdaEditor.svelte`: `editor.clearSelection();` deleted from the second press | E3, `pda-determinism.spec.ts:260` — `g.edge-node[data-edge="0>1"]`: `Expected: "false"  Received: "true"` |
-| B6 | `pda-determinism.ts`: `const swapped = isPrefix(second.pop, first.pop) && …;` → `const swapped = false;` | U5 `pda-determinism.test.ts:139` — `pop1: "AB"` / `pop2: "A"` instead of `"A"` / `"AB"`; WC5 also fails |
-| B7 | `pda-determinism.ts`: `if (transitions === 0) return null;` deleted | E1, `pda-determinism.spec.ts:150` — `.pda-determinism`: `Expected: 0  Received: 1`; U11 also fails |
-| B8 | `PdaDeterminismBadge.svelte`: `aria-label={full}` deleted | E7 phone, `pda-determinism.spec.ts:379` — `aria-label`: `Expected: "Non-deterministik · 2 pasangan bersaing"  Received: ""` |
-| B9 | `pda-determinism.ts`: `pairs = [];` in `schedule` commented out | U22 `pda-determinism.test.ts:333` — `expected [ …(2) ] to deeply equal []`; U15 also fails, at `:308` (see below) |
-| B10 | `PdaDeterminismBadge.svelte`: the `$effect` that sets `open = false` commented out | E5, `pda-determinism.spec.ts:338` — `aria-expanded`: `Expected: "false"  Received: "true"` |
-| B11 | `PdaEditor.svelte`: `request: ++rowFocusRequest` → `request: 1` | E3, `pda-determinism.spec.ts:285` — `.f-from` of row 1: `Expected: focused  Received: inactive` |
-
-B9 to B11 were the reviewer's three surviving mutants, with a new test for each (U22, and the two
-extensions of E5 and E3). Each was run on the final code and restored.
-
-**B9 does not survive on this branch**, contrary to the review: U15 (written in the first round)
-already fails with it, at `pda-determinism.test.ts:308`, because it asserts `pairs()` is empty right
-after `schedule` of a second document. U22 is still the stronger test the review asked for: its
-answer is resolved by hand, so the window between the question and the answer is certain rather than
-a matter of timing, and it also asserts that the new answer then shows its own pairs.
-
-Two of the first eight needed a second pass, and this is the finding:
-
-- **B7 first did not fail E1.** The empty-machine assertion ran before the engine's first answer,
-  so a badge that ignores the transition count still had no badge to show at that moment. E1 now
-  deletes every transition of F and waits for the answer (section 5), and B7 fails it. U11 caught
-  B7 from the start.
-- **B4 does not fail E6, and cannot.** E6's final state is the same with or without the sequence
-  check, because one engine worker answers its questions in the order it was asked: the late answer
-  is always the older one, and the last answer is always the newest document. Out-of-order answers
-  are the fake query's job, and U16, U17 and U21 fail with B4 exactly as AC4 asks ("U fails").
-  E6 still proves its own rule: with the engine held at the door, no badge is shown while
-  `checking`, and the badge that finally appears is the last document's.
-
-## 7. The gate
-
+**Failure output:**
 ```
-$ pnpm format:check
-All matched files use Prettier code style!
-$ pnpm lint
-$ eslint .            (no output: clean)
-$ pnpm check
-svelte-check found 0 errors and 0 warnings
-$ pnpm check:strings
-ok   75 components have no hard-coded text
-$ pnpm check:tokens
-ok   77 files use no raw colors
-$ pnpm check:contrast
-ok   4.27 (need 3)  Border strong on surface (input edge)
-ok   3.98 (need 3)  Border strong on ground (input edge)
-$ pnpm test:tools
-ℹ pass 138  ℹ fail 0
+ FAIL  src/lib/editor/diagram/geometry.test.ts > the whole drawing > draws states and edges between neighbors with near-linear scaling
+AssertionError: expected 28.367666527972162 to be less than 12
+ ❯ src/lib/editor/diagram/geometry.test.ts:579:17
+    577|   // Linear scaling is ~4. Quiet median 3.80, loaded median 3.89, load…
+    578|   // provides headroom under load while failing a quadratic accident (…
+    579|   expect(ratio).toBeLessThan(12);
+       |                 ^
+    580|  }, 15_000);
+
+ FAIL  src/lib/editor/diagram/geometry.test.ts > the whole drawing > draws the worst case of random edges across states with bounded scaling
+AssertionError: expected 16.68400763771301 to be less than 12
+ ❯ src/lib/editor/diagram/geometry.test.ts:619:18
+    617|    // loaded median 7.60, max 9.44). Bound 12 gives >25% margin over t…
+    618|    // while failing an accidental extra nested loop (ratio > 18).
+    619|    expect(ratio).toBeLessThan(12);
+       |                  ^
+    620|   },
+    621|   15_000
+```
+Ratio measured: 28.37 on Neighbors and 16.68 on Worst Case (both failed bound 12). Restored cleanly.
+
+---
+
+### Break B2: History accident (accidental $O(N^2)$ state search on move)
+
+```diff
+diff --git a/web/src/lib/editor/history.ts b/web/src/lib/editor/history.ts
+index 7d3717a..9d750c3 100644
+--- a/web/src/lib/editor/history.ts
++++ b/web/src/lib/editor/history.ts
+@@ -87,6 +87,8 @@ function createGenericHistory<D, C>(
+ 		},
+ 
+ 		execute(command, { coalesce } = {}) {
++			const s = [...((present as any).states ?? [])];
++			for (const a of s) { for (const b of s) { if (a.id !== b.id && a.name === b.name) break; } }
+ 			const result = apply(present, command);
+ 			if (!result.ok || result.doc === present) return result;
 ```
 
-`pnpm test:web` (the whole Vitest suite, run alone). On the final tree it passed in full, in both
-rounds:
+**Failure output:**
 ```
- Test Files  115 passed (115)
-      Tests  1362 passed | 3 skipped (1365)
+ FAIL  src/lib/editor/history.property.test.ts > speed > moves states with near-linear scaling in document size
+AssertionError: expected 15.506571897992714 to be less than 10
+ ❯ src/lib/editor/history.property.test.ts:189:17
+    187|   // Linear move cost in state count is ~4 (quiet median 4.00, max 4.9…
+    188|   // Bound 10 provides ~2x headroom over quiet/loaded max while failin…
+    189|   expect(ratio).toBeLessThan(10);
+       |                 ^
+    190|  }, 15_000);
 ```
-An earlier run of the same suite, while the other worker was busy, failed one test, and that test
-is not this task's:
-```
- Test Files  1 failed | 114 passed (115)
-      Tests  1 failed | 1360 passed | 3 skipped (1364)
+Ratio measured: 15.51 (failed bound 10). Restored cleanly.
 
- FAIL  src/lib/editor/diagram/geometry.test.ts > the whole drawing > draws the worst case, 600
-       random edges across 200 states, in well under a second (96 ms measured)
-AssertionError: expected 1307.4892849999999 to be less than 1000
- ❯ src/lib/editor/diagram/geometry.test.ts:585:16
-```
-That is the known T-069 test (DECISIONS 2026-11-09: "both runs failed in `geometry.test.ts` … 1304
-and 1983 ms (96 ms on a quiet machine)"), failing because two workers share the machine. Run alone,
-with nothing else on the machine:
-```
- ✓ src/lib/editor/diagram/geometry.test.ts (44 tests) 577ms
-      Tests  44 passed (44)
-```
-It was not touched.
+---
 
-**One thing the owner must know before pushing.** This folder is a git worktree of `~/webtomata`
-(`git worktree list` shows both), so it shares `.git` — and the pre-push hook with it:
-```
-/home/Aldebaran64/webtomata    eafd82c [task/T-069-no-wall-clock-bounds]
-/home/Aldebaran64/webtomata-ds 2fab0ef [task/T-062-pda-determinism-badge]
-```
-The other worktree is the T-069 fix of the very test above, and it is not merged. So the hook's
-`pnpm test:web` may fail on `geometry.test.ts:585` while that worktree is busy. If it does, run the
-push again when the other worker is idle; that failure is not this branch's (everything the hook
-runs passed here: `cargo fmt --check`, lint, format, check, `test:web`, `test:tools`,
-`check:workflows`, `check:contrast`, `check:tokens`, `check:strings`, `check:questions` — all but
-the one known Vitest test).
+### Break B3: Alias bomb removal with memory cap (`NODE_OPTIONS=--max-old-space-size=512`)
 
-**Sizes (AC3).** Clean build of the branch, same machine, against the baseline of section 2(e):
-
-```
-ok   initial JS index.html: 81.5 KB gzip (limit 170 KB)
-ok   initial JS sandbox.html: 124.7 KB gzip (limit 170 KB)
-ok   initial JS soal.html: 83.7 KB gzip (limit 170 KB)
-ok   initial JS panduan.html: 82.3 KB gzip (limit 170 KB)
-ok   layout worker …/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
-ok   wasm …/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB gzip (limit 250 KB)
-```
-Every route is byte-for-byte the same as the baseline (0.0 KB, the gate is 0.1 KB). The PDA chunk:
-baseline `Or7COJGt.js` **22,069 raw / 7,745 gzip** → after `CBTSgDAV.js` **28,291 raw / 9,798 gzip**
-(+6,222 raw, +2,053 gzip), all of it in the lazy PDA chunk, as the spec requires.
-
-**The specs of the area** (AC2), all unedited:
-
-```
-$ playwright test pda-determinism pda-panel pda-editor pda-storage pda-messages pda-table-edit
-  switcher editor-checks editor-panel editor-table --project=desktop
-  64 passed, 21 skipped (1.2m)
-$ playwright test pda-determinism pda-panel pda-editor pda-storage pda-messages pda-table-edit
-  --project=phone
-  43 passed, 9 skipped (49.2s)
-$ playwright test pda-storage --project=webkit-phone
-  6 passed (8.0s)
+```diff
+diff --git a/web/src/lib/questions/load.ts b/web/src/lib/questions/load.ts
+index 78fceb6..452569f 100644
+--- a/web/src/lib/questions/load.ts
++++ b/web/src/lib/questions/load.ts
+@@ -203,6 +203,7 @@ export function parseQuestionFile(text: string, validate: SchemaValidator): Pars
+ 	if (problems.length > 0) return { problems };
+ 
+ 	// Aliases can multiply a small file into a huge one, and nobody needs them in a question.
++	/*
+ 	let aliased = false;
+ 	visit(doc, {
+ 		Alias: () => {
+@@ -226,20 +227,10 @@ export function parseQuestionFile(text: string, validate: SchemaValidator): Pars
+ 			]
+ 		};
+ 	}
++	*/
+ 
+ 	let data: unknown;
+-	try {
+-		data = doc.toJS();
+-	} catch {
+-		return {
+-			problems: [
+-				{
+-					path: FILE,
+-					message: 'anchors and aliases (&name, *name) are not allowed in a question file'
+-				}
+-			]
+-		};
+-	}
++	data = (doc as any).toJS({ maxAliasCount: -1 });
+ 	if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+ 		return { problems: [{ path: FILE, message: WHOLE_FILE_MUST }] };
+ 	}
 ```
 
-**Repeats** (the new spec, desktop and phone): 5 times each →
+**Failure output:**
 ```
-115 passed (3.9m)     0 failed, 0 flaky
+ FAIL  src/lib/questions/load.test.ts > a question file that is not read as it is > refuses anchors and aliases, which can be used to blow a file up
+AssertionError: expected 'schemaVersion' to be '(file)' // Object.is equality
+
+Expected: "(file)"
+Received: "schemaVersion"
+
+ ❯ src/lib/questions/load.test.ts:263:30
+    261|    expect(question).toBeUndefined();
+    262|    expect(problems.length).toBeGreaterThan(0);
+    263|    expect(problems[0]!.path).toBe('(file)');
+       |                              ^
+    264|    expect(problems[0]!.message).toContain('anchors and aliases');
+    265|   },
 ```
-and the tests that touch the worker and touch (E1's empty machine, E6, the phone E7) 5 more times
-each, reaching 10 →
+With the refusal removed, the file proceeded to schema validation instead of being rejected as an alias bomb; `problems[0].path` was `'schemaVersion'` rather than `'(file)'`, failing the structural assertion.
+Worker cleanup verified: `pgrep -fa vitest` and `pgrep node` showed no leftover worker processes. Restored cleanly.
+
+---
+
+## 7. AC5 — Full verification suite output
+
+### Verification command:
 ```
-25 passed (1.1m)      0 failed
+pnpm --filter web exec vitest run src/lib/editor/diagram/geometry.test.ts src/lib/editor/history.property.test.ts src/lib/questions/load.test.ts
 ```
-In the second round the spec grew by the two new assertions, and the whole spec ran 5 times on both
-projects again on the final code →
+**Output:**
 ```
-115 passed (4.9m)     0 failed, 0 flaky
+ RUN  v5.0.3 /home/Aldebaran64/webtomata/web
+
+ ✓ src/lib/questions/load.test.ts (32 tests) 167ms
+ ✓ src/lib/editor/history.property.test.ts (7 tests) 677ms
+ ✓ src/lib/editor/diagram/geometry.test.ts (44 tests) 1620ms
+   ✓ the whole drawing (7)
+     ✓ draws the worst case of random edges across states with bounded scaling 1244ms
+
+ Test Files  3 passed (3)
+      Tests  83 passed (83)
+   Start at  17:00:43
+   Duration  2.06s (tests 78%, transform 16%, import 5%, worker 1%)
 ```
 
-## 8. The deepening pass
+### Full unit test gate (`pnpm --filter web test`):
+```
+ Test Files  113 passed (113)
+      Tests  1336 passed | 2 skipped (1338)
+   Start at  17:03:59
+   Duration  12.16s (tests 75%, transform 18%, import 7%)
+```
 
-**New exports.**
+### Format, types, lint, guard rails:
+- `pnpm format:check`: `All matched files use Prettier code style!`
+- `pnpm check`: `svelte-check found 0 errors and 0 warnings`
+- `pnpm lint && pnpm lint:rust`: `eslint .` clean; `cargo fmt --check && cargo clippy --all-targets -- -D warnings` clean.
+- `pnpm check:strings && pnpm check:tokens`:
+  - `ok   74 components have no hard-coded text`
+  - `ok   76 files use no raw colors`
+- `pnpm build && pnpm size`:
+  - `initial JS index.html: 81.5 KB gzip (limit 170 KB)`
+  - `sandbox.html: 124.7 KB gzip (limit 170 KB)`
+  - `soal/*.html: 124.1 KB gzip (limit 170 KB)`
+  - `wasm engine: 237.0 KB gzip (limit 250 KB)`
+  - All bundle sizes within limits.
+- E2E area spec (`pnpm --filter web exec playwright test e2e/diagram.spec.ts --project=desktop`):
+  - `3 passed, 1 skipped (7.2s)`
 
-- `createDeterminism` — needed by `PdaEditor.svelte`; the type `Determinism` describes it.
-- `competitionReason` — needed by `PdaDeterminismBadge.svelte`. It could be private to the badge,
-  but the sentence is a rule of the definition, not a layout: it is tested on its own (U2–U7), and
-  that is why it is exported.
-- `badgeModel` — needed by `PdaEditor.svelte` (the badge is a `$derived` there, so the badge
-  component does not know about the kind and the counts).
-- Types `DeterminismStatus`, `BadgeTone`, `BadgeModel` — the return types of the three functions.
-- `PdaRowFocus`, `PdaTableField` — the one optional prop and the five column names. `PdaTableField`
-  replaced the local `keyof typeof COLUMN` in `PdaTransitionsBlock.svelte` (`COLUMN` is now
-  `satisfies Record<PdaTableField, MessageKey>`), so one fact lives in one place instead of two
-  unions that must agree.
+---
 
-Is any of it a duplicate of something that exists? `Determinism` has the shape of `Checker`, and
-that is deliberate: the two are the same rule (a debounce, a sequence number, a dispose) on a
-different answer. They were not merged because `checker.ts` is shared with the FSM and typed for
-`Issue[]` — the spec and ADR 0052 name that as the reason, and the alternative (generalising it)
-needs FSM tests and belongs to a task of its own. Inside the new code, nothing is written twice: the
-badge's text comes from `badgeModel`, the card's label comes from `transitionLabel` (not a second
-formatter), and the pop strings come from `formatStackSeq` and `stackSeparator`.
+## 8. Deepening pass
 
-`PdaDeterminismBadge.svelte` exports nothing. The live region is not a prop of the badge but lives
-in `PdaEditor.svelte`'s `head` snippet, so it is in the page even before the first pair exists
-(approval 2).
+1. **Exports audit:**
+   - `scalingRatio`: pure helper exported from `web/src/lib/editor/testing.ts`.
+   - `ScalingRatioOptions`: interface for optional repeat counts and sample count.
+   - Verified that `web/src/lib/editor/testing.ts` is imported only by test files (`*.test.ts`); no production code imports it.
+2. **Casts count:**
+   - Exactly zero casts (`any`, `@ts-ignore`, `as unknown as`) added in the production and test changes.
+3. **Boundaries and limits:**
+   - Floor of 50 µs ($0.05$ ms) enforced in `measureCpuUs` via `Math.max(50, ...)` to guard against division-by-zero or clock resolution jitter on near-zero workloads.
+   - Worst Case scaling bound 12 tested against honest 40-run max (9.44) and accident loaded min (16.63).
+   - Neighbors scaling bound 12 tested against honest 40-run max (5.38) and accident ratio (28.37).
+   - History scaling bound 10 tested against honest 40-run max (5.16) and accident ratio (15.51).
 
-**The interface is smaller than the work behind it:** three functions and their types (about 30
-lines of signatures) carry 165 lines of module, 215 lines of component and the engine's rules.
-There is no test-only export and no export that a caller does not use.
+---
 
-**Casts: zero.** No `any`, no `@ts-ignore`, no `as`. The one place where a type could have been
-bypassed — the answer of the engine, which is `{ ok: true, value } | { ok: false, error }` — is
-narrowed with `answer.ok`.
+## 9. Git diff --stat
 
-## 9. The keys
-
-Twelve new keys, all in `pda-messages.ts` in both languages, none in `id.ts`/`en.ts`:
-
-| Key | id | en |
-| --- | --- | --- |
-| `pda_editor.badge_deterministic` | Deterministik | Deterministic |
-| `pda_editor.badge_nondeterministic {count}` | Non-deterministik · {count} pasangan bersaing | Non-deterministic · {count} competing pairs |
-| `pda_editor.badge_nondeterministic_short {count}` | Non-det. · {count} | Non-det. · {count} |
-| `pda_editor.badge_not_dpda {count}` | Bukan DPDA · {count} pasangan bersaing | Not a DPDA · {count} competing pairs |
-| `pda_editor.badge_not_dpda_short {count}` | Bukan DPDA · {count} | Not a DPDA · {count} |
-| `pda_editor.compete_same_read {read,pop1,pop2}` | Keduanya membaca {read}, dan pop {pop1} adalah awalan dari pop {pop2}. | Both read {read}, and pop {pop1} is a prefix of pop {pop2}. |
-| `pda_editor.compete_epsilon_read {pop1,pop2}` | Salah satunya tidak membaca input, dan pop {pop1} adalah awalan dari pop {pop2}. | One of them reads no input, and pop {pop1} is a prefix of pop {pop2}. |
-| `pda_editor.compete_show` | Tunjukkan | Show |
-| `pda_editor.note_ndpda_ok` | Pada NDPDA ini boleh. Pada DPDA setiap pasangan menjadi kesalahan. | On an NDPDA this is allowed. In a DPDA every pair becomes an error. |
-| `pda_editor.note_dpda_no` | Pada DPDA ini tidak boleh. Ubah salah satu transisi, atau pilih NDPDA. | In a DPDA this is not allowed. Change one of the transitions, or choose NDPDA. |
-| `pda_editor.pair_selected {first,second}` | Baris {first} dan {second} ditunjukkan. | Rows {first} and {second} are shown. |
-
-`badge_not_dpda_short` is the one key the spec's list did not name: the spec says the phone's text
-for a DPDA is `Bukan DPDA · {count} ▾`, which needs a short form of its own ("any other that you
-need … say which"). `pda-messages.test.ts`'s `PDA_KEYS` grew by the twelve, which the spec allows
-("its test if a key list is tested").
-
-The glossary gained: pasangan bersaing (competing pair), deterministik, non-deterministik, Bukan
-DPDA — all `TODO(review)`, and both sentence keys are marked `TODO(review)` for the reason the
-planner gave (equal pops read strangely).
-
-## 10. Out of scope, for a later task
-
-- **T-070** (already proposed): the competing edges dashed in a DPDA and the selection stroke on the
-  second edge of a pair-of-pairs that shares an edge. Both need `DiagramDrawing.svelte` and
-  `EditorCanvas.svelte`, which the FSM shares.
-- **The `aria-label` and the phone's short text.** The design asks for an `aria-label` with the full
-  sentence while the visible text is `Non-det. · 2`. Axe's `label-content-name-mismatch` would be
-  the rule that objects (the visible words are not in the accessible name). It does **not** fire:
-  measured on the phone project with the plain spans (no `aria-hidden`) it passes, which is why the
-  spans carry no `aria-hidden` and the markup is exactly the design's. If a later axe version
-  starts reporting it, the fix is to shorten the visible text to a prefix of the sentence
-  (`Non-deterministik · 2`), a one-line change in `pda-messages.ts`.
-- **`checker.ts` and the badge could share one scheduler** if a third query ever appears; today
-  merging them would mean a change in a file the FSM shares for no behaviour change.
-- **A fixed 500 ms wait** in E1 (section 5) is the only place where the new tests wait for nothing
-  in particular. It exists for a negative assertion; if a test-only hook on the query's `status` is
-  ever acceptable, it could go.
+```
+ docs/agent/PLAN.md                          |   2 +-
+ web/src/lib/editor/diagram/geometry.test.ts | 104 +++++++++++++++++++---------
+ web/src/lib/editor/history.property.test.ts |  61 +++++++++++-----
+ web/src/lib/editor/testing.ts               |  54 +++++++++++++++
+ web/src/lib/questions/load.test.ts          |  19 +++--
+ 5 files changed, 176 insertions(+), 64 deletions(-)
+```
+Zero production code files modified.

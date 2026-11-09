@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { random } from '../testing.ts';
+import { random, scalingRatio } from '../testing.ts';
 import {
 	NAME_ROOM,
 	LABEL_GAP,
@@ -544,46 +544,79 @@ describe('the whole drawing', () => {
 		}
 	});
 
-	it('draws 200 states and 421 edges between neighbors quickly (9 ms measured)', () => {
-		const states: [number, number][] = [];
-		for (let i = 0; i < 200; i++) states.push([(i % 20) * 120, Math.floor(i / 20) * 120]);
-		const rng = random(7);
-		const transitions: [number, string | null, number][] = [];
-		for (let i = 0; i < 200; i++) {
-			if (i % 20 !== 19) transitions.push([i, 'a', i + 1]);
-			if (i + 20 < 200) transitions.push([i, 'a', i + 20]);
-			if (i % 20 !== 19 && rng.chance(0.3)) transitions.push([i + 1, 'a', i]);
+	it('draws states and edges between neighbors with near-linear scaling', () => {
+		function makeDoc(n: number) {
+			const states: [number, number][] = [];
+			for (let i = 0; i < n; i++) states.push([(i % 20) * 120, Math.floor(i / 20) * 120]);
+			const rng = random(7);
+			const transitions: [number, string | null, number][] = [];
+			for (let i = 0; i < n; i++) {
+				if (i % 20 !== 19 && i + 1 < n) transitions.push([i, 'a', i + 1]);
+				if (i + 20 < n) transitions.push([i, 'a', i + 20]);
+				if (i % 20 !== 19 && i + 1 < n && rng.chance(0.3)) transitions.push([i + 1, 'a', i]);
+			}
+			return {
+				doc: build({ alphabet: ['a'], states, start: 0, transitions }),
+				transitionCount: transitions.length
+			};
 		}
-		const doc = build({ alphabet: ['a'], states, start: 0, transitions });
-		const started = performance.now();
-		const shapes = edgeGeometry(doc);
-		const took = performance.now() - started;
-		expect(shapes.edges.length).toBe(transitions.length);
-		expect(took).toBeLessThan(100);
-	});
+		const small = makeDoc(50);
+		const large = makeDoc(200);
+		let largeShapes: DiagramShapes | undefined;
+		// smallRepeats = 8 brings small sample CPU time to ~10 ms (one run is ~1.3 ms).
+		const ratio = scalingRatio(
+			() => {
+				edgeGeometry(small.doc);
+			},
+			() => {
+				largeShapes = edgeGeometry(large.doc);
+			},
+			{ smallRepeats: 8, largeRepeats: 1, samples: 5 }
+		);
+		expect(largeShapes?.edges.length).toBe(large.transitionCount);
+		// Linear scaling is ~4. Quiet median 3.80, loaded median 3.89, loaded max 5.38; bound 12
+		// provides headroom under load while failing an accidental state check (measured ratio 28.4).
+		expect(ratio).toBeLessThan(12);
+	}, 15_000);
 
-	it('draws the worst case, 600 random edges across 200 states, in well under a second (96 ms measured)', () => {
+	it('draws the worst case of random edges across states with bounded scaling', () => {
 		// Long edges across a dense grid can never clear every state. Each one tries every bulge.
-		const states: [number, number][] = [];
-		for (let i = 0; i < 200; i++) states.push([(i % 20) * 120, Math.floor(i / 20) * 120]);
-		const rng = random(7);
-		const seen = new Set<string>();
-		const transitions: [number, string | null, number][] = [];
-		while (transitions.length < 600) {
-			const from = rng.int(200);
-			const to = rng.int(200);
-			if (seen.has(`${from}>${to}`)) continue;
-			seen.add(`${from}>${to}`);
-			transitions.push([from, 'a', to]);
+		function makeDoc(n: number) {
+			const states: [number, number][] = [];
+			for (let i = 0; i < n; i++) states.push([(i % 20) * 120, Math.floor(i / 20) * 120]);
+			const rng = random(7);
+			const seen = new Set<string>();
+			const transitions: [number, string | null, number][] = [];
+			const targetEdges = n * 3;
+			while (transitions.length < targetEdges) {
+				const from = rng.int(n);
+				const to = rng.int(n);
+				if (seen.has(`${from}>${to}`)) continue;
+				seen.add(`${from}>${to}`);
+				transitions.push([from, 'a', to]);
+			}
+			return build({ alphabet: ['a'], states, start: 0, transitions });
 		}
-		const doc = build({ alphabet: ['a'], states, start: 0, transitions });
-		const started = performance.now();
-		const shapes = edgeGeometry(doc);
-		const took = performance.now() - started;
-		expect(shapes.edges.length).toBe(600);
-		// A generous bound, to catch an accident (every edge checked against every state).
-		expect(took).toBeLessThan(1000);
-	});
+		const small = makeDoc(50);
+		const large = makeDoc(200);
+		let largeShapes: DiagramShapes | undefined;
+		// smallRepeats = 2 brings small sample CPU time to ~36 ms (one run is ~18 ms).
+		const ratio = scalingRatio(
+			() => {
+				edgeGeometry(small);
+			},
+			() => {
+				largeShapes = edgeGeometry(large);
+			},
+			{ smallRepeats: 2, largeRepeats: 1, samples: 5 }
+		);
+		expect(largeShapes?.edges.length).toBe(600);
+		// Edge routing across obstacles has superlinear characteristics (honest ratios measured up
+		// to 9.44). An accidental nested loop measured 14.7 to 21.9 quiet (16.6 to 20.1 loaded). Bound
+		// 12 sits between them (~1.27x above honest max, ~1.2x below accident min, an intentionally
+		// thin margin; the Neighbors test catches the same accident at ~28).
+		expect(ratio).toBeLessThan(12);
+	}, 15_000);
 });
 
 describe('no two labels overlap, and no label covers a state (random machines on a grid)', () => {
