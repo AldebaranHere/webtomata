@@ -42,6 +42,27 @@ function machineF(): PdaDocument {
 	});
 }
 
+/** Machine F with a third state q2 (id 2) that no transition uses yet. */
+function machineFWithQ2(): PdaDocument {
+	return pdaDocumentFrom({
+		kind: 'dpda',
+		inputAlphabet: ['a', 'b'],
+		stackAlphabet: ['A'],
+		states: [
+			[100, 100, 'q0'],
+			[300, 100, 'q1'],
+			[300, 300, 'q2']
+		],
+		start: 0,
+		accepting: [1],
+		transitions: [
+			[0, 'a', [], ['A'], 0],
+			[0, 'b', ['A'], [], 1],
+			[1, 'b', ['A'], [], 1]
+		]
+	});
+}
+
 /** Machine H: F plus (q1, a, ε → A, q1). */
 function machineH(): PdaDocument {
 	return pdaDocumentFrom({
@@ -276,6 +297,76 @@ describe('U: the commands of the editable table', () => {
 		for (const name of ['c', 'eps2', 'EPS', 'A2', '']) {
 			expect(symbolNameRefusal(name), `name ${JSON.stringify(name)}`).toBe(null);
 		}
+	});
+
+	it('a row that differs from another one by its Dari or its Ke is not a duplicate', () => {
+		const doc = machineFWithQ2();
+
+		// Row 3 is q1|b|A|ε|q1; with Dari q2 it is row 2 in everything but its Dari.
+		expect(editRowCommand(doc, 2, fields({ from: 2, to: 1, read: 'b', pop: 'A' }))).toEqual({
+			type: 'batch',
+			commands: [
+				{ type: 'removeTransition', from: 1, read: 'b', pop: ['A'], push: [], to: 1 },
+				{ type: 'addTransition', from: 2, read: 'b', pop: ['A'], push: [], to: 1 }
+			]
+		});
+
+		// Row 1 with Baca b, Pop A and Push ε is row 2 in everything but its Ke.
+		expect(editRowCommand(doc, 0, fields({ from: 0, to: 0, read: 'b', pop: 'A' }))).toEqual({
+			type: 'batch',
+			commands: [
+				{ type: 'removeTransition', from: 0, read: 'a', pop: [], push: ['A'], to: 0 },
+				{ type: 'addTransition', from: 0, read: 'b', pop: ['A'], push: [], to: 0 }
+			]
+		});
+	});
+
+	it('a change of only Ke of a row is a change, not "nothing to send"', () => {
+		const doc = machineF();
+
+		// Row 1 is q0|a|ε|A|q0; only its Ke becomes q1.
+		expect(editRowCommand(doc, 0, fields({ read: 'a', push: 'A', to: 1 }))).toEqual({
+			type: 'batch',
+			commands: [
+				{ type: 'removeTransition', from: 0, read: 'a', pop: [], push: ['A'], to: 0 },
+				{ type: 'addTransition', from: 0, read: 'a', pop: [], push: ['A'], to: 1 }
+			]
+		});
+	});
+
+	it('a new stack symbol that Pop and Push share is added once, so the batch is accepted', () => {
+		const doc = machineF();
+
+		// Row 3 with Pop B and Push B: one addStackSymbol(B), then the row.
+		const command = editRowCommand(
+			doc,
+			2,
+			fields({ from: 1, to: 1, read: 'b', pop: 'B', push: 'B' })
+		);
+		expect(command).toEqual({
+			type: 'batch',
+			commands: [
+				{ type: 'addStackSymbol', symbol: 'B' },
+				{ type: 'removeTransition', from: 1, read: 'b', pop: ['A'], push: [], to: 1 },
+				{ type: 'addTransition', from: 1, read: 'b', pop: ['B'], push: ['B'], to: 1 }
+			]
+		});
+
+		// Exactly one symbol command, and the document takes the whole batch.
+		const batch = asCommand(command);
+		if (batch.type !== 'batch') throw new Error('expected a batch');
+		expect(batch.commands.filter((one) => one.type === 'addStackSymbol')).toEqual([
+			{ type: 'addStackSymbol', symbol: 'B' }
+		]);
+		const after = applied(doc, batch);
+		expect(after.stackAlphabet).toEqual(['A', 'B']);
+		expect(after.transitions[2]).toMatchObject({
+			from: 1,
+			read: 'b',
+			pop: ['B'],
+			push: ['B'],
+			to: 1
+		});
 	});
 });
 
