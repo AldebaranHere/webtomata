@@ -482,3 +482,12 @@ Format:
 - Alternatives considered: refuse `eps` in `checkSymbol` now (a shared change that needs FSM tests and a migration thought); a hidden text mirror in the Push cell to keep E4 as it is (the value would be read twice by a screen reader); drop the draft on every edit (the simpler rule, but a user who renames a state in the middle of a new row loses it).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-061, T-065), `web/e2e/pda-panel.spec.ts` (one assertion), `web/src/lib/i18n/pda-messages.ts`
+
+## 2026-11-09 — Wall-clock assertions in unit tests become ratios or structure checks (T-069)
+
+- Decider: planner
+- Context: after T-064 (explicit 15 s timeouts) the planner repeated the whole suite on that branch under `nproc` copies of `yes`: both runs failed in `geometry.test.ts`, whose "worst case" test asserts `took < 1000` and measured 1304 and 1983 ms (96 ms on a quiet machine); one of five runs of that file alone also failed its `took < 100` test. Four tests assert a time (two in `geometry.test.ts`, one in `history.property.test.ts`, one in `questions/load.test.ts`). They are meant to catch an accident (a quadratic algorithm, a parser that expands an alias bomb), and a busy machine, or two workers sharing one, makes them fail without an accident. They also block the pre-push hook.
+- Decision: T-069 replaces each absolute millisecond bound by a scaling ratio (time at 4n over time at n, best of 3, a bound from 20 quiet measurements with 3x headroom and at most 12) or, for the alias bomb, by a structure check with the explicit timeout as the backstop. No bound under 5 s remains in a unit test. T-064 merges as it is (it fixes the two real offenders). Gemini takes T-069: it touches none of the files of T-061 (DeepSeek) or T-064.
+- Alternatives considered: raise the four bounds (a number that has to be larger than the worst load, and does not catch a 10x accident any more); move the four tests to a separate benchmark script that the hook does not run (the accident is then not caught in the normal run); retry a failed timing test (a test that is retried cannot be trusted).
+- Reversible? yes
+- Affects: `web/src/lib/editor/diagram/geometry.test.ts`, `web/src/lib/editor/history.property.test.ts`, `web/src/lib/questions/load.test.ts`
