@@ -142,7 +142,7 @@ describe('random sequences of actions in the editor', () => {
 				}
 			}
 		}
-	});
+	}, 15_000); // 200 random sequences of 40 actions; can exceed 5s on a loaded machine (T-064).
 
 	it('can always be undone to the first document, and redone to the last', () => {
 		for (let seed = 1; seed <= SEQUENCES; seed++) {

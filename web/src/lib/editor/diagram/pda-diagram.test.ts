@@ -308,7 +308,7 @@ describe('PDA diagram adapter (T-039)', () => {
 				JSON.stringify(shapes)
 			);
 		}
-	});
+	}, 15_000); // 1000 random PDA documents layout verification; can exceed 2.5s on a loaded machine (T-064).
 
 	it('F2: pdaDiagram sets overflow: true only when transitions exceed 3', () => {
 		const buildWithCount = (count: number) => {
