@@ -464,3 +464,12 @@ Format:
 - Alternatives considered: copy the FSM grid (free text and arrow keys do not mix, and the PDA has five columns that are not symbols); keep "mulai" (two words for one thing on one site); merge a duplicate row (silent data loss); a button that sends the new row (the design says it is sent when complete).
 - Reversible? yes
 - Affects: `web/src/lib/editor/PdaTableView.svelte` and its three blocks, `web/src/lib/editor/pda-label.ts` (exports), `web/src/lib/i18n/pda-messages.ts`
+
+## 2026-11-09 — The two heavy property tests get an explicit timeout (T-064), and Gemini takes it
+
+- Decider: planner
+- Context: the push of T-063 failed in the pre-push hook because `layout.test.ts` (property: up to 40 states) and `interaction/editor.property.test.ts` timed out at the default 5 s while two workers shared the machine. Alone they take about 1.7 s; loaded, 4 to 5 s. `interaction/pda-editor.property.test.ts` already has `15_000` on its three heavy tests. Gemini has nothing in flight (T-062 shares files with T-061, which DeepSeek has), and T-064 touches no PDA file.
+- Decision: T-064 gives these tests (and any other that takes over 1.5 s alone) an explicit per-test timeout of 15 s, with a reproduction under CPU load first. No change to `vitest.config.ts`, no fewer seeds, no skip or retry, no bypass of the hook.
+- Alternatives considered: a global `testTimeout` (hides tests that are really slow); fewer seeds (less coverage because of a clock); retry (a test that is retried cannot be trusted); `--no-verify` (forbidden).
+- Reversible? yes
+- Affects: `web/src/lib/editor/layout.test.ts`, `web/src/lib/editor/interaction/editor.property.test.ts`
