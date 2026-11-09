@@ -2,7 +2,7 @@
 // M1: the FSM page never downloads a chunk that holds them.
 // M2: the PDA mode shows the Tabel panel in Indonesian, and no raw key ever reaches the page.
 // M3: the same in English, from the language saved before the page loads.
-import { expect, test } from './fixtures.ts';
+import { expect, openPda, test } from './fixtures.ts';
 import type { Page } from '@playwright/test';
 
 const panel = (page: Page) => page.getByRole('complementary', { name: 'Panel' });
@@ -57,8 +57,7 @@ test.describe('the PDA messages are lazy', () => {
 	});
 
 	test('M2: the PDA mode shows the Tabel panel in Indonesian, and no raw key', async ({ page }) => {
-		await page.goto('/sandbox?mode=pda');
-		await page.locator('.editor[data-ready]').waitFor();
+		await openPda(page);
 		const side = panel(page);
 		await expect(side).toBeVisible();
 
@@ -83,8 +82,7 @@ test.describe('the PDA messages are lazy', () => {
 
 	test('M3: with English saved, the PDA mode shows the English texts', async ({ page }) => {
 		await page.addInitScript(() => localStorage.setItem('webtomata.lang', 'en'));
-		await page.goto('/sandbox?mode=pda');
-		await page.locator('.editor[data-ready]').waitFor();
+		await openPda(page);
 		const side = panel(page);
 		await expect(side.getByRole('heading', { name: 'Transitions (0)' })).toBeVisible();
 		await expect(side.getByText('No transitions yet.')).toBeVisible();

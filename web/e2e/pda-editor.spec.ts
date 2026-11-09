@@ -1,10 +1,10 @@
-import { expect, expectNoAxeViolations, test } from './fixtures.ts';
+import { expect, expectNoAxeViolations, openPda, test } from './fixtures.ts';
 import type { Page } from '@playwright/test';
 import { parsePdaDocumentText } from '../src/lib/editor/pda-document.ts';
 import { touchDragAt } from './touch.ts';
 
-async function openSandbox(page: Page, query = '') {
-	await page.goto(`/sandbox${query}`);
+async function openFsm(page: Page) {
+	await page.goto('/sandbox');
 	await page.locator('.editor[data-ready]').waitFor();
 }
 
@@ -23,7 +23,7 @@ test.describe('E1: Mode switcher and URL persistence', () => {
 	test('PDA switcher item is enabled, switches mode, updates URL and survives reload', async ({
 		page
 	}) => {
-		await openSandbox(page);
+		await openFsm(page);
 
 		const trigger = page.locator('.switcher-trigger');
 		await trigger.click();
@@ -47,12 +47,12 @@ test.describe('E1: Mode switcher and URL persistence', () => {
 		const storedMode = await page.evaluate(() => localStorage.getItem('webtomata_sandbox_mode'));
 		expect(storedMode).toBe('pda');
 
-		// PDA editor shell is rendered: .editor with tool rail, empty-canvas hint, no first-run card, no tab strip
+		// PDA editor shell is rendered: .editor with tool rail, empty-canvas hint, the first-run card, no tab strip
 		const editor = page.locator('.editor[data-ready]');
 		await expect(editor).toBeVisible();
 		await expect(editor.locator('.rail')).toBeVisible();
 		await expect(editor.locator('.hint')).toHaveText('Pilih alat Tambah state, lalu klik kanvas.');
-		await expect(page.locator('.first-run')).toHaveCount(0);
+		await expect(page.locator('.first-run')).toHaveCount(1);
 		await expect(page.locator('.tab-strip')).toHaveCount(0);
 
 		// Survives reload
@@ -78,7 +78,7 @@ test.describe('E2: Label form opening mechanisms', () => {
 		isMobile
 	}) => {
 		test.skip(isMobile, 'desktop project for 4 opening mechanisms');
-		await openSandbox(page, '?mode=pda');
+		await openPda(page);
 
 		// Add state q0 and q1
 		const addBtn = page.getByRole('button', { name: /^Tambah state/ });
@@ -135,7 +135,7 @@ test.describe('E2: Label form opening mechanisms', () => {
 
 	test('phone: touch opening mechanisms open bottom sheet', async ({ page, isMobile }) => {
 		test.skip(!isMobile, 'phone project only');
-		await openSandbox(page, '?mode=pda');
+		await openPda(page);
 
 		// Add state q0 and q1
 		const addBtn = page.getByRole('button', { name: /^Tambah state/ });
@@ -170,7 +170,7 @@ test.describe('E3: Typing and sending transitions', () => {
 	});
 
 	test('fields, tab order, Ketik ε, Ctrl+E, refusal message, add/delete rows', async ({ page }) => {
-		await openSandbox(page, '?mode=pda');
+		await openPda(page);
 
 		const addBtn = page.getByRole('button', { name: /^Tambah state/ });
 		await addBtn.click();
@@ -267,7 +267,7 @@ test.describe('E4: + n lagi overflow button behavior', () => {
 	});
 
 	test('select tool selects edge; delete tool deletes edge on + n lagi press', async ({ page }) => {
-		await openSandbox(page, '?mode=pda');
+		await openPda(page);
 
 		// Create q0 and loop edge with 4 transitions
 		const addBtn = page.getByRole('button', { name: /^Tambah state/ });
@@ -347,7 +347,7 @@ test.describe('E4: + n lagi overflow button behavior', () => {
 
 test.describe('E5: Building wwᴿ sample automaton', () => {
 	test('build wwrSample, undo and redo, verify stored document', async ({ page, isMobile }) => {
-		await openSandbox(page, '?mode=pda');
+		await openPda(page);
 
 		// Add state q0 at (180, 200) and q1 at (440, 200)
 		const addBtn = page.getByRole('button', { name: /^Tambah state/ });
@@ -500,7 +500,7 @@ test.describe('E6: Flush on mode switch', () => {
 	test('edits flush immediately on mode switch and remain when switching back', async ({
 		page
 	}) => {
-		await openSandbox(page, '?mode=pda');
+		await openPda(page);
 
 		// Add state q0
 		const addBtn = page.getByRole('button', { name: /^Tambah state/ });
@@ -529,7 +529,7 @@ test.describe('E7: Accessibility via Axe', () => {
 		page,
 		isMobile
 	}) => {
-		await openSandbox(page, '?mode=pda');
+		await openPda(page);
 
 		// 1. Empty PDA editor
 		await expectNoAxeViolations(page);
@@ -578,7 +578,7 @@ test.describe('E8: Phone sheet dimensions and labeled edge in view', () => {
 		isMobile
 	}) => {
 		test.skip(!isMobile, 'phone project only');
-		await openSandbox(page, '?mode=pda');
+		await openPda(page);
 
 		// Add states q0 and q1
 		const addBtn = page.getByRole('button', { name: /^Tambah state/ });

@@ -215,6 +215,16 @@
 	const showFirstRun = $derived(
 		firstRun !== undefined && !leftFirstRun && snapshot.doc.states.length === 0
 	);
+	// The card takes rows that are already text, so that the PDA mode can give it its own rows: the
+	// FSM's examples are mapped here, in the language of the page.
+	const firstRunRows = $derived(
+		(firstRun?.examples ?? []).map((example) => ({
+			id: example.id,
+			title: example.title[getLocale()],
+			description: example.description[getLocale()],
+			chip: t(example.kind === 'dfsm' ? 'first.kind_dfsm' : 'first.kind_ndfsm')
+		}))
+	);
 
 	// The tabs of the panel; the last one that was open is remembered on this device.
 	let tab = $state<PanelTab>(
@@ -417,7 +427,7 @@
 		{#if showFirstRun && firstRun}
 			<div class="first-run">
 				<FirstRun
-					examples={firstRun.examples}
+					examples={firstRunRows}
 					tourSeen={firstRun.tourSeen}
 					failed={firstRun.failed}
 					onexample={firstRun.onexample}

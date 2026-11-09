@@ -90,6 +90,56 @@ export async function createPdaMachine(
 }
 
 /**
+ * The document of a record that was just written. The text is one this module serialized, so it can
+ * be read; a failure here is a bug, not a bad record of the device.
+ */
+function readWritten(record: SavedPdaMachine): PdaDocument {
+	const read = readStoredPda(record.doc);
+	if (!read.ok) throw new Error('placePdaExample: the document just written is unreadable');
+	return read.doc;
+}
+
+/**
+ * Opens an example from the first-run card: in the place of the current PDA when that record is
+ * empty and untouched (title `''`, no state, no symbol in either alphabet, read from the store),
+ * otherwise as a PDA of its own, as `placeExample` does for an FSM (`storage/machines.ts`). The
+ * document comes back from the store, so the editor edits a copy and never the sample; a write that
+ * is refused rejects and leaves the current record exactly as it was. It makes or finds the record
+ * only through `createPdaMachine` and `store.put`.
+ */
+export async function placePdaExample(
+	store: MachineStore,
+	openId: string | undefined,
+	doc: PdaDocument,
+	now: () => number = Date.now
+): Promise<{ record: SavedPdaMachine; doc: PdaDocument; replaced: boolean }> {
+	const current = openId === undefined ? undefined : await store.get(openId);
+	if (current && isPdaRecord(current) && current.title === '') {
+		const read = readStoredPda(current.doc);
+		if (
+			read.ok &&
+			read.doc.states.length === 0 &&
+			read.doc.inputAlphabet.length === 0 &&
+			read.doc.stackAlphabet.length === 0
+		) {
+			const time = now();
+			const record: SavedPdaMachine = {
+				...current,
+				title: doc.title,
+				kind: doc.kind,
+				updatedAt: time,
+				openedAt: time,
+				doc: serializePdaDocument(doc)
+			};
+			await store.put(record);
+			return { record, doc: readWritten(record), replaced: true };
+		}
+	}
+	const record = await createPdaMachine(store, doc, now);
+	return { record, doc: readWritten(record), replaced: false };
+}
+
+/**
  * The PDA machine that was opened last. A record that cannot be read is skipped and kept as it is.
  * When none can be read or none exists, an empty NDPDA (createPdaDocument()) is saved as a new record.
  * A store put failure never stops opening; an error of store.list() propagates.

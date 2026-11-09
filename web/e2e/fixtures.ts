@@ -76,6 +76,30 @@ export async function openSandbox(
 	if (options.tests !== 'keep') await clearTests(page);
 }
 
+/**
+ * Leaves "Coba contoh" if it is showing, with "Mulai dari kanvas kosong". A test of the card itself
+ * does not call this; a test that wants an empty canvas does. The card leaves for good in the visit.
+ */
+export async function dismissFirstRun(page: Page): Promise<void> {
+	const card = page.locator('.first-run');
+	if ((await card.count()) === 0) return;
+	await card
+		.getByRole('button', { name: /^(Mulai dari kanvas kosong|Start from an empty canvas)$/ })
+		.click();
+	await expect(card).toHaveCount(0);
+}
+
+/**
+ * Opens the PDA mode and leaves the card that an empty PDA record shows, so that a test starts on an
+ * empty canvas with its tools (docs/agent/PLAN.md, T-073). A test that needs the card itself uses
+ * `page.goto('/sandbox?mode=pda')` and waits for the editor.
+ */
+export async function openPda(page: Page): Promise<void> {
+	await page.goto('/sandbox?mode=pda');
+	await page.locator('.editor[data-ready]').waitFor();
+	await dismissFirstRun(page);
+}
+
 /** Removes every test string of the open machine (an example opens with some). */
 export async function clearTests(page: Page): Promise<void> {
 	const remove = page.getByRole('button', { name: /^(Hapus|Remove) / });

@@ -64,7 +64,15 @@ export const pdaId = {
 	'pda_editor.note_ndpda_ok': 'Pada NDPDA ini boleh. Pada DPDA setiap pasangan menjadi kesalahan.',
 	'pda_editor.note_dpda_no':
 		'Pada DPDA ini tidak boleh. Ubah salah satu transisi, atau pilih NDPDA.',
-	'pda_editor.pair_selected': 'Baris {first} dan {second} ditunjukkan.'
+	'pda_editor.pair_selected': 'Baris {first} dan {second} ditunjukkan.',
+	// The first-run card (T-073): one title and one line for each sample of T-033, and the chip comes
+	// from `kind.dpda` / `kind.ndpda`. TODO(review): "palindrom" and "penanda" (docs/glossary.md).
+	'pda_first.anbn_title': 'aⁿbⁿ (n ≥ 1)',
+	'pda_first.anbn_description': 'n huruf a, lalu n huruf b (n ≥ 1)',
+	'pda_first.wcwr_title': 'wcwᴿ',
+	'pda_first.wcwr_description': 'palindrom dengan penanda c di tengah',
+	'pda_first.wwr_title': 'wwᴿ',
+	'pda_first.wwr_description': 'kata dan kebalikannya, panjangnya genap'
 } as const;
 
 export const pdaEn: Record<keyof typeof pdaId, string> = {
@@ -122,7 +130,13 @@ export const pdaEn: Record<keyof typeof pdaId, string> = {
 	'pda_editor.note_ndpda_ok': 'On an NDPDA this is allowed. In a DPDA every pair becomes an error.',
 	'pda_editor.note_dpda_no':
 		'In a DPDA this is not allowed. Change one of the transitions, or choose NDPDA.',
-	'pda_editor.pair_selected': 'Rows {first} and {second} are shown.'
+	'pda_editor.pair_selected': 'Rows {first} and {second} are shown.',
+	'pda_first.anbn_title': 'aⁿbⁿ (n ≥ 1)',
+	'pda_first.anbn_description': 'n letters a, then n letters b (n ≥ 1)',
+	'pda_first.wcwr_title': 'wcwᴿ',
+	'pda_first.wcwr_description': 'a palindrome with a marker c in the middle',
+	'pda_first.wwr_title': 'wwᴿ',
+	'pda_first.wwr_description': 'a word and its reverse, of even length'
 };
 
 addMessages('id', pdaId);
