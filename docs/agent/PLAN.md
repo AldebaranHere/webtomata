@@ -2928,7 +2928,7 @@ Follow the rules of `AGENTS.md` for every shell command (long runs as background
 
 ## Task T-073 — PDA editor, part 12a: the first-run card and the three examples
 
-**Status:** in-progress
+**Status:** done (2026-11-10; branch `task/T-073-pda-first-run`, commits `7bbeb9d`…`437f63e`. First JS: `sandbox.html` +62 bytes, `soal/*` +64 bytes, the other routes +1 byte; `wasm` 237.0 KB unchanged. See `docs/agent/REPORT.md`.)
 **Owner:** worker
 **Branch:** `task/T-073-pda-first-run`
 
