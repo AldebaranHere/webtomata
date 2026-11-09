@@ -2918,14 +2918,93 @@ Follow the rules of `AGENTS.md` for every shell command (long runs as background
 
 ---
 
-## Task T-052 — PDA editor, part 12 of 12: saved machines, files and the three examples (draft)
+## Task T-052 — PDA editor, part 12 of 12: saved machines, files and the three examples (split)
 
-**Status:** proposed (after T-051, T-061 and T-062)
+**Status:** split on 2026-11-09 into **T-073** (the first-run card and the three examples), **T-074** ("Mesin saya" lists FSMs and PDAs) and **T-075** (open and export `.jff` and JSON for a PDA). T-052 is `done` when the three are. Reason: the one-paragraph draft held three screens, three sets of tests and a change of the shared library, and a reviewer could not read it in one sitting. See `DECISIONS.md` (2026-11-09, "T-052 is split in three").
+
+**Order:** T-073 first (the smallest; it makes the PDA mode usable without a blank page), then T-074, then T-075. T-074 and T-075 can run at the same time after T-073 only if they touch different files; the planner says so when it dispatches them.
+
+---
+
+## Task T-073 — PDA editor, part 12a: the first-run card and the three examples
+
+**Status:** todo
+**Owner:** worker
+**Branch:** `task/T-073-pda-first-run`
+
+**Goal:** An empty PDA editor shows "Coba contoh" over the canvas, as the FSM editor does, with the three examples of T-033 (`aⁿbⁿ`, `wcwᴿ`, `wwᴿ`). One tap opens an example as a new PDA machine on the device. "Mulai dari kanvas kosong" closes the card. Today an empty PDA mode is a blank canvas with no hint (the PDA workstation passes no first-run to the editor).
+
+**Decisions already made (do not reopen; ask the planner if one looks wrong):**
+
+- **The examples are the three samples that exist:** `anbnSample()`, `wcwrSample()`, `wwrSample()` of `web/src/lib/editor/pda-samples.ts` (`PDA_SAMPLES`, in this order). No new example file in `content/examples/` (that format is the FSM's: `Example.kind` is `Kind`, a DFSM or an NDFSM). Their `kind` is part of the document: `aⁿbⁿ` and `wcwᴿ` are DPDAs, `wwᴿ` is an NDPDA; the card shows it as a chip ("DPDA" or "NDPDA").
+- **The texts live in the lazy PDA module** (`web/src/lib/i18n/pda-messages.ts`, T-063): the title and a one-line description of each example, the two chips, in `id` and `en`, marked `TODO(review)` where the course vocabulary is not settled. The card's own texts (`first.title`, `first.subtitle`, `first.blank`, `first.privacy`, `first.failed`) are the FSM's and are reused. **No tour** in the PDA mode yet: the card shows no tour button (there is no PDA tour; a later task).
+- **Opening an example makes a new record.** It goes through `createPdaMachine(store, doc, now)` (T-056) and the workstation opens it as the current one (its `{#key}` on the record id already re-creates the editor, with an autosave based on the new record). An example is a copy: editing it never changes the sample. What happens to the empty record that was current before (kept, or replaced) follows what `library.openExample` does for the FSM today: read it, state it in the pre-flight, do the same.
+- **The card leaves as the FSM's does:** it shows only while the document has no state and the student has not left it (`leftFirstRun`); adding a state or opening an example makes it go away; a reload of an empty record shows it again. Focus and the sheet on a phone are the FSM's.
+- **Shared component, no regression and no growth.** `FirstRun.svelte` (and the `firstRun` prop of `Editor.svelte`) is typed for the FSM's `Example`. Make the smallest change that lets the PDA workstation use the same card: the card takes rows that are already text (`id`, `title`, `description`, `chip`) and the tour button is optional. The FSM must show the same card, the same texts and the same order, with every existing test unedited. **The first JS of every route does not grow by more than 0.1 KB** (the PDA parts are lazy). If the shared card cannot meet that, say so in the pre-flight with the measured numbers and propose a separate small card in the lazy PDA chunk; wait for the planner.
+- **No engine change, no new store function, no change to the PDA document, commands or history.** No library list (T-074), no file (T-075), no share link.
+
+**Scope (files):** `web/src/lib/editor/FirstRun.svelte`, `Editor.svelte` (the smallest edit to give the card its rows), `PdaWorkstation.svelte` (the rows, opening an example), `PdaEditor.svelte` (the `firstRun` prop and the card over the canvas, with `showFirstRun` as in `Editor.svelte`), `web/src/lib/i18n/pda-messages.ts`, `docs/glossary.md` (only if a term is new), tests, `docs/decisions/0053-pda-first-run.md` (short), `docs/agent/PLAN.md` (status).
+
+**Non-goals:** a PDA tour; examples in `content/` or a community format for PDA examples; an example with a test list; the library list; files; changing a sample's states or positions; the FSM's examples or their order.
+
+**Fixtures (derive by hand first and write the derivation in `REPORT.md`):**
+
+- F1 An empty NDPDA document, open in the PDA mode: the card shows three rows in the order `aⁿbⁿ (n ≥ 1)`, `wcwᴿ`, `wwᴿ`, each with its chip (DPDA, DPDA, NDPDA), then "Mulai dari kanvas kosong", then the privacy line, and no tour button.
+- F2 Tap `wwᴿ`: the editor shows `wwrSample()`'s states and edges (read the counts from the sample), the kind chip says NDPDA, the card is gone, the save line shows the document as saved after the debounce, and a reload opens the same document.
+- F3 Tap `aⁿbⁿ`, delete one state, reload: the document keeps the deletion, and `anbnSample()` is unchanged (call it again and compare).
+- F4 Tap "Mulai dari kanvas kosong": the card goes, the canvas stays empty, the document is unchanged; add a state with a tap: still no card; undo it to an empty document: the card does not come back in this visit (`leftFirstRun`).
+- F5 The FSM mode: the card has the same three texts, the same two examples in the same order, and the tour button as before.
+- F6 A failure (the store refuses to write the new record): the card shows `first.failed` calmly, the editor still works, nothing is lost.
+
+**Acceptance criteria:**
+
+- AC1 F1 to F6 hold, each by a test (unit or component where it can be, Playwright for F2, F3, F4 and F5).
+- AC2 **Accessibility and phone:** axe has no violation on the card in the PDA mode on a laptop and on a phone viewport; every row and the blank button are at least 44 px high; the card is a labelled section as the FSM's; tab order is the rows, then blank; Enter and Space open a row.
+- AC3 **Size:** `pnpm size` before and after, pasted. No route's first JS grows by more than 0.1 KB; the PDA chunk may grow (name the number); the wasm is unchanged.
+- AC4 **The FSM does not change:** the existing first-run tests (unit and e2e) pass without any edit. If one has to change, stop and say why.
+- AC5 **Break each guard once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) the card shows after a state was added (remove the `states.length` condition); (B2) tapping an example edits the sample itself (open it without copying); (B3) the chip of `wwᴿ` says DPDA; (B4) the card shows a tour button in the PDA mode. Restore each file; `git diff --stat` at the end shows only the files of the scope.
+- AC6 `pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens`, Vitest, `pnpm build && pnpm size`, and Playwright for the files you added or changed pass.
+
+**Verification:**
+
+```
+pnpm --filter web test
+pnpm --filter web exec playwright test pda-first-run first-run
+```
+
+Follow the rules of `AGENTS.md` for every shell command, and run the heavy ones as background tasks.
+
+**Rollback:** `git revert <sha>`.
+
+**Depends on:** T-056 (`createPdaMachine`, merged), T-057 (the workstation, merged), T-063 (the lazy messages, merged). It touches no file of T-074 or T-075 except `PdaWorkstation.svelte`, which T-074 also edits: they do not run at the same time.
+
+**Notes for worker:** do the pre-flight on `library.openExample` and on how the FSM page counts the first-run before you restate. Quote changed lines from `git diff`, not from memory. The planner will repeat F2 and F5 on a phone viewport and break B1 to B4 once more on the branch.
+
+---
+
+## Task T-074 — PDA editor, part 12b: "Mesin saya" lists FSMs and PDAs (draft)
+
+**Status:** proposed (after T-073)
 **Owner:** worker
 
-**Goal:** "Mesin saya" lists FSMs and PDAs with a type chip and opens a PDA in the PDA mode; the first-run card of the PDA editor with the three examples of T-033; open and export `.jff` and JSON for a PDA (with the calm message for symbols of more than one character); the FSM importer's `jff.unsupported_type { type: "pda" }` offers "Buka di mode PDA". No share link (a later task). See `design/screens/pda-editor.md`, section 1 and "Files and export".
+**Goal:** One list in "Mesin saya" (laptop dialog and the phone sheet) with a small type chip on each row ("FSM", "PDA"); a PDA row opens in the PDA mode (the page switches the mode and opens that record); rename, duplicate and delete work for both kinds, with the same undo window for a delete. T-056 made the store keep PDA records apart: `listEntries` and the FSM functions ignore records with `type: 'pda'`, so today a saved PDA is not in any list. The FSM must not change for a student who has no PDA.
 
-**Depends on:** T-051, T-061, T-062, T-063.
+**Questions for the planner to settle in the spec (not yet decided):** one `Entry` type with a `type` field versus two lists merged in the dialog; where the mode switch happens (the page, through the `?mode=` address as the mode bar does); how the sort (by `openedAt`) mixes the two kinds; what "Duplikat" copies for a PDA. See `design/screens/pda-editor.md`, section 1 and question 3 (one list, a type chip).
+
+**Depends on:** T-073.
+
+---
+
+## Task T-075 — PDA editor, part 12c: open and export `.jff` and JSON for a PDA (draft)
+
+**Status:** proposed (after T-073; independent of T-074 if the files do not overlap)
+**Owner:** worker
+
+**Goal:** The first-run card and "Mesin saya" offer "Buka file .jff atau JSON" in the PDA mode: a `.jff` of type `pda` opens through `importPdaJff`, a JSON file is told by its `kind` (`dpda`, `ndpda`) and read with `parsePdaDocument`; the PDA editor exports `.jff` through `exportPdaJff` and the document as JSON. A machine with a stack or input symbol of more than one character (`Z0`, `T_a`, `S0` from the conversions) cannot be written to `.jff`: the dialog shows `jff.symbol_not_single_character { symbol }` calmly and offers JSON. The FSM importer's `jff.unsupported_type { type: "pda" }` offers "Buka di mode PDA". No share link (a later task, prefix `p1u=` next to `m1u=`). The file is untrusted: size and structure are checked before use, and the parsers are fuzzed (CLAUDE.md section 8).
+
+**Questions for the planner to settle in the spec:** the file names of an export; whether the layout (state positions) is kept in the `.jff` as the FSM's is; how a file of the wrong mode is offered ("Buka di mode PDA" and its twin "Buka di mode FSM"?); the limit of a PDA file (the FSM's `FILE_BYTE_LIMIT` or its own).
+
+**Depends on:** T-073 (the card's "Buka file" button), T-057.
 
 ---
 
