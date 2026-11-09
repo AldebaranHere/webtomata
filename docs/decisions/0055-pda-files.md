@@ -49,8 +49,10 @@ record of a PDA file chosen from the FSM mode.
   machine or the list of FSMs.
 - The FSM path is the same code, moved; its unit and end-to-end tests pass unedited except the three that
   asserted a PDA `.jff` is refused (they use a grammar file now).
-- The sandbox's first JS grows by more than the 0.1 KB the task allowed, even though the page's own chunk
-  shrinks: Rollup shares `pda-document.ts` with the first-JS chunk, which brings the document functions
-  that only the lazy modules used. The numbers and the alternatives are in the report of T-075; the
-  planner decides whether to accept them.
+- The sandbox's first JS grows by 696 bytes and the three `soal/*.html` routes by 769 bytes each, even
+  though the page's own chunk shrinks: Rollup shares `pda-document.ts` with the first-JS chunk, which
+  brings the document functions that only the lazy modules used. The owner granted a **one-time exception
+  of up to 0.8 KB** on 2026-11-10 for exactly these numbers, paid back by T-068 (the PDA history leaves the
+  first load); the other routes shrink by 47 to 161 bytes. The numbers and the four measured alternatives
+  are in the report of T-075.
 - The `.jff` keeps names and places; the JSON keeps everything, including symbols of several characters.

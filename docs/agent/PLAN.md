@@ -3044,7 +3044,7 @@ Follow the rules of `AGENTS.md` for every shell command, and run the heavy ones 
 
 ## Task T-075 — PDA editor, part 12c: open and download `.jff` and JSON for a PDA
 
-**Status:** in-progress (AC1–AC3, AC5 and AC6 hold; AC4 does not: the sandbox's first JS grows by 696 bytes and the three question pages by 769 bytes. The cause and the four measured alternatives are in `docs/agent/REPORT.md`; waiting for the planner, per the task's Size rule.)
+**Status:** done (2026-11-10; branch `task/T-075-pda-files`, commits `05f9352`…`HEAD`. AC1–AC3, AC5 and AC6 hold. AC4 holds with the owner's one-time exception of 2026-11-10: `sandbox.html` +696 bytes and the three `soal/*.html` routes +769 bytes each, up to 0.8 KB, paid back by T-068; the other routes shrank. See `docs/agent/REPORT.md` and ADR 0055.)
 **Owner:** worker (DeepSeek: the planner's pick)
 **Branch:** `task/T-075-pda-files`
 

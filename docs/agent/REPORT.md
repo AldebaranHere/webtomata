@@ -7,7 +7,7 @@ Commits:
 - `72afe30` `feat(editor): open and download .jff and JSON for a PDA` — the reader, the lazy opener, the dialog, the tests, the fuzz target and ADR 0055.
 - this commit — `docs(agent): record task T-075`.
 
-**Status: AC1, AC2, AC3, AC5 and AC6 hold. AC4 does not hold:** the sandbox first JS grows by 696 bytes and the three question pages by 769 bytes (the 0.1 KB = 102 bytes rule). The cause, the numbers and the four variants tried are in section 5. The task's Size rule says to give the numbers and wait for the planner, so `PLAN.md` stays `in-progress` and the branch is pushed for review.
+**Status: AC1–AC3, AC5 and AC6 hold. AC4 holds with the owner's one-time exception of 2026-11-10:** the sandbox first JS grows by 696 bytes and the three question pages by 769 bytes (up to 0.8 KB), paid back by T-068; the other routes shrink. The numbers, the cause and the four measured alternatives are in section 5.
 
 ---
 
@@ -118,7 +118,7 @@ No crash. The target asserts that an imported PDA survives `to_pda_jff` → `par
 
 ---
 
-## 5. AC4 — Size (the open point)
+## 5. AC4 — Size (the one-time exception)
 
 Clean builds of the base (`11ce7bb`) and of the branch (`72afe30`), gzip bytes, the same sum `pnpm size` prints:
 
@@ -134,13 +134,13 @@ Clean builds of the base (`11ce7bb`) and of the branch (`72afe30`), gzip bytes, 
 | `panduan/berakhiran-x.html` | 89,387 | 89,340 | −47 |
 | `tentang.html` | 82,321 | 82,258 | −63 |
 
-The wasm is unchanged (`engine_wasm_bg-VlyrwV86.wasm`, 237.0 KB). `pnpm size` passes (the tool's limit is 170 KB), but the task's 102-byte rule fails on four routes.
+The wasm is unchanged (`engine_wasm_bg-VlyrwV86.wasm`, 237.0 KB). `pnpm size` passes (the tool's limit is 170 KB), but the task's 102-byte rule is over on four routes. **The owner granted a one-time exception on 2026-11-10: up to 0.8 KB on exactly these four routes, paid back by T-068.** The other routes shrank.
 
 **Cause.** `pda-document.ts` was inlined, tree-shaken, into the first-JS chunk that `history.ts` → `pda-commands.ts` pulls into every route with an editor (T-068). The new lazy modules import the document functions, so Rollup extracts `pda-document.ts` into a shared chunk that the first-JS chunk statically needs: that chunk is modulepreloaded (`chunks/oVwv-99E.js`, 2,503 bytes) and the big chunk shrinks by 1,566 (`Bo8rEhU6` → `BJtwTs4m`), a net +937 from the gzip loss of the split, plus the page chunk `nodes/5` shrinking 82 (6,901 → 6,819). The `jff.unsupported_type` text costs 0 in that chunk (the Indonesian text got shorter, the English longer).
 
 **Alternatives measured (all over 102 bytes):** routing the document functions through `pda-work.ts` +308; a dynamic import of `pda-work.ts` in the opener +693; a dynamic import of `pda-document.ts` +910; both dynamic +902.
 
-**The clean fix is already proposed: T-068** ("`history.ts` holds both `createHistory` and `createPdaHistory`… split the PDA history into its own module"). With the PDA history out of the first load, `pda-document.ts` leaves the first-JS chunk, and this task costs only the page change (−82) plus the text change: about −39 bytes. The planner can either order T-068 before T-075 or accept the measured numbers above; the worker does not raise a budget alone.
+**Payback: T-068** ("`history.ts` holds both `createHistory` and `createPdaHistory`… split the PDA history into its own module"). With the PDA history out of the first load, `pda-document.ts` leaves the first-JS chunk, and this task costs only the page change (−82) plus the text change: about −39 bytes.
 
 ---
 
@@ -275,7 +275,7 @@ Playwright: `64 passed, 4 skipped` (section 2).
 
 ## 9. Notes and follow-ups
 
-- **Size:** the open point, section 5. The remedy is T-068 (already `proposed`); the alternative is a planner-approved exception for the four routes.
+- **Size:** the owner's one-time 0.8 KB exception for the four routes (section 5), paid back by T-068 (already `proposed`).
 - `PdaFileDialog` lives in `PdaEditor` (not `PdaWorkstation`): the workstation's `opened.doc` is the document it opened, so a dialog there would export a stale machine after edits; `PdaEditor` has the live `snapshot.doc`, exactly as `Editor.svelte` passes `snapshot.doc` to `ShareDialog`. The amended spec allows either ("lazy-loaded by `PdaEditor` or `PdaWorkstation`").
 - `jffLayout` was widened in `editor/document.ts`, not `share/files.ts` as the spec said; the function is defined there.
 - The `env` check was not needed; the fuzz target and nightly cargo were available in WSL.
