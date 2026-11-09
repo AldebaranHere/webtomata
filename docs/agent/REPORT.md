@@ -149,7 +149,7 @@ Accident tested: every edge scans all states unconditionally with an inner compa
 - **Honest Max across all 40 runs:** 9.439.
 - Bound 12 provides $>25\%$ headroom over 9.439 ($9.439 \times 1.25 = 11.799 < 12$).
 - Under accident, loaded min ratio is 16.629, median ~18.0.
-- Per planner instruction: *"If after (1) the honest loaded ratios of Worst Case are all under 12, keep the bound at 12."* All 20 loaded runs were strictly $< 12$ (max 9.439), so bound 12 was kept.
+- Per planner instruction: *"If after (1) the honest loaded ratios of Worst Case are all under 12, keep the bound at 12."* All 20 loaded runs were strictly $< 12$ (max 9.439), so bound 12 was kept. The Worst Case margin is thin (about 1.27x above the honest maximum and 1.2x below the accident minimum) and CI on another CPU is its first outside test.
 
 ---
 

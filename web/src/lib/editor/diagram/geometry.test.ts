@@ -575,7 +575,7 @@ describe('the whole drawing', () => {
 		);
 		expect(largeShapes?.edges.length).toBe(large.transitionCount);
 		// Linear scaling is ~4. Quiet median 3.80, loaded median 3.89, loaded max 5.38; bound 12
-		// provides headroom under load while failing a quadratic accident (ratio ~24).
+		// provides headroom under load while failing an accidental state check (measured ratio 28.4).
 		expect(ratio).toBeLessThan(12);
 	}, 15_000);
 
@@ -611,9 +611,10 @@ describe('the whole drawing', () => {
 			{ smallRepeats: 2, largeRepeats: 1, samples: 5 }
 		);
 		expect(largeShapes?.edges.length).toBe(600);
-		// Edge routing across obstacles has superlinear characteristics (quiet median 7.81, max 9.28;
-		// loaded median 7.60, max 9.44). Bound 12 gives >25% margin over the 9.44 loaded max
-		// while failing an accidental extra nested loop (ratio > 18).
+		// Edge routing across obstacles has superlinear characteristics (honest ratios measured up
+		// to 9.44). An accidental nested loop measured 14.7 to 21.9 quiet (16.6 to 20.1 loaded). Bound
+		// 12 sits between them (~1.27x above honest max, ~1.2x below accident min, an intentionally
+		// thin margin; the Neighbors test catches the same accident at ~28).
 		expect(ratio).toBeLessThan(12);
 	}, 15_000);
 });

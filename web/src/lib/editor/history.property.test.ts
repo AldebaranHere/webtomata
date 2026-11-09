@@ -185,7 +185,7 @@ describe('speed', () => {
 		);
 		expect(finalDoc?.states.length).toBe(2000);
 		// Linear move cost in state count is ~4 (quiet median 4.00, max 4.93; loaded median 3.82, max 5.16).
-		// Bound 10 provides ~2x headroom over quiet/loaded max while failing a quadratic move (ratio ~16).
+		// Bound 10 provides ~2x headroom over loaded max while failing a quadratic move (theory ~16, measured 15.5).
 		expect(ratio).toBeLessThan(10);
 	}, 15_000);
 });
