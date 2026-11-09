@@ -545,3 +545,12 @@ Format:
 - Alternatives considered: separate lists per type (two buttons, and a student who has both must look twice); an extra "FSM"/"PDA" chip next to the kind chip (two chips that say the same); keep the workstation's own store (two lists that disagree under the memory fallback); run T-074 and T-075 in parallel (both edit the same two Svelte files).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-052, T-074, T-075), `design/screens/pda-editor.md`; later `web/src/lib/storage/library.ts`, `library.svelte.ts`, `pda-work.ts`, `LibraryDialog.svelte`, `PdaWorkstation.svelte`, `PdaEditor.svelte`, the sandbox page
+
+## 2026-11-10 — T-074 amended after the worker's pre-flight (deleting keeps the mode; S6 flips; the PDA autosave is flushed)
+
+- Decider: planner
+- Context: Gemini's pre-flight read `deleteMachine` and found three things in my spec: (1) the list will now return PDA entries, so the search for `next` in the FSM's delete would pick a PDA row and fail with `library.missing`; (2) test S6 of `cross/pda-storage.spec.ts` asserts the opposite of the new behavior (that the list never shows a PDA record), and no test asserts that the button is absent in the PDA mode, as I had written; (3) the library cannot flush the autosave of the PDA workstation, which owns it. I also saw that "delete the open PDA, then open the next row of either kind" throws the student into the other mode for a delete.
+- Decision: deleting the open machine keeps the student in their mode (the next readable row of the same type, else a new empty machine of that type), so the FSM's behavior stays literally the same and `next` skips the other type; S6 is rewritten and may change; the PDA workstation registers a flush hook on the library; the current row is the open machine of the showing mode. F5 is rewritten.
+- Alternatives considered: open the next row of either kind after a delete (a mode switch the student did not ask for, and an FSM-only student could land in the PDA after deleting their last FSM); make the library own the PDA autosave (a larger change to the T-057 workstation than this task needs).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-074); later `web/src/lib/storage/library.svelte.ts`, `web/e2e/cross/pda-storage.spec.ts`, `PdaWorkstation.svelte`
