@@ -77,7 +77,7 @@ describe('the rules for symbols are the rules of the engine', () => {
 			}
 		}
 		expect(disagree).toEqual([]);
-	});
+	}, 15_000); // Iterates through all 65k characters of BMP; can exceed 2.5s on a loaded machine (T-064).
 
 	it('agree on a lone surrogate, on characters beyond the plane and on joiners', () => {
 		const symbols = [

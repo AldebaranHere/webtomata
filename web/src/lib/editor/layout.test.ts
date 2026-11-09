@@ -211,7 +211,7 @@ describe('placing the states', () => {
 			}
 			expect(next.transitions, `seed ${seed}`).toEqual(doc.transitions);
 		}
-	});
+	}, 15_000); // Property test across 40 generated machines; can exceed 5s on a loaded machine (T-064).
 
 	it('placeAll ignores a position for a state that is not there, and keeps the state that has none', () => {
 		const doc = endsWith01();
