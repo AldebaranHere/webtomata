@@ -2928,7 +2928,7 @@ Follow the rules of `AGENTS.md` for every shell command (long runs as background
 
 ## Task T-073 — PDA editor, part 12a: the first-run card and the three examples
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-073-pda-first-run`
 
