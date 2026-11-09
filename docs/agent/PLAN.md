@@ -2678,6 +2678,60 @@ Follow the rules of `AGENTS.md` for every shell command; the loaded runs are lon
 
 ---
 
+## Task T-072 — Find the test that leaves an engine call open (the unhandled `EngineTimeout`)
+
+**Status:** todo
+**Owner:** worker
+**Branch:** `task/T-072-open-engine-call`
+
+**Goal:** The whole Vitest suite never ends with an unhandled `EngineTimeout`. Today it does, now and then, and Vitest turns one unhandled rejection into a red `pnpm test:web` even when every test passed.
+
+**Evidence (planner, 2026-11-09):**
+
+- Two sightings on CI. The first was the `checks` job of PR 200 (it passed on re-run). The second is the `checks` job of the `push` run on `staging` after PRs 199 and 200 were merged: run 42585633160, job 129054708985. The log says: `Vitest caught 1 unhandled error`, `Unhandled Rejection: EngineTimeout: The engine did not answer within 10000 ms.`, at `timeOut src/lib/engine/client.ts:144`, called from `Timeout._onTimeout client.ts:158`, and "This error originated in `src/lib/editor/interaction/pda-editor.property.test.ts`". The totals above it say `Test Files 115 passed`, `Tests 1362 passed | 3 skipped`.
+- **That file name is not the culprit.** `pda-editor.property.test.ts` has no engine call at all. `web/vitest.config.ts` sets `isolate: false`, so the test files of one worker share their modules, and the shared `engine` of `client.ts:213` outlives a file. Vitest names the file that was running when the 10 s timer fired, not the file that made the call.
+- It needs the suite to last more than 10 s after the call was made. That is why it shows on CI (a slow machine) and almost never on a laptop, and why the planner's earlier probe (a 14 s sleeper test next to the whole suite) did not reproduce it: the sleeper does not keep the right files alive.
+- Candidates, the test files that create an engine or use the shared one (`grep` on 2026-11-09): `src/lib/examples/examples.wasm.test.ts`, `src/lib/editor/pda-determinism.test.ts`, `src/lib/editor/run.wasm.test.ts`, `src/lib/editor/checker.test.ts`, `src/lib/editor/tester.test.ts`, `src/lib/questions/grade.test.ts`, `src/lib/engine/client.test.ts`. Do not trust this list: it is a start.
+- What the client does (read `client.ts:103-165`): a call that gets no answer in `callMs` (10 s) ends the worker and **rejects the promise of that call**. If nobody awaits or catches that promise, the rejection is unhandled. So a leak is a call whose promise nobody handles, on a worker that never answers (a fake worker that does not reply, or a real worker that a test ended).
+
+**Decisions (planner, 2026-11-09):**
+
+- **Find it by evidence, then fix the test.** The fix belongs in the test that made the call: it awaits the call, or settles it (the fake worker answers, or the test ends the engine), or catches the rejection on purpose. Not in the runner.
+- **No `dangerouslyIgnoreUnhandledErrors`, no `onUnhandledError` filter, no change of `WEB_TIMEOUTS` or of `vitest.config.ts`'s timeouts.** An unhandled rejection that is hidden is the same bug with no signal. A 10 s call timeout is a product decision (T-064), not a test knob.
+- **A guard so the next leak fails at once and says whose it is.** After the fix, a test that leaves an engine call waiting fails *that test*, by name, at its end, not 10 s later in another file. The worker proposes the smallest way: first choice is a test-only helper or a `setupFiles` hook that counts calls the test started and did not see settle, using only what tests can already see (the fake worker's `postMessage` and replies). If the only way is a small change in `client.ts` (for example a read-only count of waiting calls), say so in the pre-flight and **wait for the planner**: `client.ts` is in the first JS of the sandbox, and the size gate is 0.1 KB per task.
+- **Find the leak with a probe that does not need 10 s.** Suggested (the worker may use another, and must say which): in a scratch copy, lower `callMs` for the test run only (an environment variable read in a probe, not committed) to about 1000 ms and run the whole suite. A call left open then times out inside the run every time, and the probe prints the stack that `call()` recorded when it started (`new Error().stack` kept next to each waiting entry). That names the file and line that made the call. Remove the probe before the commit.
+- **One cause is enough for this task.** If the probe shows two leaks, fix both (they are the same bug); if it shows a leak that is not a test (a real call in `src`, for example a debounced query that survives its component), stop and report it to the planner as a separate task.
+
+**Scope (files):** the test file(s) that leak, the one guard helper or setup file if the guard needs one, `docs/agent/PLAN.md` (status). No `src` file other than a test or a test helper, unless the planner agrees to a change in `client.ts` after the pre-flight.
+
+**Non-goals:** no change of timeouts, no change of the retry rule in `timeOut`, no change of the pre-push hook, no refactor of the FSM tests that use the engine, no new dependency.
+
+**Acceptance criteria:**
+
+- AC1 **Name the leak with evidence.** Run the probe above on `staging` and paste: the file and line that made the open call, the method it called (`simulate`, `pdaDeterminism`, `check`…), why nobody settled it (what the test does or does not do), and the stack the probe printed. A guess with no stack does not count.
+- AC2 **Reproduce it every time, before the fix:** with the lowered `callMs`, the whole suite shows the unhandled `EngineTimeout` in 3 runs out of 3 (paste the three totals). After the fix, the same three runs show none.
+- AC3 **The fix is in the test.** Quote the changed lines from `git diff`. The test still asserts what it asserted (no assertion removed or weakened; say so in the report for each changed test).
+- AC4 **The guard works.** Add, temporarily, a call that never settles to one test that uses the guard, and show that this test fails at its end with a message that names the call (paste the failing line and file:line, and the one line of `git diff` that is the break). Remove the break. The guard must not fail any test of the suite as it is.
+- AC5 **Normal conditions stay green:** the whole suite 5 times in a row on a quiet machine, then 3 times under `nproc` copies of `yes > /dev/null` (stopped afterwards, `pkill yes` and `pgrep yes` at the end), with `uptime` at the start of each run. All green, no unhandled error. Paste the totals.
+- AC6 `pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens`, Vitest, `pnpm build && pnpm size` pass, and `git diff --stat` shows only test files, the guard, and `PLAN.md` (and `client.ts` only if the planner agreed).
+
+**Verification:**
+
+```
+pnpm --filter web test
+pnpm --filter web exec vitest run <the leaking file>
+```
+
+Follow the rules of `AGENTS.md` for every shell command; the loaded runs are long: background tasks, the stuck rule, and `pkill yes` and `pgrep yes` at the end.
+
+**Rollback:** `git revert <sha>`.
+
+**Depends on:** nothing. It touches no file of T-052 (saved machines, files, examples), so the two can run in parallel; only the machine will be busier, so write down `uptime` for every run.
+
+**Notes for worker:** the planner suspects `pda-determinism.test.ts` or `checker.test.ts` (calls that a debounce or a dispose leaves behind), but did not check. Read each candidate before you probe; a file that only builds a fake worker and never calls through it is not a candidate. The planner will repeat the lowered-`callMs` runs on the branch.
+
+---
+
 ## Task T-065 — Symbol names: refuse the ε words in the document, and the missing text of `document.duplicate_symbol` (draft)
 
 **Status:** proposed
