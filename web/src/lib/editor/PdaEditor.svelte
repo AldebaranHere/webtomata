@@ -12,6 +12,8 @@
 	import { pdaDiagram } from './diagram/pda-diagram.ts';
 	import EditorCanvas, { type LabelSlot } from './EditorCanvas.svelte';
 	import EditorFrame from './EditorFrame.svelte';
+	import FirstRun from './FirstRun.svelte';
+	import type { FirstRunRow } from './FirstRun.svelte';
 	import { createPdaEditor } from './interaction/pda-editor.ts';
 	import KindSwitch from './KindSwitch.svelte';
 	import { pdaCheckItems } from './pda-checks.ts';
@@ -34,11 +36,18 @@
 	let {
 		doc,
 		autosave,
-		persistent = true
+		persistent = true,
+		firstRun
 	}: {
 		doc: PdaDocument;
 		autosave?: BaseAutosave<PdaDocument>;
 		persistent?: boolean;
+		/** With this, an empty PDA shows "Coba contoh" over the canvas (no tour in this mode). */
+		firstRun?: {
+			examples: readonly FirstRunRow[];
+			failed: boolean;
+			onexample: (id: string) => void;
+		};
 	} = $props();
 
 	const editor = createPdaEditor(untrack(() => doc));
@@ -91,6 +100,18 @@
 		});
 		return stop;
 	});
+
+	// "Coba contoh" is over the canvas while the document is empty (T-073). It goes away for good in
+	// this editor when a state is added or the student starts from an empty canvas: a student who
+	// deletes everything is working, and the card must not cover the canvas again. The panel waits
+	// behind it, as in the FSM editor.
+	let leftFirstRun = $state(false);
+	$effect(() => {
+		if (snapshot.doc.states.length > 0) leftFirstRun = true;
+	});
+	const showFirstRun = $derived(
+		firstRun !== undefined && !leftFirstRun && snapshot.doc.states.length === 0
+	);
 
 	// The checks: the engine worker validates the PDA a moment after each change, and
 	// the states with checks get flags on the diagram. Requested after the first draw.
@@ -353,6 +374,18 @@
 			{/snippet}
 		</EditorCanvas>
 	{/snippet}
+	{#snippet overlay()}
+		{#if showFirstRun && firstRun}
+			<div class="first-run">
+				<FirstRun
+					examples={firstRun.examples}
+					failed={firstRun.failed}
+					onexample={firstRun.onexample}
+					onblank={() => (leftFirstRun = true)}
+				/>
+			</div>
+		{/if}
+	{/snippet}
 	{#snippet panel()}
 		{#if formDisplayMode === 'sheet' && (activeLabeling ?? snapshot.labeling)}
 			{@const currentLabeling = (activeLabeling ?? snapshot.labeling)!}
@@ -362,7 +395,7 @@
 			>
 				<PdaLabelForm {editor} doc={snapshot.doc} labeling={currentLabeling} />
 			</aside>
-		{:else}
+		{:else if !showFirstRun}
 			<SidePanel bind:this={sidePanel} {tab} {tabs} ontab={chooseTab}>
 				{#snippet table()}
 					{@render head()}
@@ -387,6 +420,12 @@
 </EditorFrame>
 
 <style>
+	/* The place of "Coba contoh": the canvas, under the bar (as in the FSM editor). */
+	.first-run {
+		position: absolute;
+		inset: var(--target-min) 0 0 0;
+		pointer-events: none;
+	}
 	.pda-sheet {
 		display: flex;
 		flex-direction: column;

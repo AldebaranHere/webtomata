@@ -5,15 +5,10 @@
 // a refused write shows the warning and clears on next save,
 // a browser without storage still allows editing with warning,
 // and FSM mode never sees PDA records.
-import { engineSettled, expect, test } from '../fixtures.ts';
+import { engineSettled, expect, openPda as openPdaSandbox, test } from '../fixtures.ts';
 import { putRow, records } from './db.ts';
 import type { Page } from '@playwright/test';
 import { parsePdaDocumentText } from '../../src/lib/editor/pda-document.ts';
-
-const openPdaSandbox = async (page: Page) => {
-	await page.goto('/sandbox?mode=pda');
-	await page.locator('.editor[data-ready]').waitFor();
-};
 
 const status = (page: Page) => page.locator('.save');
 
@@ -178,8 +173,7 @@ test('S5: browser with no storage allows editor to work with warning', async ({
 		delete (window as unknown as { indexedDB?: IDBFactory }).indexedDB;
 	});
 
-	await page.goto('/sandbox?mode=pda');
-	await page.locator('.editor[data-ready]').waitFor();
+	await openPdaSandbox(page);
 
 	// Shows unavailable status/warning
 	await expect(page.locator('.save')).toHaveClass(/unavailable/);

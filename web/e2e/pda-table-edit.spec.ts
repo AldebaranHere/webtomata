@@ -1,7 +1,7 @@
 // The editable Tabel tab of the PDA editor (Task T-061): the Alfabet block, the State block, the
 // editable transitions, the draft row, the refusals, one-step undo, touch sizes and axe.
 // The fixtures are the machines F and H of docs/agent/PLAN.md, built through the diagram.
-import { expect, expectNoAxeViolations, test } from './fixtures.ts';
+import { expect, expectNoAxeViolations, openPda as openPdaSandbox, test } from './fixtures.ts';
 import type { Page } from '@playwright/test';
 
 const panel = (page: Page) => page.getByRole('complementary', { name: 'Panel' });
@@ -13,11 +13,6 @@ const transitions = (page: Page) => panel(page).locator('.transitions');
 const rows = (page: Page) => transitions(page).locator('tbody tr');
 const toast = (page: Page) => page.getByRole('group', { name: 'Pesan' });
 const status = (page: Page) => page.getByRole('status');
-
-async function openPdaSandbox(page: Page) {
-	await page.goto('/sandbox?mode=pda');
-	await page.locator('.editor[data-ready]').waitFor();
-}
 
 async function addRailState(page: Page, x: number, y: number) {
 	await page.getByRole('button', { name: /^Tambah state/ }).click();

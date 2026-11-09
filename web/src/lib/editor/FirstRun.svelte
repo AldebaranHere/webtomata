@@ -1,26 +1,37 @@
+<script module lang="ts">
+	/** One row of "Coba contoh": the texts are already in the language of the page. */
+	export interface FirstRunRow {
+		id: string;
+		title: string;
+		description: string;
+		chip: string;
+	}
+</script>
+
 <script lang="ts">
-	import { getLocale, t } from '#lib/i18n/index.svelte.ts';
-	import type { Example } from '#lib/examples/examples.ts';
+	import { t } from '#lib/i18n/index.svelte.ts';
 
 	// "Coba contoh": what an empty Sandbox shows. A short list of examples (one click each), a way to
 	// start from an empty canvas, and the optional tour. It sits over the empty canvas on a laptop and
-	// is a sheet at the bottom on a phone. It goes away by itself when a state is added.
+	// is a sheet at the bottom on a phone. It goes away by itself when a state is added. The FSM maps
+	// its `Example`s to rows; the PDA passes its own rows, and no tour.
 	let {
 		examples,
-		tourSeen,
+		tourSeen = false,
 		failed,
 		onexample,
 		onblank,
 		ontour
 	}: {
-		examples: readonly Example[];
+		examples: readonly FirstRunRow[];
 		/** The tour was seen on this device: it is no longer offered here (the "?" button has it). */
-		tourSeen: boolean;
+		tourSeen?: boolean;
 		/** The last example could not be opened. */
 		failed: boolean;
 		onexample: (id: string) => void;
 		onblank: () => void;
-		ontour: () => void;
+		/** Where the tour opens. No function, no tour button (the PDA mode has no tour yet). */
+		ontour?: () => void;
 	} = $props();
 </script>
 
@@ -34,12 +45,10 @@
 				<li>
 					<button type="button" class="example" onclick={() => onexample(example.id)}>
 						<span class="text">
-							<span class="name">{example.title[getLocale()]}</span>
-							<span class="about">{example.description[getLocale()]}</span>
+							<span class="name">{example.title}</span>
+							<span class="about">{example.description}</span>
 						</span>
-						<span class="kind"
-							>{t(example.kind === 'dfsm' ? 'first.kind_dfsm' : 'first.kind_ndfsm')}</span
-						>
+						<span class="kind">{example.chip}</span>
 					</button>
 				</li>
 			{/each}
@@ -50,8 +59,8 @@
 		<button type="button" class="blank" onclick={onblank}>{t('first.blank')}</button>
 
 		<div class="foot">
-			{#if !tourSeen}
-				<button type="button" class="tour" onclick={ontour}>{t('first.tour')}</button>
+			{#if !tourSeen && ontour}
+				<button type="button" class="tour" onclick={() => ontour?.()}>{t('first.tour')}</button>
 			{/if}
 			<p class="privacy">
 				<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">

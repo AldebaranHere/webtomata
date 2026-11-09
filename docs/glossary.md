@@ -124,3 +124,5 @@ Added in PDA editor panel (`TODO(review)`): puncak stack (top of the stack), tra
 
 Added in PDA determinism badge (`TODO(review)`): pasangan bersaing (competing pair), deterministik (deterministic), non-deterministik (non-deterministic), Bukan DPDA (not a DPDA; the badge of a DPDA that has competing pairs). The two sentences of the badge (`Keduanya membaca …` and `Salah satunya tidak membaca input …`, `pda_editor.compete_same_read` and `pda_editor.compete_epsilon_read`) are `TODO(review)` too: when the two pops are the same they are true but read strangely ("pop ε adalah awalan dari pop ε"), and the owner may want a shorter wording.
 
+Added in the PDA first-run card (T-073, `TODO(review)`): palindrom (palindrome) and penanda tengah (centre marker; the card's line for `wcwᴿ` says "penanda c di tengah"). The sample titles of T-033 already use "palindrom" (`pda-samples.ts`); these entries make the words of the card explicit.
+

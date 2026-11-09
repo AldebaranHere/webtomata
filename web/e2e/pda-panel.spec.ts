@@ -1,7 +1,13 @@
 // PDA panel e2e tests (E1 to E8 of Task T-051):
 // Tabs (Tabel, Definisi), kind switch (DPDA | NDPDA), checks line, table view, definition view,
 // + n lagi interaction, axe, and engine worker timing.
-import { expect, expectNoAxeViolations, test } from './fixtures.ts';
+import {
+	dismissFirstRun,
+	expect,
+	expectNoAxeViolations,
+	openPda as openPdaSandbox,
+	test
+} from './fixtures.ts';
 import type { Page } from '@playwright/test';
 
 const canvas = (page: Page) => page.getByRole('application', { name: 'Kanvas mesin' });
@@ -9,11 +15,6 @@ const panel = (page: Page) => page.getByRole('complementary', { name: 'Panel' })
 const tab = (page: Page, name: string) => panel(page).getByRole('tab', { name });
 const stateBtn = (page: Page, name: string) =>
 	page.getByRole('button', { name: new RegExp(`^State ${name}(,|$)`) });
-
-async function openPdaSandbox(page: Page, query = '') {
-	await page.goto(`/sandbox?mode=pda${query}`);
-	await page.locator('.editor[data-ready]').waitFor();
-}
 
 async function addState(page: Page, x: number, y: number) {
 	const addBtn = page.getByRole('button', { name: /^Tambah state/ });
@@ -98,12 +99,15 @@ test.describe('E1: Panel tabs and layout', () => {
 		await expect(defTab).toHaveAttribute('aria-selected', 'true');
 		await page.reload();
 		await page.locator('.editor[data-ready]').waitFor();
+		// A reload of the still-empty record shows the card again; the panel waits behind it.
+		await dismissFirstRun(page);
 		await expect(tab(page, 'Definisi')).toHaveAttribute('aria-selected', 'true');
 
 		// If storage had an invalid tab (e.g. simulation from FSM), falls back to table
 		await page.evaluate(() => localStorage.setItem('webtomata.panel.tab', 'simulation'));
 		await page.reload();
 		await page.locator('.editor[data-ready]').waitFor();
+		await dismissFirstRun(page);
 		await expect(tab(page, 'Tabel')).toHaveAttribute('aria-selected', 'true');
 	});
 

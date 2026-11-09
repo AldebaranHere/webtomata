@@ -4,8 +4,8 @@ import { id } from './id.ts';
 import type { MessageKey } from './id.ts';
 import { pdaEn, pdaId } from './pda-messages.ts';
 
-// The 25 keys that T-063 moves out of the shared dictionary, and the 11 that T-061 adds
-// (docs/agent/PLAN.md, T-061: the editable Tabel tab).
+// The 25 keys that T-063 moves out of the shared dictionary, the 11 that T-061 adds (docs/agent/PLAN.md,
+// T-061: the editable Tabel tab), and the six of the first-run card (T-073).
 const PDA_KEYS: readonly MessageKey[] = [
 	'kind.dpda',
 	'kind.ndpda',
@@ -54,7 +54,14 @@ const PDA_KEYS: readonly MessageKey[] = [
 	'pda_editor.compete_show',
 	'pda_editor.note_ndpda_ok',
 	'pda_editor.note_dpda_no',
-	'pda_editor.pair_selected'
+	'pda_editor.pair_selected',
+	// The first-run card (T-073).
+	'pda_first.anbn_title',
+	'pda_first.anbn_description',
+	'pda_first.wcwr_title',
+	'pda_first.wcwr_description',
+	'pda_first.wwr_title',
+	'pda_first.wwr_description'
 ];
 
 const parameters = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();

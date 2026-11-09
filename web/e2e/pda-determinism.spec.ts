@@ -4,7 +4,7 @@
 //
 // E8 of the task is T-051's own E8 ("the engine is not requested before the first draw"), which
 // must pass unedited; it runs as part of pda-panel and is not repeated here.
-import { expect, expectNoAxeViolations, test } from './fixtures.ts';
+import { expect, expectNoAxeViolations, openPda as openPdaSandbox, test } from './fixtures.ts';
 import type { Page } from '@playwright/test';
 
 const panel = (page: Page) => page.getByRole('complementary', { name: 'Panel' });
@@ -19,10 +19,6 @@ const transitions = (page: Page) => panel(page).locator('.transitions');
 const markedRows = (page: Page) => transitions(page).locator('tbody tr[aria-current="true"]');
 const edgeNode = (page: Page, from: number, to: number) =>
 	page.locator(`g.edge-node[data-edge="${from}>${to}"]`);
-async function openPdaSandbox(page: Page) {
-	await page.goto('/sandbox?mode=pda');
-	await page.locator('.editor[data-ready]').waitFor();
-}
 
 async function addState(page: Page, x: number, y: number) {
 	await page.getByRole('button', { name: /^Tambah state/ }).click();
