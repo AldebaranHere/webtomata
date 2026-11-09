@@ -2772,14 +2772,93 @@ Follow the rules of `AGENTS.md` for every shell command (the Playwright runs are
 
 ---
 
-## Task T-062 — PDA editor, part 11 of 12: the determinism badge and the competing pairs (draft)
+## Task T-070 — Competing edges drawn dashed and the second edge of a pair selected (draft)
 
-**Status:** proposed (after T-051 and T-063; T-061 is not needed)
+**Status:** proposed (after T-062)
 **Owner:** worker
 
-**Goal:** The badge under the kind switch (design section 5): **Deterministik**, **Non-deterministik · n pasangan bersaing ▾** (neutral) or **Bukan DPDA · n pasangan bersaing ▾** (warning), from `engine.pdaDeterminism`; a disclosure list of pairs, each with the state, the two transitions joined by `↔`, one sentence that says why they compete (`pda_editor.compete_same_read`, `pda_editor.compete_epsilon_read`, built in the UI from the transitions), and **Tunjukkan** (selects the first edge, marks both rows with the accent bar of T-051, focuses the first row; again on the same pair clears it); the note under the list for NDPDA and DPDA; the short badge text on a phone with the full text in `aria-label`. The planner decides then whether the dashed competing edges of a DPDA (design section 2) are drawn; that needs a change in the shared drawing and its own tests.
+**Goal:** Design section 2 of `design/screens/pda-editor.md`: in a **DPDA**, the edges that hold a competing pair are drawn dashed in `--color-warning` (in an NDPDA they stay solid), and **Tunjukkan** of T-062 gives both edges of a pair the selection stroke (T-062 selects the first edge and marks both rows only). Both change the shared drawing (`DiagramDrawing.svelte`, `EditorCanvas.svelte`, the edge input of `DiagramInput`), so they need FSM tests (the FSM diagram must not change) and a decision about how the diagram learns the pairs (a new optional field of `DiagramInput`, the badge's own result as input). Not before T-062 is merged; the planner writes the full spec then.
 
-**Depends on:** T-051, T-063 (its strings go into `pda-messages.ts`).
+**Depends on:** T-062.
+
+---
+
+## Task T-062 — PDA editor, part 11 of 12: the determinism badge and the competing pairs
+
+**Status:** todo
+**Owner:** worker
+**Branch:** `task/T-062-pda-determinism-badge`
+
+**Goal:** Under the kind switch of the PDA panel (both tabs) a badge says whether the machine is deterministic, from `engine.pdaDeterminism`, and, when there are competing transitions, opens a list of the pairs, each with the two transitions, one sentence that says why they compete, and **Tunjukkan** (`design/screens/pda-editor.md`, section 5). A student who builds a DPDA sees at once which two transitions break it and where they are; a student who builds an NDPDA sees that the pairs are fine. T-051 already shows the checks line (`pda_check.competing_transitions` for a DPDA); the badge is the full picture for both kinds.
+
+**Decisions (planner, 2026-11-09):**
+
+- **The data is the engine's.** `engine.pdaDeterminism(toEnginePda(doc))` returns `Competition[]`: `{ from, first, second }`, the two indices (zero-based) into the engine's transition order, which is the order of `doc.transitions` (the same mapping as `competing_transitions` in `pda-checks.ts`: row number = index + 1). No TypeScript port of the check (CLAUDE.md, principle 2).
+- **A second query, not a change of `checker.ts`.** `checker.ts` is shared with the FSM and is typed for `Issue[]`. Write `pda-determinism.ts` with a small `createDeterminism({ query, delayMs })` that follows the same rules as the checker (200 ms debounce after a change, a sequence number so that an answer for an older document is dropped, `dispose`), asks again after every change of the document and once after the first draw, and keeps `status` (`idle | checking | ready | failed`) and `pairs`. It is tested with a fake `query`. An engine that fails shows no badge (the checks line already shows the calm notice with its retry; do not show a second one). While it is `checking` the previous badge is hidden, not kept: **a badge never shows the answer for an older document.**
+- **When the badge shows** (design table): no transition in the document: nothing. No pair: **Deterministik**, tone success, and it is plain text (a `<p>` or `<span>` with `role="status"` is not needed), not a button, because there is nothing to open. One or more pairs: a button (the disclosure), neutral tone for an NDPDA, warning tone for a DPDA: **Non-deterministik · n pasangan bersaing ▾** and **Bukan DPDA · n pasangan bersaing ▾**. The tone is never the only sign: the text says the same. Use the tokens the design names (`--color-success-tint` and `-ink`, `--color-neutral-tint`, `--color-warning-tint` and `-ink`); run `pnpm check:contrast` (the pre-push hook does) and, if the tool lists color pairs, add the new ones to it.
+- **The disclosure:** a button full width of the panel and 44 px high, `aria-expanded` and `aria-controls`; closed when the page opens; the list opens under it (no popover); it stays open while the document changes, and goes back to closed when the pairs are gone. The list is a `<ul>`; under the cards, the note: `pda_editor.note_ndpda_ok` for an NDPDA, `pda_editor.note_dpda_no` for a DPDA.
+- **A pair** is an `<li>` card: the state's name and a colon (`q0:`), the two transitions as the diagram writes them (`transitionLabel(doc, t)` of `diagram/pda-diagram.ts`; do not write a second one) joined by ` ↔ `, the reason sentence, and the button **Tunjukkan** (44 px). The cards are in the engine's order.
+- **The reason sentence is built in the UI from the two transitions** by a pure function `competitionReason(doc, pair)` in `pda-determinism.ts`, from the definition: two transitions from one state compete when one of them reads ε or both read the same symbol, and one pop is a prefix of the other (an empty pop is a prefix of every pop). Let `t1` and `t2` be the transitions at `first` and `second`. If both read the same symbol `c`: key `pda_editor.compete_same_read { read: c, pop1, pop2 }`; otherwise (one of them, or both, reads ε): key `pda_editor.compete_epsilon_read { pop1, pop2 }`. In both, `pop1` is the pop that is the prefix and `pop2` the other, so when `t2.pop` is a prefix of `t1.pop` and not the other way round the two are swapped; when the pops are equal, `pop1` is `t1.pop`. Pops are written with `formatStackSeq` and the stack separator of the document (`ε` for empty). The sentence is `Keduanya membaca {read}, dan pop {pop1} adalah awalan dari pop {pop2}.` and `Salah satunya tidak membaca input, dan pop {pop1} adalah awalan dari pop {pop2}.` (and the English). When both pops are the same the sentence is still true but reads strangely ("pop ε adalah awalan dari pop ε"); keep the design's wording and mark the two keys `TODO(review)` in the glossary note, so that the owner can change the texts later.
+- **Tunjukkan** (the selection is never in the document or the history): it selects the edge of the first transition (`editor.selectEdge(t1.from, t1.to)`), marks the rows of **both** transitions with the accent bar of T-051 (the `marked` set of `PdaEditor.svelte`, indices `first` and `second`, with `markedEdge` the first edge, so that the rule that clears the marks stays as it is), and announces `pda_editor.pair_selected { first, second }` (row numbers, one-based). Focus: when the Tabel tab is open, on the first control of the first row (the Dari field; give `PdaTableView` a way to focus a row, an exported function or a request prop, and say which); when the Definisi tab is open, on the first transition's edge in the diagram (the edge node of the canvas that `+ n lagi` and the edge tests already reach). Pressing **Tunjukkan** again on the same pair clears the marks and the edge selection and says `editor.selection_cleared`; the button of the shown pair has `aria-pressed="true"`. The shown pair is forgotten whenever the marks are cleared by T-051's rule (a change of the document, another selection).
+- **The second edge** of a pair that lies on another edge does not get a selection stroke, and the competing edges of a DPDA are not drawn dashed (design section 2): both change the shared drawing and need FSM tests. They are left to T-070 (proposed).
+- **The head block is written once.** `PdaEditor.svelte` repeats the kind switch and the checks line in the two tab snippets (T-051). Make one snippet `head` (kind switch, badge, checks line) and use it in both; this is the only refactor of that file in this task.
+- **The phone:** the badge is one row at 360 px: the visible text is short (`Non-det. · {count} ▾`; `Bukan DPDA · {count} ▾` and `Deterministik` are short already) and the button's `aria-label` carries the full text. Switch the visible text with the phone rule that the editor uses (`max-width: 39.99rem`), by two spans of which one is `display: none`, not by JavaScript. The list opens inline; nothing needs a hover.
+- **Strings only in `pda-messages.ts`** (ADR 0050), both languages. Keys: `pda_editor.badge_deterministic`, `pda_editor.badge_nondeterministic { count }`, `pda_editor.badge_nondeterministic_short { count }`, `pda_editor.badge_not_dpda { count }`, `pda_editor.compete_same_read { read, pop1, pop2 }`, `pda_editor.compete_epsilon_read { pop1, pop2 }`, `pda_editor.compete_show`, `pda_editor.note_ndpda_ok`, `pda_editor.note_dpda_no`, `pda_editor.pair_selected { first, second }`, and any other that you need for an accessible name (say which). Texts: `Deterministik`, `Non-deterministik · {count} pasangan bersaing`, `Non-det. · {count}`, `Bukan DPDA · {count} pasangan bersaing`, `Tunjukkan`, `Pada NDPDA ini boleh. Pada DPDA setiap pasangan menjadi kesalahan.`, `Pada DPDA ini tidak boleh. Ubah salah satu transisi, atau pilih NDPDA.`; write the English. Add "pasangan bersaing" (competing pair) to `docs/glossary.md` with `TODO(review)` if it is not there.
+
+**Scope (files):**
+
+- New: `web/src/lib/editor/pda-determinism.ts` (the query, the reason, the model of the badge: tone, text key, count) and `pda-determinism.test.ts`; `web/src/lib/editor/PdaDeterminismBadge.svelte` (the badge, the list, the cards); `web/e2e/pda-determinism.spec.ts`; `docs/decisions/0052-pda-determinism-badge.md`.
+- Edit: `web/src/lib/editor/PdaEditor.svelte` (the `head` snippet, the query, `Tunjukkan` and its focus), `web/src/lib/editor/PdaTableView.svelte` and `PdaTransitionsBlock.svelte` (only what is needed to focus a row), `web/src/lib/i18n/pda-messages.ts` and its test if a key list is tested, `docs/glossary.md`, `docs/agent/PLAN.md` (status).
+
+**Non-goals:** no dashed competing edges and no second selection stroke (T-070); no change to `checker.ts`, `KindSwitch.svelte`, `SidePanel.svelte`, `EditorCanvas.svelte`, `DiagramDrawing.svelte` or any FSM file; no change in `crates/`; no new dependency; no string in `id.ts` or `en.ts`; no saved machines, files or examples (T-052); no simulation (T-038).
+
+**Fixtures (derive the pairs by hand first, then check each with the real engine and the real functions, and paste both):**
+
+- *Machine G* (as in T-051): Σ {a, b}, Γ {A}; q0 (start), q1 (accepting); rows 1 `q0|ε|ε|ε|q1`, 2 `q0|a|ε|A|q0`, 3 `q0|b|A|ε|q1`, 4 `q1|b|A|ε|q1`. As a DPDA and as an NDPDA the engine gives two pairs: `{from:0, first:0, second:1}` and `{from:0, first:0, second:2}`.
+- **F1, `competitionReason` on G:** pair (0,1): `t1` reads ε, `t2` reads `a`, both pops are empty: `compete_epsilon_read { pop1: 'ε', pop2: 'ε' }`. Pair (0,2): `t1` reads ε with an empty pop, `t2` reads `b` and pops `A`: `compete_epsilon_read { pop1: 'ε', pop2: 'A' }` (an empty pop is a prefix of `A`).
+- *Machine J* (an NDPDA): Σ {a}, Γ {A, B}; `(q0, a, A→ε, q0)` and `(q0, a, AB→ε, q1)`. **F2:** one pair; `compete_same_read { read: 'a', pop1: 'A', pop2: 'AB' }`.
+- *Machine K* (a DPDA): Σ {a}, Γ {A, B}; `(q0, ε, AB→ε, q1)` and `(q0, a, A→ε, q0)`. In the engine's order the ε-read transition is first. **F3:** one pair, and the pops are swapped because `t2.pop` is the prefix: `compete_epsilon_read { pop1: 'A', pop2: 'AB' }`.
+- *Machine F* (T-051's, a DPDA with no pair): **F4:** `pdaDeterminism` gives `[]`; the badge is **Deterministik**. The empty PDA: no badge.
+- **F5, the badge model:** DPDA with 2 pairs: warning, `badge_not_dpda { count: 2 }`; NDPDA with 2 pairs: neutral, `badge_nondeterministic { count: 2 }`; any kind with no pair: success, `badge_deterministic`; no transitions: none.
+
+**Tests (write them first; they must fail before the code):**
+
+- *U, `pda-determinism.test.ts`:* F1 to F3 (the reason, the swap, equal pops), F5 (the model), and the query with a fake `query`: (a) an answer that arrives after a newer request is dropped, (b) a failure gives `failed` and no pairs, (c) `dispose` stops everything, (d) one change, one request after the debounce (and a burst of changes, one request).
+- *E1 to E8, `e2e/pda-determinism.spec.ts`* (desktop and phone; all assertions unconditional): (E1) the badge for the four cases (no transition: none; F: **Deterministik**; G as NDPDA: neutral text with `2`; G as DPDA: warning text with `2`), and switching DPDA and NDPDA changes the text and tone at once, in both tabs; (E2) the disclosure: closed at the start, `aria-expanded` true after a click, the two cards of G with their transitions, their sentences (F1) and the note; Enter and Space work on the button; (E3) Tunjukkan on the first card of G with the Tabel tab open: the first edge is selected (`aria-pressed` on it), rows 1 and 2 have the accent bar (`aria-current`), the focus is on the Dari field of row 1, the announcement says rows 1 and 2; pressed again, everything is cleared; (E4) the same with the Definisi tab open: the focus is on the first transition's edge, and there is no table; (E5) an edit that removes the pair (delete a transition from the table) updates the badge to **Deterministik** and clears a shown pair; an edit that adds a competing transition to F updates the badge to one pair; (E6) stale answers: with the engine slowed (the technique of `editor-checks.spec.ts`), two quick edits (add a competing transition, then remove it) end with the badge that matches the last document; (E7) phone at 360 px: the visible text is short, the `aria-label` is the full text, the button is at least 44 px high, the card's Tunjukkan buttons too, nothing overflows sideways; `axe` finds no violation in any badge state (none, deterministic, neutral with the list open, warning with the list open), desktop and phone; (E8) the engine is not requested before the first draw of the PDA mode (the check of T-051's E8 still passes, unedited).
+- *F-shared, nothing else moves:* `pda-panel`, `pda-editor`, `pda-storage`, `pda-messages`, `pda-table-edit`, `switcher`, `editor-checks`, `editor-panel`, `editor-table` pass with no edit.
+
+**Acceptance criteria:**
+
+- AC1: U and E1 to E8 pass; they fail before the change (paste the failures of the tests-first run).
+- AC2: the specs of F-shared pass with no edit (pass counts on desktop and phone; `pda-storage` also on webkit-phone).
+- AC3: **Sizes from a clean build of `origin/staging` and of the branch, same machine:** no route's first JS grows by more than 0.1 KB (all the code is in the PDA chunk); give the PDA chunk's size before and after, raw and gzip. `pnpm check:contrast` passes.
+- AC4: **Eight deliberate breaks, each run on the final code, with the failing line and file:line pasted and the one line of `git diff` that is the break** (a break run before your last change does not count): (B1) swap the tones (an NDPDA gets the warning tone: E1 fails); (B2) show `pairs.length + 1` (E1 fails); (B3) mark rows `first + 1` and `second + 1` (E3 fails); (B4) accept a stale answer, by removing the sequence check (U fails, and E6); (B5) make the second press of Tunjukkan not clear (E3 fails); (B6) do not swap the pops (U, F3 fails); (B7) show the badge when there is no transition (E1 fails); (B8) drop the `aria-label` of the phone's short text (E7 fails).
+- AC5: the new keys are in `pda-messages.ts` only, in both languages; `i18n.test.ts` and `pda-messages.test.ts` pass; the report lists every key.
+- AC6: `pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens`, Vitest, `pnpm build && pnpm size` pass; `git diff --stat` shows no FSM file (`checker.ts` in particular) and nothing in `crates/`.
+
+**Verification:**
+
+```
+pnpm --filter web exec vitest run src/lib/editor/pda-determinism.test.ts src/lib/i18n
+pnpm build && pnpm size
+pnpm check:contrast
+pnpm --filter web exec playwright test pda-determinism pda-panel pda-editor pda-storage pda-messages pda-table-edit switcher editor-checks editor-panel editor-table --project=desktop
+pnpm --filter web exec playwright test pda-determinism pda-panel pda-editor pda-storage pda-messages pda-table-edit --project=phone
+pnpm --filter web exec playwright test pda-storage --project=webkit-phone
+```
+
+Follow the rules of `AGENTS.md` for every shell command (long runs as background tasks, the stuck rule). Quote the lines that you changed from `git diff`, not from memory.
+
+**Rollback:** `git revert <sha>`. The badge goes; nothing in the documents or the formats changes.
+
+**Depends on:** T-051, T-063 and T-061 (all merged).
+
+**Notes for worker:**
+
+- Read ADR 0049, 0050 and 0051, then `PdaEditor.svelte` (the snippets, `marked`, `handleMore`), `pda-checks.ts` (the same index mapping), `diagram/pda-diagram.ts` (`transitionLabel`, `formatStackSeq`, `stackSeparator`), `checker.ts` (to copy its rules, not to change it), `PdaTableView.svelte` and `PdaTransitionsBlock.svelte`.
+- Before you write anything, check with real commands and paste the output: the pairs the real engine gives for G, J and K as DPDA and NDPDA; that the `first` and `second` indices are indices into `doc.transitions` for each of them; the names of the tokens in `tokens.css` and what `pnpm check:contrast` reads; how an edge node of the canvas is focused today (what `+ n lagi`'s tests use); the name of the editor method that clears the selection; and what a row needs so that the badge can focus its first control.
+- The risk to watch is a badge or a shown pair that belongs to an older document (the stale answer, and the marks that outlive an edit), and the focus when the Tabel tab is not the open one.
+- Another worker may be working in a different folder at the same time. If your PR is merged second and `docs/agent/REPORT.md` conflicts, merge `origin/staging` into your branch and keep your own report.
 
 ---
 

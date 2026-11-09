@@ -491,3 +491,12 @@ Format:
 - Alternatives considered: raise the four bounds (a number that has to be larger than the worst load, and does not catch a 10x accident any more); move the four tests to a separate benchmark script that the hook does not run (the accident is then not caught in the normal run); retry a failed timing test (a test that is retried cannot be trusted).
 - Reversible? yes
 - Affects: `web/src/lib/editor/diagram/geometry.test.ts`, `web/src/lib/editor/history.property.test.ts`, `web/src/lib/questions/load.test.ts`
+
+## 2026-11-09 — T-062 (the determinism badge) goes to DeepSeek; dashed edges wait for T-070
+
+- Decider: planner
+- Context: T-061 is merged, so T-062 no longer shares files with a task in flight. T-062 needs a second engine query next to the checks, the pairs' sentences built in the UI, and a Tunjukkan that selects an edge and marks two rows. The design also wants competing edges dashed in a DPDA and both edges of a pair selected; both change the shared drawing (DiagramDrawing, EditorCanvas) that the FSM uses.
+- Decision: T-062 is the badge, the disclosure list, the pair cards with their reason sentences, and Tunjukkan (first edge selected, both rows marked, focus on the first row or on the first edge, a second press clears). The query lives in a new `pda-determinism.ts` that follows the checker's rules (debounce, a sequence number, dispose) without changing `checker.ts`, which the FSM shares. A badge never shows an answer for an older document. The head block of the panel (kind switch, badge, checks) becomes one snippet in `PdaEditor.svelte`. New strings go in `pda-messages.ts` only. Dashed edges and the second selection stroke are T-070 (proposed, after T-062). DeepSeek takes T-062 (T-061 needed one test-only fix round; its pre-flight checks found the spec's flaws before coding).
+- Alternatives considered: generalize `checker.ts` to carry the pairs (a change in a file the FSM shares, which needs FSM tests); keep the previous badge while a new answer is awaited (it can say something false about the document on screen); draw the dashed edges in this task (a change of the shared drawing in a task that is already large).
+- Reversible? yes
+- Affects: `web/src/lib/editor/PdaEditor.svelte`, `PdaTableView.svelte`, `PdaTransitionsBlock.svelte`, `web/src/lib/i18n/pda-messages.ts`, `docs/glossary.md`
