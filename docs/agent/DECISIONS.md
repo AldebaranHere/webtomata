@@ -518,3 +518,12 @@ Format:
 - Alternatives considered: ignore unhandled errors in the runner (the same bug with no signal); raise the call timeout (it only moves the day it fires, and a 10 s call timeout is T-064's decision); mock the engine in every test (hides the real client that `client.test.ts` and the `.wasm` tests exist to check); only re-run on a red job (the repo stays red at random for every PR).
 - Reversible? yes
 - Affects: the leaking test file(s), one guard helper or setup file, `docs/agent/PLAN.md` (T-072); `web/src/lib/engine/client.ts` only if the planner agrees to a read-only count after the worker's pre-flight.
+
+## 2026-11-09 — T-052 is split in three (T-073, T-074, T-075); T-073 is specified first
+
+- Decider: planner
+- Context: the draft of T-052 (part 12 of 12) held three screens (the first-run card, the "Mesin saya" list with a type chip, the files with their calm error), a change in the shared library and in the shared first-run card, and a fuzzed parser. T-056 already stores PDA records apart from the FSM's, and the engine already has `importPdaJff` and `exportPdaJff`; the PDA workstation passes no first-run, no library and no file to the editor. A reviewer could not read all of it in one sitting, and the first part (the examples) has no dependency on the other two.
+- Decision: T-073 is the first-run card with the three samples of T-033 (`aⁿbⁿ`, `wcwᴿ`, `wwᴿ`), opened as a new PDA record, no tour, the PDA texts in the lazy `pda-messages.ts`, and the smallest change to the shared `FirstRun.svelte` (no route's first JS grows by more than 0.1 KB; if that cannot hold, a separate card in the lazy chunk, after the planner agrees). T-074 (the list with a type chip) and T-075 (open and export files) stay drafts with their open questions, and are specified when T-073 is merged.
+- Alternatives considered: keep T-052 whole (an unreviewable diff); put the examples in `content/examples/` as JSON (that format is the FSM's, typed with `Kind`, and a PDA needs a stack alphabet and a three-field label); start with the files (the most security-sensitive part, and the least useful to a student who opens the PDA mode for the first time).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-052, T-073, T-074, T-075); later `web/src/lib/editor/FirstRun.svelte`, `Editor.svelte`, `PdaEditor.svelte`, `PdaWorkstation.svelte`, `web/src/lib/i18n/pda-messages.ts`
