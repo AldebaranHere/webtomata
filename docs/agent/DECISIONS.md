@@ -527,3 +527,12 @@ Format:
 - Alternatives considered: keep T-052 whole (an unreviewable diff); put the examples in `content/examples/` as JSON (that format is the FSM's, typed with `Kind`, and a PDA needs a stack alphabet and a three-field label); start with the files (the most security-sensitive part, and the least useful to a student who opens the PDA mode for the first time).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-052, T-073, T-074, T-075); later `web/src/lib/editor/FirstRun.svelte`, `Editor.svelte`, `PdaEditor.svelte`, `PdaWorkstation.svelte`, `web/src/lib/i18n/pda-messages.ts`
+
+## 2026-11-09 — T-073 amended after the worker's pre-flight (the example replaces an empty record; the panel hides)
+
+- Decider: planner
+- Context: DeepSeek read `library.openExample` and `placeExample` as the spec told it to, and found that the FSM rewrites the current record in place when it is empty and untouched, and makes a new record only otherwise, so that "Mesin saya" keeps no empty machine. The spec said "makes a new record" and "no new store function", which together would leave an empty PDA record behind in T-074's list. It also found that the PDA e2e files all start on an empty PDA, that F3 and F5 had two small mistakes (a call the page cannot make; "two examples" for the FSM's three), and that the FSM hides its side panel while the card shows.
+- Decision: the PDA example goes through one new function, `placePdaExample` in `pda-work.ts`, the twin of `placeExample` (it returns the record and the document read back from the store); the workstation has its own `editorKey` because a replaced record keeps its id; the panel is hidden while the card shows; the six PDA e2e files and the key ledger of `pda-messages.test.ts` may change (one shared helper); F3 and F5 are corrected and F7 (the unit test of `placePdaExample`) is added.
+- Alternatives considered: always make a new record and leave the empty one for T-074 to list (an empty PDA row on every first visit); delete the empty record (a second failure mode that `placeExample` does not have); keep the PDA panel visible behind the card (the alphabet chips could be edited behind the card, and the tab order would not be rows then blank).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-073), later `web/src/lib/storage/pda-work.ts`, `PdaWorkstation.svelte`, `PdaEditor.svelte`
