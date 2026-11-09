@@ -164,7 +164,7 @@ export const en: Record<keyof typeof id, string> = {
 		'WebTomata opens .jff files (from JFLAP) and JSON files from WebTomata. This file is neither. Your machine has not changed.',
 	'import.unreadable': 'This file cannot be read. Your machine has not changed.',
 	'jff.unsupported_type':
-		'This JFLAP file has the type "{type}". WebTomata can only open finite automata (type fa) so far. Your machine has not changed.',
+		'This JFLAP file has the type "{type}". WebTomata can open finite automata (type fa) and pushdown automata (type pda). Your machine has not changed.',
 	'jff.xml_invalid':
 		'This .jff file is damaged: its XML cannot be read at line {line}, column {column}. Your machine has not changed.',
 	'jff.invalid_structure':

@@ -182,8 +182,8 @@ const gridPlace = (index: number) => ({
 	y: 100 + 130 * Math.floor(index / 6)
 });
 
-/** The layout (names and places) of a document, for a JFLAP export. */
-export function jffLayout(doc: MachineDocument): JffState[] {
+/** The layout (names and places) of a document, for a JFLAP export. It reads the states only, so a PDA document uses it too. */
+export function jffLayout(doc: { readonly states: readonly StateEntry[] }): JffState[] {
 	return doc.states.map(({ id, name, x, y }) => ({ id, name, x, y }));
 }
 

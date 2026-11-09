@@ -7,17 +7,17 @@ import { expect, openSandbox, test } from '../fixtures.ts';
 const fixture = (name: string) =>
 	readFileSync(fileURLToPath(new URL(`../../src/lib/share/fixtures/${name}`, import.meta.url)));
 
-test('a .jff file opens as a new machine, and a PDA is refused', async ({ page }) => {
+test('a .jff file opens as a new machine, and a grammar is refused', async ({ page }) => {
 	await openSandbox(page);
 	await page.getByRole('button', { name: /^Mesin saya \(/ }).click();
 	const list = page.getByRole('dialog', { name: 'Mesin saya' });
 	const field = list.locator('input[type="file"]');
 	await field.setInputFiles({
-		name: 'pda.jff',
+		name: 'grammar.jff',
 		mimeType: 'application/octet-stream',
-		buffer: fixture('pda.jff')
+		buffer: fixture('grammar.jff')
 	});
-	await expect(list.getByRole('alert')).toContainText('bertipe "pda"');
+	await expect(list.getByRole('alert')).toContainText('bertipe "grammar"');
 	await field.setInputFiles({
 		name: 'even-a.jff',
 		mimeType: 'application/octet-stream',

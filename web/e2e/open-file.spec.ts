@@ -76,11 +76,11 @@ test('a JSON file that was downloaded opens again as the same machine, as a new 
 	await expect(state(page, 'q0')).toBeVisible();
 });
 
-test('a PDA, a grammar or a Turing machine is refused calmly, with its type, and nothing changes', async ({
+test('a grammar or a Turing machine is refused calmly, with its type, and nothing changes', async ({
 	page
 }) => {
 	await openSandbox(page);
-	for (const type of ['pda', 'grammar', 'turing']) {
+	for (const type of ['grammar', 'turing']) {
 		await openFile(page, { name: `${type}.jff`, buffer: fixture(`${type}.jff`) });
 		await expect(list(page).getByRole('alert')).toContainText(`bertipe "${type}"`);
 		await expect(list(page).getByRole('alert')).toContainText('Mesinmu tidak berubah.');
@@ -109,7 +109,7 @@ test('the same file can be chosen again, and the button is large enough for a fi
 	page
 }) => {
 	await openSandbox(page);
-	await openFile(page, { name: 'pda.jff', buffer: fixture('pda.jff') });
+	await openFile(page, { name: 'grammar.jff', buffer: fixture('grammar.jff') });
 	await expect(list(page).getByRole('alert')).toBeVisible();
 	await openFile(page, { name: 'even-a.jff', buffer: fixture('even-a.jff') });
 	await expect(note(page)).toContainText('even-a');

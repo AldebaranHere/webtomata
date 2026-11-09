@@ -1,14 +1,39 @@
-# Task T-074 Report — PDA editor, part 12b: "Mesin saya" lists FSMs and PDAs
+# Task T-075 Report — PDA editor, part 12c: open and download `.jff` and JSON for a PDA
 
-Branch: `task/T-074-pda-library`, cut from `staging` at `a4b18ab` (PR 207, amended T-074).
+Branch: `task/T-075-pda-files`, cut from `staging` at `11ce7bb` (PR 210, amended T-075 spec).
 
 Commits:
-- `6b9948b` `docs(agent): start task T-074` — `docs/agent/PLAN.md` set to `in-progress`.
-- `b2299f1` `feat(storage): list FSMs and PDAs in Mesin saya` — unified list, twins in `pda-work.ts`, hooks, `open-store.ts` decoupling, tests, and ADR 0054.
-- `01e2658` `docs(agent): record task T-074 (done)` — `PLAN.md` set to `done`, `DECISIONS.md`, and initial report.
-- `HEAD` `fix(editor): honour initial PDA openRequest and review cleanups` — review fixes (`F3b`, `F3c`, `pda-work.ts` imports, `openLatestPda` fallback, and updated report).
+- `05f9352` `docs(agent): start task T-075` — `docs/agent/PLAN.md` set to `in-progress`.
+- `72afe30` `feat(editor): open and download .jff and JSON for a PDA` — the reader, the lazy opener, the dialog, the tests, the fuzz target and ADR 0055.
+- this commit — `docs(agent): record task T-075`.
 
-**Status: ready for review.** AC1 to AC5 hold; actual command outputs are pasted below.
+**Status: AC1–AC3, AC5 and AC6 hold. AC4 holds with the owner's one-time exception of 2026-11-10:** the sandbox first JS grows by 696 bytes and the three question pages by 769 bytes (up to 0.8 KB), paid back by T-068; the other routes shrink. The numbers, the cause and the four measured alternatives are in section 5.
+
+---
+
+## 0. The two numbers the planner asked for after "Go"
+
+**The byte sizes of the first-JS chunks** (clean build of `11ce7bb`, the same web code as the base; the sum of the gzip of every `.js` the route's HTML references, exactly what `pnpm size` sums):
+
+```
+sandbox.html   128324 bytes gz (23 chunks)
+index.html      83973 bytes gz (20 chunks)
+soal.html       84522 bytes gz (19 chunks)
+```
+
+(T-073/T-074 measured the same way: `sandbox.html` 125.313 KB / 128,321 bytes in the T-074 report.)
+
+**A PDA file chosen in the FSM mode makes exactly one record.** Function-level run of the exact steps the spec names (`createMachine` for the open FSM record, then `createPdaMachine`, then the workstation's `openPdaById` for a request present at mount), using the real `storage/machines.ts`, `storage/pda-work.ts` and `editor/pda-samples.ts`:
+
+```
+before          : 1 record(s) [ 'fsm:1755428c' ]
+after create    : 2 record(s) [ 'fsm:1755428c', 'pda:9e33f700' ]
+request opened  : ok (returns before openLatestPda)
+after mount     : 2 record(s)
+openLatestPda   : opens the file record | 2 record(s)
+```
+
+Exactly one new PDA record; the mount adds none. The e2e F4 confirms it in the browser (section 2).
 
 ---
 
@@ -16,500 +41,242 @@ Commits:
 
 | File | What |
 | --- | --- |
-| `web/src/lib/storage/library.ts` | Extended `Entry` with `type?: 'fsm' \| 'pda'` and `kind: Kind \| PdaKind`. `listEntries(store)` maps both FSM and PDA records sorted by `openedAt` descending, then `id`. Added `checkStoredPda(text)`. |
-| `web/src/lib/storage/library.svelte.ts` | Added `mode`, `pdaCurrentId`, and getter `currentId` reflecting the active machine of the showing mode. Added hooks `openPda`, `flushPda`, `newPdaMachine`, `switchToFsm`. Added `openEntry(entry)` which closes dialog and switches mode when opening an entry of the other kind. Updated `deleteMachine` to keep the student in their mode (opening next readable PDA row or new empty PDA when deleting open PDA; skipping PDA rows when deleting open FSM). Delegated `duplicate` and `rename` to PDA twins for PDA entries. |
-| `web/src/lib/storage/pda-work.ts` | Added `duplicatePdaMachine(store, id, now)` and `renamePdaStored(store, id, title, now)`. |
-| `web/src/lib/storage/open-store.ts` (new) | Decoupled `openStore` and `OpenedStore` into a dedicated file without importing heavy library or autosave modules. |
-| `web/src/lib/storage/index.ts` | Re-exports `openStore` and `OpenedStore` from `./open-store.ts` for backward compatibility. |
-| `web/src/lib/editor/LibraryDialog.svelte` | Uses `library.currentId` and `library.openEntry`. Shows existing kind chip (DFSM, NDFSM, DPDA, NDPDA). Hides "Bagikan" for PDA entries. Dynamically imports `pda-work.ts` for `duplicatePda` and `renamePda`. Closes action menu on rename submit/cancel. |
-| `web/src/lib/editor/PdaWorkstation.svelte` | Uses `library.store` and `library.persistent` instead of opening a second store. Registers hooks `flushPda`, `openPda`, `newPdaMachine`, and `renameCurrent` on the `library` instance. |
-| `web/src/lib/editor/PdaEditor.svelte` | Added `library` prop (`{ count, onopen }`), title bar and mobile dock "Mesin saya" buttons with matching responsive CSS, and exported `setTitle(title)`. |
-| `web/src/routes/sandbox/+page.svelte` | Synchronizes `library.mode` and handles mode switching upon opening a machine of the other formalism via `openPdaRow` and `pdaOpenRequest`. Filters `others` to FSM entries only (`entry.type !== 'pda'`). |
-| `web/e2e/pda-library.spec.ts` (new) | Playwright E2E coverage for F3, F4, F5, F7, F8. |
-| `web/src/lib/storage/pda-library.test.ts` (new) | Unit tests for F1, F2, F4, F6. |
-| `web/e2e/cross/pda-storage.spec.ts` | Updated S6 as approved by the owner: "in FSM mode, Mesin saya lists the PDA record with NDPDA chip, and FSM openLatest is not PDA". |
-| `web/src/lib/storage/pda-work.test.ts` | Updated line 165 assertion to `['A', 'P2', 'P1']` as approved by the owner. |
-| `docs/decisions/0054-pda-in-my-machines.md` | ADR for unified "Mesin saya" list, shared store, and `open-store.ts` decoupling. |
+| `web/src/lib/share/pda-files.ts` (new) | `isPdaFile` (size first, then the content sniff: `/<type>\s*pda\s*<\/type>/` for `.jff`, `/"kind"\s*:\s*"(dpda\|ndpda)"/` for JSON), `openPdaFile` (JSON through `parsePdaDocumentText`; `.jff` through `engine.importPdaJff` + `fromEnginePda` + the document gate; title from the file name), `pdaJffFile`, `pdaJsonFile`, and the two engine interfaces. No DOM. |
+| `web/src/lib/share/open-from-file.ts` (new) | The body of `openFromFile` moved out of the page, with both paths. FSM: unchanged behaviour, notes and notice; switches to the FSM mode after an FSM file in the PDA mode. PDA: read + check, `createPdaMachine`, `hide()`, clear `problem`, switch to PDA, `{id, seq}`, notice. Failures set `library.problem` and write nothing. |
+| `web/src/lib/share/PdaFileDialog.svelte` (new) | The download dialog: native `<dialog>`, sheet on a phone, "Unduh .jff" and "Unduh JSON", calm `jff.symbol_not_single_character`, saved line. Strings from `pda-messages.ts`. |
+| `web/src/lib/editor/PdaEditor.svelte` | The download button in the editor's own bar at every width (44 px, shown with at least one state) and the dialog, lazy-loaded with the live `snapshot.doc`. |
+| `web/src/routes/sandbox/+page.svelte` | `openFromFile` removed; one hook `library.openFile = (file) => import(…).then((m) => m.openFromFile(file, context))`. |
+| `web/src/lib/editor/document.ts` | `jffLayout`'s parameter widened to `{ readonly states: readonly StateEntry[] }` (type only; the spec said `files.ts`, but the function lives here). |
+| `web/src/lib/i18n/pda-messages.ts`, `.test.ts` | Seven dialog strings (`pda_files.*`) and the ledger. |
+| `web/src/lib/i18n/id.ts`, `en.ts` | `jff.unsupported_type` now names `fa` and `pda`; keeps `bertipe "{type}"` / `Mesinmu tidak berubah.` |
+| `fuzz/fuzz_targets/parse_pda_jff.rs` (new), `fuzz/Cargo.toml` | The fuzz target and its `[[bin]]`. |
+| `web/e2e/pda-files.spec.ts` (new) | F3, F4, F5, F8 (desktop and phone). |
+| `web/src/lib/share/pda-files.test.ts`, `pda-files.wasm.test.ts`, `open-from-file.test.ts` (new) | 32 unit tests (below). |
+| `web/e2e/open-file.spec.ts`, `web/e2e/cross/open-file.spec.ts` | The three tests the scope allows: the `pda` refusal leaves the loop, and the two refused-file fixtures use `grammar.jff`; the cross test is renamed. |
+| `web/eslint.config.js` | `pda-files.wasm.test.ts` added to the existing wasm-import allowlist (the repo's pattern for every wasm test; no rule changed). |
+| `docs/decisions/0055-pda-files.md` (new) | The decision. |
 
 ---
 
 ## 2. AC1 — F1 to F8
 
 ### Derivations
-- **F1 (Unified sorting & kinds):** A store with FSM opened at 100, PDA at 200, PDA at 150 must list PDA(200), PDA(150), FSM(100) with their respective chips (`NDPDA`, `DPDA`, `DFSM`), count 3. Questions (`soal:`) are excluded.
-- **F2 (FSM-only regression):** An FSM-only store yields identical entries with and without the PDA changes.
-- **F3 (Cross-formalism switching):** Tapping a PDA row from FSM mode switches URL to `?mode=pda` and loads the PDA document; tapping an FSM row from PDA mode removes `?mode=pda` and loads the FSM. Reload maintains the active mode and document.
-- **F4 (PDA row management):** Renaming non-open PDA updates title in store; duplicating adds a `(salinan)` row directly below with `openedAt - 1`; deleting removes the row with an undo toast (`Urungkan`).
-- **F5 (Deletion preserves mode):** Deleting open PDA opens the next readable PDA; deleting the last remaining PDA makes a new blank PDA (showing `FirstRun` card) in PDA mode without switching to FSM.
-- **F6 (Corrupt PDA records):** Unreadable PDA documents appear with `readable: false`, `reason: 'corrupt'`, and are never overwritten by actions on other machines.
-- **F7 (Rename open PDA):** Renaming the open PDA via dialog calls `pdaEditor.setTitle`, updates the editor bar title, supports Undo, and flushes autosave.
-- **F8 (Phone viewport & accessibility):** Modal acts as a bottom sheet on phone viewports with >=44px touch targets and zero axe-core violations.
 
-### Unit Tests (F1, F2, F4, F6)
+- **F1:** the `wcwᴿ` sample (DPDA, single-character symbols) is exported with `exportPdaJff(toEnginePda(doc), jffLayout(doc))`, opened with `openPdaFile` and the real engine, and exported again. States (id, name, place), transitions (same order), both alphabets, start and accepting are the same; only the title (the file name `wcwr`) and the kind (`ndpda`) differ; the two exports are byte-equal. The pre-flight measured the same at the function level.
+- **F2:** a `dpda` titled `PDA uji` → `pdaJsonFile` → `openPdaFile`: `pdaDocumentsEqual` true, kind `dpda`, title kept.
+- **F3:** a DPDA with the stack symbol `Z0` refuses the `.jff` with `jff.symbol_not_single_character { symbol: 'Z0' }`, files nothing, and the JSON still downloads (`PDA Z0.webtomata.json`); axe passes in that state.
+- **F4:** FSM mode (1 record) + a PDA `.jff` → 2 records (exactly 1 PDA, kind `ndpda`), `?mode=pda`, list closed, notice `File dibuka sebagai mesin baru: pda.`; + a PDA JSON in the PDA mode → 3 records (2 PDA); + an FSM `.jff` in the PDA mode → 4 records (still 2 PDA), the mode switches to FSM, the FSM states show.
+- **F5:** 1 MB + 1 byte (`import.too_big`, through the FSM reader because `isPdaFile` is false), an unknown name (`import.unknown_type`), `<type>pda</type>` with broken XML (`jff.xml_invalid`), a `.jff` whose read is `ab` (`jff.pda_read_not_single`), a PDA JSON whose state is not an object (`document.invalid_file`, `at: states[0]`), a PDA JSON over the state limit (`document.limit_exceeded`), and a store that refuses the write (`storage.failed`, unit test). Each leaves the record ids exactly as they were and keeps the list open; a later success closes the list and leaves no older failure.
+- **F6:** `fileName` with `/`, `:`, a trailing dot, an empty title and 200 characters, for `.jff` and `.webtomata.json`; the e2e download name is `PDA Z0.webtomata.json`.
+- **F7:** 200 seeded mutations of a valid PDA JSON and 200 of a valid PDA `.jff`: `isPdaFile` always returns a boolean, `openPdaFile` always returns a result, and every ok document passes `parsePdaDocumentText` again.
+- **F8:** the button and the three dialog buttons are ≥ 44 px; on a phone the dialog is a sheet (its bottom is the viewport bottom); no sideways scroll; axe clean; a file chosen in "Mesin saya" opens as in F4.
+
+### Unit and wasm tests
+
 ```
-$ pnpm --filter web exec vitest run src/lib/storage/pda-library.test.ts
- RUN  v5.0.3 /home/Aldebaran64/webtomata/web
-
- ✓ src/lib/storage/pda-library.test.ts (9 tests) 18ms
-   ✓ pda-library: listEntries (F1, F2, F6) (3)
-     ✓ F1: lists FSM and PDA records together, sorted by openedAt desc, with type and kind chip 18ms
-     ✓ F2: returns identical entries for an FSM-only store as before 2ms
-     ✓ F6: shows corrupt PDA record as unreadable, keeps doc text intact across actions 4ms
-   ✓ pda-library: duplicatePdaMachine and renamePdaStored (F4) (6)
-     ✓ duplicates a PDA with "(salinan)" suffix, openedAt - 1, and type "pda" 3ms
-     ✓ truncates title before "(salinan)" if close to limit 1ms
-     ✓ duplicate returns undefined if record does not exist or is unreadable 1ms
-     ✓ renames a stored PDA machine title and updates document doc text 2ms
-     ✓ refuses invalid title when renaming stored PDA 1ms
-     ✓ rename returns library.missing if id does not exist 1ms
-
- Test Files  1 passed (1)
-      Tests  9 passed (9)
-   Start at  04:21:43
-   Duration  492ms
+$ pnpm --filter web exec vitest run src/lib/share/pda-files.test.ts src/lib/share/pda-files.wasm.test.ts src/lib/share/open-from-file.test.ts
+ ✓ src/lib/share/pda-files.test.ts (19 tests) 30ms
+ ✓ src/lib/share/pda-files.wasm.test.ts (5 tests) 101ms
+ ✓ src/lib/share/open-from-file.test.ts (8 tests) 36ms
+ Test Files  3 passed (3)
+      Tests  32 passed (32)
 ```
 
-### Playwright E2E Tests (F3, F3b, F3c, F4, F5, F7, F8 on Desktop and Phone)
-```
-$ pnpm --filter web exec playwright test e2e/pda-library.spec.ts --project=desktop --project=phone
-Running 14 tests using 6 workers
+### Playwright (desktop and phone)
 
-  ✓   1 [desktop] › e2e/pda-library.spec.ts:37:1 › F3: tap row of the other kind switches mode and opens that machine; reload restores last left (3.6s)
-  ✓   2 [desktop] › e2e/pda-library.spec.ts:82:1 › F3b: tapping an older PDA row from FSM mode opens that older PDA, not the latest PDA (3.9s)
-  ✓   3 [desktop] › e2e/pda-library.spec.ts:127:1 › F3c: tapping a PDA row that passes checkStoredPda but fails readStoredPda shows unreadable alert and keeps open machine (4.2s)
-  ✓   4 [desktop] › e2e/pda-library.spec.ts:188:1 › F4: rename non-open PDA row, duplicate it, delete with Urungkan (3.5s)
-  ✓   5 [desktop] › e2e/pda-library.spec.ts:235:1 › F5: delete open PDA opens next PDA; delete only PDA keeps mode PDA and makes empty PDA (3.4s)
-  ✓   6 [desktop] › e2e/pda-library.spec.ts:275:1 › F7: rename open PDA through dialog updates editor title and supports undo (2.4s)
-  ✓   7 [desktop] › e2e/pda-library.spec.ts:301:1 › F8: phone viewport has >=44px touch targets and no axe violations (3.3s)
-  ✓   8 [phone] › e2e/pda-library.spec.ts:37:1 › F3: tap row of the other kind switches mode and opens that machine; reload restores last left (3.2s)
-  ✓   9 [phone] › e2e/pda-library.spec.ts:82:1 › F3b: tapping an older PDA row from FSM mode opens that older PDA, not the latest PDA (4.0s)
-  ✓  10 [phone] › e2e/pda-library.spec.ts:127:1 › F3c: tapping a PDA row that passes checkStoredPda but fails readStoredPda shows unreadable alert and keeps open machine (4.3s)
-  ✓  11 [phone] › e2e/pda-library.spec.ts:188:1 › F4: rename non-open PDA row, duplicate it, delete with Urungkan (4.0s)
-  ✓  12 [phone] › e2e/pda-library.spec.ts:235:1 › F5: delete open PDA opens next PDA; delete only PDA keeps mode PDA and makes empty PDA (3.7s)
-  ✓  13 [phone] › e2e/pda-library.spec.ts:275:1 › F7: rename open PDA through dialog updates editor title and supports undo (3.0s)
-  ✓  14 [phone] › e2e/pda-library.spec.ts:301:1 › F8: phone viewport has >=44px touch targets and no axe violations (3.6s)
-
-  14 passed (16.2s)
 ```
+$ pnpm --filter web exec playwright test pda-files open-file cross/library
+  4 skipped
+  64 passed (2.1m)
+```
+
+`pda-files.spec.ts` 8 (4 tests × desktop, phone), `open-file` 16 in 2 files (desktop, phone, firefox, webkit-phone), `cross/library` the rest (4 skipped are the Firefox phone-only tests).
 
 ---
 
-## 3. AC2 — FSM Regressions Check
+## 3. AC2 — the FSM does not change
 
-Existing library, storage, and cross-browser tests ran unedited and passed:
-- `web/src/lib/storage/library.test.ts`
-- `web/src/lib/storage/machines.test.ts`
-- `web/src/lib/storage/pda-work.test.ts` (line 165 updated to `['A', 'P2', 'P1']` as approved)
-- `web/e2e/cross/library.spec.ts`
-- `web/e2e/cross/pda-storage.spec.ts` (S6 updated as approved)
+Only the three named e2e tests changed (section 1). Everything else passes unedited:
 
 ```
-$ pnpm --filter web exec playwright test pda-library cross/library cross/pda-storage --project=desktop --project=phone
-Running 44 tests using 6 workers
-  2 skipped
-  42 passed (49.2s)
+$ pnpm --filter web exec playwright test open-file --list
+Total: 16 tests in 2 files
 ```
+
+and the full run above ran all 16 across the four projects, including `cross/library.spec.ts`. The share e2e (`share.spec.ts`) is not edited. The unit files `share/open-file.test.ts`, `open-file.wasm.test.ts`, `files.test.ts`, `files.wasm.test.ts` are not edited.
 
 ---
 
-## 4. AC3 — Size Budget Comparison
+## 4. AC3 — Fuzz
 
-The owner approved a one-time size budget exception for T-074: `sandbox.html` up to +0.60 KB and `index.html` up to +0.55 KB, accompanied by decoupling `openStore` into `web/src/lib/storage/open-store.ts`.
+```
+$ cd fuzz && cargo +nightly fuzz run parse_pda_jff -- -max_total_time=60
+Done 1837883 runs in 61 second(s)
+```
 
-| Route / Asset | Staging Baseline | T-074 Final | Delta | Status |
-| --- | --- | --- | --- | --- |
-| `index.html` | 81.50 kB | 82.00 kB | +0.50 kB | Pass (approved <= +0.55 kB) |
-| `sandbox.html` | 124.75 kB | 125.30 kB | +0.55 kB | Pass (approved <= +0.60 kB) |
-| `soal.html` | 83.66 kB | 82.50 kB | -1.16 kB | Benefited from `open-store.ts` split |
-| `panduan.html` | 83.71 kB | 81.10 kB | -2.61 kB | Benefited from `open-store.ts` split |
-| `tentang.html` | 82.26 kB | 80.40 kB | -1.86 kB | Benefited from `open-store.ts` split |
-| `wasm` | 237.00 kB | 237.00 kB | 0.00 kB | Unchanged |
+No crash. The target asserts that an imported PDA survives `to_pda_jff` → `parse_pda_jff` with an equal `Pda`.
 
 ---
 
-## 5. AC4 — Five Deliberate Breaks (B1 to B5)
+## 5. AC4 — Size (the one-time exception)
 
-Each guard was broken on the final code, caught by tests, and immediately restored.
+Clean builds of the base (`11ce7bb`) and of the branch (`72afe30`), gzip bytes, the same sum `pnpm size` prints:
 
-### Break B1: `listEntries` excludes PDA records
-**Diff:**
-```diff
---- a/web/src/lib/storage/library.ts
-+++ b/web/src/lib/storage/library.ts
-@@ -65,1 +65,1 @@
--	const records = (await store.list()).filter((record) => !isQuestionRecord(record.id));
-+	const records = (await store.list()).filter((record) => !isQuestionRecord(record.id) && !isPdaRecord(record));
-```
-**Failure output:**
-```
-$ pnpm --filter web exec vitest run src/lib/storage/pda-library.test.ts -t "F1: listEntries"
-FAIL  src/lib/storage/pda-library.test.ts > pda-library: listEntries (F1, F2, F6) > F1: lists FSM and PDA records together, sorted by openedAt desc, with type and kind chip
-AssertionError: expected [ { …(7) } ] to have a length of 3 but got 1
- ❯ src/lib/storage/pda-library.test.ts:28:19
-     28|   expect(entries).toHaveLength(3);
-       |                   ^
-```
+| Route | Before | After | Delta |
+| --- | --- | --- | --- |
+| `sandbox.html` | 128,324 | 129,020 | **+696** |
+| `soal/berakhiran-10.html` | 127,607 | 128,376 | **+769** |
+| `soal/jumlah-a-genap.html` | 127,607 | 128,376 | **+769** |
+| `soal/mengandung-101.html` | 127,607 | 128,376 | **+769** |
+| `index.html` | 83,973 | 83,812 | −161 |
+| `soal.html` | 84,522 | 84,455 | −67 |
+| `panduan.html` | 83,038 | 82,960 | −78 |
+| `panduan/berakhiran-x.html` | 89,387 | 89,340 | −47 |
+| `tentang.html` | 82,321 | 82,258 | −63 |
 
-### Break B2: Opening PDA row does not switch mode
-**Diff:**
-```diff
---- a/web/src/routes/sandbox/+page.svelte
-+++ b/web/src/routes/sandbox/+page.svelte
-@@ -123,3 +123,3 @@
- 	async function openPdaRow(id: string) {
--		if (activeMode !== 'pda') {
--			await selectMode('pda');
--		}
-+		// if (activeMode !== 'pda') {
-+		// 	await selectMode('pda');
-+		// }
- 		pdaOpenRequest = { id, seq: ++pdaOpenSeq };
-```
-**Failure output:**
-```
-$ pnpm --filter web exec playwright test pda-library -g "F3:" --project=desktop
-FAIL  e2e/pda-library.spec.ts:36:1 › F3: tap row of the other kind switches mode and opens that machine; reload restores last left
-Error: expect(page).toHaveURL(expected) failed
-Expected pattern: /mode=pda/
-Received string:  "http://127.0.0.1:4599/sandbox"
- ❯ e2e/pda-library.spec.ts:70:21
-     70| 	await expect(page).toHaveURL(/mode=pda/);
-       | 	                   ^
-```
+The wasm is unchanged (`engine_wasm_bg-VlyrwV86.wasm`, 237.0 KB). `pnpm size` passes (the tool's limit is 170 KB), but the task's 102-byte rule is over on four routes. **The owner granted a one-time exception on 2026-11-10: up to 0.8 KB on exactly these four routes, paid back by T-068.** The other routes shrank.
 
-### Break B3: Duplicating PDA does not add "(salinan)" suffix
-**Diff:**
-```diff
---- a/web/src/lib/storage/pda-work.ts
-+++ b/web/src/lib/storage/pda-work.ts
-@@ -226,5 +226,5 @@
- 	const record: SavedPdaMachine = {
- 		id: newId(),
- 		recordVersion: 1,
- 		type: 'pda',
--		title,
-+		title: read.doc.title,
- 		kind: titled.doc.kind,
-```
-**Failure output:**
-```
-$ pnpm --filter web exec vitest run src/lib/storage/pda-library.test.ts -t "duplicates a PDA"
-FAIL  src/lib/storage/pda-library.test.ts > pda-library: duplicatePdaMachine and renamePdaStored (F4) > duplicates a PDA with "(salinan)" suffix, openedAt - 1, and type "pda"
-AssertionError: expected 'aⁿbⁿ (n ≥ 1)' to be 'aⁿbⁿ (n ≥ 1) (salinan)'
- ❯ src/lib/storage/pda-library.test.ts:115:23
-    115|   expect(copy!.title).toBe(`${anbnSample().title} (salinan)`);
-       |                       ^
-```
+**Cause.** `pda-document.ts` was inlined, tree-shaken, into the first-JS chunk that `history.ts` → `pda-commands.ts` pulls into every route with an editor (T-068). The new lazy modules import the document functions, so Rollup extracts `pda-document.ts` into a shared chunk that the first-JS chunk statically needs: that chunk is modulepreloaded (`chunks/oVwv-99E.js`, 2,503 bytes) and the big chunk shrinks by 1,566 (`Bo8rEhU6` → `BJtwTs4m`), a net +937 from the gzip loss of the split, plus the page chunk `nodes/5` shrinking 82 (6,901 → 6,819). The `jff.unsupported_type` text costs 0 in that chunk (the Indonesian text got shorter, the English longer).
 
-### Break B4: Deleting open PDA opens an FSM machine instead of keeping PDA mode
-**Diff:**
-```diff
---- a/web/src/lib/storage/library.svelte.ts
-+++ b/web/src/lib/storage/library.svelte.ts
-@@ -291,1 +291,1 @@
--			const nextPda = this.entries.find((e) => e.id !== id && e.type === 'pda' && e.readable);
-+			const nextPda = this.entries.find((e) => e.id !== id && e.type !== 'pda' && e.readable);
-```
-**Failure output:**
-```
-$ pnpm --filter web exec playwright test pda-library -g "F5:" --project=desktop
-FAIL  e2e/pda-library.spec.ts:128:1 › F5: delete open PDA opens next PDA; delete only PDA keeps mode PDA and makes empty PDA
-Error: expect(locator).toBeVisible() failed
-Locator: locator('.first-run')
-Expected: visible
- ❯ e2e/pda-library.spec.ts:165:43
-    165| 	await expect(page.locator('.first-run')).toBeVisible();
-       | 	                                         ^
-```
+**Alternatives measured (all over 102 bytes):** routing the document functions through `pda-work.ts` +308; a dynamic import of `pda-work.ts` in the opener +693; a dynamic import of `pda-document.ts` +910; both dynamic +902.
 
-### Break B5: Corrupt PDA record marked as readable
-**Diff:**
-```diff
---- a/web/src/lib/storage/library.ts
-+++ b/web/src/lib/storage/library.ts
-@@ -77,1 +77,1 @@
--					readable: read.ok,
-+					readable: true,
-```
-**Failure output:**
-```
-$ pnpm --filter web exec vitest run src/lib/storage/pda-library.test.ts -t "F6: shows corrupt PDA"
-FAIL  src/lib/storage/pda-library.test.ts > pda-library: listEntries (F1, F2, F6) > F6: shows corrupt PDA record as unreadable, keeps doc text intact across actions
-AssertionError: expected { id: 'bad-pda', type: 'pda', …(6) } to match object { id: 'bad-pda', type: 'pda', …(4) }
--   "readable": false,
-+   "readable": true,
- ❯ src/lib/storage/pda-library.test.ts:88:24
-     88|   expect(corruptEntry).toMatchObject({
-       |                        ^
-```
+**Payback: T-068** ("`history.ts` holds both `createHistory` and `createPdaHistory`… split the PDA history into its own module"). With the PDA history out of the first load, `pda-document.ts` leaves the first-JS chunk, and this task costs only the page change (−82) plus the text change: about −39 bytes.
 
 ---
 
-## 6. AC5 — Verification Gate
+## 6. AC5 — Breaks B1 to B6 (on the final code, each restored)
 
-### Formatting Check
+Each break was made on `72afe30`, the failing line pasted, the one diff line of the break pasted, then `git checkout --` restored the file.
+
+### B1 — `isPdaFile` always false
+```diff
++	return false;
+ 	const kind = importKind(file.name);
+```
+```
+ FAIL  pda-files.test.ts > isPdaFile (F5, F7) > tells a PDA .jff by its type, with any space around it
+AssertionError: expected false to be true // Object.is equality
+```
+
+### B2 — the export passes an empty layout
+```diff
+-	const answer = await engine.exportPdaJff(toEnginePda(doc), jffLayout(doc));
++	const answer = await engine.exportPdaJff(toEnginePda(doc), []);
+```
+```
+ FAIL  pda-files.test.ts > pdaJffFile (F3) > asks the engine with the PDA and the names and places of its states
+AssertionError: expected [] to deeply equal [ { id: +0, name: 'q0', …(2) }, …(1) ]
+```
+
+### B3 — the size check in `isPdaFile` is removed
+```diff
+ 	const kind = importKind(file.name);
+ 	if (kind === null) return false;
+-	if (!(file.size <= FILE_BYTE_LIMIT)) return false;
+ 	let text: string;
+```
+```
+ FAIL  pda-files.test.ts > isPdaFile (F5, F7) > checks the size before it reads the text: one byte over the limit is not read
+AssertionError: expected true to be false // Object.is equality
+```
+
+### B4 — no mode switch after an FSM file in the PDA mode
+```diff
+-	if (context.mode() === 'pda') await context.selectMode('fsm');
+ 	context.notice({ key: 'import.opened', params: { title: doc.title || context.untitled } });
+```
+```
+ FAIL  open-from-file.test.ts > openFromFile: a finite automaton file (F4, F5) > in the PDA mode opens it and switches to the FSM mode, and makes no PDA record
+AssertionError: expected "vi.fn()" to be called with arguments: [ 'fsm' ]
+```
+
+### B5 — a record is made before the file is read successfully
+```diff
+ async function openPda(file: ImportFile, context: OpenFromFileContext): Promise<void> {
++	if (context.library.store) await createPdaMachine(context.library.store, (await import('../editor/pda-document.ts')).createPdaDocument());
+ 	const result = await openPdaFile(file, engine);
+```
+```
+ FAIL  open-from-file.test.ts > openFromFile: a PDA file (F4, F5) > writes nothing and keeps the list open when the file fails
+AssertionError: expected [ { …(8) }, { …(9) } ] to have a length of 1 but got 2
+```
+
+### B6 — the list is not closed after a PDA file opens
+```diff
+ 	// The record is written: the list closes and an older failure goes away, as opening an FSM does.
+-	context.library.hide();
+ 	context.library.problem = null;
+```
+```
+ FAIL  open-from-file.test.ts > openFromFile: a PDA file (F4, F5) > in the FSM mode makes exactly one new PDA record, closes the list, clears an older failure and opens it
+AssertionError: expected +0 to be 1 // Object.is equality
+```
+
+`git status --short` after B6: empty. `git diff --stat` shows only the scope.
+
+---
+
+## 7. AC6 — the gate
+
 ```
 $ pnpm format:check
+Checking formatting...
 All matched files use Prettier code style!
-```
 
-### Svelte Check (Types)
-```
 $ pnpm check
 svelte-check found 0 errors and 0 warnings
-```
 
-### Lint
-```
 $ pnpm lint
-```
+$ eslint .
 
-### Strings and Tokens
-```
 $ pnpm check:strings
-ok   75 components have no hard-coded text
+ok   76 components have no hard-coded text
 
 $ pnpm check:tokens
-ok   77 files use no raw colors
-```
+ok   78 files use no raw colors
 
-### Vitest Full Suite
-```
 $ pnpm --filter web test
-Test Files  117 passed (117)
-Tests       1378 passed | 2 skipped (1380)
+ Test Files  120 passed (120)
+      Tests  1409 passed | 3 skipped (1412)
+
+$ pnpm size
+ok   initial JS index.html: 81.8 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 126.0 KB gzip (limit 170 KB)
+ok   initial JS soal.html: 82.5 KB gzip (limit 170 KB)
+… (all routes under 170 KB)
+ok   wasm …/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB gzip (limit 250 KB)
+
+$ cargo fmt --check          (exit 0)
+$ cargo clippy --all-targets -- -D warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 42.92s
+$ cargo test
+… (35 `test result: ok`, 0 failed)
 ```
 
----
-
-## 7. Deepening Pass
-
-1. **New exports and public surface:**
-   - `web/src/lib/storage/open-store.ts`: Exports `openStore` and `OpenedStore` (pure extraction to prevent dependency bloat in reading routes).
-   - `web/src/lib/storage/pda-work.ts`: Exports `duplicatePdaMachine` and `renamePdaStored`. Required twins for library actions on non-open PDA rows.
-   - `web/src/lib/editor/PdaEditor.svelte`: Exports `setTitle(title: string)` to allow the library rename hook to commit undoable renames directly through the editor interaction core.
-   - No test-only exports were added.
-2. **Interface minimalism:**
-   - PDA action hooks (`flushPda`, `openPda`, `newPdaMachine`, `renameCurrent`) are optional callbacks on `library`, populated only while the PDA workstation is active.
-3. **Casts added:**
-   - Zero `any`, zero `@ts-ignore`, zero `as unknown as`.
-   - Explicit union cast for `entry.kind as Kind` in `others` mapping retained from existing FSM pattern.
+Playwright: `64 passed, 4 skipped` (section 2).
 
 ---
 
-## 8. Follow-up Observation
+## 8. Deepening pass
 
-- When the application is visited directly at `/sandbox?mode=pda` with fresh local storage, `library.start` in `sandbox/+page.svelte` initializes an empty FSM machine in the background. As noted in the pre-flight, this empty FSM row appears in "Mesin saya" as an untitled DFSM entry. Addressing this behavior is tracked for a future task.
+**New exports and public members.**
+- `pda-files.ts`: `isPdaFile`, `openPdaFile`, `pdaJffFile`, `pdaJsonFile` — used by `open-from-file.ts` and `PdaFileDialog.svelte`; the tests use the same four. `ImportPdaEngine`, `PdaJffEngine` are the parameter types of `openPdaFile`/`pdaJffFile`; the dialog and the page pass the real client. None can be private without moving code.
+- `open-from-file.ts`: `openFromFile` (the page's one hook), `Notice` and `OpenFromFileContext` (the page builds one, the test builds one). `problemOf` and `asMessageKey` are private.
+- `PdaFileDialog.svelte`: a component, with `doc` and `onclose`.
+- `document.ts`: `jffLayout` is the same export with a wider type.
+- **Duplicates:** `pdaJffFile` repeats the three lines of `jffFile` and `pdaJsonFile` repeats the one line of `jsonFile`; the spec keeps them because the engine method (`exportPdaJff` vs `exportJff`) and the serializer (`serializePdaDocument` vs `serializeDocument`) differ. `jffLayout` is shared (no `pdaJffLayout` copy), as the amended spec asked.
+- **Logic written twice:** `isPdaFile` and `openPdaFile` both compute `importKind` and the size check; they are two public entry points with different answers (a boolean vs a message), and the alternative (returning the text from `isPdaFile`) would change the spec's signature. I kept the two checks; they are three lines each and the test checks both (B3 breaks `isPdaFile` only; `openPdaFile`'s own check is tested at its limit case).
+- **Casts:** two, both after a `known()` check: `asMessageKey` in `open-from-file.ts` (named helper, comment) and `result.error.key as MessageKey` in `PdaFileDialog.svelte` (the same pattern as `ShareDialog.svelte`).
+- `web/eslint.config.js` gained the new wasm test in the existing allowlist; no rule was weakened.
+
+**The interface is smaller than the work behind it:** the page calls one function; the dialog calls two; everything else (the sniff, the two readers, the gate, the record, the mode switch, the request, the names) is behind them.
 
 ---
 
-## 9. Review Fixes (PR 208)
+## 9. Notes and follow-ups
 
-### 9.1 Item 1 — Bug fix (`F3b`: tapping an older PDA row from FSM mode)
-- **Failing test (`F3b` on prior code):**
-  ```
-  1) [desktop] › e2e/pda-library.spec.ts:82:1 › F3b: tapping an older PDA row from FSM mode opens that older PDA, not the latest PDA
-  Error: expect(locator).toHaveText(expected) failed
-  Locator:  locator('p.title')
-  Expected: "Tua"
-  Received: "Baru"
-    118 | 	await expect(page.locator('p.title')).toHaveText('Tua');
-        | 	                                      ^
-  ```
-- **Fix in `web/src/lib/editor/PdaWorkstation.svelte`:** Made `machineStore` reactive (`$state<MachineStore | null>(null)`), tracked `started` and `lastHandledSeq`, honoured `openRequest` during the initial load before `openLatestPda`, and guarded the `openRequest` `$effect` with `if (!machineStore || !openRequest?.id) return; if (openRequest.seq <= lastHandledSeq) return;`.
-- **Deliberate break for `F3b` on final code:**
-  ```diff
-  --- a/web/src/lib/editor/PdaWorkstation.svelte
-  +++ b/web/src/lib/editor/PdaWorkstation.svelte
-  @@ -205,3 +205,2 @@
-   		void (async () => {
-  -			if (req?.id && (await openPdaById(req.id)) === null) return;
-   			let result: OpenedPda;
-  ```
-  **Failing line:**
-  ```
-  1) [desktop] › e2e/pda-library.spec.ts:82:1 › F3b: tapping an older PDA row from FSM mode opens that older PDA, not the latest PDA
-  Error: expect(locator).toHaveText(expected) failed
-  Locator:  locator('p.title')
-  Expected: "Tua"
-  Received: "Baru"
-    118 | 	await expect(page.locator('p.title')).toHaveText('Tua');
-        | 	                                      ^
-  ```
-  Restored and verified `F3b` passes on desktop and phone (10x repeat).
-
-### 9.2 Item 2 — Cleanup (`isPdaRecord` and `newId` in `web/src/lib/storage/pda-work.ts`)
-- Removed the local copies of `isPdaRecord` and `newId` in `web/src/lib/storage/pda-work.ts` and imported `{ isPdaRecord, newId } from './store.ts'`.
-- **Measured size difference:** `0.000 KB` (`0 bytes`) across all initial JS routes (`index.html`: `82.005 KB / 83,973 bytes`; `sandbox.html`: `125.313 KB / 128,321 bytes`) because `open-store.ts` already decoupled `store.ts`.
-
-### 9.3 Item 3 — Check and Report (`3a`, `3b`, `3c`)
-- **3a (`checkStoredPda` vs `readStoredPda`):**
-  - A stored PDA document with `states: [{ bad: 1 }]` passes `checkStoredPda` (`Array.isArray(value.states)` is true) so its row is rendered as clickable (`readable: true`), but fails `readStoredPda` (`parsePdaDocument` rejects the malformed state element).
-  - Previously, tapping that row closed the dialog (`this.open = false`) without setting `library.problem` (`library.unreadable`), and when tapped from FSM mode switched `activeMode` to `'pda'` before checking `readStoredPda`.
-  - Fixed in `web/src/lib/editor/LibraryDialog.svelte` (`openRow(entry)` validates PDA rows with `readStoredPda` before calling `library.openEntry(entry)` and sets `library.problem = { key: 'library.unreadable', params: {} }` on failure) and added E2E test `F3c` in `web/e2e/pda-library.spec.ts` covering both FSM mode and PDA mode.
-  - **Deliberate break for `F3c` on final code:**
-    ```diff
-    --- a/web/src/lib/editor/LibraryDialog.svelte
-    +++ b/web/src/lib/editor/LibraryDialog.svelte
-    @@ -180,1 +180,1 @@
-    -									onclick={() => run(() => openRow(entry))}
-    +									onclick={() => run(() => library.openEntry(entry))}
-    ```
-    **Failing line:**
-    ```
-    1) [desktop] › e2e/pda-library.spec.ts:127:1 › F3c: tapping a PDA row that passes checkStoredPda but fails readStoredPda shows unreadable alert and keeps open machine
-    Error: expect(locator).toBeVisible() failed
-    Locator: getByRole('dialog', { name: 'Mesin saya' })
-    Expected: visible
-      166 | 	await expect(dialog(page)).toBeVisible();
-          | 	                           ^
-    ```
-    Restored and verified `F3c` passes on desktop and phone (10x repeat).
-- **3b (`PdaWorkstation` initial load fallback when `openLatestPda` throws):**
-  - Restored the fallback in `web/src/lib/editor/PdaWorkstation.svelte`: when `openLatestPda(store)` throws during initial load, it catches the error, sets `store = createMemoryStore()` and `isPersistent = false` (`persistent = false`), and calls `await openLatestPda(store, () => Date.now())` so the workstation opens an empty PDA in memory with the non-persistent warning instead of leaving a blank frame.
-- **3c (Deleting the FSM's open row while in PDA mode, then switching to FSM mode — Report Only):**
-  - In `web/src/lib/storage/library.svelte.ts`, `deleteMachine(id)` only replaces `this.current` when `this.mode !== 'pda' && this.current?.opened.record.id === id`.
-  - Consequently, if the student is in **PDA mode** (`this.mode === 'pda'`) and deletes the FSM row whose ID matches `library.current.opened.record.id`:
-    1. `library.current` is not replaced; it continues to hold the deleted FSM's document and its active `autosave` instance (`base` with the deleted record's `id`).
-    2. When the student switches to FSM mode, `<Editor>` renders `library.current.opened.doc` — so **the student still sees the deleted FSM machine on the canvas**.
-    3. After six seconds, `pending` deletes the record from IndexedDB (`store.delete(id)`).
-    4. If the student then makes any edit in the FSM editor, `library.current.autosave` serializes the edited document onto `base` (with the deleted record's `id`) and calls `store.put(record)`, which **brings the deleted record back into IndexedDB** (and back into `"Mesin saya"` on the next refresh).
-
-### 9.4 Exact `git diff` of Review Changes (Code)
-```diff
---- a/web/src/lib/editor/LibraryDialog.svelte
-+++ b/web/src/lib/editor/LibraryDialog.svelte
-@@ -74,6 +74,20 @@
- 		}
- 	}
- 
-+	async function openRow(entry: Entry): Promise<Problem | null> {
-+		if (entry.type === 'pda' && library.store) {
-+			const record = await library.store.get(entry.id);
-+			if (!record || record.type !== 'pda') {
-+				return (library.problem = { key: 'library.missing', params: {} });
-+			}
-+			const { readStoredPda } = await import('#lib/storage/pda-work.ts');
-+			if (!readStoredPda(record.doc).ok) {
-+				return (library.problem = { key: 'library.unreadable', params: {} });
-+			}
-+		}
-+		return await library.openEntry(entry);
-+	}
-+
- 	async function commitRename(entry: Entry, title: string) {
- 		const problem = await library.rename(entry.id, title);
- 		if (problem) {
-@@ -163,7 +177,7 @@
- 									class="open"
- 									disabled={busy}
- 									aria-current={isCurrent ? 'true' : undefined}
--									onclick={() => run(() => library.openEntry(entry))}
-+									onclick={() => run(() => openRow(entry))}
- 								>
- 									<span class="name">{shown(entry)}</span>
- 									<span class="meta">
---- a/web/src/lib/editor/PdaWorkstation.svelte
-+++ b/web/src/lib/editor/PdaWorkstation.svelte
-@@ -4,6 +4,7 @@
- 	import { t } from '#lib/i18n/index.svelte.ts';
- 	import { library } from '#lib/storage/library.svelte.ts';
- 	import type { Problem } from '#lib/storage/library.ts';
-+	import { createMemoryStore } from '#lib/storage/memory.ts';
- 	import { createAutosave } from '#lib/storage/autosave.ts';
- 	import type { PdaAutosave } from '#lib/storage/autosave.ts';
- 	import { createPdaDocument, serializePdaDocument } from '#lib/editor/pda-document.ts';
-@@ -38,12 +39,14 @@
- 	let autosave = $state<PdaAutosave | null>(null);
- 	let persistent = $state(true);
- 	/** The store from library: null until library is ready. */
--	let machineStore: MachineStore | null = null;
-+	let machineStore = $state<MachineStore | null>(null);
- 	/** The last example could not be written: the card says so calmly and the editor stays. */
- 	let failed = $state(false);
- 	/** A replaced record keeps its id: the editor is made again when this changes (as Library.Current.key). */
- 	let editorKey = $state(0);
- 	let active = true;
-+	let started = false;
-+	let lastHandledSeq = 0;
- 
- 	// The three samples of T-033, in this order (PDA_SAMPLES), with the texts that travel with the
- 	// PDA mode and the chip of the document kind. No tour in this mode.
-@@ -181,31 +184,43 @@
- 		}
- 	});
- 
--	// Handle external open requests (from page)
-+	// Handle external open requests (from page) once store is ready
- 	$effect(() => {
--		if (openRequest?.id) {
--			void openPdaById(openRequest.id);
--		}
-+		if (!machineStore || !openRequest?.id) return;
-+		if (openRequest.seq <= lastHandledSeq) return;
-+		lastHandledSeq = openRequest.seq;
-+		void openPdaById(openRequest.id);
- 	});
- 
- 	// Initial load once library is ready
- 	$effect(() => {
--		if (!active || !library.ready || !library.store || opened) return;
--		persistent = library.persistent;
--		machineStore = library.store;
-+		if (!active || !library.ready || !library.store || started) return;
-+		started = true;
-+		let store = library.store;
-+		let isPersistent = library.persistent;
-+		persistent = isPersistent;
-+		machineStore = store;
-+		const req = openRequest;
-+		if (req) lastHandledSeq = req.seq;
- 		void (async () => {
-+			if (req?.id && (await openPdaById(req.id)) === null) return;
- 			let result: OpenedPda;
- 			try {
--				result = await openLatestPda(machineStore!, () => Date.now());
-+				result = await openLatestPda(store, () => Date.now());
- 			} catch {
--				return;
-+				// The store opened but list threw: fall back to memory store
-+				store = createMemoryStore();
-+				isPersistent = false;
-+				result = await openLatestPda(store, () => Date.now());
- 			}
- 			if (!active) return;
-+			persistent = isPersistent;
-+			machineStore = store;
- 			opened = result;
- 			library.pdaCurrentId = result.record.id;
- 			onskipped?.(result.skipped);
- 			autosave = createAutosave({
--				store: machineStore!,
-+				store,
- 				base: result.record,
- 				codec: pdaDocumentCodec
- 			});
---- a/web/src/lib/storage/pda-work.ts
-+++ b/web/src/lib/storage/pda-work.ts
-@@ -11,21 +11,9 @@ import {
- import type { PdaDocument } from '../editor/pda-document.ts';
- import type { DocumentCodec } from './autosave.ts';
- import type { Problem } from './library.ts';
-+import { isPdaRecord, newId } from './store.ts';
- import type { MachineStore, SavedPdaMachine } from './store.ts';
- 
--const isPdaRecord = (record: { type?: string }): record is SavedPdaMachine => record.type === 'pda';
--
--function newId(): string {
--	if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
--		return crypto.randomUUID();
--	}
--	const part = () =>
--		Math.floor(Math.random() * 0x100000000)
--			.toString(16)
--			.padStart(8, '0');
--	return `${part()}-${part()}-${part()}`;
--}
--
- export const CURRENT_PDA_VERSION = 1;
-```
+- **Size:** the owner's one-time 0.8 KB exception for the four routes (section 5), paid back by T-068 (already `proposed`).
+- `PdaFileDialog` lives in `PdaEditor` (not `PdaWorkstation`): the workstation's `opened.doc` is the document it opened, so a dialog there would export a stale machine after edits; `PdaEditor` has the live `snapshot.doc`, exactly as `Editor.svelte` passes `snapshot.doc` to `ShareDialog`. The amended spec allows either ("lazy-loaded by `PdaEditor` or `PdaWorkstation`").
+- `jffLayout` was widened in `editor/document.ts`, not `share/files.ts` as the spec said; the function is defined there.
+- The `env` check was not needed; the fuzz target and nightly cargo were available in WSL.
+- Not run: the full `pnpm test:e2e` suite (the owner's rule; the area specs above were run), a real phone, and the live site.
