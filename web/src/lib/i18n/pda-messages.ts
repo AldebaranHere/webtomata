@@ -33,7 +33,20 @@ export const pdaId = {
 	'pda_editor.col_to': 'Ke',
 	'pda_editor.table_title': 'Transisi ({count})',
 	'pda_editor.table_empty': 'Belum ada transisi.',
-	'pda_editor.definition_hint': 'Kiri = puncak stack. ε pada pop: tidak memeriksa stack.'
+	'pda_editor.definition_hint': 'Kiri = puncak stack. ε pada pop: tidak memeriksa stack.',
+	'pda_editor.alphabet_input': 'Alfabet input Σ',
+	'pda_editor.alphabet_stack': 'Alfabet stack Γ',
+	'pda_editor.add_transition': '+ Tambah transisi',
+	'pda_editor.state_delete': 'Hapus state {name}',
+	'pda_editor.state_removed': 'State {name} dihapus, beserta {count} transisi.',
+	'pda_editor.row_duplicate': 'Transisi itu sudah ada di baris {n}.',
+	'pda_editor.row_added': 'Baris {n} ditambahkan.',
+	'pda_editor.row_changed': 'Baris {n} diubah.',
+	'pda_editor.row_removed': 'Baris {n} dihapus.',
+	'pda_editor.symbol_reserved':
+		'Nama simbol tidak boleh eps atau ε, dan tidak boleh berisi spasi atau koma.',
+	// The shared dictionary has no text for this refusal yet (the FSM table shows the key; T-065).
+	'document.duplicate_symbol': 'Simbol {symbol} sudah ada.'
 } as const;
 
 export const pdaEn: Record<keyof typeof pdaId, string> = {
@@ -66,7 +79,19 @@ export const pdaEn: Record<keyof typeof pdaId, string> = {
 	'pda_editor.col_to': 'To',
 	'pda_editor.table_title': 'Transitions ({count})',
 	'pda_editor.table_empty': 'No transitions yet.',
-	'pda_editor.definition_hint': 'Leftmost = top of stack. ε on pop: does not inspect the stack.'
+	'pda_editor.definition_hint': 'Leftmost = top of stack. ε on pop: does not inspect the stack.',
+	'pda_editor.alphabet_input': 'Input alphabet Σ',
+	'pda_editor.alphabet_stack': 'Stack alphabet Γ',
+	'pda_editor.add_transition': '+ Add transition',
+	'pda_editor.state_delete': 'Delete state {name}',
+	'pda_editor.state_removed': 'The state {name} was removed, with {count} transition(s).',
+	'pda_editor.row_duplicate': 'That transition is already in row {n}.',
+	'pda_editor.row_added': 'Row {n} was added.',
+	'pda_editor.row_changed': 'Row {n} was changed.',
+	'pda_editor.row_removed': 'Row {n} was removed.',
+	'pda_editor.symbol_reserved':
+		'A symbol name cannot be eps or ε, and cannot contain spaces or commas.',
+	'document.duplicate_symbol': 'Symbol {symbol} already exists.'
 };
 
 addMessages('id', pdaId);

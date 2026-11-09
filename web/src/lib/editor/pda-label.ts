@@ -24,6 +24,12 @@ export const pdaMenuLabels: Partial<Record<MenuAction, MessageKey>> = {
 	edit: 'pda_editor.menu_edit'
 };
 
+/**
+ * The words that mean ε in a field of the label form, and so cannot be the name of a symbol
+ * either. The table's Alfabet field refuses them before it sends anything (T-061).
+ */
+export const EPSILON_WORDS: readonly string[] = ['eps', 'ε'];
+
 function sameList(a: readonly string[], b: readonly string[]): boolean {
 	if (a.length !== b.length) return false;
 	for (let i = 0; i < a.length; i++) {
@@ -55,11 +61,7 @@ type ParseReadResult = { ok: true; read: string | null } | { ok: false; refusal:
 
 function parseRead(doc: PdaDocument, text: string): ParseReadResult {
 	const trimmed = text.trim();
-	if (
-		trimmed === '' ||
-		trimmed === 'ε' ||
-		(trimmed === 'eps' && !doc.inputAlphabet.includes('eps'))
-	) {
+	if (trimmed === '' || (EPSILON_WORDS.includes(trimmed) && !doc.inputAlphabet.includes(trimmed))) {
 		return { ok: true, read: null };
 	}
 	if (/\s/.test(trimmed)) {
@@ -87,11 +89,7 @@ function parseRead(doc: PdaDocument, text: string): ParseReadResult {
 
 function parseStackSeq(doc: PdaDocument, text: string): string[] {
 	const trimmed = text.trim();
-	if (
-		trimmed === '' ||
-		trimmed === 'ε' ||
-		(trimmed === 'eps' && !doc.stackAlphabet.includes('eps'))
-	) {
+	if (trimmed === '' || (EPSILON_WORDS.includes(trimmed) && !doc.stackAlphabet.includes(trimmed))) {
 		return [];
 	}
 	const hasCommaSymbol = doc.stackAlphabet.some((s) => s.includes(','));

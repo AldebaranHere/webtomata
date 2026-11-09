@@ -2642,7 +2642,7 @@ Follow the rules of `AGENTS.md` for every shell command. The loaded runs are lon
 
 ## Task T-061 — PDA editor, part 10 of 12: editing in the Tabel tab
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-061-pda-table-editing`
 
