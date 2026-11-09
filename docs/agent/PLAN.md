@@ -2642,7 +2642,7 @@ Follow the rules of `AGENTS.md` for every shell command. The loaded runs are lon
 
 ## Task T-061 — PDA editor, part 10 of 12: editing in the Tabel tab
 
-**Status:** in-progress
+**Status:** done (2026-11-09; branch `task/T-061-pda-table-editing`, commits `f4f0c5f`…`5a0c6e0`, plus the fix of the docs-only hook test `a565f0b`. Sizes accepted once by the owner: `sandbox.html` 124.7 KB, `soal/*` 124.1 KB. See `docs/agent/REPORT.md`.)
 **Owner:** worker
 **Branch:** `task/T-061-pda-table-editing`
 

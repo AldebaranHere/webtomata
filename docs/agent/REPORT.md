@@ -5,19 +5,26 @@ PR 193, the amended T-061 spec).
 
 Commits:
 
-- `7f7754f` `feat(editor): add the pure part of the editable PDA table (T-061)` — the pure
+- `f4f0c5f` `feat(editor): add the pure part of the editable PDA table (T-061)` — the pure
   module, its tests, the messages, the one export of `pda-label.ts`; the task set to
   `in-progress`.
-- `4587913` `feat(editor): edit the transitions of a PDA in the Tabel tab (T-061)` — the three
+- `3007f42` `feat(editor): edit the transitions of a PDA in the Tabel tab (T-061)` — the three
   blocks, the table view, the editor wiring, the new e2e spec and the one approved edit of
   `pda-panel`.
-- The commit after that adds this report, ADR 0051 and the three `proposed` lines. When the
-  two questions of section 12 are answered, one last commit carries the answer and sets the
-  task to `done`; until then the task stays `in-progress` on purpose.
+- `a732b4c` `docs(agent): report T-061, its ADR and three proposed tasks`.
+- `a565f0b` `fix(tools): keep the docs-only fixture out of the repository a hook names` — a bug
+  of the pre-push hook found while pushing, fixed in this PR (section 13).
+- `53c7bec` `chore(repo): remove the file the docs-only test used to leave behind` — `docs/a.md`.
+- `5a0c6e0` `test(e2e): pick the delete tool exactly in the PDA edge test (T-061)` — the approved
+  one-line edit of `pda-editor.spec.ts`.
+- The last commit adds the decisions of section 12 and 13 to this report and sets the task to
+  `done`.
 
-**Status of the task: not ready to merge yet.** One existing spec fails on the new markup
-through an over-broad selector, and one acceptance criterion (AC3, sizes) is over its gate by
-92 bytes. Both are questions for the owner, in section 12; the code was not bent to hide either.
+**Status: ready to merge.** The two questions of the first version of this report are answered:
+the owner accepted the sizes of AC3 once (section 8) and approved the one-line edit of
+`pda-editor.spec.ts` (section 2). The pre-push hook could not run at all in this checkout; that
+is fixed in this PR too (section 13). Everything below is the real output, and the deliberate
+breaks were re-run on the final code.
 
 ## 1. What changed
 
@@ -101,8 +108,28 @@ them into the plan in review.
 
    No assertion was weakened: the test still demands an exact set and the two languages.
 
-3. **`web/e2e/pda-editor.spec.ts`**: **not edited** — it needs one, and that is question 1 of
-   section 12.
+3. **`web/e2e/pda-editor.spec.ts`** (approved by the owner on 2026-11-09, in the message that
+   carries this report). One locator of E4, which picked the delete tool with an over-broad
+   pattern and then matched 14 buttons (the panel's "Hapus simbol …", "Hapus state …" and
+   "Hapus baris …"):
+
+   ```
+   -		const deleteBtn = page.getByRole('button', { name: /^Hapus/ });
+   +		// The tool itself, exact: the panel's own buttons are named "Hapus simbol …", "Hapus state …"
+   +		// and "Hapus baris …" since T-061, and /^Hapus/ would match all of them.
+   +		const deleteBtn = page.getByRole('button', { name: 'Hapus', exact: true });
+   ```
+
+   The same form that `editor-edges.spec.ts:163` already used for the same tool. No assertion
+   changed; the spec now passes (7 passed, 2 skipped on desktop).
+
+4. **`tools/docs-only.test.mjs`** (a fix the owner asked for on 2026-11-09): the bug of section
+   13, with the two regression tests that hold it. An exception to the "no test edits" rule
+   because the test was broken, not weakened: the two new tests fail on the old code and pass on
+   the new one.
+
+5. **`docs/a.md` removed** (the owner asked for it on 2026-11-09): a one-line JavaScript file in
+   a documentation folder, left there by the bug of section 13.
 
 ## 3. Tests first
 
@@ -424,8 +451,13 @@ So the 0.2 KB is the price of the newly announced row number and of the focus th
 row: both need the row's index *after* the command, i.e. a dry run of the batch before
 `onapply` is called. The 170 KB budget is untouched (124.7 KB), the shared dictionary is
 byte-identical, and no route downloads a module it did not download before. The gate the
-planner set for the task (0.1 KB) is missed by 92 bytes on four routes. Question 2 of
-section 12.
+planner set for the task (0.1 KB) is missed by 92 bytes on four routes.
+
+**Decided by the owner on 2026-11-09: accepted once, and no code changes for it.** After T-063,
+`sandbox.html` is still 0.1 KB below where it was before T-051, and the 170 KB budget is far
+away. The numbers and the dry-run proof above stay in this report, and the planner logs the
+decision. `proposed` T-068 (the PDA history in the first load) is how that cost goes away
+without touching this task.
 
 ## 9. Deepening pass
 
@@ -476,23 +508,98 @@ for by name.
    raw key when a symbol is added twice (the PDA table now has a text, in `pda-messages.ts`).
    The planner already filed that as T-065.
 
-## 12. Questions for the owner (the task is not ready to merge until they are answered)
+## 12. The decisions that closed the two questions
 
-1. **`web/e2e/pda-editor.spec.ts` line 324** fails through a strict-mode violation, not an
-   assertion: `const deleteBtn = page.getByRole('button', { name: /^Hapus/ });` now matches 14
-   buttons. May I change that one line to the form the FSM's own edge test already uses,
-   `page.getByRole('button', { name: 'Hapus', exact: true })`, with a comment that the tool is
-   meant and not one of the panel's buttons (`editor-edges.spec.ts:163` does exactly this)? No
-   assertion changes.
-2. **AC3 is over its gate by 92 bytes** (+0.2 KB on `sandbox.html` and the three question
-   pages that embed the editor, +0.1 KB on `index.html`), caused by Rollup re-splitting the
-   editor chunk around `pda-document.ts` when the lazy table chunk starts importing
-   `pda-commands.ts` for the dry run (section 8). The 170 KB budget holds and no module is new
-   in the first load. Three ways forward, my recommendation is (a):
-   - (a) accept the 0.2 KB as a one-time exception, as T-051's 0.54 KB was;
-   - (b) drop the dry run: the announcement then says the row's *old* number when an edit moves
-     it (F4 would announce "Baris 1" for what is now row 2), and the focus still follows the
-     row after `tick()`;
-   - (c) let `onapply` hand the new document back to the table (a change to the props contract
-     the plan fixed: "the same shape as `TableViewProps.onapply`"), which removes the dry run
-     and the cost.
+Both were open questions when this report was first written; the owner answered them on
+2026-11-09 and the answer is in the code, in section 2 and in section 8.
+
+1. **`web/e2e/pda-editor.spec.ts` line 324**: approved — one locator made exact (the tool), no
+   assertion changed. The spec passes now: `7 passed, 2 skipped` on desktop.
+2. **AC3, +0.2 KB**: accepted once, with no code change. The dry run stays, so the announcement
+   says the number the row *now* has and the focus follows the row it moved to.
+
+## 13. The pre-push hook could not run: fixed in this PR
+
+The push failed twice in the same way, so the push stopped. The hook was never bypassed.
+
+```
+✖ rename detection bypass test: git diff --no-renames rejects moved code file
+  AssertionError [ERR_ASSERTION]: reproduced bypass where default diff classifies rename as docs-only
+  + actual  'false\n'
+  - expected 'true\n'
+      at TestContext.<anonymous> (file:///…/tools/docs-only.test.mjs:135:10)
+error: failed to push some refs to 'https://github.com/AldebaranHere/webtomata.git'
+```
+
+The same test passes when it is run alone. The reason is in `tools/docs-only.test.mjs`: it built
+its fixture with `{ ...process.env }`, and a pre-push hook exports `GIT_DIR` (the git directory
+of the repository being pushed). So the fixture's `git init`, `git config`, `git add` and
+`git commit` ran against the **real** repository:
+
+```
+$ git log --oneline 9d6830b..HEAD          (before the reset)
+bd2162c rename code file into docs         ← hook run 2
+3c8129b commit code file                   ← hook run 2
+49343f3 rename code file into docs         ← hook run 1
+73a03ad commit code file                   ← hook run 1
+$ git diff --quiet 9d6830b HEAD && echo "HEAD tree == 9d6830b tree"
+HEAD tree == 9d6830b tree
+```
+
+The same bug explains the two commits that reached `staging` with PR 190 (`2973c9f rename code
+file into docs`), `docs/a.md` on `staging`, and the `Test <test@example.com>` identity of the
+earlier session's commits. The owner repaired the configuration;
+`git -C ~/webtomata config --local --list | grep -E "bare|user"` printed only `core.bare=false`
+before and after every run in this section.
+
+The fix (`a565f0b`) removes `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`,
+`GIT_OBJECT_DIRECTORY`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`, `GIT_COMMON_DIR`, `GIT_NAMESPACE` and
+`GIT_PREFIX` from the environment of every fixture command, including the two raw `git diff`
+calls that used to inherit it. Tests first — before the fix, 12 tests, 2 failed, and the real
+configuration was unchanged by the run:
+
+```
+$ node --test tools/docs-only.test.mjs
+✖ fixtureEnv: carries no git variable of another repository
+  AssertionError [ERR_ASSERTION]: the fixture inherits a git variable of another repository
+✖ a fixture never commits into the repository that GIT_DIR names (a hook exports it)
+  AssertionError [ERR_ASSERTION]: the fixture committed into the repository that GIT_DIR names
+ℹ pass 10
+ℹ fail 2
+```
+
+After the fix, and the deliberate break on that final code (the scrubbing line removed again,
+then restored):
+
+```
+$ node --test tools/docs-only.test.mjs      (after the fix)
+ℹ pass 12
+ℹ fail 0
+
+$ node --test tools/docs-only.test.mjs      (break: removed `for (const name of HOOK_GIT_VARS) delete env[name];`)
+✖ fixtureEnv: carries no git variable of another repository
+      at TestContext.<anonymous> (file:///…/tools/docs-only.test.mjs:194:10)
+✖ a fixture never commits into the repository that GIT_DIR names (a hook exports it)
+      at TestContext.<anonymous> (file:///…/tools/docs-only.test.mjs:236:10)
+ℹ pass 10
+ℹ fail 2
+```
+
+`docs/a.md` is removed from the branch (`53c7bec`). No other test under `tools/` runs git: the
+only other file that copies `process.env` is `tools/install-browser-deps.test.mjs`, which runs a
+bash script with a fake `PATH` and never touches a repository.
+
+The six commits of this branch carried `Test <test@example.com>` as their author, inherited from
+the configuration that the bug above had rewritten. They were rewritten with
+`git rebase origin/staging --exec 'git commit --amend --no-edit --reset-author'`; every author
+and committer is now the global identity:
+
+```
+$ git log --format='%h %an <%ae>' origin/staging..HEAD
+5a0c6e0 Aldebaran Rahman Adhitya <u8521130@anu.edu.au>
+53c7bec Aldebaran Rahman Adhitya <u8521130@anu.edu.au>
+a565f0b Aldebaran Rahman Adhitya <u8521130@anu.edu.au>
+a732b4c Aldebaran Rahman Adhitya <u8521130@anu.edu.au>
+3007f42 Aldebaran Rahman Adhitya <u8521130@anu.edu.au>
+f4f0c5f Aldebaran Rahman Adhitya <u8521130@anu.edu.au>
+```
