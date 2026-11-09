@@ -3100,7 +3100,7 @@ pnpm size
 
 ## Task T-068 — Keep the PDA code out of the first load (split `createPdaHistory`)
 
-**Status:** in-progress
+**Status:** done (2026-11-10; branch `task/T-068-pda-history-lazy`, commits `49eaf6b`…`HEAD`. AC1–AC5 hold: the PDA document and commands left the first load of `sandbox.html` (129,020 → 124,790 bytes) and of each `soal/*.html` (128,376 → 124,149), so the exception of ADR 0055 is paid back and no page grew; the guard, the depth test and breaks B1–B4 are in `docs/agent/REPORT.md` and ADR 0056.)
 **Owner:** worker (DeepSeek: the planner's pick; it measured the cause in T-075)
 **Branch:** `task/T-068-pda-history-lazy`
 
@@ -3213,7 +3213,7 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-029** The CYK tester joins rule symbols with no space, so every CNF result with a helper variable fails in CYK: specified in its own block above (`todo`; found by the worker in T-010 and reproduced by the planner).
 - **T-066** `newStateCommand` in `web/src/lib/editor/table.ts` is typed for `MachineDocument` although it only reads `states`, so the PDA table repeats its six lines in `pda-table-edit.ts` (`addStateCommand`). Widen the parameter to `StatesDocument` and let the PDA call it (found by the worker in T-061; the task's non-goals forbade touching `table.ts`).
 - **T-067** Two e2e locators pick the delete tool with `{ name: /^Hapus/ }` unscoped: `web/e2e/pda-editor.spec.ts:324` and `web/e2e/pda-panel.spec.ts:450`. The first one broke in T-061 as soon as the panel had buttons named "Hapus simbol/state/baris"; the second passes only because the panel is not in the DOM at that point. Make both `{ name: 'Hapus', exact: true }`, as `editor-edges.spec.ts:163` already does.
-- **T-068 (specified 2026-11-10 as "Task T-068" above; `todo`)** `web/src/lib/editor/history.ts` holds both `createHistory` and `createPdaHistory`, so the routes that mount the editor (`sandbox.html` and the three `soal/*.html`) download `pda-commands.ts` and `pda-document.ts` in their first load. Split the PDA history into its own module and import it only with the PDA mode; it shrinks those four routes (the other five never fetched the PDA chunks), and it would remove the 0.2 KB that T-061 pays when its lazy table chunk starts importing the PDA commands (found by the worker in T-061, section 8 of its report).
+- **T-068 (specified 2026-11-10 as "Task T-068" above; `done`)** `web/src/lib/editor/history.ts` holds both `createHistory` and `createPdaHistory`, so the routes that mount the editor (`sandbox.html` and the three `soal/*.html`) download `pda-commands.ts` and `pda-document.ts` in their first load. Split the PDA history into its own module and import it only with the PDA mode; it shrinks those four routes (the other five never fetched the PDA chunks), and it would remove the 0.2 KB that T-061 pays when its lazy table chunk starts importing the PDA commands (found by the worker in T-061, section 8 of its report).
 
 **B. Grammar additions** (a wireframe the owner approves comes first for T-020)
 
