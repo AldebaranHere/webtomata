@@ -536,3 +536,12 @@ Format:
 - Alternatives considered: always make a new record and leave the empty one for T-074 to list (an empty PDA row on every first visit); delete the empty record (a second failure mode that `placeExample` does not have); keep the PDA panel visible behind the card (the alphabet chips could be edited behind the card, and the tab order would not be rows then blank).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-073), later `web/src/lib/storage/pda-work.ts`, `PdaWorkstation.svelte`, `PdaEditor.svelte`
+
+## 2026-11-10 — T-074 specified: one list and one store for FSMs and PDAs, the kind chip tells the type
+
+- Decider: planner
+- Context: T-073 is merged. T-056 keeps PDA records apart (the list ignores them), the PDA editor has no "Mesin saya" button, and the PDA workstation opens a second store of its own, so a memory fallback would give two lists that disagree. The design sheet asked for a small "FSM" or "PDA" chip on each row, while the list already shows a kind chip (DFSM, NDFSM). T-074 and T-075 both edit `PdaWorkstation.svelte` and `PdaEditor.svelte`.
+- Decision: one list sorted as today, with the existing kind chip extended to DPDA and NDPDA (it tells the type; no new text); the PDA workstation uses `library.store` and `library.persistent`; opening a row of the other mode goes through the page's `selectMode`, then `library.openMachine` (FSM) or an open request to the workstation (PDA); rename, duplicate and delete of a PDA row use twins in `pda-work.ts`; deleting the open PDA opens the next readable row or makes a new empty PDA; the PDA editor gets the same "Mesin saya" button. No "Bagikan" on a PDA row. T-074 runs before T-075, not at the same time.
+- Alternatives considered: separate lists per type (two buttons, and a student who has both must look twice); an extra "FSM"/"PDA" chip next to the kind chip (two chips that say the same); keep the workstation's own store (two lists that disagree under the memory fallback); run T-074 and T-075 in parallel (both edit the same two Svelte files).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-052, T-074, T-075), `design/screens/pda-editor.md`; later `web/src/lib/storage/library.ts`, `library.svelte.ts`, `pda-work.ts`, `LibraryDialog.svelte`, `PdaWorkstation.svelte`, `PdaEditor.svelte`, the sandbox page

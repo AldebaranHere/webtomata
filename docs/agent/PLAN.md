@@ -2920,9 +2920,9 @@ Follow the rules of `AGENTS.md` for every shell command (long runs as background
 
 ## Task T-052 — PDA editor, part 12 of 12: saved machines, files and the three examples (split)
 
-**Status:** split on 2026-11-09 into **T-073** (the first-run card and the three examples), **T-074** ("Mesin saya" lists FSMs and PDAs) and **T-075** (open and export `.jff` and JSON for a PDA). T-052 is `done` when the three are. Reason: the one-paragraph draft held three screens, three sets of tests and a change of the shared library, and a reviewer could not read it in one sitting. See `DECISIONS.md` (2026-11-09, "T-052 is split in three").
+**Status:** T-073 done (PR 205, 2026-11-10). Split on 2026-11-09 into **T-073** (the first-run card and the three examples), **T-074** ("Mesin saya" lists FSMs and PDAs) and **T-075** (open and export `.jff` and JSON for a PDA). T-052 is `done` when the three are. Reason: the one-paragraph draft held three screens, three sets of tests and a change of the shared library, and a reviewer could not read it in one sitting. See `DECISIONS.md` (2026-11-09, "T-052 is split in three").
 
-**Order:** T-073 first (the smallest; it makes the PDA mode usable without a blank page), then T-074, then T-075. T-074 and T-075 can run at the same time after T-073 only if they touch different files; the planner says so when it dispatches them.
+**Order:** T-073 first (the smallest; it makes the PDA mode usable without a blank page), then T-074, then T-075. T-074 and T-075 run one after the other (T-074 first): both edit `PdaWorkstation.svelte` and `PdaEditor.svelte`.
 
 ---
 
@@ -2984,16 +2984,61 @@ Follow the rules of `AGENTS.md` for every shell command, and run the heavy ones 
 
 ---
 
-## Task T-074 — PDA editor, part 12b: "Mesin saya" lists FSMs and PDAs (draft)
+## Task T-074 — PDA editor, part 12b: "Mesin saya" lists FSMs and PDAs
 
-**Status:** proposed (after T-073)
+**Status:** todo
 **Owner:** worker
+**Branch:** `task/T-074-pda-library`
 
-**Goal:** One list in "Mesin saya" (laptop dialog and the phone sheet) with a small type chip on each row ("FSM", "PDA"); a PDA row opens in the PDA mode (the page switches the mode and opens that record); rename, duplicate and delete work for both kinds, with the same undo window for a delete. T-056 made the store keep PDA records apart: `listEntries` and the FSM functions ignore records with `type: 'pda'`, so today a saved PDA is not in any list. The FSM must not change for a student who has no PDA.
+**Goal:** One list in "Mesin saya" (the dialog on a laptop, the sheet on a phone) shows FSMs and PDAs together, each row with its kind chip. A student can open "Mesin saya" from the PDA mode too, open a row of either kind (the page switches the mode), and rename, duplicate and delete a PDA row as they can an FSM row, with the same time to undo a delete. Today a saved PDA is in no list (T-056 keeps PDA records apart: `listEntries` and the FSM functions ignore `type: 'pda'`), and the PDA editor has no "Mesin saya" button. A student who has no PDA sees exactly the list that they see today.
 
-**Questions for the planner to settle in the spec (not yet decided):** one `Entry` type with a `type` field versus two lists merged in the dialog; where the mode switch happens (the page, through the `?mode=` address as the mode bar does); how the sort (by `openedAt`) mixes the two kinds; what "Duplikat" copies for a PDA. See `design/screens/pda-editor.md`, section 1 and question 3 (one list, a type chip).
+**Decisions (planner, 2026-11-10; do not reopen, ask if one looks wrong):**
 
-**Depends on:** T-073.
+- **The chip is the kind chip that the list already shows** (`entry.kind.toUpperCase()`: DFSM, NDFSM, and now DPDA, NDPDA). It tells the type as well as the kind, needs no new text, and replaces the "FSM" and "PDA" chips of the design sheet (`design/screens/pda-editor.md`, section 1, amended in this task's spec PR).
+- **One list, one store.** `Entry` gains `type: 'fsm' | 'pda'` and its `kind` is `Kind | PdaKind`. `listEntries(store)` returns both kinds sorted as today (`openedAt` descending, then id); a record of a question is still left out. A PDA record is readable when `readStoredPda` reads it; an unreadable one is in the list marked, with only Delete, and is kept as it is, as for an FSM. The PDA workstation uses **`library.store` and `library.persistent`** (waiting for `library.ready`) in place of opening a second store of its own: one memory fallback, one list. State in the pre-flight what the page does today when the mode is PDA at load (`library.start` runs in `onMount` for every mode, so a student who only uses the PDA already has an empty FSM record in the list; do not change that here, and report it as a follow-up if it shows as an empty "DFSM" row).
+- **Opening a row.** An FSM row opens through `library.openMachine`. A PDA row opens through a request that the page gives to the PDA workstation (a prop with an id and a counter, so that the same id can be asked twice): the workstation flushes and disposes its autosave, reads the record with `readStoredPda`, writes the new `openedAt` (a refused write does not stop it from opening), makes the new autosave and bumps its `editorKey`. A row of the other mode is opened after the page has switched the mode through the function the mode bar uses (`selectMode`: it sets the address and the remembered choice). A record that is gone or unreadable shows `library.missing` or `library.unreadable` as for an FSM.
+- **Rename, duplicate, delete for a PDA row** use twins of the FSM functions in `web/src/lib/storage/pda-work.ts` (`duplicatePdaMachine`, `renamePdaStored`; the PDA's `setTitle` command; the copy's title is "… (salinan)", cut as the FSM's is; it sits under the original with `openedAt - 1`). Delete uses the same pending-delete machinery and the same toast with Urungkan. **Deleting the open PDA** does what deleting the open FSM does: the next readable row opens (of either kind; the page switches the mode), or, with none, a new empty PDA record is made; the open record is written once more first, so that Urungkan finds it as it was. **Renaming the open PDA** goes through the editor so that undo works, as for the FSM (`renameCurrent`): state in the pre-flight how the PDA editor gives the library its `setTitle`.
+- **The button.** `PdaEditor` takes a `library` prop of the same shape as `Editor`'s (`{ count, onopen }`) and shows the same "Mesin saya" button in the same place, with the same accessible name (`library.open_button`). `count` is the number of rows of the list, both kinds.
+- **What a row of a PDA does not have:** "Bagikan" (no share link yet) and no change to the file picker of the dialog (T-075). The current row is marked for whichever machine is open, FSM or PDA.
+- **Size.** No route's first JS grows by more than 0.1 KB. `library.svelte.ts`, `library.ts` and the page are in the first JS: put what only the PDA needs in `pda-work.ts` and in the lazy PDA chunk, and keep the shared change small (the `type` field, the PDA branch of `listEntries`, one hook for opening a PDA). If it cannot hold, give the numbers in the pre-flight and wait for the planner.
+
+**Scope (files):** `web/src/lib/storage/library.ts` (`Entry`, `listEntries`), `library.svelte.ts` (the hook to open a PDA, the current id of either kind, delete of the open PDA), `pda-work.ts` (`duplicatePdaMachine`, `renamePdaStored`), `web/src/lib/editor/LibraryDialog.svelte` (the chip text for a PDA kind, rows of both kinds, no "Bagikan" on a PDA row), `PdaWorkstation.svelte` (the shared store, the open request, rename hook), `PdaEditor.svelte` (the `library` prop and the button), `web/src/routes/sandbox/+page.svelte` (the switch of mode for a row of the other kind, the open request, `others` keeps FSM entries only), `web/src/lib/i18n/pda-messages.ts` only if a text is missing, `design/screens/pda-editor.md` (the chip line), tests, `docs/decisions/0054-pda-in-my-machines.md` (short), `docs/agent/PLAN.md` (status). **Existing tests that may change, and only these:** a PDA e2e that asserts that no "Mesin saya" button exists in the PDA mode. No FSM storage or library test changes (`library.test.ts`, `machines.test.ts` and the e2e of the list pass unedited).
+
+**Non-goals:** a share link or a file for a PDA (T-075); a filter or a tab by type; deleting the empty FSM record that the page makes; a search; changing the sort; "Duplikat" for a question's machine; the question pages.
+
+**Fixtures (the oracle; derive by hand and write the derivation in `REPORT.md`):**
+
+- F1 A store with an FSM opened at 100, a PDA at 200 and a PDA at 150: the list is PDA(200), PDA(150), FSM(100), with chips `NDPDA`/`DPDA`/`DFSM` as the records say; the count is 3; a question's record is not in it.
+- F2 An FSM-only store: `listEntries` returns the same entries as before the task (every existing test passes unedited).
+- F3 Laptop: in the FSM mode, "Mesin saya", tap a PDA row: the address becomes `?mode=pda`, the PDA opens with that record's document, its `openedAt` is now; in the PDA mode, tap an FSM row: the mode is FSM and that machine opens. A reload opens the last machine of the mode that was left.
+- F4 Rename a PDA row that is not open, duplicate it (a "(salinan)" row of the same kind sits under it), delete it and press Urungkan (it is back as it was); with no press, after the time, it is gone from the store.
+- F5 Delete the open PDA while an FSM row exists: that FSM opens and the page is in the FSM mode; delete the open PDA when it is the only machine of the store: a new empty PDA record is made and shown (with the first-run card of T-073).
+- F6 A PDA record with corrupt text: its row has the unreadable chip, only Delete, and the text of the record is unchanged after any other action.
+- F7 Rename the open PDA through the dialog: the title in the editor changes, undo restores it, and the list shows the new title after the autosave.
+- F8 Phone viewport: the sheet lists both kinds, rows are at least 44 px high, the button is reachable, axe has no violation on the dialog in both modes.
+
+**Acceptance criteria:**
+
+- AC1 F1 to F8 hold, each by a test (unit for the storage and the library, Playwright for F3, F4, F5, F7, F8).
+- AC2 **The FSM does not change:** the existing storage, library and e2e tests of the list pass without any edit (state in the report which tests you ran for this).
+- AC3 **Size:** `pnpm size` before and after, pasted. No route's first JS grows by more than 0.1 KB; the PDA chunk may grow (name the number); the wasm is unchanged.
+- AC4 **Break each guard once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) `listEntries` leaves out PDA records; (B2) opening a PDA row does not switch the mode; (B3) duplicating a PDA copies it as an FSM (wrong `type`); (B4) deleting the open PDA does not open the next row or make a new record (the page is left with a deleted record open); (B5) an unreadable PDA record is rewritten by an action on another row. Restore each file; `git diff --stat` at the end shows only the scope.
+- AC5 `pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens`, Vitest, `pnpm build && pnpm size`, and Playwright for the files you added or changed pass.
+
+**Verification:**
+
+```
+pnpm --filter web test
+pnpm --filter web exec playwright test pda-library cross/storage
+```
+
+Follow the rules of `AGENTS.md` for every shell command, and run the heavy ones as background tasks.
+
+**Rollback:** `git revert <sha>`.
+
+**Depends on:** T-073 (merged), T-056, T-057. **Blocks:** T-075 (it also edits `PdaWorkstation.svelte` and `PdaEditor.svelte`).
+
+**Notes for worker:** read `library.openMachine`, `deleteMachine`, `placeExample` and how the page calls `library.start` before you restate; and read how `Editor.svelte` places the "Mesin saya" button (line 388 onward), so the PDA's is the same. If a rule of this block cannot be kept without a bigger change in the shared library, stop and say what and why. Quote changed lines from `git diff`, not from memory.
 
 ---
 
@@ -3006,7 +3051,7 @@ Follow the rules of `AGENTS.md` for every shell command, and run the heavy ones 
 
 **Questions for the planner to settle in the spec:** the file names of an export; whether the layout (state positions) is kept in the `.jff` as the FSM's is; how a file of the wrong mode is offered ("Buka di mode PDA" and its twin "Buka di mode FSM"?); the limit of a PDA file (the FSM's `FILE_BYTE_LIMIT` or its own).
 
-**Depends on:** T-073 (the card's "Buka file" button), T-057.
+**Depends on:** T-073 (the card's "Buka file" button), T-074 (the dialog and the shared workstation), T-057.
 
 ---
 
