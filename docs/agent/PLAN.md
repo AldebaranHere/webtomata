@@ -2629,6 +2629,55 @@ Follow the rules of `AGENTS.md` for every shell command. The loaded runs are lon
 
 ---
 
+## Task T-069 — No wall-clock bound in a unit test
+
+**Status:** todo
+**Owner:** worker
+**Branch:** `task/T-069-no-wall-clock-bounds`
+
+**Goal:** No unit test fails because the machine is busy. T-064 gave the heavy property tests a longer timeout, but four tests do not time out: they assert a time. On 2026-11-09, under the same load as T-064's runs (`nproc` copies of `yes`), the planner's two whole-suite runs on the T-064 branch both failed in `geometry.test.ts` ("draws the worst case…", 1304 ms and 1983 ms against `toBeLessThan(1000)`), and one of five runs of that file alone failed two tests (the other one has `toBeLessThan(100)`). A longer timeout cannot help an assertion. The four tests exist to catch an accident (an algorithm that became quadratic, a parser that expands a bomb), so they must catch that, on any machine, in any load:
+
+- `web/src/lib/editor/diagram/geometry.test.ts`: "draws 200 states and 421 edges between neighbors quickly (9 ms measured)" (`took < 100`) and "draws the worst case, 600 random edges across 200 states, in well under a second (96 ms measured)" (`took < 1000`);
+- `web/src/lib/editor/history.property.test.ts`: the 2000-state test with 300 moves (`milliseconds < 1000`, "to catch an accident (a move that is O(n squared))");
+- `web/src/lib/questions/load.test.ts`: "refuses anchors and aliases, which can be used to blow a file up" (`< 500` ms).
+
+**Decisions (planner, 2026-11-09):**
+
+- **No absolute millisecond bound under 5 s remains in a unit test** (a bound of 5 s or more may stay only as a backstop against a hang, and the test's own timeout does that already).
+- **A time becomes a ratio, which a busy machine does not change.** For geometry and history: run the same function on an input of size n and on one of size 4n (n states for geometry, n states for history; choose sizes that make the small run take a few milliseconds), take the best of 3 runs for each (the best run is the one the load disturbed least), and assert that `time(4n) / time(n)` is under a bound. A linear algorithm gives about 4, a quadratic one about 16. Choose the bound from 20 measured runs on a quiet machine (the largest ratio you saw, times 3 as headroom, and at most 12 so that a quadratic algorithm still fails) and say how you chose it in a comment above the assertion. A reference time under 0.05 ms is rounded up to 0.05 ms so that a timer's noise cannot make a ratio of two tiny numbers.
+- **The alias bomb is caught by its shape, not by a clock.** Use a bomb whose expansion would be far too large to finish (for example nine levels of nine aliases), assert that the parser refuses it with the message that it already gives, and rely on the test's explicit timeout (15 s) to catch an accident. If a bomb that big can run the process out of memory instead of timing out, say so before you write it: propose another structure check (for example that the loader refuses at the first anchor, before it reads the rest) and wait for the planner.
+- **One small helper at most.** If the geometry and history tests share the same way of timing (best of 3, the floor, the ratio), put it in one test-only file under `web/src/lib/` and use it in both. No helper if it is used once. Not a dependency, not a library.
+- **The tests keep their names' meaning.** Rename a test only where its name states a number of milliseconds that no longer exists ("(9 ms measured)", "(96 ms measured)"); say each rename in the report.
+
+**Scope (files):** the four tests' files above, and the one helper if you need it; `docs/agent/PLAN.md` (status). No source file, no config.
+
+**Non-goals:** no speed-up of `edgeGeometry`, the history or the loader; no change of any other test; no timeout on tests that do not have a time assertion; no change to the pre-push hook or `vitest.config.ts`; no benchmark framework.
+
+**Acceptance criteria:**
+
+- AC1 **Reproduce first.** Under the load of T-064 (`nproc` copies of `yes > /dev/null`, stopped afterwards), run the four tests, 5 runs each, and paste how many fail and the time that each measured. If one never fails in 5 runs, report its largest time, and still change it (the bound is wrong in principle).
+- AC2 **After the change, the same load, 5 runs of the whole suite in a row: all green.** Paste the totals of each run and the ratio that each of the three ratio tests measured in it (add a `console.info` while you measure and take it out before you commit).
+- AC3 **The bounds are justified:** for each ratio test, the 20 quiet ratios (min, median, max), the bound, and how you got it.
+- AC4 **The tests still catch the accident. Show each failing on the final code, with the failing line and file:line pasted and the one line of `git diff` that is the break (a break run before your last change does not count):** (B1) in `edgeGeometry`, make every edge check every state once more (an accidental extra nested loop) and show the geometry ratio test fail; (B2) in the history's `execute`, copy the whole list of states once per call plus a nested pass over it (a quadratic move) and show the history ratio test fail; (B3) in the loader, expand aliases (or remove the refusal) and show the bomb test fail (by the timeout or by its structure check). Restore each source file; `git diff --stat` at the end shows only test files and `PLAN.md`.
+- AC5 `pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens`, Vitest, `pnpm build && pnpm size` pass (sizes unchanged).
+
+**Verification:**
+
+```
+pnpm --filter web exec vitest run src/lib/editor/diagram/geometry.test.ts src/lib/editor/history.property.test.ts src/lib/questions/load.test.ts
+pnpm --filter web test
+```
+
+Follow the rules of `AGENTS.md` for every shell command; the loaded runs are long: background tasks, the stuck rule, and `pkill yes` and `pgrep yes` at the end.
+
+**Rollback:** `git revert <sha>`.
+
+**Depends on:** nothing. It touches none of the files of T-061, T-064 or T-062.
+
+**Notes for worker:** quote the changed lines from `git diff`, not from memory. The planner will repeat the loaded runs on the branch, as for T-064. Another worker may be running tests in a different folder, so the machine will be busy: write down `uptime` at the start of every run.
+
+---
+
 ## Task T-065 — Symbol names: refuse the ε words in the document, and the missing text of `document.duplicate_symbol` (draft)
 
 **Status:** proposed
