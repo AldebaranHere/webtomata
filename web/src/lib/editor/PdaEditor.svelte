@@ -37,11 +37,13 @@
 		doc,
 		autosave,
 		persistent = true,
+		library,
 		firstRun
 	}: {
 		doc: PdaDocument;
 		autosave?: BaseAutosave<PdaDocument>;
 		persistent?: boolean;
+		library?: { count: number; onopen: () => void };
 		/** With this, an empty PDA shows "Coba contoh" over the canvas (no tour in this mode). */
 		firstRun?: {
 			examples: readonly FirstRunRow[];
@@ -49,6 +51,10 @@
 			onexample: (id: string) => void;
 		};
 	} = $props();
+
+	export function setTitle(title: string) {
+		return editor.setTitle(title);
+	}
 
 	const editor = createPdaEditor(untrack(() => doc));
 	let ready = $state(false);
@@ -349,6 +355,21 @@
 	ontoastdismiss={() => editor.dismissToast()}
 	announcement={snapshot.announcement}
 >
+	{#snippet actions()}
+		{#if library}
+			<button
+				type="button"
+				class="machines"
+				aria-label={t('library.open_button', { count: library.count })}
+				onclick={library.onopen}
+			>
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+					<path d="M4 7l8-4 8 4-8 4z" stroke-linejoin="round" />
+					<path d="M4 12l8 4 8-4M4 16.5l8 4 8-4" stroke-linecap="round" stroke-linejoin="round" />
+				</svg>
+			</button>
+		{/if}
+	{/snippet}
 	{#snippet stage()}
 		<EditorCanvas
 			bind:this={canvas}
@@ -434,5 +455,34 @@
 		background: var(--color-surface);
 		border-top: 1px solid var(--color-border);
 		box-shadow: var(--shadow-modal);
+	}
+	/* On a laptop the button "Mesin saya" is in the header; a phone has it here. */
+	.machines {
+		display: none;
+		align-items: center;
+		justify-content: center;
+		width: var(--target-min);
+		height: var(--target-min);
+		padding: 0;
+		border: 0;
+		border-radius: var(--radius-lg);
+		background: transparent;
+		color: var(--color-ink);
+		cursor: pointer;
+	}
+	.machines:hover {
+		background: var(--color-neutral-tint);
+	}
+	.machines svg {
+		stroke: currentColor;
+		stroke-width: 1.8;
+	}
+
+	@media (max-width: 39.99rem) {
+		.machines {
+			display: flex;
+			align-items: center;
+			flex-shrink: 0;
+		}
 	}
 </style>

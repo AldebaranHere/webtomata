@@ -2,6 +2,7 @@
 // A PDA record lives in the same store as FSM machines ('machines' in IndexedDB),
 // but is marked with `type: 'pda'`.
 import { LIMITS } from '../editor/document.ts';
+import { applyPdaCommand } from '../editor/pda-commands.ts';
 import {
 	createPdaDocument,
 	parsePdaDocument,
@@ -9,8 +10,21 @@ import {
 } from '../editor/pda-document.ts';
 import type { PdaDocument } from '../editor/pda-document.ts';
 import type { DocumentCodec } from './autosave.ts';
-import { isPdaRecord, newId } from './store.ts';
+import type { Problem } from './library.ts';
 import type { MachineStore, SavedPdaMachine } from './store.ts';
+
+const isPdaRecord = (record: { type?: string }): record is SavedPdaMachine => record.type === 'pda';
+
+function newId(): string {
+	if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+		return crypto.randomUUID();
+	}
+	const part = () =>
+		Math.floor(Math.random() * 0x100000000)
+			.toString(16)
+			.padStart(8, '0');
+	return `${part()}-${part()}-${part()}`;
+}
 
 export const CURRENT_PDA_VERSION = 1;
 
@@ -187,4 +201,63 @@ export async function openLatestPda(
 		// A refused fallback write does not stop it from opening.
 	}
 	return { record: fallbackRecord, doc: emptyDoc, skipped };
+}
+
+const SUFFIX = ' (salinan)';
+
+/**
+ * A copy of a PDA under a new id, with the title "… (salinan)". It is not opened: in the list it sits right
+ * under the original. Nothing is made for a machine that is gone or cannot be read.
+ */
+export async function duplicatePdaMachine(
+	store: MachineStore,
+	id: string,
+	now: () => number = Date.now
+): Promise<SavedPdaMachine | undefined> {
+	const source = await store.get(id);
+	if (!source || !isPdaRecord(source)) return undefined;
+	const read = readStoredPda(source.doc);
+	if (!read.ok) return undefined;
+	const room = LIMITS.titleChars - [...SUFFIX].length;
+	const title = [...read.doc.title].slice(0, room).join('') + SUFFIX;
+	const titled = applyPdaCommand(read.doc, { type: 'setTitle', title });
+	if (!titled.ok) return undefined;
+	const time = now();
+	const record: SavedPdaMachine = {
+		id: newId(),
+		recordVersion: 1,
+		type: 'pda',
+		title,
+		kind: titled.doc.kind,
+		createdAt: time,
+		updatedAt: time,
+		openedAt: source.openedAt - 1,
+		doc: serializePdaDocument(titled.doc)
+	};
+	await store.put(record);
+	return record;
+}
+
+/** Changes the title of a PDA machine that is not open. Returns why it was refused, or null. */
+export async function renamePdaStored(
+	store: MachineStore,
+	id: string,
+	title: string,
+	now: () => number = Date.now
+): Promise<Problem | null> {
+	const source = await store.get(id);
+	if (!source || !isPdaRecord(source)) return { key: 'library.missing', params: {} };
+	const read = readStoredPda(source.doc);
+	if (!read.ok) return { key: 'library.unreadable', params: {} };
+	const result = applyPdaCommand(read.doc, { type: 'setTitle', title });
+	if (!result.ok)
+		return { key: result.error.key, params: result.error.params as Problem['params'] };
+	const renamed: SavedPdaMachine = {
+		...source,
+		title,
+		updatedAt: now(),
+		doc: serializePdaDocument(result.doc)
+	};
+	await store.put(renamed);
+	return null;
 }

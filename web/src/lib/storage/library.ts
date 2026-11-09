@@ -4,18 +4,20 @@
 import { applyCommand } from '../editor/commands.ts';
 import { LIMITS, serializeDocument } from '../editor/document.ts';
 import type { Kind } from '../editor/document.ts';
+import type { PdaKind } from '../editor/pda-document.ts';
 import { readTests } from '../editor/test-list.ts';
 import { readStoredDocument } from './migrate.ts';
 import { isQuestionRecord } from './question-work.ts';
 import type { Unreadable } from './migrate.ts';
-import { isFsmRecord, newId } from './store.ts';
+import { isFsmRecord, isPdaRecord, newId } from './store.ts';
 import type { MachineStore, SavedFsmMachine, SavedMachine, Titles } from './store.ts';
 
 /** What a row of the list needs. */
 export interface Entry {
 	id: string;
+	type?: 'fsm' | 'pda';
 	title: string;
-	kind: Kind;
+	kind: Kind | PdaKind;
 	updatedAt: number;
 	openedAt: number;
 	/** Set for a machine from our content: the page shows the title of its language. */
@@ -31,17 +33,55 @@ export interface Problem {
 	params: Record<string, string | number>;
 }
 
+function checkStoredPda(text: string): { ok: true } | { ok: false; reason: Unreadable } {
+	if (typeof text !== 'string' || text.length > LIMITS.documentBytes) {
+		return { ok: false, reason: 'corrupt' };
+	}
+	let value: unknown;
+	try {
+		value = JSON.parse(text);
+	} catch {
+		return { ok: false, reason: 'corrupt' };
+	}
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+		return { ok: false, reason: 'corrupt' };
+	}
+	if (!('schemaVersion' in value)) return { ok: false, reason: 'corrupt' };
+	const version = (value as { schemaVersion: unknown }).schemaVersion;
+	if (typeof version !== 'number' || !Number.isInteger(version)) {
+		return { ok: false, reason: 'corrupt' };
+	}
+	if (version > 1) return { ok: false, reason: 'newer' };
+	if (version < 1) return { ok: false, reason: 'unsupported' };
+	if (!('states' in value) || !Array.isArray((value as { states: unknown }).states)) {
+		return { ok: false, reason: 'corrupt' };
+	}
+	return { ok: true };
+}
+
 /** The machines, the one opened last first. A machine that cannot be read is in the list, marked. */
 export async function listEntries(store: MachineStore): Promise<Entry[]> {
 	// The machines of the questions are not in the list of the student (question-work.ts).
-	const records = (await store.list()).filter(
-		(record): record is SavedFsmMachine => isFsmRecord(record) && !isQuestionRecord(record.id)
-	);
+	const records = (await store.list()).filter((record) => !isQuestionRecord(record.id));
 	return records
 		.map((record): Entry => {
+			if (isPdaRecord(record)) {
+				const read = checkStoredPda(record.doc);
+				return {
+					id: record.id,
+					type: 'pda',
+					title: record.title,
+					kind: record.kind,
+					updatedAt: record.updatedAt,
+					openedAt: record.openedAt,
+					readable: read.ok,
+					...(read.ok ? {} : { reason: read.reason })
+				};
+			}
 			const read = readStoredDocument(record.doc);
 			return {
 				id: record.id,
+				type: 'fsm',
 				title: record.title,
 				kind: record.kind,
 				updatedAt: record.updatedAt,

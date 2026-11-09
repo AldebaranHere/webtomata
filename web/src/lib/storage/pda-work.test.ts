@@ -162,7 +162,8 @@ describe('F2 — Records keep to their own kind', () => {
 		expect(openedFsm.skipped).toEqual([]);
 
 		const entries = await listEntries(store);
-		expect(entries.map((e) => e.id)).toEqual(['A']);
+		// Since T-074, listEntries returns both FSM and PDA machines in one list sorted by openedAt.
+		expect(entries.map((e) => e.id)).toEqual(['A', 'P2', 'P1']);
 	});
 });
 

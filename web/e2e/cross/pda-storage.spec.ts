@@ -4,7 +4,7 @@
 // unreadable records are skipped with the notice and kept untouched,
 // a refused write shows the warning and clears on next save,
 // a browser without storage still allows editing with warning,
-// and FSM mode never sees PDA records.
+// and the list shows the PDA record with its NDPDA chip while FSM openLatest ignores it.
 import { engineSettled, expect, openPda as openPdaSandbox, test } from '../fixtures.ts';
 import { putRow, records } from './db.ts';
 import type { Page } from '@playwright/test';
@@ -190,7 +190,7 @@ test('S5: browser with no storage allows editor to work with warning', async ({
 	await expect(page.getByRole('button', { name: /^State q0/ })).toBeVisible();
 });
 
-test('S6: in FSM mode, Mesin saya never lists PDA records and FSM openLatest is not PDA', async ({
+test('S6: in FSM mode, Mesin saya lists the PDA record with NDPDA chip, and FSM openLatest is not PDA', async ({
 	page,
 	isMobile
 }) => {
@@ -216,15 +216,9 @@ test('S6: in FSM mode, Mesin saya never lists PDA records and FSM openLatest is 
 	const libDialog = page.getByRole('dialog', { name: 'Mesin saya' });
 	await expect(libDialog).toBeVisible();
 
-	// Every entry in the list is an FSM machine, none is PDA
+	// The list now shows the PDA record with its NDPDA chip
 	const rows = libDialog.getByRole('listitem');
-	const count = await rows.count();
-	for (let i = 0; i < count; i++) {
-		const text = await rows.nth(i).innerText();
-		expect(text).not.toContain('Otomata Pushdown');
-		expect(text).not.toContain('ndpda');
-		expect(text).not.toContain('dpda');
-	}
+	await expect(rows.filter({ hasText: 'NDPDA' })).toHaveCount(1);
 
 	// Close library
 	const closeBtn = libDialog.getByRole('button', { name: 'Tutup' });
