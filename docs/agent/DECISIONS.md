@@ -455,3 +455,12 @@ Format:
 - Alternatives considered: put the lazy module inside T-061 (a bigger diff with a UI change in it); a code-split dictionary for the whole site (a larger refactor than the size problem needs); accept the growth for each task (a budget that moves every task).
 - Reversible? yes
 - Affects: `web/src/lib/i18n/`, `web/src/lib/editor/PdaWorkstation.svelte`, the specs of T-061, T-062, T-052
+
+## 2026-11-09 — The PDA table is a form, reuses the FSM's words, and refuses a duplicate row (T-061)
+
+- Decider: planner
+- Context: T-061 makes the Tabel tab of the PDA editor editable. The FSM table is an arrow-key grid with state-by-symbol cells; the PDA table has a different shape (rows of five controls with free text in Pop and Push). The design says the start column is "mulai", the FSM table says "Start" and "Terima". Rows are in the engine's order, so an edited row can move. `rowCommands` of the label form merges a row that equals another one, so an edit could make a row disappear without a word.
+- Decision: the PDA table is a list of controls in page order (Tab, Enter, Esc), not a grid. The State block uses the FSM's words and keys (`table.start`, `table.accepting`, `table.add_state`, ...). A row edit is one batch (new symbols, remove, add), parsed by `parseRows` of the label form, never a second parser. An edit that would equal another row is refused with the row number. After an edit that moves a row the focus follows it; rows are keyed by their fields. A new row is a draft until Dari and Ke are both chosen. New strings go into `pda-messages.ts` only (ADR 0050). T-061 is given to DeepSeek (T-063 passed review with no fix round).
+- Alternatives considered: copy the FSM grid (free text and arrow keys do not mix, and the PDA has five columns that are not symbols); keep "mulai" (two words for one thing on one site); merge a duplicate row (silent data loss); a button that sends the new row (the design says it is sent when complete).
+- Reversible? yes
+- Affects: `web/src/lib/editor/PdaTableView.svelte` and its three blocks, `web/src/lib/editor/pda-label.ts` (exports), `web/src/lib/i18n/pda-messages.ts`
