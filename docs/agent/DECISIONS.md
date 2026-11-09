@@ -509,3 +509,12 @@ Format:
 - Alternatives considered: a `focusEdge` in `interaction/editor.ts` plus an FSM test (a shared change for a nicety); `querySelector` on the canvas's class names from `PdaEditor` (couples the PDA editor to the drawing's markup); weakening the test only (leaves a design line that cannot be met).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-062), `design/screens/pda-editor.md` (section 5), `web/src/lib/editor/pda-table-props.ts`
+
+## 2026-11-09 — T-072: find the test that leaves an engine call open; do not silence the runner
+
+- Decider: planner
+- Context: the `checks` job failed twice on CI with `Unhandled Rejection: EngineTimeout` after all tests passed (PR 200, then the `push` run on `staging`, job 129054708985). The log names `pda-editor.property.test.ts`, but that file has no engine call: `vitest.config.ts` has `isolate: false`, so the shared `engine` outlives a file and Vitest names the file that was running when the 10 s timer fired. The leak needs a suite that lasts over 10 s after the call, so it shows on CI and not on a laptop.
+- Decision: T-072 finds the leaking test with a probe (a short `callMs` for the run and the stack of each call kept at `call()`), fixes it in the test that made the call, and adds a guard so a test that leaves a call waiting fails by its own name at its end. No `dangerouslyIgnoreUnhandledErrors`, no filter, no change of `WEB_TIMEOUTS`.
+- Alternatives considered: ignore unhandled errors in the runner (the same bug with no signal); raise the call timeout (it only moves the day it fires, and a 10 s call timeout is T-064's decision); mock the engine in every test (hides the real client that `client.test.ts` and the `.wasm` tests exist to check); only re-run on a red job (the repo stays red at random for every PR).
+- Reversible? yes
+- Affects: the leaking test file(s), one guard helper or setup file, `docs/agent/PLAN.md` (T-072); `web/src/lib/engine/client.ts` only if the planner agrees to a read-only count after the worker's pre-flight.
