@@ -2587,6 +2587,48 @@ Follow the rules of `AGENTS.md` for every shell command (the Playwright runs are
 
 ---
 
+## Task T-064 — Give the heavy property tests an explicit timeout
+
+**Status:** todo
+**Owner:** worker
+**Branch:** `task/T-064-property-test-timeouts`
+
+**Goal:** `pnpm test:web` (and so the pre-push hook) no longer fails on a busy machine. Two heavy property tests sit at about 1.7 s alone and 4 to 5 s when the machine is loaded (two workers, a build and a Playwright run at the same time), against the default timeout of 5 s: `layout.test.ts` ("property: any machine of up to 40 states is placed inside the limits with no overlap") and `interaction/editor.property.test.ts` ("keep every rule after every step"). On 2026-11-09 both timed out in the push of T-063 and blocked it, although nothing was wrong. The fix is an explicit timeout on these tests, as `interaction/pda-editor.property.test.ts` already has (`15_000`), so a loaded machine does not turn a correct run into a red one.
+
+**Decisions (planner, 2026-11-09):**
+
+- **A per-test timeout of `15_000`, the same number as `pda-editor.property.test.ts`.** The third argument of `it(...)`, with a comment that says why (a property test of many seeds; it is slow on a loaded machine).
+- **Not these:** no change of `vitest.config.ts` (a global timeout hides slow tests that are really broken); no fewer seeds or steps (that is less coverage for a flaky clock); no `skip`, no `retry` (a flaky test that is retried is a test that cannot be trusted); no `--no-verify`.
+- **Other slow tests:** run the suite alone with `--reporter=verbose`, list every test that takes more than 1.5 s alone, and give each of them the same explicit timeout. Do not touch a test that takes less.
+
+**Scope (files):** the two test files above and any other test file that the list shows (one `it` each); `docs/agent/PLAN.md` (status). Nothing else: no source file, no config, no hook.
+
+**Non-goals:** no change to what the tests assert; no new test; no speed-up of the layout or the editor; no change of the pre-push hook.
+
+**Acceptance criteria:**
+
+- AC1 **Reproduce before you change anything.** With the machine loaded (start `nproc` copies of `yes > /dev/null` in the background, run `pnpm --filter web test`, stop them afterwards) show the two tests failing with `Test timed out in 5000ms`. If a first load does not reproduce it, raise the load until it does and say how much. If you cannot reproduce it at all, report the highest time of each test under the load you tried, and go on.
+- AC2 **After the change, the same load, three runs in a row:** the suite passes each time; paste the time of the two tests in each run. Then run the suite once on a quiet machine and paste the totals (the time of the whole suite must not change by more than a second).
+- AC3 The list of the tests over 1.5 s alone (the verbose output, trimmed to those lines) and which of them got a timeout.
+- AC4 `git diff --stat` shows only test files and `PLAN.md`; each changed line is a timeout argument and a comment. `pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens`, Vitest and `pnpm build && pnpm size` pass (sizes are unchanged: no source file changes).
+
+**Verification:**
+
+```
+pnpm --filter web exec vitest run --reporter=verbose
+pnpm --filter web test
+```
+
+Follow the rules of `AGENTS.md` for every shell command. The loaded runs are long: run them as background tasks, apply the stuck rule, and stop the load processes when you are done (`pkill yes`; check with `pgrep yes`).
+
+**Rollback:** `git revert <sha>`.
+
+**Depends on:** nothing. It touches no file of the PDA editor, so it can run next to T-061.
+
+**Notes for worker:** quote the lines that you changed from `git diff` in the report, not from memory. A bug fix starts with a failing test that shows the bug (here, AC1 is that failing run). Another worker is working on T-061 in a different folder at the same time, so the machine will be loaded: do the quiet-machine run (AC2, last part) when the owner says nothing else is running, or say that it was not quiet.
+
+---
+
 ## Task T-061 — PDA editor, part 10 of 12: editing in the Tabel tab
 
 **Status:** todo
