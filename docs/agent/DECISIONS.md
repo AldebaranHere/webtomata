@@ -473,3 +473,12 @@ Format:
 - Alternatives considered: a global `testTimeout` (hides tests that are really slow); fewer seeds (less coverage because of a clock); retry (a test that is retried cannot be trusted); `--no-verify` (forbidden).
 - Reversible? yes
 - Affects: `web/src/lib/editor/layout.test.ts`, `web/src/lib/editor/interaction/editor.property.test.ts`
+
+## 2026-11-09 — T-061 amended after the worker's pre-flight (reserved names, a missing text, one test edit, the draft)
+
+- Decider: planner
+- Context: DeepSeek ran the T-061 fixtures with the real functions before coding. F1 to F6 and the counts hold (only the order of the commands inside `rowCommands` differs, and the spec's order is used). It found four things the spec got wrong: the document accepts the word `eps` as a symbol name; `document.duplicate_symbol` has no text anywhere; `pda-panel` E4 asserts `toContainText('A')` on a Push cell that becomes a text field; and a draft that is dropped by every edit of the document would lose a half-made row.
+- Decision: the table refuses `eps` (and the other ε words of `pda-label.ts`), `ε`, and names with whitespace or a comma, with a new key `pda_editor.symbol_reserved`, before any command; the document is not changed (T-065, proposed). The text of `document.duplicate_symbol` goes in `pda-messages.ts` for now. One line of `pda-panel` E4 may change to a check of the value of the Push field. A draft survives other edits and loses only a Dari or Ke whose state was removed. A draft with a new stack symbol is sent as a batch.
+- Alternatives considered: refuse `eps` in `checkSymbol` now (a shared change that needs FSM tests and a migration thought); a hidden text mirror in the Push cell to keep E4 as it is (the value would be read twice by a screen reader); drop the draft on every edit (the simpler rule, but a user who renames a state in the middle of a new row loses it).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-061, T-065), `web/e2e/pda-panel.spec.ts` (one assertion), `web/src/lib/i18n/pda-messages.ts`
