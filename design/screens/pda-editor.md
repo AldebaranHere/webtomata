@@ -12,7 +12,7 @@ The PDA editor is the FSM editor with a different document. The canvas, the four
 
 - The mode switcher (`WorkstationSwitcher`) enables the item **Otomata Pushdown (PDA)**. The badge "Segera Hadir" goes away. The address is `/sandbox?mode=pda`, and the choice is kept as the other modes are. The page title, the mode bar and the chips use the same strip as the FSM editor.
 - An empty PDA editor shows the same first-run card as the FSM editor ("Coba contoh", "Mulai dari kanvas kosong", "Buka file .jff atau JSON"). The examples are in question 4.
-- **Mesin saya** lists FSMs and PDAs in one list. A row has a small type chip ("FSM", "PDA"); opening a PDA switches the page to the PDA mode (question 3).
+- **Mesin saya** lists FSMs and PDAs in one list. A row has the kind chip that the list already shows (DFSM, NDFSM, DPDA, NDPDA), which tells the type as well; opening a PDA switches the page to the PDA mode (question 3; T-074).
 
 ## 2. The diagram (frame A)
 
