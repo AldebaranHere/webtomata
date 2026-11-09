@@ -74,6 +74,20 @@
 		}
 	}
 
+	async function openRow(entry: Entry): Promise<Problem | null> {
+		if (entry.type === 'pda' && library.store) {
+			const record = await library.store.get(entry.id);
+			if (!record || record.type !== 'pda') {
+				return (library.problem = { key: 'library.missing', params: {} });
+			}
+			const { readStoredPda } = await import('#lib/storage/pda-work.ts');
+			if (!readStoredPda(record.doc).ok) {
+				return (library.problem = { key: 'library.unreadable', params: {} });
+			}
+		}
+		return await library.openEntry(entry);
+	}
+
 	async function commitRename(entry: Entry, title: string) {
 		const problem = await library.rename(entry.id, title);
 		if (problem) {
@@ -163,7 +177,7 @@
 									class="open"
 									disabled={busy}
 									aria-current={isCurrent ? 'true' : undefined}
-									onclick={() => run(() => library.openEntry(entry))}
+									onclick={() => run(() => openRow(entry))}
 								>
 									<span class="name">{shown(entry)}</span>
 									<span class="meta">

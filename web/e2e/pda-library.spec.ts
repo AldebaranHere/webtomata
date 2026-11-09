@@ -1,6 +1,9 @@
 // "Mesin saya" with FSM and PDA machines (docs/agent/PLAN.md Task T-074, F3 to F8).
-import { expect, expectNoAxeViolations, openPda, test } from './fixtures.ts';
+import { expect, expectNoAxeViolations, openPda, openSandbox, test } from './fixtures.ts';
 import type { Locator, Page } from '@playwright/test';
+import { putRow } from './cross/db.ts';
+import { serializePdaDocument } from '../src/lib/editor/pda-document.ts';
+import { anbnSample } from '../src/lib/editor/pda-samples.ts';
 
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Mesin saya' });
 const press = (target: Locator, isMobile: boolean) => (isMobile ? target.tap() : target.click());
@@ -74,6 +77,112 @@ test('F3: tap row of the other kind switches mode and opens that machine; reload
 	await page.locator('.editor[data-ready]').waitFor();
 	await expect(page).toHaveURL(/mode=pda/);
 	await expect(page.locator('p.title')).toContainText('wcwᴿ');
+});
+
+test('F3b: tapping an older PDA row from FSM mode opens that older PDA, not the latest PDA', async ({
+	page,
+	isMobile
+}) => {
+	await openSandbox(page);
+	await putRow(page, {
+		id: 'pda-tua',
+		recordVersion: 1,
+		type: 'pda',
+		title: 'Tua',
+		kind: 'dpda',
+		createdAt: 1,
+		updatedAt: 1,
+		openedAt: 1,
+		doc: serializePdaDocument(anbnSample('Tua'))
+	});
+	await putRow(page, {
+		id: 'pda-baru',
+		recordVersion: 1,
+		type: 'pda',
+		title: 'Baru',
+		kind: 'ndpda',
+		createdAt: 2000,
+		updatedAt: 2000,
+		openedAt: 2000,
+		doc: serializePdaDocument(anbnSample('Baru'))
+	});
+
+	await openList(page, isMobile);
+	await expect(row(page, 'Tua')).toBeVisible();
+	await expect(row(page, 'Baru')).toBeVisible();
+
+	await press(row(page, 'Tua').locator('button.open'), isMobile);
+	await expect(dialog(page)).toBeHidden();
+	await expect(page).toHaveURL(/mode=pda/);
+	await expect(page.locator('.editor[data-ready]')).toBeVisible();
+	await expect(page.locator('p.title')).toHaveText('Tua');
+
+	// A later request while mounted in PDA mode still opens the other PDA row
+	await openList(page, isMobile);
+	await press(row(page, 'Baru').locator('button.open'), isMobile);
+	await expect(dialog(page)).toBeHidden();
+	await expect(page.locator('p.title')).toHaveText('Baru');
+});
+
+test('F3c: tapping a PDA row that passes checkStoredPda but fails readStoredPda shows unreadable alert and keeps open machine', async ({
+	page,
+	isMobile
+}) => {
+	await openSandbox(page);
+	await putRow(page, {
+		id: 'pda-baik',
+		recordVersion: 1,
+		type: 'pda',
+		title: 'PDA Baik',
+		kind: 'dpda',
+		createdAt: 2000,
+		updatedAt: 2000,
+		openedAt: 2000,
+		doc: serializePdaDocument(anbnSample('PDA Baik'))
+	});
+	await putRow(page, {
+		id: 'pda-rusak-dalam',
+		recordVersion: 1,
+		type: 'pda',
+		title: 'Rusak Dalam',
+		kind: 'dpda',
+		createdAt: 1000,
+		updatedAt: 1000,
+		openedAt: 1000,
+		doc: JSON.stringify({
+			schemaVersion: 1,
+			kind: 'dpda',
+			title: 'Rusak Dalam',
+			states: [{ bad: 1 }],
+			inputAlphabet: [],
+			stackAlphabet: [],
+			transitions: []
+		})
+	});
+
+	// From FSM mode: tap 'Rusak Dalam'
+	await openList(page, isMobile);
+	await press(row(page, 'Rusak Dalam').locator('button.open'), isMobile);
+	await expect(dialog(page)).toBeVisible();
+	await expect(dialog(page).getByRole('alert')).toContainText(
+		'Mesin ini tidak bisa dibuka, jadi tidak bisa diubah.'
+	);
+	await expect(page).not.toHaveURL(/mode=pda/);
+
+	// Open 'PDA Baik' to switch to PDA mode, then tap 'Rusak Dalam' from PDA mode
+	await press(row(page, 'PDA Baik').locator('button.open'), isMobile);
+	await expect(dialog(page)).toBeHidden();
+	await expect(page).toHaveURL(/mode=pda/);
+	await expect(page.locator('p.title')).toHaveText('PDA Baik');
+
+	await openList(page, isMobile);
+	await press(row(page, 'Rusak Dalam').locator('button.open'), isMobile);
+	await expect(dialog(page)).toBeVisible();
+	await expect(dialog(page).getByRole('alert')).toContainText(
+		'Mesin ini tidak bisa dibuka, jadi tidak bisa diubah.'
+	);
+	await closeList(page, isMobile);
+	await expect(page.locator('p.title')).toHaveText('PDA Baik');
 });
 
 test('F4: rename non-open PDA row, duplicate it, delete with Urungkan', async ({

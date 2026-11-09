@@ -5,7 +5,8 @@ Branch: `task/T-074-pda-library`, cut from `staging` at `a4b18ab` (PR 207, amend
 Commits:
 - `6b9948b` `docs(agent): start task T-074` — `docs/agent/PLAN.md` set to `in-progress`.
 - `b2299f1` `feat(storage): list FSMs and PDAs in Mesin saya` — unified list, twins in `pda-work.ts`, hooks, `open-store.ts` decoupling, tests, and ADR 0054.
-- `HEAD` `docs(agent): record task T-074 (done)` — `PLAN.md` set to `done`, `DECISIONS.md`, and this report.
+- `01e2658` `docs(agent): record task T-074 (done)` — `PLAN.md` set to `done`, `DECISIONS.md`, and initial report.
+- `HEAD` `fix(editor): honour initial PDA openRequest and review cleanups` — review fixes (`F3b`, `F3c`, `pda-work.ts` imports, `openLatestPda` fallback, and updated report).
 
 **Status: ready for review.** AC1 to AC5 hold; actual command outputs are pasted below.
 
@@ -68,23 +69,27 @@ $ pnpm --filter web exec vitest run src/lib/storage/pda-library.test.ts
    Duration  492ms
 ```
 
-### Playwright E2E Tests (F3, F4, F5, F7, F8 on Desktop and Phone)
+### Playwright E2E Tests (F3, F3b, F3c, F4, F5, F7, F8 on Desktop and Phone)
 ```
-$ pnpm --filter web exec playwright test pda-library --project=desktop --project=phone
-Running 10 tests using 6 workers
+$ pnpm --filter web exec playwright test e2e/pda-library.spec.ts --project=desktop --project=phone
+Running 14 tests using 6 workers
 
-  ✓   5 [desktop] › e2e/pda-library.spec.ts:168:1 › F7: rename open PDA through dialog updates editor title and supports undo (5.3s)
-  ✓   3 [desktop] › e2e/pda-library.spec.ts:81:1 › F4: rename non-open PDA row, duplicate it, delete with Urungkan (6.1s)
-  ✓   2 [desktop] › e2e/pda-library.spec.ts:128:1 › F5: delete open PDA opens next PDA; delete only PDA keeps mode PDA and makes empty PDA (6.7s)
-  ✓   1 [desktop] › e2e/pda-library.spec.ts:36:1 › F3: tap row of the other kind switches mode and opens that machine; reload restores last left (6.4s)
-  ✓   4 [phone] › e2e/pda-library.spec.ts:36:1 › F3: tap row of the other kind switches mode and opens that machine; reload restores last left (6.5s)
-  ✓   6 [desktop] › e2e/pda-library.spec.ts:194:1 › F8: phone viewport has >=44px touch targets and no axe violations (6.8s)
-  ✓   7 [phone] › e2e/pda-library.spec.ts:81:1 › F4: rename non-open PDA row, duplicate it, delete with Urungkan (4.2s)
-  ✓  10 [phone] › e2e/pda-library.spec.ts:168:1 › F7: rename open PDA through dialog updates editor title and supports undo (3.3s)
-  ✓   8 [phone] › e2e/pda-library.spec.ts:128:1 › F5: delete open PDA opens next PDA; delete only PDA keeps mode PDA and makes empty PDA (4.3s)
-  ✓   9 [phone] › e2e/pda-library.spec.ts:194:1 › F8: phone viewport has >=44px touch targets and no axe violations (4.3s)
+  ✓   1 [desktop] › e2e/pda-library.spec.ts:37:1 › F3: tap row of the other kind switches mode and opens that machine; reload restores last left (3.6s)
+  ✓   2 [desktop] › e2e/pda-library.spec.ts:82:1 › F3b: tapping an older PDA row from FSM mode opens that older PDA, not the latest PDA (3.9s)
+  ✓   3 [desktop] › e2e/pda-library.spec.ts:127:1 › F3c: tapping a PDA row that passes checkStoredPda but fails readStoredPda shows unreadable alert and keeps open machine (4.2s)
+  ✓   4 [desktop] › e2e/pda-library.spec.ts:188:1 › F4: rename non-open PDA row, duplicate it, delete with Urungkan (3.5s)
+  ✓   5 [desktop] › e2e/pda-library.spec.ts:235:1 › F5: delete open PDA opens next PDA; delete only PDA keeps mode PDA and makes empty PDA (3.4s)
+  ✓   6 [desktop] › e2e/pda-library.spec.ts:275:1 › F7: rename open PDA through dialog updates editor title and supports undo (2.4s)
+  ✓   7 [desktop] › e2e/pda-library.spec.ts:301:1 › F8: phone viewport has >=44px touch targets and no axe violations (3.3s)
+  ✓   8 [phone] › e2e/pda-library.spec.ts:37:1 › F3: tap row of the other kind switches mode and opens that machine; reload restores last left (3.2s)
+  ✓   9 [phone] › e2e/pda-library.spec.ts:82:1 › F3b: tapping an older PDA row from FSM mode opens that older PDA, not the latest PDA (4.0s)
+  ✓  10 [phone] › e2e/pda-library.spec.ts:127:1 › F3c: tapping a PDA row that passes checkStoredPda but fails readStoredPda shows unreadable alert and keeps open machine (4.3s)
+  ✓  11 [phone] › e2e/pda-library.spec.ts:188:1 › F4: rename non-open PDA row, duplicate it, delete with Urungkan (4.0s)
+  ✓  12 [phone] › e2e/pda-library.spec.ts:235:1 › F5: delete open PDA opens next PDA; delete only PDA keeps mode PDA and makes empty PDA (3.7s)
+  ✓  13 [phone] › e2e/pda-library.spec.ts:275:1 › F7: rename open PDA through dialog updates editor title and supports undo (3.0s)
+  ✓  14 [phone] › e2e/pda-library.spec.ts:301:1 › F8: phone viewport has >=44px touch targets and no axe violations (3.6s)
 
-  10 passed (15.1s)
+  14 passed (16.2s)
 ```
 
 ---
@@ -295,3 +300,216 @@ Tests       1378 passed | 2 skipped (1380)
 ## 8. Follow-up Observation
 
 - When the application is visited directly at `/sandbox?mode=pda` with fresh local storage, `library.start` in `sandbox/+page.svelte` initializes an empty FSM machine in the background. As noted in the pre-flight, this empty FSM row appears in "Mesin saya" as an untitled DFSM entry. Addressing this behavior is tracked for a future task.
+
+---
+
+## 9. Review Fixes (PR 208)
+
+### 9.1 Item 1 — Bug fix (`F3b`: tapping an older PDA row from FSM mode)
+- **Failing test (`F3b` on prior code):**
+  ```
+  1) [desktop] › e2e/pda-library.spec.ts:82:1 › F3b: tapping an older PDA row from FSM mode opens that older PDA, not the latest PDA
+  Error: expect(locator).toHaveText(expected) failed
+  Locator:  locator('p.title')
+  Expected: "Tua"
+  Received: "Baru"
+    118 | 	await expect(page.locator('p.title')).toHaveText('Tua');
+        | 	                                      ^
+  ```
+- **Fix in `web/src/lib/editor/PdaWorkstation.svelte`:** Made `machineStore` reactive (`$state<MachineStore | null>(null)`), tracked `started` and `lastHandledSeq`, honoured `openRequest` during the initial load before `openLatestPda`, and guarded the `openRequest` `$effect` with `if (!machineStore || !openRequest?.id) return; if (openRequest.seq <= lastHandledSeq) return;`.
+- **Deliberate break for `F3b` on final code:**
+  ```diff
+  --- a/web/src/lib/editor/PdaWorkstation.svelte
+  +++ b/web/src/lib/editor/PdaWorkstation.svelte
+  @@ -205,3 +205,2 @@
+   		void (async () => {
+  -			if (req?.id && (await openPdaById(req.id)) === null) return;
+   			let result: OpenedPda;
+  ```
+  **Failing line:**
+  ```
+  1) [desktop] › e2e/pda-library.spec.ts:82:1 › F3b: tapping an older PDA row from FSM mode opens that older PDA, not the latest PDA
+  Error: expect(locator).toHaveText(expected) failed
+  Locator:  locator('p.title')
+  Expected: "Tua"
+  Received: "Baru"
+    118 | 	await expect(page.locator('p.title')).toHaveText('Tua');
+        | 	                                      ^
+  ```
+  Restored and verified `F3b` passes on desktop and phone (10x repeat).
+
+### 9.2 Item 2 — Cleanup (`isPdaRecord` and `newId` in `web/src/lib/storage/pda-work.ts`)
+- Removed the local copies of `isPdaRecord` and `newId` in `web/src/lib/storage/pda-work.ts` and imported `{ isPdaRecord, newId } from './store.ts'`.
+- **Measured size difference:** `0.000 KB` (`0 bytes`) across all initial JS routes (`index.html`: `82.005 KB / 83,973 bytes`; `sandbox.html`: `125.313 KB / 128,321 bytes`) because `open-store.ts` already decoupled `store.ts`.
+
+### 9.3 Item 3 — Check and Report (`3a`, `3b`, `3c`)
+- **3a (`checkStoredPda` vs `readStoredPda`):**
+  - A stored PDA document with `states: [{ bad: 1 }]` passes `checkStoredPda` (`Array.isArray(value.states)` is true) so its row is rendered as clickable (`readable: true`), but fails `readStoredPda` (`parsePdaDocument` rejects the malformed state element).
+  - Previously, tapping that row closed the dialog (`this.open = false`) without setting `library.problem` (`library.unreadable`), and when tapped from FSM mode switched `activeMode` to `'pda'` before checking `readStoredPda`.
+  - Fixed in `web/src/lib/editor/LibraryDialog.svelte` (`openRow(entry)` validates PDA rows with `readStoredPda` before calling `library.openEntry(entry)` and sets `library.problem = { key: 'library.unreadable', params: {} }` on failure) and added E2E test `F3c` in `web/e2e/pda-library.spec.ts` covering both FSM mode and PDA mode.
+  - **Deliberate break for `F3c` on final code:**
+    ```diff
+    --- a/web/src/lib/editor/LibraryDialog.svelte
+    +++ b/web/src/lib/editor/LibraryDialog.svelte
+    @@ -180,1 +180,1 @@
+    -									onclick={() => run(() => openRow(entry))}
+    +									onclick={() => run(() => library.openEntry(entry))}
+    ```
+    **Failing line:**
+    ```
+    1) [desktop] › e2e/pda-library.spec.ts:127:1 › F3c: tapping a PDA row that passes checkStoredPda but fails readStoredPda shows unreadable alert and keeps open machine
+    Error: expect(locator).toBeVisible() failed
+    Locator: getByRole('dialog', { name: 'Mesin saya' })
+    Expected: visible
+      166 | 	await expect(dialog(page)).toBeVisible();
+          | 	                           ^
+    ```
+    Restored and verified `F3c` passes on desktop and phone (10x repeat).
+- **3b (`PdaWorkstation` initial load fallback when `openLatestPda` throws):**
+  - Restored the fallback in `web/src/lib/editor/PdaWorkstation.svelte`: when `openLatestPda(store)` throws during initial load, it catches the error, sets `store = createMemoryStore()` and `isPersistent = false` (`persistent = false`), and calls `await openLatestPda(store, () => Date.now())` so the workstation opens an empty PDA in memory with the non-persistent warning instead of leaving a blank frame.
+- **3c (Deleting the FSM's open row while in PDA mode, then switching to FSM mode — Report Only):**
+  - In `web/src/lib/storage/library.svelte.ts`, `deleteMachine(id)` only replaces `this.current` when `this.mode !== 'pda' && this.current?.opened.record.id === id`.
+  - Consequently, if the student is in **PDA mode** (`this.mode === 'pda'`) and deletes the FSM row whose ID matches `library.current.opened.record.id`:
+    1. `library.current` is not replaced; it continues to hold the deleted FSM's document and its active `autosave` instance (`base` with the deleted record's `id`).
+    2. When the student switches to FSM mode, `<Editor>` renders `library.current.opened.doc` — so **the student still sees the deleted FSM machine on the canvas**.
+    3. After six seconds, `pending` deletes the record from IndexedDB (`store.delete(id)`).
+    4. If the student then makes any edit in the FSM editor, `library.current.autosave` serializes the edited document onto `base` (with the deleted record's `id`) and calls `store.put(record)`, which **brings the deleted record back into IndexedDB** (and back into `"Mesin saya"` on the next refresh).
+
+### 9.4 Exact `git diff` of Review Changes (Code)
+```diff
+--- a/web/src/lib/editor/LibraryDialog.svelte
++++ b/web/src/lib/editor/LibraryDialog.svelte
+@@ -74,6 +74,20 @@
+ 		}
+ 	}
+ 
++	async function openRow(entry: Entry): Promise<Problem | null> {
++		if (entry.type === 'pda' && library.store) {
++			const record = await library.store.get(entry.id);
++			if (!record || record.type !== 'pda') {
++				return (library.problem = { key: 'library.missing', params: {} });
++			}
++			const { readStoredPda } = await import('#lib/storage/pda-work.ts');
++			if (!readStoredPda(record.doc).ok) {
++				return (library.problem = { key: 'library.unreadable', params: {} });
++			}
++		}
++		return await library.openEntry(entry);
++	}
++
+ 	async function commitRename(entry: Entry, title: string) {
+ 		const problem = await library.rename(entry.id, title);
+ 		if (problem) {
+@@ -163,7 +177,7 @@
+ 									class="open"
+ 									disabled={busy}
+ 									aria-current={isCurrent ? 'true' : undefined}
+-									onclick={() => run(() => library.openEntry(entry))}
++									onclick={() => run(() => openRow(entry))}
+ 								>
+ 									<span class="name">{shown(entry)}</span>
+ 									<span class="meta">
+--- a/web/src/lib/editor/PdaWorkstation.svelte
++++ b/web/src/lib/editor/PdaWorkstation.svelte
+@@ -4,6 +4,7 @@
+ 	import { t } from '#lib/i18n/index.svelte.ts';
+ 	import { library } from '#lib/storage/library.svelte.ts';
+ 	import type { Problem } from '#lib/storage/library.ts';
++	import { createMemoryStore } from '#lib/storage/memory.ts';
+ 	import { createAutosave } from '#lib/storage/autosave.ts';
+ 	import type { PdaAutosave } from '#lib/storage/autosave.ts';
+ 	import { createPdaDocument, serializePdaDocument } from '#lib/editor/pda-document.ts';
+@@ -38,12 +39,14 @@
+ 	let autosave = $state<PdaAutosave | null>(null);
+ 	let persistent = $state(true);
+ 	/** The store from library: null until library is ready. */
+-	let machineStore: MachineStore | null = null;
++	let machineStore = $state<MachineStore | null>(null);
+ 	/** The last example could not be written: the card says so calmly and the editor stays. */
+ 	let failed = $state(false);
+ 	/** A replaced record keeps its id: the editor is made again when this changes (as Library.Current.key). */
+ 	let editorKey = $state(0);
+ 	let active = true;
++	let started = false;
++	let lastHandledSeq = 0;
+ 
+ 	// The three samples of T-033, in this order (PDA_SAMPLES), with the texts that travel with the
+ 	// PDA mode and the chip of the document kind. No tour in this mode.
+@@ -181,31 +184,43 @@
+ 		}
+ 	});
+ 
+-	// Handle external open requests (from page)
++	// Handle external open requests (from page) once store is ready
+ 	$effect(() => {
+-		if (openRequest?.id) {
+-			void openPdaById(openRequest.id);
+-		}
++		if (!machineStore || !openRequest?.id) return;
++		if (openRequest.seq <= lastHandledSeq) return;
++		lastHandledSeq = openRequest.seq;
++		void openPdaById(openRequest.id);
+ 	});
+ 
+ 	// Initial load once library is ready
+ 	$effect(() => {
+-		if (!active || !library.ready || !library.store || opened) return;
+-		persistent = library.persistent;
+-		machineStore = library.store;
++		if (!active || !library.ready || !library.store || started) return;
++		started = true;
++		let store = library.store;
++		let isPersistent = library.persistent;
++		persistent = isPersistent;
++		machineStore = store;
++		const req = openRequest;
++		if (req) lastHandledSeq = req.seq;
+ 		void (async () => {
++			if (req?.id && (await openPdaById(req.id)) === null) return;
+ 			let result: OpenedPda;
+ 			try {
+-				result = await openLatestPda(machineStore!, () => Date.now());
++				result = await openLatestPda(store, () => Date.now());
+ 			} catch {
+-				return;
++				// The store opened but list threw: fall back to memory store
++				store = createMemoryStore();
++				isPersistent = false;
++				result = await openLatestPda(store, () => Date.now());
+ 			}
+ 			if (!active) return;
++			persistent = isPersistent;
++			machineStore = store;
+ 			opened = result;
+ 			library.pdaCurrentId = result.record.id;
+ 			onskipped?.(result.skipped);
+ 			autosave = createAutosave({
+-				store: machineStore!,
++				store,
+ 				base: result.record,
+ 				codec: pdaDocumentCodec
+ 			});
+--- a/web/src/lib/storage/pda-work.ts
++++ b/web/src/lib/storage/pda-work.ts
+@@ -11,21 +11,9 @@ import {
+ import type { PdaDocument } from '../editor/pda-document.ts';
+ import type { DocumentCodec } from './autosave.ts';
+ import type { Problem } from './library.ts';
++import { isPdaRecord, newId } from './store.ts';
+ import type { MachineStore, SavedPdaMachine } from './store.ts';
+ 
+-const isPdaRecord = (record: { type?: string }): record is SavedPdaMachine => record.type === 'pda';
+-
+-function newId(): string {
+-	if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+-		return crypto.randomUUID();
+-	}
+-	const part = () =>
+-		Math.floor(Math.random() * 0x100000000)
+-			.toString(16)
+-			.padStart(8, '0');
+-	return `${part()}-${part()}-${part()}`;
+-}
+-
+ export const CURRENT_PDA_VERSION = 1;
+```

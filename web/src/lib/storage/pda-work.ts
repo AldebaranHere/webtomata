@@ -11,20 +11,8 @@ import {
 import type { PdaDocument } from '../editor/pda-document.ts';
 import type { DocumentCodec } from './autosave.ts';
 import type { Problem } from './library.ts';
+import { isPdaRecord, newId } from './store.ts';
 import type { MachineStore, SavedPdaMachine } from './store.ts';
-
-const isPdaRecord = (record: { type?: string }): record is SavedPdaMachine => record.type === 'pda';
-
-function newId(): string {
-	if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-		return crypto.randomUUID();
-	}
-	const part = () =>
-		Math.floor(Math.random() * 0x100000000)
-			.toString(16)
-			.padStart(8, '0');
-	return `${part()}-${part()}-${part()}`;
-}
 
 export const CURRENT_PDA_VERSION = 1;
 

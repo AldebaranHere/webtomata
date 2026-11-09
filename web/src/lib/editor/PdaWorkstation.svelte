@@ -4,6 +4,7 @@
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { library } from '#lib/storage/library.svelte.ts';
 	import type { Problem } from '#lib/storage/library.ts';
+	import { createMemoryStore } from '#lib/storage/memory.ts';
 	import { createAutosave } from '#lib/storage/autosave.ts';
 	import type { PdaAutosave } from '#lib/storage/autosave.ts';
 	import { createPdaDocument, serializePdaDocument } from '#lib/editor/pda-document.ts';
@@ -38,12 +39,14 @@
 	let autosave = $state<PdaAutosave | null>(null);
 	let persistent = $state(true);
 	/** The store from library: null until library is ready. */
-	let machineStore: MachineStore | null = null;
+	let machineStore = $state<MachineStore | null>(null);
 	/** The last example could not be written: the card says so calmly and the editor stays. */
 	let failed = $state(false);
 	/** A replaced record keeps its id: the editor is made again when this changes (as Library.Current.key). */
 	let editorKey = $state(0);
 	let active = true;
+	let started = false;
+	let lastHandledSeq = 0;
 
 	// The three samples of T-033, in this order (PDA_SAMPLES), with the texts that travel with the
 	// PDA mode and the chip of the document kind. No tour in this mode.
@@ -181,31 +184,43 @@
 		}
 	});
 
-	// Handle external open requests (from page)
+	// Handle external open requests (from page) once store is ready
 	$effect(() => {
-		if (openRequest?.id) {
-			void openPdaById(openRequest.id);
-		}
+		if (!machineStore || !openRequest?.id) return;
+		if (openRequest.seq <= lastHandledSeq) return;
+		lastHandledSeq = openRequest.seq;
+		void openPdaById(openRequest.id);
 	});
 
 	// Initial load once library is ready
 	$effect(() => {
-		if (!active || !library.ready || !library.store || opened) return;
-		persistent = library.persistent;
-		machineStore = library.store;
+		if (!active || !library.ready || !library.store || started) return;
+		started = true;
+		let store = library.store;
+		let isPersistent = library.persistent;
+		persistent = isPersistent;
+		machineStore = store;
+		const req = openRequest;
+		if (req) lastHandledSeq = req.seq;
 		void (async () => {
+			if (req?.id && (await openPdaById(req.id)) === null) return;
 			let result: OpenedPda;
 			try {
-				result = await openLatestPda(machineStore!, () => Date.now());
+				result = await openLatestPda(store, () => Date.now());
 			} catch {
-				return;
+				// The store opened but list threw: fall back to memory store
+				store = createMemoryStore();
+				isPersistent = false;
+				result = await openLatestPda(store, () => Date.now());
 			}
 			if (!active) return;
+			persistent = isPersistent;
+			machineStore = store;
 			opened = result;
 			library.pdaCurrentId = result.record.id;
 			onskipped?.(result.skipped);
 			autosave = createAutosave({
-				store: machineStore!,
+				store,
 				base: result.record,
 				codec: pdaDocumentCodec
 			});
