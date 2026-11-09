@@ -15,6 +15,17 @@ Format:
 
 ---
 
+## 2026-11-10 — FSM and PDA machines in one "Mesin saya" list with shared store and openStore decoupling (T-074)
+
+- Decider: worker (approved by owner)
+- Context: T-074 unified "Mesin saya" to list both FSM and PDA machines with kind chips (DFSM, NDFSM, DPDA, NDPDA), opening PDA machines via mode switches, keeping students in their active mode when deleting the open machine, and reusing one shared store. A one-time size allowance was granted (+0.60 KB on sandbox, +0.55 KB on index) in exchange for splitting `open-store.ts`, which shrank `soal`, `panduan`, and `tentang` by ~1.2 KB each.
+- Decision: Unified `listEntries` returns both FSM and PDA records sorted by `openedAt` desc; `PdaWorkstation` reuses `library.store` and registers hooks (`flushPda`, `openPda`, `newPdaMachine`, `renameCurrent`); deleting the open machine keeps the student in their mode; `openStore` is extracted to `open-store.ts` and re-exported from `storage/index.ts`.
+- Alternatives considered: Separate lists per formalism (rejected: fragmented UX); keeping `openStore` in `storage/index.ts` (rejected: pulls unnecessary library code into simple reading routes).
+- Reversible? yes
+- Affects: `docs/decisions/0054-pda-in-my-machines.md`, `web/src/lib/storage/library.ts`, `web/src/lib/storage/library.svelte.ts`, `web/src/lib/storage/open-store.ts`, `web/src/lib/storage/index.ts`, `web/src/lib/storage/pda-work.ts`, `web/src/lib/editor/PdaWorkstation.svelte`, `web/src/lib/editor/PdaEditor.svelte`, `web/src/lib/editor/LibraryDialog.svelte`, `web/src/routes/sandbox/+page.svelte`.
+
+---
+
 ## 2026-11-08 — Shared editor frame extracted into EditorFrame.svelte (T-055)
 
 - Decider: worker (approved by planner & owner)
