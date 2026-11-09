@@ -2681,6 +2681,8 @@ Follow the rules of `AGENTS.md` for every shell command; the loaded runs are lon
 ## Task T-072 — Find the test that leaves an engine call open (the unhandled `EngineTimeout`)
 
 **Status:** done
+**Commit:** `32e7004`
+**PR:** #202
 **Owner:** worker
 **Branch:** `task/T-072-open-engine-call`
 

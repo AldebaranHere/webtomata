@@ -4,7 +4,7 @@ Branch: `task/T-072-open-engine-call`, cut from `staging` at `78809ba` (PR 201).
 
 Commits:
 - `3a1d560` `docs(agent): start task T-072` (sets status to `in-progress` in `docs/agent/PLAN.md`).
-- Second commit: `test(engine): fix leaking unawaited engine calls and add guard (T-072)` — the test fixes in `web/src/lib/engine/client.test.ts`, the immediate unsettled call guard in `client.test.ts`, `docs/agent/PLAN.md` set to `done`, and this report.
+- Second commit: `32e7004` `test(engine): fix leaking unawaited engine calls and add guard (T-072)` (PR #202) — the test fixes in `web/src/lib/engine/client.test.ts`, the immediate unsettled call guard in `client.test.ts`, `docs/agent/PLAN.md` set to `done`, and this report.
 
 **Status: ready to merge.** All acceptance criteria (AC1–AC6) are verified with real command output pasted below. Zero production code files modified (`client.ts` completely clean).
 
