@@ -574,3 +574,12 @@ Format:
 - Alternatives considered: keep the sheet's "Buka di mode PDA" button (one more tap, a button, a second message, a second code path); open the PDA file over the empty current record (the FSM never does this, and the workstation would need a reload path); put the PDA export inside `ShareDialog` (it is typed to `MachineDocument` and carries the link and the pictures that a PDA does not have yet).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-075), `design/screens/pda-editor.md`, later `web/src/lib/share/`, `web/src/routes/sandbox/+page.svelte`, `PdaEditor.svelte`, `fuzz/`
+
+## 2026-11-10 — T-075 amended after the worker's pre-flight (a lazy opener, three e2e tests change, the list closes)
+
+- Decider: planner
+- Context: DeepSeek ran the spec's facts and found: (1) three existing e2e tests (two files, 16 runs with the browsers) assert that a PDA `.jff` is refused, so "no existing test changes" was false; (2) the PDA workstation is not mounted in the FSM mode, so it cannot create the record; (3) a PDA success path did not close the list nor clear an older failure; (4) the page could not take about 150 to 400 bytes of routing and stay within 0.1 KB (102 bytes); (5) `fuzz/Cargo.toml` needs a `[[bin]]`; (6) the failure messages are in the shared dictionary and the page's `known` reads only that; (7) the download button was placed by a laptop picture but must be on a phone too; (8) the sniff must trim, the size check must come before reading, `jffLayout` can be reused by widening a type; (9) a few wrong claims in the spec's pre-flight and F5.
+- Decision: the body of `openFromFile` moves into a lazy module that holds both paths, so the page shrinks; the page builds the PDA record through it (not the workstation); the list closes and the message clears on success; three e2e tests may change; the download button is in the editor's own bar at every width; dialog strings in `pda-messages.ts`, failure keys in `id.ts`/`en.ts`; the text of `jff.unsupported_type` is updated; sizes are measured in bytes.
+- Alternatives considered: keep the routing in the page and ask for a size exception (the page is in every sandbox first load); create the record in the workstation (not mounted); a separate "Buka di mode PDA" button (already dropped).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-075); later `web/src/routes/sandbox/+page.svelte`, `web/src/lib/share/`, `fuzz/`, `web/e2e/open-file.spec.ts`, `web/e2e/cross/open-file.spec.ts`
