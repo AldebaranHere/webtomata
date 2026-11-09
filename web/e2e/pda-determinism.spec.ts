@@ -277,6 +277,13 @@ test.describe('E3: Tunjukkan with the Tabel tab open', () => {
 		await expect(live(page)).toHaveText('');
 		// The editor says that the selection is cleared.
 		await expect(page.getByRole('status')).toContainText('Pilihan dibatalkan.');
+
+		// A third press is a new request, not the first one again: with the focus somewhere else,
+		// it comes back to the Dari field of row 1.
+		await panel(page).getByRole('radio', { name: 'DPDA', exact: true }).focus();
+		await show.click();
+		await expect(transitions(page).locator('tbody tr').nth(0).locator('.f-from')).toBeFocused();
+		await expect(markedRows(page)).toHaveCount(2);
 	});
 });
 
@@ -323,6 +330,16 @@ test.describe('E5: the badge after an edit', () => {
 		await expect(plain(page)).toHaveText('Deterministik');
 		await expect(toggle(page)).toHaveCount(0);
 		await expect(markedRows(page)).toHaveCount(0);
+
+		// A competing row again: the badge is a button again, and its list starts closed, not open
+		// from the time it was open before the machine became deterministic.
+		await addCompetingRow(page);
+		await expect(toggle(page)).toBeVisible();
+		await expect(toggle(page)).toHaveAttribute('aria-expanded', 'false');
+		await expect(badge(page).locator('.pairs')).toBeHidden();
+		// The card of the new pair is there, behind the closed list.
+		await expect(cards(page)).toHaveCount(1);
+		await expect(cards(page).first()).toBeHidden();
 	});
 
 	test('desktop: an edit that adds a competing transition to F gives one pair', async ({

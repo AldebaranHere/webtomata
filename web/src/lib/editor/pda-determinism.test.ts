@@ -313,6 +313,36 @@ describe('U13: the query asks again after each change, once', () => {
 		expect(determinism.status()).toBe('ready');
 		determinism.dispose();
 	});
+
+	it('U22: the pairs of the old document are gone before the answer of the new one, which then shows its own', async () => {
+		vi.useFakeTimers();
+		// The second answer is resolved by hand, so the window between the question and the answer is
+		// certain and not a matter of timing.
+		const second = deferred();
+		const { docs, query } = asked([ok(G_PAIRS), second.promise]);
+		const determinism = createDeterminism({ query });
+
+		determinism.schedule(machineG());
+		await vi.advanceTimersByTimeAsync(200);
+		await settle();
+		expect(determinism.pairs()).toEqual(G_PAIRS);
+		expect(determinism.status()).toBe('ready');
+
+		// A new document, whose answer is not back: no pair is shown at all.
+		determinism.schedule(machineJ());
+		expect(determinism.pairs()).toEqual([]);
+		expect(determinism.status()).toBe('checking');
+
+		// The question about the new document is asked, and its answer is resolved by hand.
+		await vi.advanceTimersByTimeAsync(200);
+		expect(docs).toHaveLength(2);
+		expect(determinism.pairs()).toEqual([]);
+		second.resolve(ok(J_PAIRS));
+		await settle();
+		expect(determinism.pairs()).toEqual(J_PAIRS);
+		expect(determinism.status()).toBe('ready');
+		determinism.dispose();
+	});
 });
 
 describe('U16: an answer for an older document is dropped', () => {
