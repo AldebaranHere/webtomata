@@ -16,6 +16,14 @@ Vitest suite failed and it is not this task's: `geometry.test.ts` line 585 (`too
 1307 ms) is the known T-069 timing test, which fails only while another worker shares the machine
 and passes alone in 577 ms (section 7). It was not touched.
 
+**Round 2 (after the review).** The review approved the code and found three mutants that survived
+it. A test was added for each — U22, and one more assertion in E3 and in E5 — and each mutant was
+run again on the final code (B9 to B11, section 6). One correction to the review: B9 (`pairs = []`
+commented out in `schedule`) does **not** survive on this branch; U15 from the first round already
+fails with it. The numbers of the gate and of the repeats below are the round-2 ones: 22 unit tests
+in `pda-determinism.test.ts`, 1362 Vitest tests, and the whole new spec 5 times on both projects
+after the two new assertions.
+
 ## Planner approvals during the task (2026-11-09)
 
 The pre-flight found four things the first spec could not hold; the planner amended T-062 in PR 198
@@ -201,10 +209,10 @@ line: `side.getByText('Mesin ini lengkap.')`, `side.getByText('Belum ada start s
 found: `page.getByRole('status')` matches exactly one element today, the editor's `Announcer` (the
 toast is `role="group"`), which is why the badge's live region is not `role="status"` (approval 2).
 
-## 3. U — `pda-determinism.test.ts`, 21 tests
+## 3. U — `pda-determinism.test.ts`, 22 tests
 
 ```
- ✓ src/lib/editor/pda-determinism.test.ts (21 tests) 42ms
+ ✓ src/lib/editor/pda-determinism.test.ts (22 tests) 320ms
 ```
 U1 the transitions of G, J and K are in the order the plan numbers the rows; U2–U3 F1 (equal pops,
 and the empty pop first); U4 F2; U5 F3 (the swap, with the document's own pops checked first);
@@ -213,7 +221,10 @@ boundaries of the model (0, 1 and 2 pairs; 0 transitions gives `null`); U13 one 
 request after 200 ms and not before; U14 a burst is one request, for the last document; U15 a new
 document hides the old pairs at once; U16 an answer that arrives late is dropped; U17 an answer that
 arrives before the newer debounce is dropped; U18 a failed answer; U19 a rejecting query; U20
-`dispose` stops the waiting request and later ones; U21 an answer after `dispose` changes nothing.
+`dispose` stops the waiting request and later ones; U21 an answer after `dispose` changes nothing;
+U22 (round 2) the pairs of an old document are gone before the answer of the new one, which then
+shows its own — with the answer resolved by hand, so the window is certain and not a matter of
+timing.
 
 ## 4. The pairs of the real engine — `pda-determinism.wasm.test.ts`, 5 tests
 
@@ -239,13 +250,16 @@ E1 the four cases (no transition: no badge; F: **Deterministik** in the success 
 button; G neutral as an NDPDA and warning as a DPDA, in both tabs), and with every transition
 deleted the badge goes too; E2 the disclosure (closed at the start, `aria-expanded`, the two cards
 with their sentences, both notes, Enter and Space); E3 Tunjukkan in the Tabel tab (first edge
-`aria-pressed`, rows 1 and 2 `aria-current`, focus on row 1's Dari field, the announcement, and a
-second press clears everything, with `Pilihan dibatalkan.` from the editor); E4 the same in the
+`aria-pressed`, rows 1 and 2 `aria-current`, focus on row 1's Dari field, the announcement, a second
+press clears everything with `Pilihan dibatalkan.` from the editor, and — round 2 — a third press
+after the focus has moved to the DPDA radio puts it back on row 1's Dari field); E4 the same in the
 Definisi tab (edge pressed, focus stays on the button, no table, the same announcement); E5 an edit
-that removes the pair gives **Deterministik** and forgets the shown pair, and an edit that adds a
-competing row to F gives one pair with its sentence; E6 two quick edits with the engine held at the
-door end on the badge of the last document; E7 the phone at 360 px (short visible text, full
-`aria-label`, 44 px targets, no sideways overflow, both tones) and axe in the four badge states.
+that removes the pair gives **Deterministik** and forgets the shown pair, an edit that adds a
+competing row to F gives one pair with its sentence, and — round 2 — a competing row added again
+after the machine became deterministic gives a button whose list is closed (`aria-expanded="false"`,
+the cards behind the hidden list); E6 two quick edits with the engine held at the door end on the
+badge of the last document; E7 the phone at 360 px (short visible text, full `aria-label`, 44 px
+targets, no sideways overflow, both tones) and axe in the four badge states.
 
 **E8** is T-051's own E8, run unedited in the same pass:
 ```
@@ -258,7 +272,7 @@ deletion, because the badge is only rendered once the engine's answer is back an
 assertion has nothing to wait for. The engine is already loaded by then, so the answer takes a few
 milliseconds.
 
-## 6. The eight breaks, each run on the final code
+## 6. The breaks, each run on the final code
 
 Each break was applied to the committed code, run, and restored; `git diff` is the break itself.
 
@@ -272,8 +286,20 @@ Each break was applied to the committed code, run, and restored; `git diff` is t
 | B6 | `pda-determinism.ts`: `const swapped = isPrefix(second.pop, first.pop) && …;` → `const swapped = false;` | U5 `pda-determinism.test.ts:139` — `pop1: "AB"` / `pop2: "A"` instead of `"A"` / `"AB"`; WC5 also fails |
 | B7 | `pda-determinism.ts`: `if (transitions === 0) return null;` deleted | E1, `pda-determinism.spec.ts:150` — `.pda-determinism`: `Expected: 0  Received: 1`; U11 also fails |
 | B8 | `PdaDeterminismBadge.svelte`: `aria-label={full}` deleted | E7 phone, `pda-determinism.spec.ts:379` — `aria-label`: `Expected: "Non-deterministik · 2 pasangan bersaing"  Received: ""` |
+| B9 | `pda-determinism.ts`: `pairs = [];` in `schedule` commented out | U22 `pda-determinism.test.ts:333` — `expected [ …(2) ] to deeply equal []`; U15 also fails, at `:308` (see below) |
+| B10 | `PdaDeterminismBadge.svelte`: the `$effect` that sets `open = false` commented out | E5, `pda-determinism.spec.ts:338` — `aria-expanded`: `Expected: "false"  Received: "true"` |
+| B11 | `PdaEditor.svelte`: `request: ++rowFocusRequest` → `request: 1` | E3, `pda-determinism.spec.ts:285` — `.f-from` of row 1: `Expected: focused  Received: inactive` |
 
-Two of them needed a second pass, and this is the finding:
+B9 to B11 were the reviewer's three surviving mutants, with a new test for each (U22, and the two
+extensions of E5 and E3). Each was run on the final code and restored.
+
+**B9 does not survive on this branch**, contrary to the review: U15 (written in the first round)
+already fails with it, at `pda-determinism.test.ts:308`, because it asserts `pairs()` is empty right
+after `schedule` of a second document. U22 is still the stronger test the review asked for: its
+answer is resolved by hand, so the window between the question and the answer is certain rather than
+a matter of timing, and it also asserts that the new answer then shows its own pairs.
+
+Two of the first eight needed a second pass, and this is the finding:
 
 - **B7 first did not fail E1.** The empty-machine assertion ran before the engine's first answer,
   so a badge that ignores the transition count still had no badge to show at that moment. E1 now
@@ -306,10 +332,11 @@ $ pnpm test:tools
 ℹ pass 138  ℹ fail 0
 ```
 
-`pnpm test:web` (the whole Vitest suite, run alone). On the final tree it passed in full:
+`pnpm test:web` (the whole Vitest suite, run alone). On the final tree it passed in full, in both
+rounds:
 ```
  Test Files  115 passed (115)
-      Tests  1361 passed | 3 skipped (1364)
+      Tests  1362 passed | 3 skipped (1365)
 ```
 An earlier run of the same suite, while the other worker was busy, failed one test, and that test
 is not this task's:
@@ -379,6 +406,11 @@ and the tests that touch the worker and touch (E1's empty machine, E6, the phone
 each, reaching 10 →
 ```
 25 passed (1.1m)      0 failed
+```
+In the second round the spec grew by the two new assertions, and the whole spec ran 5 times on both
+projects again on the final code →
+```
+115 passed (4.9m)     0 failed, 0 flaky
 ```
 
 ## 8. The deepening pass
