@@ -2589,7 +2589,7 @@ Follow the rules of `AGENTS.md` for every shell command (the Playwright runs are
 
 ## Task T-064 — Give the heavy property tests an explicit timeout
 
-**Status:** in-progress
+**Status:** done
 **Owner:** worker
 **Branch:** `task/T-064-property-test-timeouts`
 
