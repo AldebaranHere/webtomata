@@ -2785,7 +2785,7 @@ Follow the rules of `AGENTS.md` for every shell command (the Playwright runs are
 
 ## Task T-062 — PDA editor, part 11 of 12: the determinism badge and the competing pairs
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-062-pda-determinism-badge`
 

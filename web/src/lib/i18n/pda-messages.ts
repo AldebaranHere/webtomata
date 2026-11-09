@@ -46,7 +46,25 @@ export const pdaId = {
 	'pda_editor.symbol_reserved':
 		'Nama simbol tidak boleh eps atau ε, dan tidak boleh berisi spasi atau koma.',
 	// The shared dictionary has no text for this refusal yet (the FSM table shows the key; T-065).
-	'document.duplicate_symbol': 'Simbol {symbol} sudah ada.'
+	'document.duplicate_symbol': 'Simbol {symbol} sudah ada.',
+	// The determinism badge (T-062). The phone's text is short, and the button's aria-label is the
+	// full text. "pasangan bersaing" is in the glossary with TODO(review).
+	'pda_editor.badge_deterministic': 'Deterministik',
+	'pda_editor.badge_nondeterministic': 'Non-deterministik · {count} pasangan bersaing',
+	'pda_editor.badge_nondeterministic_short': 'Non-det. · {count}',
+	'pda_editor.badge_not_dpda': 'Bukan DPDA · {count} pasangan bersaing',
+	'pda_editor.badge_not_dpda_short': 'Bukan DPDA · {count}',
+	// TODO(review): a true sentence that reads strangely when the two pops are the same ("pop ε
+	// adalah awalan dari pop ε"). The design's wording, kept until the owner rewrites it.
+	'pda_editor.compete_same_read':
+		'Keduanya membaca {read}, dan pop {pop1} adalah awalan dari pop {pop2}.',
+	'pda_editor.compete_epsilon_read':
+		'Salah satunya tidak membaca input, dan pop {pop1} adalah awalan dari pop {pop2}.',
+	'pda_editor.compete_show': 'Tunjukkan',
+	'pda_editor.note_ndpda_ok':
+		'Pada NDPDA ini boleh. Pada DPDA setiap pasangan menjadi kesalahan.',
+	'pda_editor.note_dpda_no': 'Pada DPDA ini tidak boleh. Ubah salah satu transisi, atau pilih NDPDA.',
+	'pda_editor.pair_selected': 'Baris {first} dan {second} ditunjukkan.'
 } as const;
 
 export const pdaEn: Record<keyof typeof pdaId, string> = {
@@ -91,7 +109,21 @@ export const pdaEn: Record<keyof typeof pdaId, string> = {
 	'pda_editor.row_removed': 'Row {n} was removed.',
 	'pda_editor.symbol_reserved':
 		'A symbol name cannot be eps or ε, and cannot contain spaces or commas.',
-	'document.duplicate_symbol': 'Symbol {symbol} already exists.'
+	'document.duplicate_symbol': 'Symbol {symbol} already exists.',
+	'pda_editor.badge_deterministic': 'Deterministic',
+	'pda_editor.badge_nondeterministic': 'Non-deterministic · {count} competing pairs',
+	'pda_editor.badge_nondeterministic_short': 'Non-det. · {count}',
+	'pda_editor.badge_not_dpda': 'Not a DPDA · {count} competing pairs',
+	'pda_editor.badge_not_dpda_short': 'Not a DPDA · {count}',
+	'pda_editor.compete_same_read': 'Both read {read}, and pop {pop1} is a prefix of pop {pop2}.',
+	'pda_editor.compete_epsilon_read':
+		'One of them reads no input, and pop {pop1} is a prefix of pop {pop2}.',
+	'pda_editor.compete_show': 'Show',
+	'pda_editor.note_ndpda_ok':
+		'On an NDPDA this is allowed. In a DPDA every pair becomes an error.',
+	'pda_editor.note_dpda_no':
+		'In a DPDA this is not allowed. Change one of the transitions, or choose NDPDA.',
+	'pda_editor.pair_selected': 'Rows {first} and {second} are shown.'
 };
 
 addMessages('id', pdaId);

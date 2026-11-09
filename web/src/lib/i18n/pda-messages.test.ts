@@ -42,7 +42,19 @@ const PDA_KEYS: readonly MessageKey[] = [
 	'pda_editor.row_changed',
 	'pda_editor.row_removed',
 	'pda_editor.symbol_reserved',
-	'document.duplicate_symbol'
+	'document.duplicate_symbol',
+	// The determinism badge (T-062).
+	'pda_editor.badge_deterministic',
+	'pda_editor.badge_nondeterministic',
+	'pda_editor.badge_nondeterministic_short',
+	'pda_editor.badge_not_dpda',
+	'pda_editor.badge_not_dpda_short',
+	'pda_editor.compete_same_read',
+	'pda_editor.compete_epsilon_read',
+	'pda_editor.compete_show',
+	'pda_editor.note_ndpda_ok',
+	'pda_editor.note_dpda_no',
+	'pda_editor.pair_selected'
 ];
 
 const parameters = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
