@@ -306,14 +306,17 @@ $ pnpm test:tools
 ℹ pass 138  ℹ fail 0
 ```
 
-`pnpm test:web` (the whole Vitest suite, run alone):
-
+`pnpm test:web` (the whole Vitest suite, run alone). On the final tree it passed in full:
+```
+ Test Files  115 passed (115)
+      Tests  1361 passed | 3 skipped (1364)
+```
+An earlier run of the same suite, while the other worker was busy, failed one test, and that test
+is not this task's:
 ```
  Test Files  1 failed | 114 passed (115)
       Tests  1 failed | 1360 passed | 3 skipped (1364)
-```
-The one failure is not this task's:
-```
+
  FAIL  src/lib/editor/diagram/geometry.test.ts > the whole drawing > draws the worst case, 600
        random edges across 200 states, in well under a second (96 ms measured)
 AssertionError: expected 1307.4892849999999 to be less than 1000
