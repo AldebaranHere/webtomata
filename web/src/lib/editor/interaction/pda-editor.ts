@@ -2,7 +2,7 @@
 // `createPdaEditor` wraps `createEditorCore` with `pdaKind`, producing a `PdaEditor`
 // interface operating on `PdaDocument` and `PdaCommand`.
 import { pdaEdgeText } from '../diagram/pda-diagram.ts';
-import { createPdaHistory } from '../history.ts';
+import { createPdaHistory } from '../pda-history.ts';
 import type { PdaCommand } from '../pda-commands.ts';
 import { pdaDocumentsEqual } from '../pda-document.ts';
 import type { PdaDocument } from '../pda-document.ts';

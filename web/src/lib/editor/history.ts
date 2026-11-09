@@ -9,10 +9,6 @@ import { applyCommand } from './commands.ts';
 import type { ApplyResult, Command } from './commands.ts';
 import { documentsEqual } from './document.ts';
 import type { MachineDocument } from './document.ts';
-import { applyPdaCommand } from './pda-commands.ts';
-import type { PdaApplyResult, PdaCommand } from './pda-commands.ts';
-import { pdaDocumentsEqual } from './pda-document.ts';
-import type { PdaDocument } from './pda-document.ts';
 import type { Message } from '../engine/types.ts';
 
 interface Step<D> {
@@ -21,7 +17,7 @@ interface Step<D> {
 	readonly key: string | undefined;
 }
 
-type GenericApplyResult<D> = { ok: true; doc: D } | { ok: false; error: Message };
+export type GenericApplyResult<D> = { ok: true; doc: D } | { ok: false; error: Message };
 
 export interface GenericHistory<D, C> {
 	/** The document now. */
@@ -42,11 +38,10 @@ export interface GenericHistory<D, C> {
 }
 
 export type History = GenericHistory<MachineDocument, Command>;
-export type PdaHistory = GenericHistory<PdaDocument, PdaCommand>;
 
 export const DEFAULT_DEPTH = 200;
 
-function createGenericHistory<D, C>(
+export function createGenericHistory<D, C>(
 	initial: D,
 	{
 		apply,
@@ -143,17 +138,6 @@ export function createHistory(initial: MachineDocument, options: { limit?: numbe
 	return createGenericHistory<MachineDocument, Command>(initial, {
 		apply: applyCommand as (doc: MachineDocument, command: Command) => ApplyResult,
 		equal: documentsEqual,
-		limit: options.limit
-	});
-}
-
-export function createPdaHistory(
-	initial: PdaDocument,
-	options: { limit?: number } = {}
-): PdaHistory {
-	return createGenericHistory<PdaDocument, PdaCommand>(initial, {
-		apply: applyPdaCommand as (doc: PdaDocument, command: PdaCommand) => PdaApplyResult,
-		equal: pdaDocumentsEqual,
 		limit: options.limit
 	});
 }
