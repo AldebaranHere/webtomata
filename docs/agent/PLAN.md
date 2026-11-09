@@ -2631,7 +2631,7 @@ Follow the rules of `AGENTS.md` for every shell command. The loaded runs are lon
 
 ## Task T-069 — No wall-clock bound in a unit test
 
-**Status:** in-progress
+**Status:** done (2026-11-09; branch `task/T-069-no-wall-clock-bounds`, commit `ff64295`. See `docs/agent/REPORT.md`.)
 **Owner:** worker
 **Branch:** `task/T-069-no-wall-clock-bounds`
 
