@@ -17,7 +17,8 @@ beforeAll(async () => {
 	await init({ module_or_path: bytes });
 });
 
-const loadPda = (pda: unknown) => JSON.parse(wasm.loadPda(JSON.stringify(pda))) as EngineResult<Pda>;
+const loadPda = (pda: unknown) =>
+	JSON.parse(wasm.loadPda(JSON.stringify(pda))) as EngineResult<Pda>;
 const determinism = (pda: unknown) =>
 	JSON.parse(wasm.pdaDeterminism(JSON.stringify(pda))) as EngineResult<Competition[]>;
 

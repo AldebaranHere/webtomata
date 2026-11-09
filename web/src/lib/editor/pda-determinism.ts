@@ -141,11 +141,7 @@ export interface BadgeModel {
  * success tone when there is no pair, and a disclosure with a neutral tone for an NDPDA and a
  * warning tone for a DPDA, because a pair is only an error in a DPDA.
  */
-export function badgeModel(
-	kind: PdaKind,
-	transitions: number,
-	pairs: number
-): BadgeModel | null {
+export function badgeModel(kind: PdaKind, transitions: number, pairs: number): BadgeModel | null {
 	if (transitions === 0) return null;
 	if (pairs === 0) {
 		return { tone: 'success', key: 'pda_editor.badge_deterministic', params: {}, opens: false };

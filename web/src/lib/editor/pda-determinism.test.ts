@@ -87,7 +87,11 @@ function machineF(): PdaDocument {
 	});
 }
 
-const pair = (from: number, first: number, second: number): Competition => ({ from, first, second });
+const pair = (from: number, first: number, second: number): Competition => ({
+	from,
+	first,
+	second
+});
 
 describe('U1: the transitions are in the order the plan numbers the rows', () => {
 	it('U1: G, J and K hold their transitions as the plan writes them', () => {
@@ -219,7 +223,10 @@ describe('U8: F5, the model of the badge', () => {
 // ---- the query ----
 
 const ok = (pairs: Competition[]): EngineResult<Competition[]> => ({ ok: true, value: pairs });
-const failed: EngineResult<Competition[]> = { ok: false, error: { key: 'engine.failed', params: {} } };
+const failed: EngineResult<Competition[]> = {
+	ok: false,
+	error: { key: 'engine.failed', params: {} }
+};
 
 const G_PAIRS = [pair(0, 0, 1), pair(0, 0, 2)];
 const J_PAIRS = [pair(0, 0, 1)];

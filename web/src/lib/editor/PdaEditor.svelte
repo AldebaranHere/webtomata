@@ -148,11 +148,7 @@
 	});
 	const badge = $derived(
 		pairs.status === 'ready'
-			? badgeModel(
-					snapshot.doc.kind,
-					snapshot.doc.transitions.length,
-					pairs.pairs.length
-				)
+			? badgeModel(snapshot.doc.kind, snapshot.doc.transitions.length, pairs.pairs.length)
 			: null
 	);
 
