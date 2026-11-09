@@ -135,9 +135,24 @@ test.describe('E1: the badge for the four cases, and the kind switch', () => {
 		await expect(plain(page)).toHaveText('Deterministik');
 		await expect(plain(page)).toHaveClass(/tone-success/);
 		await expect(toggle(page)).toHaveCount(0);
+
+		// With every transition gone the badge goes too. The engine is already up here, so a short
+		// wait is enough to be sure that its answer for the machine with no transition came back.
+		for (let i = 0; i < 3; i++) {
+			await transitions(page)
+				.locator('tbody tr')
+				.first()
+				.getByRole('button', { name: 'Hapus baris 1' })
+				.click();
+		}
+		await expect(transitions(page).locator('tbody tr')).toHaveCount(0);
+		await page.waitForTimeout(500);
+		await expect(badge(page)).toHaveCount(0);
 	});
 
-	test('desktop: G is neutral as an NDPDA and a warning as a DPDA, in both tabs', async ({ page }) => {
+	test('desktop: G is neutral as an NDPDA and a warning as a DPDA, in both tabs', async ({
+		page
+	}) => {
 		await buildG(page);
 
 		await expect(toggle(page)).toHaveAttribute(
@@ -310,7 +325,9 @@ test.describe('E5: the badge after an edit', () => {
 		await expect(markedRows(page)).toHaveCount(0);
 	});
 
-	test('desktop: an edit that adds a competing transition to F gives one pair', async ({ page }) => {
+	test('desktop: an edit that adds a competing transition to F gives one pair', async ({
+		page
+	}) => {
 		await buildF(page);
 		await expect(plain(page)).toHaveText('Deterministik');
 
@@ -359,6 +376,11 @@ test.describe('E6: two quick edits and a busy engine', () => {
 });
 
 test.describe('E7: the phone and axe', () => {
+	// A scan of axe on a machine that the test builds takes about 7 s on a quiet machine and about
+	// 36 s while another worker shares it (measured 2026-11-09). The timeout is the only thing that
+	// moves here; every assertion stays as it is (the precedent is T-064 for the heavy unit tests).
+	test.describe.configure({ timeout: 60_000 });
+
 	test('phone: the visible text is short, the aria-label is full, and every control is 44 px', async ({
 		page,
 		isMobile
@@ -369,10 +391,7 @@ test.describe('E7: the phone and axe', () => {
 		await page.setViewportSize({ width: 360, height: 740 });
 
 		const button = toggle(page);
-		await expect(button).toHaveAttribute(
-			'aria-label',
-			'Non-deterministik · 2 pasangan bersaing'
-		);
+		await expect(button).toHaveAttribute('aria-label', 'Non-deterministik · 2 pasangan bersaing');
 		await expect(button.locator('.short')).toBeVisible();
 		await expect(button.locator('.long')).toBeHidden();
 		await expect(button.locator('.short')).toHaveText('Non-det. · 2 ▾');
@@ -400,7 +419,9 @@ test.describe('E7: the phone and axe', () => {
 		await expect(button.locator('.short')).toHaveText('Bukan DPDA · 2 ▾');
 	});
 
-	test('desktop: axe finds no violation with no badge, and with Deterministik', async ({ page }) => {
+	test('desktop: axe finds no violation with no badge, and with Deterministik', async ({
+		page
+	}) => {
 		await openPdaSandbox(page);
 		// No transition: no badge.
 		await expectNoAxeViolations(page);
