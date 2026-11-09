@@ -3098,6 +3098,55 @@ pnpm size
 
 ---
 
+## Task T-068 — Keep the PDA code out of the first load (split `createPdaHistory`)
+
+**Status:** todo
+**Owner:** worker (DeepSeek: the planner's pick; it measured the cause in T-075)
+**Branch:** `task/T-068-pda-history-lazy`
+
+**Goal:** `web/src/lib/editor/history.ts` holds `createHistory` (FSM) and `createPdaHistory` (PDA). `history.ts` is imported by the FSM editor core, which is in the first load of `/sandbox`, so the first load of every route that shares that chunk also downloads `pda-commands.ts` and `pda-document.ts`, which only the PDA mode needs. T-075 made this visible: Rollup now shares `pda-document.ts` between the first-load chunk and a modulepreloaded one, and the split cost `sandbox.html` +696 bytes and the three `soal/*.html` routes +769 bytes each (the owner's one-time exception of 2026-11-10, to be paid back by this task). This task moves `createPdaHistory` and the `PdaHistory` type into their own module, so that nothing in the first load imports `pda-commands.ts` or `pda-document.ts` by a value import, and then **pays the exception back in bytes**. No behaviour changes anywhere.
+
+**Decisions (planner, 2026-11-10; do not reopen, ask if one looks wrong):**
+
+- **One new file, `web/src/lib/editor/pda-history.ts`**, with `createPdaHistory` and `PdaHistory` moved as they are (same code, same defaults, same depth). `history.ts` keeps `GenericHistory`, `History`, `DEFAULT_DEPTH` and `createHistory`, and **loses every import of `pda-commands.ts` and `pda-document.ts`** (value and type). `pda-history.ts` imports what it needs from `history.ts` (the generic part), never the other way round. If the generic engine inside `history.ts` is a private function that `createPdaHistory` calls, export it (a one-word change) rather than copying it.
+- **Who imports what.** `web/src/lib/editor/interaction/pda-editor.ts` imports `createPdaHistory` from `../pda-history.ts`. `web/src/lib/editor/index.ts` (the barrel; nothing imports it today) gets `export * from './pda-history.ts'` next to its other lines so that its surface is the same.
+- **The guard stays.** A test fails when a module of the first load reaches the PDA code by a value import again (see F2). Without it the next import of `pda-document.ts` from a shared file silently costs the bytes back.
+- **Pay back in bytes, not in KB.** `pnpm size` prints one decimal; measure the gzip of the first-JS chunks of each route from the built `build/` (the way T-073 and T-075 did) and paste the bytes before and after.
+- **If the split is not enough**, because a second first-load module still imports a PDA module by a value import, do not widen the task: list the importer and the chain in the report and wait for the planner.
+
+**Scope (files):** new `web/src/lib/editor/pda-history.ts`, `history.ts`, `interaction/pda-editor.ts`, `web/src/lib/editor/index.ts`, the import line (and nothing else) of `pda-history.property.test.ts`, the comments in `pda-commands.ts` and `history.ts` that name `history.ts` for the PDA, a new test for the guard (F2), `docs/decisions/0056-pda-history-module.md` (short; it closes the exception of ADR 0055), `docs/agent/PLAN.md` (status). **Existing tests that may change, and only these:** the `import { createPdaHistory } from './history.ts'` line of `pda-history.property.test.ts` and, if it says so, its header comment. Everything else passes unedited (`history.test.ts`, `history.property.test.ts`, every PDA editor test, every e2e).
+
+**Non-goals:** any other lazy split (the layout code, the engine client, the diagram, the table); a change to the FSM history, to the PDA commands or document, to the editor core, to a component or a screen; raising a budget; `size` tooling changes beyond reading bytes.
+
+**Fixtures (the oracle; derive by hand and write the derivation in `REPORT.md`):**
+
+- F1 **Behaviour is the same:** every existing test passes with only the one import line of `pda-history.property.test.ts` changed; the PDA history still undoes and redoes all 15 command types (the property test says so) and the FSM history is untouched.
+- F2 **The guard:** a test (Vitest, no browser; a static walk of the `import` lines of a few files, about 40 lines; or an extension of an existing build check in `tools/` if there is one: say which in the pre-flight) starts from the entry modules of the first load: `web/src/routes/sandbox/+page.svelte`, `web/src/lib/editor/Editor.svelte`, `web/src/lib/storage/library.svelte.ts`, `web/src/lib/editor/interaction/editor.ts`, follows only static value imports (`import … from`, `export … from`, not `import type`, not `import(…)`) through `.ts` and `.svelte` files under `web/src`, and fails when it reaches `pda-document.ts`, `pda-commands.ts` or `pda-history.ts`. It must pass today (after the split) and fail for each of B1 and B2.
+- F3 **Bytes:** before and after, for `index.html`, `panduan.html`, `sandbox.html`, `soal.html`, one `soal/*.html`, `tentang.html`: the sum of the gzip sizes of the scripts that the page loads first (its entry, its preloads and their imports, as `tools/check-size.mjs` counts them), in bytes. After the task, `sandbox.html` is at or under the number before T-075 (128,324 bytes) and each `soal/*.html` is at or under 127,607 bytes (both from the T-075 pre-flight at `11ce7bb`); the others are not larger than now. Report the reduction, which should be larger than the exception because `pda-document.ts` and `pda-commands.ts` leave the first load altogether.
+- F4 **The PDA mode still loads and works,** and does not wait longer for its first paint than it did (the PDA editor chunks are fetched when the mode is chosen): the PDA e2e files pass on desktop and phone; state in the report which chunks the PDA mode now fetches that the first load no longer has, with their gzip bytes.
+
+**Acceptance criteria:**
+
+- AC1 F1 to F4 hold, each by a test or a pasted measurement.
+- AC2 **No behaviour change:** the list of existing tests that you ran, and the one import line you edited.
+- AC3 **Size:** the table of F3, in bytes, before and after, pasted; the exception of ADR 0055 is paid back (the two limits of F3 hold); no route is larger than before.
+- AC4 **Break each guard once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) a value import of `pda-document.ts` in `history.ts` (the guard fails); (B2) `history.ts` re-exports `createPdaHistory` from `pda-history.ts` (the guard fails); (B3) `createPdaHistory` in the new file gets a wrong default depth (a PDA test fails). Restore each file; `git diff --stat` at the end shows only the scope.
+- AC5 `pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens`, Vitest, `pnpm build && pnpm size`, and Playwright for the PDA specs (`pda-editor`, `pda-panel`, `pda-library`, `pda-files`, `cross/pda-storage`) on desktop and phone pass.
+
+**Verification:**
+
+```
+pnpm --filter web test
+pnpm build && pnpm size
+pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-files cross/pda-storage --project=desktop --project=phone
+```
+
+**Pre-flight (before the first line of code, with real commands):** (1) build `staging` and list, for `sandbox.html` and one `soal/*.html`, the first-JS chunks and the bytes of each, and show which chunk holds `pda-document.ts` and `pda-commands.ts` today (the sourcemap or the chunk text); (2) show every static importer chain from the first-load entry modules to those two files (the walk of F2, run once by hand); say if `history.ts` is the only one; (3) say what `createPdaHistory` calls inside `history.ts` (a private function? a shared one?) and what must be exported for the split; (4) say which of the two ways you take for F2 and why. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
+
+**Depends on:** T-075 (merged); it pays back the exception of T-075.
+
+---
+
 ## Task T-038 — Conversions and simulation panel for the PDA (draft)
 
 **Status:** proposed (after P-005 is approved and T-051, T-034, T-035, T-037 are merged)
@@ -3164,7 +3213,7 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-029** The CYK tester joins rule symbols with no space, so every CNF result with a helper variable fails in CYK: specified in its own block above (`todo`; found by the worker in T-010 and reproduced by the planner).
 - **T-066** `newStateCommand` in `web/src/lib/editor/table.ts` is typed for `MachineDocument` although it only reads `states`, so the PDA table repeats its six lines in `pda-table-edit.ts` (`addStateCommand`). Widen the parameter to `StatesDocument` and let the PDA call it (found by the worker in T-061; the task's non-goals forbade touching `table.ts`).
 - **T-067** Two e2e locators pick the delete tool with `{ name: /^Hapus/ }` unscoped: `web/e2e/pda-editor.spec.ts:324` and `web/e2e/pda-panel.spec.ts:450`. The first one broke in T-061 as soon as the panel had buttons named "Hapus simbol/state/baris"; the second passes only because the panel is not in the DOM at that point. Make both `{ name: 'Hapus', exact: true }`, as `editor-edges.spec.ts:163` already does.
-- **T-068** `web/src/lib/editor/history.ts` holds both `createHistory` and `createPdaHistory`, so the first load of every route downloads `pda-commands.ts` and `pda-document.ts`. Split the PDA history into its own module and import it only with the PDA mode; it shrinks `index.html`, `soal.html` and `panduan.html`, and it would remove the 0.2 KB that T-061 pays when its lazy table chunk starts importing the PDA commands (found by the worker in T-061, section 8 of its report).
+- **T-068 (specified 2026-11-10 as "Task T-068" below; `todo`)** `web/src/lib/editor/history.ts` holds both `createHistory` and `createPdaHistory`, so the first load of every route downloads `pda-commands.ts` and `pda-document.ts`. Split the PDA history into its own module and import it only with the PDA mode; it shrinks `index.html`, `soal.html` and `panduan.html`, and it would remove the 0.2 KB that T-061 pays when its lazy table chunk starts importing the PDA commands (found by the worker in T-061, section 8 of its report).
 
 **B. Grammar additions** (a wireframe the owner approves comes first for T-020)
 
