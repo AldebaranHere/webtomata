@@ -565,3 +565,12 @@ Format:
 - Alternatives considered: open the next row of either kind after a delete (a mode switch the student did not ask for, and an FSM-only student could land in the PDA after deleting their last FSM); make the library own the PDA autosave (a larger change to the T-057 workstation than this task needs).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-074); later `web/src/lib/storage/library.svelte.ts`, `web/e2e/cross/pda-storage.spec.ts`, `PdaWorkstation.svelte`
+
+## 2026-11-10 — T-075 specified (PDA files: routing by content, no first-run button, a download dialog)
+
+- Decider: planner
+- Context: T-074 made "Mesin saya" and its "Buka file…" button reachable in the PDA mode, so every file now goes through the FSM reader. The design sheet said the FSM importer would tell a PDA by `jff.unsupported_type` and offer "Buka di mode PDA", and that the first-run card would have "Buka file .jff atau JSON".
+- Decision: the page tells the file by its content and opens a PDA file as a new PDA record in the PDA mode (and an FSM file in the FSM mode, also when the student was in the PDA mode); no "Buka di mode PDA" button; no file button on the first-run card (the FSM card has none, and the list has the button); the PDA editor gets a download button with a small dialog (`.jff` and JSON); a failed file writes nothing; a `.jff` import passes through the PDA document parser too; a fuzz target for `parse_pda_jff` is added.
+- Alternatives considered: keep the sheet's "Buka di mode PDA" button (one more tap, a button, a second message, a second code path); open the PDA file over the empty current record (the FSM never does this, and the workstation would need a reload path); put the PDA export inside `ShareDialog` (it is typed to `MachineDocument` and carries the link and the pictures that a PDA does not have yet).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-075), `design/screens/pda-editor.md`, later `web/src/lib/share/`, `web/src/routes/sandbox/+page.svelte`, `PdaEditor.svelte`, `fuzz/`

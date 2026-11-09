@@ -3042,16 +3042,59 @@ Follow the rules of `AGENTS.md` for every shell command, and run the heavy ones 
 
 ---
 
-## Task T-075 — PDA editor, part 12c: open and export `.jff` and JSON for a PDA (draft)
+## Task T-075 — PDA editor, part 12c: open and download `.jff` and JSON for a PDA
 
-**Status:** proposed (after T-073; independent of T-074 if the files do not overlap)
-**Owner:** worker
+**Status:** todo
+**Owner:** worker (DeepSeek: the planner's pick)
+**Branch:** `task/T-075-pda-files`
 
-**Goal:** The first-run card and "Mesin saya" offer "Buka file .jff atau JSON" in the PDA mode: a `.jff` of type `pda` opens through `importPdaJff`, a JSON file is told by its `kind` (`dpda`, `ndpda`) and read with `parsePdaDocument`; the PDA editor exports `.jff` through `exportPdaJff` and the document as JSON. A machine with a stack or input symbol of more than one character (`Z0`, `T_a`, `S0` from the conversions) cannot be written to `.jff`: the dialog shows `jff.symbol_not_single_character { symbol }` calmly and offers JSON. The FSM importer's `jff.unsupported_type { type: "pda" }` offers "Buka di mode PDA". No share link (a later task, prefix `p1u=` next to `m1u=`). The file is untrusted: size and structure are checked before use, and the parsers are fuzzed (CLAUDE.md section 8).
+**Goal:** A student can open a `.jff` of type `pda` or a PDA JSON file with the "Buka file…" button of "Mesin saya", and download the open PDA as `.jff` (for JFLAP) or as JSON. Today the button in the list sends every file through the FSM reader: a PDA file fails with `jff.unsupported_type` or `document.invalid_file`, and the PDA editor has no way to give a file back. The engine already reads and writes the PDA `.jff` (`importPdaJff`, `exportPdaJff`, T-032) and the PDA document already has `toEnginePda`, `fromEnginePda`, `serializePdaDocument` and `parsePdaDocumentText` (T-033): this task joins them to two buttons. No share link (a later task).
 
-**Questions for the planner to settle in the spec:** the file names of an export; whether the layout (state positions) is kept in the `.jff` as the FSM's is; how a file of the wrong mode is offered ("Buka di mode PDA" and its twin "Buka di mode FSM"?); the limit of a PDA file (the FSM's `FILE_BYTE_LIMIT` or its own).
+**Decisions (planner, 2026-11-10; do not reopen, ask if one looks wrong):**
 
-**Depends on:** T-073 (the card's "Buka file" button), T-074 (the dialog and the shared workstation), T-057.
+- **The file is told by its content, and the page opens it in the right mode.** A `.jff` is a PDA when its `<type>` is `pda`; a JSON file is a PDA when its `kind` is `dpda` or `ndpda`; anything else goes to the FSM reader exactly as today. A PDA file opens as a **new PDA record** (`createPdaMachine`, never over the open one, as an FSM file opens as a new machine: `library.openDocument` leaves the open record alone), then the page switches to the PDA mode if needed and gives the workstation the same open request `{ id, seq }` as T-074 (the workstation already opens a request that is present at mount). The notice is `import.opened { title }` (it is in the shared dictionary). This **replaces** the design sheet's "the FSM editor offers Buka di mode PDA": one tap fewer, one code path fewer (the sheet is amended in the spec PR).
+- **An FSM file chosen in the PDA mode switches to the FSM mode.** Since T-074 the button is reachable in the PDA mode, and `openFromFile` would open the FSM machine behind a PDA screen. After an FSM file is opened, the page calls `selectMode('fsm')` when the mode is PDA (flush through the library hook, as T-074 does for a row).
+- **Reading.** A `.jff` goes through `engine.importPdaJff`; `fromEnginePda(pda, states)` gives the document (the engine returns the kind `ndpda`: a `.jff` does not say; the student can switch the kind in the panel); the title is the file name without the extension (`titleOfFileName` of `share/open-file.ts`). A JSON file goes through `parsePdaDocumentText` and keeps its own title and kind. **Both results pass through `parsePdaDocumentText(serializePdaDocument(doc))` before use**, so that every limit and rule of a PDA document holds for a document that came from a `.jff` too. The limit of the file is the FSM's `FILE_BYTE_LIMIT` (1 MB, checked before the text is read). Nothing throws; a failure is a message (`import.too_big`, `import.unknown_type`, `import.unreadable`, the engine's `jff.*`, the document's `pda_document.*`), shown in the list, which stays open, and **nothing is written** (no record is made for a file that fails).
+- **Downloading.** A button in the header of the PDA editor, next to "Mesin saya" (same 44 px size, shown when the machine has at least one state, as the FSM's "Bagikan"), opens a small native `<dialog>` (`PdaFileDialog.svelte`, lazy-loaded like `ShareDialog`; on a phone a sheet from the bottom) with two buttons, "Unduh .jff" and "Unduh JSON", and one line that says what each is for. The `.jff` is `engine.exportPdaJff(toEnginePda(doc), layout)` with the layout `{ id, name, x, y }` of each state, so that names and places survive a round trip. A machine with a symbol of more than one character (`Z0`, `T_a`) gives `jff.symbol_not_single_character { symbol }`; the dialog shows it calmly with the JSON still offered. The names are `fileName(title, '.jff', fallback)` and `fileName(title, JSON_EXTENSION, fallback)` of `share/files.ts` (`share.file_fallback` as fallback), and `download` gives the file. The JSON is `JSON.stringify(JSON.parse(serializePdaDocument(doc)), null, 2) + '\n'`, as the FSM's `jsonFile` does for its document.
+- **No button on the first-run card.** The FSM card has none either ("Buka file…" lives in "Mesin saya", which the PDA editor has since T-074); the design sheet's line is amended.
+- **Size.** No route's first JS grows by more than 0.1 KB. Everything the PDA needs (the reader, the writer, the dialog, its texts in `pda-messages.ts`) is in lazy modules; the page's change is one dynamic import and one branch. If it cannot hold, give the numbers in the pre-flight. Strings go into `pda-messages.ts`, never into `id.ts` or `en.ts` (T-063).
+
+**Scope (files):** new `web/src/lib/share/pda-files.ts` (`isPdaFile`, `openPdaFile`, `pdaJffFile`, `pdaJsonFile`, `pdaJffLayout`; no DOM), new `web/src/lib/share/PdaFileDialog.svelte`, `web/src/routes/sandbox/+page.svelte` (the routing in `openFromFile`, the mode switch after an FSM file in the PDA mode, the dialog's lazy import), `PdaEditor.svelte` (the button and its prop), `PdaWorkstation.svelte` (passes the open of the dialog, and `createPdaMachine` through the store it has), `web/src/lib/i18n/pda-messages.ts` and the key ledger in its test, `docs/glossary.md` only if a term is new (`unduh` is already used), a new fuzz target `fuzz/fuzz_targets/parse_pda_jff.rs` (the `parse_jff` target next to it is the model), tests, `docs/decisions/0055-pda-files.md` (short), `design/screens/pda-editor.md` (the two lines named above, in the spec PR), `docs/agent/PLAN.md` (status). **Existing tests that may change: none.** `share/open-file.test.ts`, `open-file.wasm.test.ts`, `files.test.ts`, `files.wasm.test.ts`, `cross/library.spec.ts` and the share e2e pass unedited.
+
+**Non-goals:** a share link (`p1u=`); a picture (SVG or PNG) of a PDA; opening several files; drag and drop; a "Buka di mode PDA" button; a button on the first-run card; JFLAP files of other types (Turing machine, grammar) in the PDA path; a change to the engine (`crates/` changes only by the new fuzz target); a change to `open-file.ts` or `files.ts` beyond importing from them.
+
+**Fixtures (the oracle; derive by hand and write the derivation in `REPORT.md`):**
+
+- F1 Round trip of `.jff`: take the `wcwᴿ` sample (`PDA_SAMPLES`; check that its symbols are single characters; if not, use the sample whose symbols are), export `.jff`, open that text as a file: the new document has the same states with the same names and places, the same transitions in the same order, the same alphabets, the same start and accepting states; only the title (from the file name) and the kind (`ndpda`) may differ. The text of the second export is equal to the first.
+- F2 Round trip of JSON: a `dpda` with a title, exported as JSON and opened: `pdaDocumentsEqual` is true, the kind is still `dpda`, the title is kept.
+- F3 A PDA with a stack symbol `Z0`: the `.jff` button shows `jff.symbol_not_single_character` with symbol `Z0`, downloads nothing, and the JSON button still downloads; the dialog has no axe violation in this state.
+- F4 Routing in the page: in the FSM mode, choose a PDA `.jff`: the address becomes `?mode=pda`, a new PDA record is open with the file's machine, the FSM machine is untouched in the list; choose a PDA JSON file in the PDA mode: a new PDA record opens, the earlier PDA record is still in the list; choose an FSM `.jff` in the PDA mode: the page switches to the FSM mode and the new FSM machine is open, and the PDA record is untouched.
+- F5 Hostile files, each leaves the open machine, the list and the store exactly as they were (count and ids before and after) and shows its message in the list: a 1 MB + 1 byte file (`import.too_big`); a name that is neither `.jff` nor `.json` (`import.unknown_type`); `<type>pda</type>` with broken XML (`jff.xml_invalid`); a PDA `.jff` whose `<read>` has two characters (`jff.pda_read_not_single`); a PDA JSON with `kind: 'ndpda'` and a state that is not an object (a `pda_document.*` message, shown with words, not the calm "cannot"); a PDA JSON over a limit of the PDA document (a message, no record).
+- F6 The names of the files: a title with `/`, `:` and a trailing dot, an empty title, and a title of 200 characters give the names of `fileName` (80 characters at most, no forbidden character, the fallback for an empty one), with `.jff` and `.webtomata.json`.
+- F7 Untrusted input never throws: a loop of 200 fixed mutations (a seeded pseudo-random generator; byte flips, cut texts, deleted and duplicated fields, huge numbers, deep nesting) of a valid PDA JSON and of a valid PDA `.jff` through `isPdaFile` and `openPdaFile`: every call returns a result (ok or a message), none throws, and every ok result is a document that `parsePdaDocumentText` accepts.
+- F8 Phone viewport: the button and the two buttons of the dialog are at least 44 px high, the dialog is a sheet, nothing scrolls sideways, axe has no violation, and a file chosen in "Mesin saya" opens as in F4.
+
+**Acceptance criteria:**
+
+- AC1 F1 to F8 hold, each by a test (unit for `pda-files.ts` with the wasm engine as `open-file.wasm.test.ts` does; Playwright for F3, F4, F5 and F8; Playwright uses `setInputFiles`).
+- AC2 **The FSM does not change:** the existing open-file, files, library and share tests pass without any edit (state which you ran).
+- AC3 **Fuzz:** `cargo +nightly fuzz run parse_pda_jff -- -max_total_time=60` ends with no crash, in WSL; paste its last line. If `cargo-fuzz` is not available, say so and stop on this point; do not skip it silently.
+- AC4 **Size:** `pnpm size` before and after, pasted. No route's first JS grows by more than 0.1 KB; the PDA chunks may grow (name the number); the wasm is unchanged.
+- AC5 **Break each guard once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) `isPdaFile` always answers false (a PDA file goes to the FSM reader); (B2) the export passes an empty layout (names and places are lost); (B3) the 1 MB check is removed; (B4) after an FSM file in the PDA mode the page does not switch the mode; (B5) a record is made before the file is read successfully. Restore each file; `git diff --stat` at the end shows only the scope.
+- AC6 `pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens`, Vitest, `pnpm build && pnpm size`, `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`, and Playwright for the files you added or changed pass.
+
+**Verification:**
+
+```
+pnpm --filter web test
+pnpm --filter web exec playwright test pda-files cross/library
+cargo +nightly fuzz run parse_pda_jff -- -max_total_time=60
+pnpm size
+```
+
+**Pre-flight (do this before the first line of code, with real commands, and report):** (1) run `exportPdaJff` and `importPdaJff` through the worker on the `wcwᴿ` sample and show that F1 holds today at the function level (this is the oracle for the whole task); (2) say how `+page.svelte` shows a notice in the PDA mode today (`linkNote` is shown by `Editor.svelte`; the PDA mode has `pdaSkipped`), and what `import.opened` needs to be shown there; (3) say how the page learns the messages of `pda-messages.ts` for its `known(key)` check (the keys `pda_document.*` live in the lazy module, not in `id.ts`); (4) say where the `known` list of messages of the failed `.jff` comes from for the PDA path; (5) say whether `library.store` is set and `library.ready` is true when a file is chosen; (6) the sizes before. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
+
+**Depends on:** T-073 and T-074 (merged), T-057, T-032 (engine), T-033 (document).
 
 ---
 
