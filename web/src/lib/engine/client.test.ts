@@ -37,9 +37,34 @@ class FakeWorker implements WorkerLike {
 	}
 }
 
+interface PendingCall {
+	method: string;
+	args: unknown[];
+	stack: string;
+}
+
+const activeEngines: Array<{
+	pending: Map<Promise<unknown>, PendingCall>;
+}> = [];
+
+afterEach(async () => {
+	await Promise.resolve();
+	const leaks: PendingCall[] = [];
+	for (const { pending } of activeEngines) {
+		for (const call of pending.values()) {
+			leaks.push(call);
+		}
+	}
+	activeEngines.length = 0;
+	if (leaks.length > 0) {
+		const descriptions = leaks.map((c) => `  - ${c.method} called at:\n${c.stack}`).join('\n');
+		throw new Error(`Test ended with ${leaks.length} unsettled engine call(s):\n${descriptions}`);
+	}
+});
+
 function setup(timeouts?: Partial<typeof WEB_TIMEOUTS>) {
 	const workers: FakeWorker[] = [];
-	const engine = createEngine(
+	const raw = createEngine(
 		() => {
 			const worker = new FakeWorker();
 			workers.push(worker);
@@ -48,6 +73,25 @@ function setup(timeouts?: Partial<typeof WEB_TIMEOUTS>) {
 		WEB_BUDGETS,
 		timeouts
 	);
+	const pending = new Map<Promise<unknown>, PendingCall>();
+	activeEngines.push({ pending });
+
+	const engine = { ...raw };
+	for (const method of METHODS) {
+		const original = raw[method] as (...args: unknown[]) => Promise<unknown>;
+		(engine as Record<string, unknown>)[method] = (...args: unknown[]) => {
+			const stack = new Error().stack ?? '';
+			const promise = original(...args);
+			const info: PendingCall = { method, args, stack };
+			pending.set(promise, info);
+			promise.then(
+				() => pending.delete(promise),
+				() => pending.delete(promise)
+			);
+			return promise;
+		};
+	}
+
 	return { engine, workers };
 }
 
@@ -62,17 +106,21 @@ describe('a call', () => {
 		expect(workers).toHaveLength(1);
 		workers[0]!.reply({ id: 1, result: worked('0.0.0') });
 		expect(await answer).toEqual({ ok: true, value: '0.0.0' });
-		void engine.version();
+		const second = engine.version();
 		expect(workers).toHaveLength(1);
+		workers[0]!.reply({ id: 2, result: worked('0.0.0') });
+		await second;
 	});
 
-	it('sends the method and the arguments', () => {
+	it('sends the method and the arguments', async () => {
 		const { engine, workers } = setup();
-		void engine.regexToFsm('a*b', ['a', 'b']);
+		const call = engine.regexToFsm('a*b', ['a', 'b']);
 		expect(workers[0]!.posted[0]).toMatchObject({
 			method: 'regexToFsm',
 			args: ['a*b', ['a', 'b'], { maxStates: 500 }]
 		});
+		workers[0]!.reply({ id: 1, result: worked(machine) });
+		await call;
 	});
 
 	it('matches answers to calls by id, in any order', async () => {
@@ -96,7 +144,9 @@ describe('a call', () => {
 
 	it('rejects only the call whose arguments cannot be sent', async () => {
 		const { engine, workers } = setup();
-		void engine.version();
+		const first = engine.version();
+		workers[0]!.reply({ id: 1, result: worked('0.0.0') });
+		await first;
 		workers[0]!.failToSend = new Error('DataCloneError');
 		await expect(engine.validate(machine)).rejects.toThrow('DataCloneError');
 		expect(workers[0]!.terminated).toBe(false);
@@ -104,35 +154,46 @@ describe('a call', () => {
 });
 
 describe('the web budgets', () => {
-	it('are added when the call has no budget', () => {
+	it('are added when the call has no budget', async () => {
 		const { engine, workers } = setup();
-		void engine.simulate(machine, 'ab');
-		void engine.determinize(machine);
-		void engine.equivalent(machine, machine);
+		const sim = engine.simulate(machine, 'ab');
+		const det = engine.determinize(machine);
+		const eq = engine.equivalent(machine, machine);
 		const [simulate, determinize, equivalent] = workers[0]!.posted;
 		expect(simulate!.args[2]).toEqual(WEB_BUDGETS.simulate);
 		expect(determinize!.args[1]).toEqual(WEB_BUDGETS.determinize);
 		expect(equivalent!.args[2]).toEqual(WEB_BUDGETS.equivalent);
-		void engine.simulateMany(machine, ['a']);
+		const sm = engine.simulateMany(machine, ['a']);
 		expect(workers[0]!.posted[3]!.args[2]).toEqual(WEB_BUDGETS.simulateMany);
+		workers[0]!.reply({ id: 1, result: worked(null) });
+		workers[0]!.reply({ id: 2, result: worked(null) });
+		workers[0]!.reply({ id: 3, result: worked(null) });
+		workers[0]!.reply({ id: 4, result: worked(null) });
+		await Promise.all([sim, det, eq, sm]);
 	});
 
-	it('give way to the fields of the call, field by field', () => {
+	it('give way to the fields of the call, field by field', async () => {
 		const { engine, workers } = setup();
-		void engine.simplify('a', ['a'], { maxChecks: 7 });
+		const call = engine.simplify('a', ['a'], { maxChecks: 7 });
 		expect(workers[0]!.posted[0]!.args[2]).toEqual({ maxChecks: 7, maxSteps: 5_000 });
+		workers[0]!.reply({ id: 1, result: worked(null) });
+		await call;
 	});
 
-	it('are added to the call that goes through the machine', () => {
+	it('are added to the call that goes through the machine', async () => {
 		const { engine, workers } = setup();
-		void engine.simplifyViaMachine('a', ['a']);
+		const call = engine.simplifyViaMachine('a', ['a']);
 		expect(workers[0]!.posted[0]!.args[2]).toEqual(WEB_BUDGETS.simplifyViaMachine);
+		workers[0]!.reply({ id: 1, result: worked(null) });
+		await call;
 	});
 
-	it('are not added to a method that has no budget', () => {
+	it('are not added to a method that has no budget', async () => {
 		const { engine, workers } = setup();
-		void engine.complement(machine);
+		const call = engine.complement(machine);
 		expect(workers[0]!.posted[0]!.args).toEqual([machine]);
+		workers[0]!.reply({ id: 1, result: worked(null) });
+		await call;
 	});
 
 	it('are smaller than the engine defaults', () => {

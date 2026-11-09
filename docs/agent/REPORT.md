@@ -1,374 +1,328 @@
-# Task T-069 Report — No wall-clock bound in a unit test
+# Task T-072 Report — Find the test that leaves an engine call open (the unhandled `EngineTimeout`)
 
-Branch: `task/T-069-no-wall-clock-bounds`, cut from `staging` at `eafd82c` (merge of PR 197).
+Branch: `task/T-072-open-engine-call`, cut from `staging` at `78809ba` (PR 201).
 
 Commits:
+- `3a1d560` `docs(agent): start task T-072` (sets status to `in-progress` in `docs/agent/PLAN.md`).
+- Second commit: `32e7004` `test(engine): fix leaking unawaited engine calls and add guard (T-072)` (PR #202) — the test fixes in `web/src/lib/engine/client.test.ts`, the immediate unsettled call guard in `client.test.ts`, `docs/agent/PLAN.md` set to `done`, and this report.
 
-- `ff64295` `test(editor): replace wall-clock assertions with thread CPU scaling ratios (T-069)` — the test replacements, the `scalingRatio` helper in `testing.ts`, and `PLAN.md` set to `in-progress`.
-- The second commit records this report, sets Task T-069 to `done` in `docs/agent/PLAN.md`.
-
-**Status: ready to merge.** All acceptance criteria (AC1–AC5) are verified with real command output pasted below. Deliberate breaks B1, B2, and B3 were re-run on the final code.
-
----
-
-## 1. What changed
-
-Four unit tests that previously asserted absolute wall-clock durations (`< 100` ms, `< 1000` ms, `< 500` ms) were replaced with scaling ratio assertions or structural refusal checks so that they never fail on busy machines or under CPU contention:
-
-1. **`web/src/lib/editor/diagram/geometry.test.ts` (Neighbors):**
-   - Renamed from `"draws 200 states and 421 edges between neighbors quickly (9 ms measured)"` to `"draws states and edges between neighbors with near-linear scaling"`.
-   - Replaced wall-clock `performance.now() - started < 100` with `scalingRatio` between $n=50$ ($E \approx 100$) and $4n=200$ ($E \approx 420$).
-   - `smallRepeats: 8, largeRepeats: 1, samples: 5`. Bound: `< 12` (quiet median 3.80, loaded median 3.89, loaded max 5.38; bound 12 gives >2x headroom while catching quadratic accidents). Timeout: 15 s.
-2. **`web/src/lib/editor/diagram/geometry.test.ts` (Worst Case):**
-   - Renamed from `"draws the worst case, 600 random edges across 200 states, in well under a second (96 ms measured)"` to `"draws the worst case of random edges across states with bounded scaling"`.
-   - Replaced wall-clock `took < 1000` with `scalingRatio` between $n=50$ ($E=150$) and $4n=200$ ($E=600$).
-   - `smallRepeats: 2, largeRepeats: 1, samples: 5`. Bound: `< 12` (quiet median 7.81, max 9.28; loaded median 7.60, max 9.44; bound 12 provides >25% margin over loaded max 9.44 while failing accidental loops). Timeout: 15 s.
-3. **`web/src/lib/editor/history.property.test.ts` (Speed):**
-   - Renamed from `"moves a state of a document with 2,000 states 300 times in well under a second"` to `"moves states with near-linear scaling in document size"`.
-   - Replaced wall-clock `milliseconds < 1000` with `scalingRatio` between $n=500$ states and $4n=2000$ states (200 moveState operations).
-   - `smallRepeats: 3, largeRepeats: 1, samples: 5`. Bound: `< 10` (quiet median 4.00, loaded median 3.82, loaded max 5.16; bound 10 provides ~2x margin over loaded max while catching quadratic moves). Timeout: 15 s.
-4. **`web/src/lib/questions/load.test.ts` (Alias Bomb):**
-   - Replaced wall-clock `performance.now() - started < 500` with a 9-level bomb of 9 aliases ($9^9 \approx 3.87 \times 10^8$ items if expanded).
-   - Asserts that `question` is undefined, `problems.length > 0`, `problems[0]!.path === '(file)'`, and `problems[0]!.message.toContain('anchors and aliases')`.
-   - The YAML loader refuses at the first anchor during CST traversal and never expands, making a clock check unnecessary; explicit 15 s timeout acts as backstop.
-5. **`web/src/lib/editor/testing.ts` (Scaling Ratio Helper):**
-   - Added pure test helper `scalingRatio(small, large, options)` and interface `ScalingRatioOptions`.
-   - Uses thread CPU time (`process.threadCpuUsage()`, user + system, floored at 50 µs = 0.05 ms).
-   - One warm-up call of each size to eliminate JIT/first-use costs.
-   - Interleaved sampling (`small, large, small, large, ...`, best of 5 samples for each size).
-
-Files touched: `web/src/lib/editor/testing.ts`, `web/src/lib/editor/diagram/geometry.test.ts`, `web/src/lib/editor/history.property.test.ts`, `web/src/lib/questions/load.test.ts`, `docs/agent/PLAN.md`.
-**Zero production code files modified.**
+**Status: ready to merge.** All acceptance criteria (AC1–AC6) are verified with real command output pasted below. Zero production code files modified (`client.ts` completely clean).
 
 ---
 
-## 2. Planner approvals during the task
+## 1. AC1 — Name the leak with evidence
 
-On 2026-11-09, the planner approved the following refinements:
-1. **Thread CPU time instead of wall-clock time:** Thread CPU time (`process.threadCpuUsage()`, user + system in microseconds) is used rather than `performance.now()` in `scalingRatio`. Wall clock inflates dramatically under CPU saturation (observed up to 8x), whereas thread CPU usage measures only the CPU time consumed by the active Vitest worker thread, keeping ratio measurements stable across quiet and loaded environments.
-2. **Sampling protocol:**
-   - One warm-up execution of each workload size before sampling begins.
-   - Interleaved samples (`small, large, small, large, ...`, 5 samples of each size, taking the minimum/best CPU time).
-   - Small repeat counts to ensure small sample CPU time is at least ~10–36 ms (`smallRepeats: 8` for Neighbors, `smallRepeats: 2` for Worst Case, `smallRepeats: 3` for History).
-3. **Bounds:**
-   - Neighbors: bound `< 12`
-   - History: bound `< 10`
-   - Worst Case: bound `< 12` (rule: above 40 honest runs max of 9.44 with >25% margin, below accident min 16.63 with >1.5x margin; kept at 12 as honest loaded ratios are all $< 12$).
-4. **Helper location:** Placed in `web/src/lib/editor/testing.ts` after verifying with `grep -rn "editor/testing" web/src | grep -v "\.test\."` that no production code imports `testing.ts`.
+### Findings
+The unhandled `EngineTimeout` rejections did **not** originate from `src/lib/editor/interaction/pda-editor.property.test.ts`. Because `web/vitest.config.ts` sets `isolate: false`, test files within each Vitest worker share the Node event loop and process state. When an unawaited engine call is initiated against a `FakeWorker` that never replies, a real Node `setTimeout` timer for `callMs` (10,000 ms) remains active on Node's event loop. When that 10-second timer fires, `timeOut()` in `client.ts` rejects the pending promise. If nobody catches that promise, Node emits an `unhandledRejection`, which Vitest captures and attributes to whichever test file happens to be currently running (such as `pda-editor.property.test.ts`).
 
----
+### Leaking file and call locations
+A temporary probe was added to `client.ts` that recorded `new Error().stack` on every `call()` and printed the stack when `timeOut()` fired. Running the suite with `PROBE_TIMEOUT_MS=1000` revealed **7 leaking unreplied/unawaited engine calls, all located in `web/src/lib/engine/client.test.ts`**:
 
-## 3. AC1 — Reproduction of wall-clock failure under load
+1. **`client.test.ts:65`** — `void engine.version();`
+   - *Suite:* `describe('a call') > it('makes a worker on the first call, reuses it on the second')`
+   - *Why it leaked:* The test called `version()` twice to test worker reuse. The first call was answered with `workers[0]!.reply({ id: 1, ... })`, setting `answered = true`. The second call was dispatched with `void engine.version()`, but the test never replied to call `id: 2` and never awaited it. Because `answered` was true, `callMs` (10,000 ms) was assigned. When test runs exceeded 10 seconds, this timer expired during later test files.
+2. **`client.test.ts:71`** — `void engine.regexToFsm('a*b', ['a', 'b']);`
+   - *Suite:* `it('sends the method and the arguments')`
+   - *Why it leaked:* Dispatched `regexToFsm` and asserted `workers[0]!.posted[0]`, but never replied to call 1 and never awaited the returned promise.
+3. **`client.test.ts:99`** — `void engine.version();`
+   - *Suite:* `it('rejects only the call whose arguments cannot be sent')`
+   - *Why it leaked:* Dispatched `version()`, then simulated a `failToSend` error on a subsequent `validate()` call, but left call 1 open without reply or await.
+4. **`client.test.ts:109`** — `void engine.simulate(...)`, `void engine.determinize(...)`, `void engine.equivalent(...)`, and **line 118** `void engine.simulateMany(...)`
+   - *Suite:* `describe('the web budgets') > it('are added when the call has no budget')`
+   - *Why it leaked:* 4 calls were dispatched to inspect arguments posted to the worker, but none received replies and none were awaited.
+5. **`client.test.ts:122`** — `void engine.simplify('a', ['a'], { maxChecks: 7 });`
+   - *Suite:* `it('give way to the fields of the call, field by field')`
+   - *Why it leaked:* Dispatched `simplify`, checked posted args, never replied or awaited.
+6. **`client.test.ts:128`** — `void engine.simplifyViaMachine('a', ['a']);`
+   - *Suite:* `it('are added to the call that goes through the machine')`
+   - *Why it leaked:* Dispatched `simplifyViaMachine`, checked posted args, never replied or awaited.
+7. **`client.test.ts:134`** — `void engine.complement(machine);`
+   - *Suite:* `it('are not added to a method that has no budget')`
+   - *Why it leaked:* Dispatched `complement`, checked posted args, never replied or awaited.
 
-Before any code changes, the four existing tests were measured 5 times quiet, and 5 times under the load of `nproc` (12) copies of `yes > /dev/null`:
-
-### Quiet Runs (5 runs)
-- **Geometry (Neighbors, < 100 ms):** 11.08 ms, 11.23 ms, 11.39 ms, 11.75 ms, 11.16 ms (all passed)
-- **Geometry (Worst Case, < 1000 ms):** 113.88 ms, 112.59 ms, 113.23 ms, 113.62 ms, 113.92 ms (all passed)
-- **History (Move 2000 states, < 1000 ms):** 16.70 ms, 15.65 ms, 15.93 ms, 16.59 ms, 15.66 ms (all passed)
-- **Questions (Alias bomb, < 500 ms):** 0.16 ms, 0.13 ms, 0.14 ms, 0.14 ms, 0.13 ms (all passed)
-
-### Loaded Runs (12 `yes` background processes)
-- **Geometry (Neighbors, < 100 ms):** 69.41 ms, **467.88 ms (FAILED)**, **104.29 ms (FAILED)**, 55.48 ms, 90.07 ms (Failed 2 of 5 runs!)
-- **Geometry (Worst Case, < 1000 ms):** 765.23 ms, 520.15 ms, 563.88 ms, 621.57 ms, 694.01 ms (ballooned ~6.7x from 113 ms)
-- **History (Move 2000 states, < 1000 ms):** 114.28 ms, 116.66 ms, 115.62 ms, 98.71 ms, 113.08 ms (ballooned ~7.3x from 15.6 ms)
-- **Questions (Alias bomb, < 500 ms):** 1.13 ms, 0.98 ms, 1.25 ms, 1.09 ms, 0.94 ms (ballooned ~8x from 0.13 ms)
-
-Under 12-core saturation, wall-clock times ballooned up to 8x and caused Test 1 (Neighbors) to fail twice. All background `yes` processes were cleanly terminated (`pgrep yes` printed nothing).
-
----
-
-## 4. AC2 — Five consecutive whole-suite runs under load (all green)
-
-After replacing the tests with thread CPU scaling ratios and the structural alias bomb check, the entire test suite (113 test files, 1336 tests) was executed 5 consecutive times under the load of 12 background `yes` processes. All 5 runs were completely green:
-
+### Probe stack trace (pasted from test run)
 ```
-Run 1:
-Uptime: 16:41:48 up 8:36, 0 users, load average: 10.96, 7.82, 4.39
-Ratios measured: [Neighbors: 3.966] [History: 4.082] [Worst Case: 7.420]
-Test Files: 113 passed (113)
-Tests:      1336 passed | 2 skipped (1338)
-Duration:   103.73s
-
-Run 2:
-Uptime: 16:43:35 up 8:37, 0 users, load average: 11.87, 8.78, 5.01
-Ratios measured: [Neighbors: 3.731] [History: 4.195] [Worst Case: 7.234]
-Test Files: 113 passed (113)
-Tests:      1336 passed | 2 skipped (1338)
-Duration:   103.20s
-
-Run 3:
-Uptime: 16:45:21 up 8:39, 0 users, load average: 11.95, 9.49, 5.61
-Ratios measured: [Neighbors: 3.842] [History: 3.990] [Worst Case: 7.550]
-Test Files: 113 passed (113)
-Tests:      1336 passed | 2 skipped (1338)
-Duration:   103.45s
-
-Run 4:
-Uptime: 16:47:08 up 8:41, 0 users, load average: 11.98, 10.05, 6.17
-Ratios measured: [Neighbors: 4.015] [History: 4.112] [Worst Case: 7.398]
-Test Files: 113 passed (113)
-Tests:      1336 passed | 2 skipped (1338)
-Duration:   102.89s
-
-Run 5:
-Uptime: 16:48:54 up 8:43, 0 users, load average: 11.99, 10.51, 6.70
-Ratios measured: [Neighbors: 3.350] [History: 3.689] [Worst Case: 7.407]
-Test Files: 113 passed (113)
-Tests:      1336 passed | 2 skipped (1338)
-Duration:   101.95s
+Error: Engine call leak probe
+    at call (/home/Aldebaran64/webtomata/web/src/lib/engine/client.ts:133:14)
+    at Object.version (/home/Aldebaran64/webtomata/web/src/lib/engine/client.ts:220:13)
+    at /home/Aldebaran64/webtomata/web/src/lib/engine/client.test.ts:65:15
+    at file:///home/Aldebaran64/webtomata/web/node_modules/.pnpm/@vitest+runner@3.0.5/node_modules/@vitest/runner/dist/index.js:528:22
+    at runTest (file:///home/Aldebaran64/webtomata/web/node_modules/.pnpm/@vitest+runner@3.0.5/node_modules/@vitest/runner/dist/index.js:1050:11)
 ```
 
-All 5 runs passed with zero failures. Cleanup of `yes` processes verified: `pgrep yes` printed nothing.
+---
+
+## 2. AC2 — Reproduce it every time before the fix, 0 times after
+
+Using `PROBE_TIMEOUT_MS=1000` (lowered call timeout so leaks fire deterministically within 1 second):
+
+### Before fix (3 runs out of 3 failed with unhandled rejections)
+- **Run 1:**
+  ```
+  Test Files  115 passed (115)
+       Tests  1363 passed | 2 skipped (1365)
+      Errors  7 errors
+    Duration  10.12s
+  ```
+- **Run 2:**
+  ```
+  Test Files  115 passed (115)
+       Tests  1363 passed | 2 skipped (1365)
+      Errors  8 errors
+    Duration  14.11s
+  ```
+- **Run 3:**
+  ```
+  Test Files  115 passed (115)
+       Tests  1363 passed | 2 skipped (1365)
+      Errors  7 errors
+    Duration  10.99s
+  ```
+
+### After fix (3 runs out of 3 passed with 0 errors)
+- **Run 1:**
+  ```
+  Test Files  115 passed (115)
+       Tests  1363 passed | 2 skipped (1365)
+      Errors  0
+    Duration  10.13s
+  ```
+- **Run 2:**
+  ```
+  Test Files  115 passed (115)
+       Tests  1363 passed | 2 skipped (1365)
+      Errors  0
+    Duration  8.98s
+  ```
+- **Run 3:**
+  ```
+  Test Files  115 passed (115)
+       Tests  1363 passed | 2 skipped (1365)
+      Errors  0
+    Duration  9.20s
+  ```
+
+All temporary probe code was completely removed from `web/src/lib/engine/client.ts`.
 
 ---
 
-## 5. AC3 — Ratio measurements and calibration
+## 3. AC3 — The fix is in the test
 
-### Comparison of 20 Quiet Runs vs 20 Loaded Runs (Thread CPU time)
-
-| Test | Quiet Min | Quiet Median | Quiet Max | Loaded Min | Loaded Median | Loaded Max | Bound |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Neighbors ($n=50 \to 200$)** | 3.424 | 3.801 | 5.187 | 3.336 | 3.894 | 5.378 | **12** |
-| **History ($n=500 \to 2000$)** | 3.585 | 4.004 | 4.931 | 3.454 | 3.821 | 5.158 | **10** |
-| **Worst Case ($n=50 \to 200$)** | 6.953 | 7.811 | 9.277 | 6.963 | 7.599 | 9.439 | **12** |
-
-### The 20 Loaded Ratios for Worst Case:
-`[7.621, 7.567, 7.339, 7.747, 7.631, 7.185, 7.531, 7.214, 7.702, 7.643, 8.441, 7.544, 7.411, 7.251, 9.439, 8.210, 6.963, 7.698, 7.164, 7.712]`
-
-### Step 3: Worst Case Accident Ratios (10 quiet, 10 loaded)
-Accident tested: every edge scans all states unconditionally with an inner comparison loop over states.
-- **Quiet Accident Ratios (10 runs):**
-  `[17.100, 14.721, 18.818, 16.398, 18.693, 21.884, 16.915, 18.823, 19.204, 19.280]`
-  - Min: 14.721, Median: 18.759, Max: 21.884
-- **Loaded Accident Ratios (10 runs under 12 `yes`):**
-  `[18.730, 18.862, 16.629, 20.121, 17.020, 17.674, 17.802, 17.870, 19.362, 18.153]`
-  - Min: 16.629, Median: 17.986, Max: 20.121
-
-**Bound Justification:**
-- **Honest Max across all 40 runs:** 9.439.
-- Bound 12 provides $>25\%$ headroom over 9.439 ($9.439 \times 1.25 = 11.799 < 12$).
-- Under accident, loaded min ratio is 16.629, median ~18.0.
-- Per planner instruction: *"If after (1) the honest loaded ratios of Worst Case are all under 12, keep the bound at 12."* All 20 loaded runs were strictly $< 12$ (max 9.439), so bound 12 was kept. The Worst Case margin is thin (about 1.27x above the honest maximum and 1.2x below the accident minimum) and CI on another CPU is its first outside test.
-
----
-
-## 6. AC4 — Deliberate breaks on final code
-
-Each deliberate break was applied to the final code, proven to fail the corresponding test, and restored.
-
-### Break B1: Geometry accident (unconditional state check per edge)
+In `web/src/lib/engine/client.test.ts`, all 7 leaking calls are replied to by the `FakeWorker` and their returned promises are awaited. No existing assertions were removed or weakened:
 
 ```diff
-diff --git a/web/src/lib/editor/diagram/geometry.ts b/web/src/lib/editor/diagram/geometry.ts
-index d6332a7..04e3c75 100644
---- a/web/src/lib/editor/diagram/geometry.ts
-+++ b/web/src/lib/editor/diagram/geometry.ts
-@@ -538,8 +538,10 @@ export function diagramGeometry(input: DiagramInput, options: DiagramOptions = {
+@@ -62,17 +106,21 @@ describe('a call', () => {
+ 		expect(workers).toHaveLength(1);
+ 		workers[0]!.reply({ id: 1, result: worked('0.0.0') });
+ 		expect(await answer).toEqual({ ok: true, value: '0.0.0' });
+-		void engine.version();
++		const second = engine.version();
+ 		expect(workers).toHaveLength(1);
++		workers[0]!.reply({ id: 2, result: worked('0.0.0') });
++		await second;
+ 	});
  
- 	// 2. An edge that passes close to a state (not its own) is busy at that angle for the state.
- 	for (const edge of edges) {
--		const [x0, y0, x1, y1] = pointsBox(edge.points, NEAR);
--		for (const s of index(x0, y0, x1, y1)) {
-+		for (const s of states) {
-+			for (const o of states) {
-+				if (s.x === o.x && s.y === o.y && s.id !== o.id) break;
-+			}
- 			if (s.id === edge.from || s.id === edge.to) continue;
- 			const { distance, at } = nearestOnLine(s, edge.points);
- 			if (distance < NEAR) makeBusy(s.id, angleOf(s, at));
+-	it('sends the method and the arguments', () => {
++	it('sends the method and the arguments', async () => {
+ 		const { engine, workers } = setup();
+-		void engine.regexToFsm('a*b', ['a', 'b']);
++		const call = engine.regexToFsm('a*b', ['a', 'b']);
+ 		expect(workers[0]!.posted[0]).toMatchObject({
+ 			method: 'regexToFsm',
+ 			args: ['a*b', ['a', 'b'], { maxStates: 500 }]
+ 		});
++		workers[0]!.reply({ id: 1, result: worked(machine) });
++		await call;
+ 	});
+@@ -96,7 +144,9 @@ describe('a call', () => {
+ 
+ 	it('rejects only the call whose arguments cannot be sent', async () => {
+ 		const { engine, workers } = setup();
+-		void engine.version();
++		const first = engine.version();
++		workers[0]!.reply({ id: 1, result: worked('0.0.0') });
++		await first;
+ 		workers[0]!.failToSend = new Error('DataCloneError');
+ 		await expect(engine.validate(machine)).rejects.toThrow('DataCloneError');
+ 		expect(workers[0]!.terminated).toBe(false);
+@@ -104,35 +154,46 @@ describe('a call', () => {
+ describe('the web budgets', () => {
+-	it('are added when the call has no budget', () => {
++	it('are added when the call has no budget', async () => {
+ 		const { engine, workers } = setup();
+-		void engine.simulate(machine, 'ab');
+-		void engine.determinize(machine);
+-		void engine.equivalent(machine, machine);
++		const sim = engine.simulate(machine, 'ab');
++		const det = engine.determinize(machine);
++		const eq = engine.equivalent(machine, machine);
+ 		const [simulate, determinize, equivalent] = workers[0]!.posted;
+ 		expect(simulate!.args[2]).toEqual(WEB_BUDGETS.simulate);
+ 		expect(determinize!.args[1]).toEqual(WEB_BUDGETS.determinize);
+ 		expect(equivalent!.args[2]).toEqual(WEB_BUDGETS.equivalent);
+-		void engine.simulateMany(machine, ['a']);
++		const sm = engine.simulateMany(machine, ['a']);
+ 		expect(workers[0]!.posted[3]!.args[2]).toEqual(WEB_BUDGETS.simulateMany);
++		workers[0]!.reply({ id: 1, result: worked(null) });
++		workers[0]!.reply({ id: 2, result: worked(null) });
++		workers[0]!.reply({ id: 3, result: worked(null) });
++		workers[0]!.reply({ id: 4, result: worked(null) });
++		await Promise.all([sim, det, eq, sm]);
+ 	});
+ 
+-	it('give way to the fields of the call, field by field', () => {
++	it('give way to the fields of the call, field by field', async () => {
+ 		const { engine, workers } = setup();
+-		void engine.simplify('a', ['a'], { maxChecks: 7 });
++		const call = engine.simplify('a', ['a'], { maxChecks: 7 });
+ 		expect(workers[0]!.posted[0]!.args[2]).toEqual({ maxChecks: 7, maxSteps: 5_000 });
++		workers[0]!.reply({ id: 1, result: worked(null) });
++		await call;
+ 	});
+ 
+-	it('are added to the call that goes through the machine', () => {
++	it('are added to the call that goes through the machine', async () => {
+ 		const { engine, workers } = setup();
+-		void engine.simplifyViaMachine('a', ['a']);
++		const call = engine.simplifyViaMachine('a', ['a']);
+ 		expect(workers[0]!.posted[0]!.args[2]).toEqual(WEB_BUDGETS.simplifyViaMachine);
++		workers[0]!.reply({ id: 1, result: worked(null) });
++		await call;
+ 	});
+ 
+-	it('are not added to a method that has no budget', () => {
++	it('are not added to a method that has no budget', async () => {
+ 		const { engine, workers } = setup();
+-		void engine.complement(machine);
++		const call = engine.complement(machine);
+ 		expect(workers[0]!.posted[0]!.args).toEqual([machine]);
++		workers[0]!.reply({ id: 1, result: worked(null) });
++		await call;
+ 	});
 ```
-
-**Failure output:**
-```
- FAIL  src/lib/editor/diagram/geometry.test.ts > the whole drawing > draws states and edges between neighbors with near-linear scaling
-AssertionError: expected 28.367666527972162 to be less than 12
- ❯ src/lib/editor/diagram/geometry.test.ts:579:17
-    577|   // Linear scaling is ~4. Quiet median 3.80, loaded median 3.89, load…
-    578|   // provides headroom under load while failing a quadratic accident (…
-    579|   expect(ratio).toBeLessThan(12);
-       |                 ^
-    580|  }, 15_000);
-
- FAIL  src/lib/editor/diagram/geometry.test.ts > the whole drawing > draws the worst case of random edges across states with bounded scaling
-AssertionError: expected 16.68400763771301 to be less than 12
- ❯ src/lib/editor/diagram/geometry.test.ts:619:18
-    617|    // loaded median 7.60, max 9.44). Bound 12 gives >25% margin over t…
-    618|    // while failing an accidental extra nested loop (ratio > 18).
-    619|    expect(ratio).toBeLessThan(12);
-       |                  ^
-    620|   },
-    621|   15_000
-```
-Ratio measured: 28.37 on Neighbors and 16.68 on Worst Case (both failed bound 12). Restored cleanly.
 
 ---
 
-### Break B2: History accident (accidental $O(N^2)$ state search on move)
+## 4. AC4 — Immediate guard in `client.test.ts` and deliberate break
 
+The guard wraps the engine methods returned in `setup()` to track returned promises in a pending map. Settlement (fulfillment or rejection) unregisters the promise. An `afterEach` hook verifies that every call promise has settled; if any call is still pending when the test finishes, it immediately fails *that test* by name and outputs the call method and exact call site stack:
+
+```ts
+interface PendingCall {
+	method: string;
+	args: unknown[];
+	stack: string;
+}
+
+const activeEngines: Array<{
+	pending: Map<Promise<unknown>, PendingCall>;
+}> = [];
+
+afterEach(async () => {
+	await Promise.resolve();
+	const leaks: PendingCall[] = [];
+	for (const { pending } of activeEngines) {
+		for (const call of pending.values()) {
+			leaks.push(call);
+		}
+	}
+	activeEngines.length = 0;
+	if (leaks.length > 0) {
+		const descriptions = leaks.map((c) => `  - ${c.method} called at:\n${c.stack}`).join('\n');
+		throw new Error(`Test ended with ${leaks.length} unsettled engine call(s):\n${descriptions}`);
+	}
+});
+```
+
+### Deliberate break verification
+A deliberate break was added to `it('sends the method and the arguments')`:
 ```diff
-diff --git a/web/src/lib/editor/history.ts b/web/src/lib/editor/history.ts
-index 7d3717a..9d750c3 100644
---- a/web/src/lib/editor/history.ts
-+++ b/web/src/lib/editor/history.ts
-@@ -87,6 +87,8 @@ function createGenericHistory<D, C>(
- 		},
- 
- 		execute(command, { coalesce } = {}) {
-+			const s = [...((present as any).states ?? [])];
-+			for (const a of s) { for (const b of s) { if (a.id !== b.id && a.name === b.name) break; } }
- 			const result = apply(present, command);
- 			if (!result.ok || result.doc === present) return result;
++       void engine.version();
 ```
 
-**Failure output:**
+Output when running `pnpm --filter web exec vitest run src/lib/engine/client.test.ts`:
 ```
- FAIL  src/lib/editor/history.property.test.ts > speed > moves states with near-linear scaling in document size
-AssertionError: expected 15.506571897992714 to be less than 10
- ❯ src/lib/editor/history.property.test.ts:189:17
-    187|   // Linear move cost in state count is ~4 (quiet median 4.00, max 4.9…
-    188|   // Bound 10 provides ~2x headroom over quiet/loaded max while failin…
-    189|   expect(ratio).toBeLessThan(10);
-       |                 ^
-    190|  }, 15_000);
+FAIL src/lib/engine/client.test.ts > a call > sends the method and the arguments
+Error: Test ended with 1 unsettled engine call(s):
+  - version called at:
+Error:
+    at /home/Aldebaran64/webtomata/web/src/lib/engine/client.test.ts:128:15
+    at file:///home/Aldebaran64/webtomata/web/node_modules/.pnpm/@vitest+runner@3.0.5/node_modules/@vitest/runner/dist/index.js:528:22
+    at runTest (file:///home/Aldebaran64/webtomata/web/node_modules/.pnpm/@vitest+runner@3.0.5/node_modules/@vitest/runner/dist/index.js:1050:11)
 ```
-Ratio measured: 15.51 (failed bound 10). Restored cleanly.
+
+The test failed immediately at test end, precisely naming the method and file:line (`client.test.ts:128:15`). The break was restored and all 30 tests in `client.test.ts` passed.
 
 ---
 
-### Break B3: Alias bomb removal with memory cap (`NODE_OPTIONS=--max-old-space-size=512`)
+## 5. AC5 — Quiet and loaded whole-suite verification
 
-```diff
-diff --git a/web/src/lib/questions/load.ts b/web/src/lib/questions/load.ts
-index 78fceb6..452569f 100644
---- a/web/src/lib/questions/load.ts
-+++ b/web/src/lib/questions/load.ts
-@@ -203,6 +203,7 @@ export function parseQuestionFile(text: string, validate: SchemaValidator): Pars
- 	if (problems.length > 0) return { problems };
- 
- 	// Aliases can multiply a small file into a huge one, and nobody needs them in a question.
-+	/*
- 	let aliased = false;
- 	visit(doc, {
- 		Alias: () => {
-@@ -226,20 +227,10 @@ export function parseQuestionFile(text: string, validate: SchemaValidator): Pars
- 			]
- 		};
- 	}
-+	*/
- 
- 	let data: unknown;
--	try {
--		data = doc.toJS();
--	} catch {
--		return {
--			problems: [
--				{
--					path: FILE,
--					message: 'anchors and aliases (&name, *name) are not allowed in a question file'
--				}
--			]
--		};
--	}
-+	data = (doc as any).toJS({ maxAliasCount: -1 });
- 	if (typeof data !== 'object' || data === null || Array.isArray(data)) {
- 		return { problems: [{ path: FILE, message: WHOLE_FILE_MUST }] };
- 	}
-```
+### 5 quiet runs in a row (clean code, normal conditions)
+- **Run 1:**
+  `uptime`: `20:13:29 up  7:22,  1 user,  load average: 0.42, 0.95, 0.56`
+  `Test Files  115 passed (115)` | `Tests  1363 passed | 2 skipped (1365)` | `Duration  9.88s`
+- **Run 2:**
+  `uptime`: `20:13:40 up  7:22,  1 user,  load average: 1.25, 1.12, 0.62`
+  `Test Files  115 passed (115)` | `Tests  1363 passed | 2 skipped (1365)` | `Duration  10.30s`
+- **Run 3:**
+  `uptime`: `20:13:51 up  7:22,  1 user,  load average: 2.46, 1.39, 0.72`
+  `Test Files  115 passed (115)` | `Tests  1363 passed | 2 skipped (1365)` | `Duration  10.46s`
+- **Run 4:**
+  `uptime`: `20:14:02 up  7:22,  1 user,  load average: 3.81, 1.72, 0.83`
+  `Test Files  115 passed (115)` | `Tests  1363 passed | 2 skipped (1365)` | `Duration  10.63s`
+- **Run 5:**
+  `uptime`: `20:14:13 up  7:23,  1 user,  load average: 4.95, 2.04, 0.95`
+  `Test Files  115 passed (115)` | `Tests  1363 passed | 2 skipped (1365)` | `Duration  9.70s`
 
-**Failure output:**
-```
- FAIL  src/lib/questions/load.test.ts > a question file that is not read as it is > refuses anchors and aliases, which can be used to blow a file up
-AssertionError: expected 'schemaVersion' to be '(file)' // Object.is equality
+### 3 loaded runs under 12 background processes
+- **Loaded Run 1:**
+  `uptime`: `20:29:01 up  7:37,  1 user,  load average: 1.28, 0.73, 1.04`
+  `Test Files  115 passed (115)` | `Tests  1363 passed | 2 skipped (1365)` | `Duration  24.01s`
+- **Loaded Run 2:**
+  `uptime`: `20:29:26 up  7:38,  1 user,  load average: 7.01, 2.17, 1.51`
+  `Test Files  115 passed (115)` | `Tests  1363 passed | 2 skipped (1365)` | `Duration  18.39s`
+- **Loaded Run 3:**
+  `uptime`: `20:29:46 up  7:38,  1 user,  load average: 10.38, 3.29, 1.90`
+  `Test Files  115 passed (115)` | `Tests  1363 passed | 2 skipped (1365)` | `Duration  24.69s`
 
-Expected: "(file)"
-Received: "schemaVersion"
-
- ❯ src/lib/questions/load.test.ts:263:30
-    261|    expect(question).toBeUndefined();
-    262|    expect(problems.length).toBeGreaterThan(0);
-    263|    expect(problems[0]!.path).toBe('(file)');
-       |                              ^
-    264|    expect(problems[0]!.message).toContain('anchors and aliases');
-    265|   },
-```
-With the refusal removed, the file proceeded to schema validation instead of being rejected as an alias bomb; `problems[0].path` was `'schemaVersion'` rather than `'(file)'`, failing the structural assertion.
-Worker cleanup verified: `pgrep -fa vitest` and `pgrep node` showed no leftover worker processes. Restored cleanly.
+### Process cleanup verification
+`pkill -9 yes 2>/dev/null || true`
+`pgrep yes`: exit code 1 (no processes running).
 
 ---
 
-## 7. AC5 — Full verification suite output
+## 6. AC6 — Quality gates & git diff check
 
-### Verification command:
-```
-pnpm --filter web exec vitest run src/lib/editor/diagram/geometry.test.ts src/lib/editor/history.property.test.ts src/lib/questions/load.test.ts
-```
-**Output:**
-```
- RUN  v5.0.3 /home/Aldebaran64/webtomata/web
-
- ✓ src/lib/questions/load.test.ts (32 tests) 167ms
- ✓ src/lib/editor/history.property.test.ts (7 tests) 677ms
- ✓ src/lib/editor/diagram/geometry.test.ts (44 tests) 1620ms
-   ✓ the whole drawing (7)
-     ✓ draws the worst case of random edges across states with bounded scaling 1244ms
-
- Test Files  3 passed (3)
-      Tests  83 passed (83)
-   Start at  17:00:43
-   Duration  2.06s (tests 78%, transform 16%, import 5%, worker 1%)
-```
-
-### Full unit test gate (`pnpm --filter web test`):
-```
- Test Files  113 passed (113)
-      Tests  1336 passed | 2 skipped (1338)
-   Start at  17:03:59
-   Duration  12.16s (tests 75%, transform 18%, import 7%)
-```
-
-### Format, types, lint, guard rails:
+Command output from quality gate script:
 - `pnpm format:check`: `All matched files use Prettier code style!`
 - `pnpm check`: `svelte-check found 0 errors and 0 warnings`
-- `pnpm lint && pnpm lint:rust`: `eslint .` clean; `cargo fmt --check && cargo clippy --all-targets -- -D warnings` clean.
-- `pnpm check:strings && pnpm check:tokens`:
-  - `ok   74 components have no hard-coded text`
-  - `ok   76 files use no raw colors`
-- `pnpm build && pnpm size`:
+- `pnpm lint`: `eslint .` clean (0 errors, 0 warnings)
+- `pnpm check:strings`: `ok   75 components have no hard-coded text`
+- `pnpm check:tokens`: `ok   77 files use no raw colors`
+- `pnpm build`: build completed in 1.46s
+- `pnpm size`:
   - `initial JS index.html: 81.5 KB gzip (limit 170 KB)`
-  - `sandbox.html: 124.7 KB gzip (limit 170 KB)`
-  - `soal/*.html: 124.1 KB gzip (limit 170 KB)`
-  - `wasm engine: 237.0 KB gzip (limit 250 KB)`
-  - All bundle sizes within limits.
-- E2E area spec (`pnpm --filter web exec playwright test e2e/diagram.spec.ts --project=desktop`):
-  - `3 passed, 1 skipped (7.2s)`
+  - `initial JS panduan/berakhiran-x.html: 88.5 KB gzip (limit 170 KB)`
+  - `initial JS panduan.html: 82.3 KB gzip (limit 170 KB)`
+  - `initial JS sandbox.html: 124.7 KB gzip (limit 170 KB)`
+  - `initial JS soal/berakhiran-10.html: 124.1 KB gzip (limit 170 KB)`
+  - `initial JS soal/jumlah-a-genap.html: 124.1 KB gzip (limit 170 KB)`
+  - `initial JS soal/mengandung-101.html: 124.1 KB gzip (limit 170 KB)`
+  - `initial JS soal.html: 83.7 KB gzip (limit 170 KB)`
+  - `initial JS tentang.html: 81.6 KB gzip (limit 170 KB)`
+  - `layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)`
+  - `wasm _app/immutable/workers/assets/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB gzip (limit 250 KB)`
 
 ---
 
-## 8. Deepening pass
+## 7. Deepening Pass
 
-1. **Exports audit:**
-   - `scalingRatio`: pure helper exported from `web/src/lib/editor/testing.ts`.
-   - `ScalingRatioOptions`: interface for optional repeat counts and sample count.
-   - Verified that `web/src/lib/editor/testing.ts` is imported only by test files (`*.test.ts`); no production code imports it.
-2. **Casts count:**
-   - Exactly zero casts (`any`, `@ts-ignore`, `as unknown as`) added in the production and test changes.
-3. **Boundaries and limits:**
-   - Floor of 50 µs ($0.05$ ms) enforced in `measureCpuUs` via `Math.max(50, ...)` to guard against division-by-zero or clock resolution jitter on near-zero workloads.
-   - Worst Case scaling bound 12 tested against honest 40-run max (9.44) and accident loaded min (16.63).
-   - Neighbors scaling bound 12 tested against honest 40-run max (5.38) and accident ratio (28.37).
-   - History scaling bound 10 tested against honest 40-run max (5.16) and accident ratio (15.51).
-
----
-
-## 9. Git diff --stat
-
-```
- docs/agent/PLAN.md                          |   2 +-
- web/src/lib/editor/diagram/geometry.test.ts | 104 +++++++++++++++++++---------
- web/src/lib/editor/history.property.test.ts |  61 +++++++++++-----
- web/src/lib/editor/testing.ts               |  54 +++++++++++++++
- web/src/lib/questions/load.test.ts          |  19 +++--
- 5 files changed, 176 insertions(+), 64 deletions(-)
-```
-Zero production code files modified.
+1. **Exports and Public Interface Audit:**
+   - Zero new exports added to any module.
+   - Zero modifications to public APIs or interfaces.
+   - `web/src/lib/engine/client.ts` is 100% untouched, ensuring zero growth in bundle size or runtime logic.
+2. **Type Safety & Casts:**
+   - Zero casts added in production code.
+   - Guard in `client.test.ts` only type-casts test mocks (`raw[method] as (...args: unknown[]) => Promise<unknown>`) within test scope.
+3. **Duplicate logic:**
+   - None. All engine calls are resolved using standard existing test helpers (`workers[0]!.reply({ id, result: worked(...) })`).
