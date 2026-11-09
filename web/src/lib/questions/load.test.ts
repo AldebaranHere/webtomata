@@ -247,13 +247,20 @@ describe('a question file that is not read as it is', () => {
 	});
 
 	it('refuses anchors and aliases, which can be used to blow a file up', () => {
-		const bomb =
-			'a: &a [x, x, x, x, x, x, x, x, x]\nb: &b [*a, *a, *a, *a, *a, *a, *a, *a, *a]\nc: &c [*b, *b, *b, *b, *b, *b, *b, *b, *b]\n';
-		const started = performance.now();
-		const { problems } = found(bomb);
-		expect(performance.now() - started).toBeLessThan(500);
+		// A 9-level bomb of 9 aliases (3.87e8 items if expanded).
+		// The loader refuses at the first anchor during CST traversal and never expands,
+		// which is why no wall-clock timing is needed; the explicit 15 s timeout acts as backstop.
+		let bomb = 'a0: &a0 [x, x, x, x, x, x, x, x, x]\n';
+		for (let i = 1; i <= 8; i++) {
+			const prev = `*a${i - 1}`;
+			bomb += `a${i}: &a${i} [${Array(9).fill(prev).join(', ')}]\n`;
+		}
+		const { question, problems } = found(bomb);
+		expect(question).toBeUndefined();
+		expect(problems.length).toBeGreaterThan(0);
+		expect(problems[0]!.path).toBe('(file)');
 		expect(problems[0]!.message).toContain('anchors and aliases');
-	});
+	}, 15_000);
 
 	it('refuses a tag (!!binary and the like)', () => {
 		const { problems } = found(BASE.replace('week: 1', 'week: !!binary 1'));

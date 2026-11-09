@@ -12,7 +12,7 @@ import {
 import type { MachineDocument } from './document.ts';
 import { applyCommand } from './commands.ts';
 import { createHistory } from './history.ts';
-import { random, randomCommand } from './testing.ts';
+import { random, randomCommand, scalingRatio } from './testing.ts';
 
 const SEQUENCES = 200;
 const LENGTH = 30;
@@ -146,25 +146,46 @@ describe('random sequences of commands', () => {
 });
 
 describe('speed', () => {
-	it('moves a state of a document with 2,000 states 300 times in well under a second', () => {
-		let doc = createDocument();
-		const commands = Array.from({ length: 2000 }, (_, i) => ({
-			type: 'addState' as const,
-			x: i,
-			y: i,
-			name: `s${i}`
-		}));
-		const built = applyCommand(doc, { type: 'batch', commands });
-		if (!built.ok) throw new Error(built.error.key);
-		doc = built.doc;
-
-		const history = createHistory(doc);
-		const started = performance.now();
-		for (let i = 0; i < 300; i++) {
-			history.execute({ type: 'moveState', id: 1000, x: i, y: i }, { coalesce: 'drag' });
+	it('moves states with near-linear scaling in document size', () => {
+		function makeDoc(n: number) {
+			const doc = createDocument();
+			const commands = Array.from({ length: n }, (_, i) => ({
+				type: 'addState' as const,
+				x: i,
+				y: i,
+				name: `s${i}`
+			}));
+			const built = applyCommand(doc, { type: 'batch', commands });
+			if (!built.ok) throw new Error(built.error.key);
+			return built.doc;
 		}
-		const milliseconds = performance.now() - started;
-		// A generous bound, to catch an accident (a move that is O(n squared)), not to measure.
-		expect(milliseconds).toBeLessThan(1000);
-	});
+
+		const smallDoc = makeDoc(500);
+		const largeDoc = makeDoc(2000);
+
+		function runMoves(initialDoc: MachineDocument, n: number, moves: number) {
+			const history = createHistory(initialDoc);
+			const targetId = Math.floor(n / 2);
+			for (let i = 0; i < moves; i++) {
+				history.execute({ type: 'moveState', id: targetId, x: i, y: i }, { coalesce: 'drag' });
+			}
+			return history.doc;
+		}
+
+		let finalDoc: MachineDocument | undefined;
+		// smallRepeats = 3 brings small sample CPU time to ~12 ms (one run of 200 moves is ~4 ms).
+		const ratio = scalingRatio(
+			() => {
+				runMoves(smallDoc, 500, 200);
+			},
+			() => {
+				finalDoc = runMoves(largeDoc, 2000, 200);
+			},
+			{ smallRepeats: 3, largeRepeats: 1, samples: 5 }
+		);
+		expect(finalDoc?.states.length).toBe(2000);
+		// Linear move cost in state count is ~4 (quiet median 4.00, max 4.93; loaded median 3.82, max 5.16).
+		// Bound 10 provides ~2x headroom over quiet/loaded max while failing a quadratic move (ratio ~16).
+		expect(ratio).toBeLessThan(10);
+	}, 15_000);
 });
