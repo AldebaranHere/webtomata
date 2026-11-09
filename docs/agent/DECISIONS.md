@@ -592,3 +592,12 @@ Format:
 - Alternatives considered: wait for a larger "lazy PDA" task (no, this is the whole cause); lower the budget for the routes (no, the budget stays); drop the guard (the next shared import would silently cost the bytes again).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-068); later `web/src/lib/editor/history.ts`, `pda-history.ts`, `interaction/pda-editor.ts`
+
+## 2026-11-10 — T-068 amended after the worker's pre-flight (a real guard, a depth test, four routes not nine)
+
+- Decider: planner
+- Context: DeepSeek measured the build and walked the imports. It found: only `sandbox.html` and the three `soal/*.html` fetch the PDA chunks (not nine routes); the guard needs the layout and a proper resolver (`#lib/`, `.svelte` script blocks, inline `type` specifiers, a canary) and cannot be 40 lines; a second static chain in the soal route is tree-shaken out of the build but would fail a guard seeded from soal; my B3 (a wrong default depth) could not fail because no test reaches depth 200; the F4 timing claim was backwards; `check-size.mjs` counts only what the HTML lists.
+- Decision: the guard is seeded from the layout and the sandbox entries, with canaries, and its blind spot (the soal chain) is written in its header; a small depth test is added and B3 breaks it; B4 breaks the canary; the goal, F3 and F4 are corrected; `createGenericHistory` is exported; the soal route is not touched.
+- Alternatives considered: broaden the guard to the soal route and change its import line (a scope change for a path that costs no bytes); drop the guard (the next shared import would silently cost the bytes again).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-068); later `web/src/lib/first-load.test.ts`, `pda-history.ts`, `history.ts`
