@@ -2680,7 +2680,7 @@ Follow the rules of `AGENTS.md` for every shell command; the loaded runs are lon
 
 ## Task T-072 — Find the test that leaves an engine call open (the unhandled `EngineTimeout`)
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker
 **Branch:** `task/T-072-open-engine-call`
 
