@@ -4,7 +4,7 @@
 	import Editor from '#lib/editor/Editor.svelte';
 	import Toast from '#lib/editor/Toast.svelte';
 	import { createDocument } from '#lib/editor/document.ts';
-	import type { MachineDocument } from '#lib/editor/document.ts';
+	import type { Kind, MachineDocument } from '#lib/editor/document.ts';
 	import { decodeLink, linkFragment } from '#lib/share/link.ts';
 	import { markTourSeen, tourSeen } from '#lib/editor/tour.ts';
 	import { EXAMPLES, buildExample, exampleParam } from '#lib/examples/examples.ts';
@@ -27,15 +27,18 @@
 	// The page is prerendered with an empty frame the size of the editor, and the editor takes its
 	// place when the machine has been read, so that a reload does not show the card for a moment.
 	let editor = $state<Editor | undefined>();
+	let pdaOpenRequest = $state<{ id: string; seq: number } | null>(null);
+	let pdaOpenSeq = 0;
 	let skipped = $state(true);
 	let activeMode = $state<WorkstationMode>('fsm');
 	let pdaSkipped = $state<SkippedPda[]>([]);
 
 	let LanguageWorkstation = $state<Component | null>(null);
 	let GrammarWorkstation = $state<Component | null>(null);
-	let PdaWorkstation = $state<Component<{ onskipped?: (skipped: SkippedPda[]) => void }> | null>(
-		null
-	);
+	let PdaWorkstation = $state<Component<{
+		onskipped?: (skipped: SkippedPda[]) => void;
+		openRequest?: { id: string; seq: number } | null;
+	}> | null>(null);
 	$effect(() => {
 		if (activeMode === 'language' && !LanguageWorkstation) {
 			void import('#lib/language/LanguageWorkstation.svelte').then(
@@ -97,7 +100,10 @@
 				};
 	}
 
-	function selectMode(mode: WorkstationMode) {
+	async function selectMode(mode: WorkstationMode) {
+		if (activeMode === 'pda' && mode !== 'pda') {
+			await library.flushPda();
+		}
 		activeMode = mode;
 		try {
 			localStorage.setItem('webtomata_sandbox_mode', mode);
@@ -112,6 +118,22 @@
 			// ignore in restricted environments
 		}
 	}
+
+	async function openPdaRow(id: string) {
+		if (activeMode !== 'pda') {
+			await selectMode('pda');
+		}
+		pdaOpenRequest = { id, seq: ++pdaOpenSeq };
+		return null;
+	}
+
+	$effect(() => {
+		library.mode = activeMode === 'pda' ? 'pda' : 'fsm';
+		if (activeMode !== 'pda') {
+			library.openPda = openPdaRow;
+		}
+		library.switchToFsm = () => void selectMode('fsm');
+	});
 
 	onMount(() => {
 		skipped = false;
@@ -137,7 +159,9 @@
 
 	// The title of the open machine is changed through the editor, so that undo works.
 	$effect(() => {
-		library.renameCurrent = (title) => editor?.setTitle(title) ?? null;
+		if (activeMode === 'fsm') {
+			library.renameCurrent = (title) => editor?.setTitle(title) ?? null;
+		}
 	});
 
 	// The tour: code that is needed only when it is opened. It is seen when it is closed in any way.
@@ -225,11 +249,11 @@
 	// The other saved machines, for the second machine of a union.
 	const others = $derived(
 		library.entries
-			.filter((entry) => entry.id !== library.current?.opened.record.id)
+			.filter((entry) => entry.type !== 'pda' && entry.id !== library.current?.opened.record.id)
 			.map((entry) => ({
 				id: entry.id,
 				title: localizedTitle(entry.titles, entry.title, getLocale()) || t('editor.untitled'),
-				kind: entry.kind,
+				kind: entry.kind as Kind,
 				stamp: entry.updatedAt,
 				readable: entry.readable
 			}))
@@ -308,7 +332,7 @@
 	{/if}
 {:else if activeMode === 'pda'}
 	{#if PdaWorkstation}
-		<PdaWorkstation onskipped={(s) => (pdaSkipped = s)} />
+		<PdaWorkstation openRequest={pdaOpenRequest} onskipped={(s) => (pdaSkipped = s)} />
 	{:else}
 		<div class="frame" aria-busy="true"></div>
 	{/if}

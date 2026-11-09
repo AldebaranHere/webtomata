@@ -22,7 +22,18 @@
 	let busy = $state(false);
 	let picker: HTMLInputElement;
 
-	const currentId = $derived(library.current?.opened.record.id);
+	const currentId = $derived(library.currentId);
+
+	onMount(() => {
+		library.duplicatePda = async (store, id) => {
+			const { duplicatePdaMachine } = await import('#lib/storage/pda-work.ts');
+			return duplicatePdaMachine(store, id);
+		};
+		library.renamePda = async (store, id, title) => {
+			const { renamePdaStored } = await import('#lib/storage/pda-work.ts');
+			return renamePdaStored(store, id, title);
+		};
+	});
 	/** The title of a row, in the language of the page when it comes from our content. */
 	const shown = (entry: Entry) =>
 		localizedTitle(entry.titles, entry.title, getLocale()) || t('editor.untitled');
@@ -63,6 +74,20 @@
 		}
 	}
 
+	async function openRow(entry: Entry): Promise<Problem | null> {
+		if (entry.type === 'pda' && library.store) {
+			const record = await library.store.get(entry.id);
+			if (!record || record.type !== 'pda') {
+				return (library.problem = { key: 'library.missing', params: {} });
+			}
+			const { readStoredPda } = await import('#lib/storage/pda-work.ts');
+			if (!readStoredPda(record.doc).ok) {
+				return (library.problem = { key: 'library.unreadable', params: {} });
+			}
+		}
+		return await library.openEntry(entry);
+	}
+
 	async function commitRename(entry: Entry, title: string) {
 		const problem = await library.rename(entry.id, title);
 		if (problem) {
@@ -71,6 +96,7 @@
 		}
 		renaming = null;
 		renameProblem = null;
+		expanded = null;
 	}
 
 	function onRenameKey(event: KeyboardEvent, entry: Entry) {
@@ -83,6 +109,7 @@
 			event.preventDefault();
 			renaming = null;
 			renameProblem = null;
+			expanded = null;
 		}
 	}
 
@@ -150,7 +177,7 @@
 									class="open"
 									disabled={busy}
 									aria-current={isCurrent ? 'true' : undefined}
-									onclick={() => run(() => library.openMachine(entry.id))}
+									onclick={() => run(() => openRow(entry))}
 								>
 									<span class="name">{shown(entry)}</span>
 									<span class="meta">
@@ -208,9 +235,11 @@
 									<button type="button" onclick={() => run(() => library.duplicate(entry.id))}>
 										{t('library.duplicate')}
 									</button>
-									<button type="button" onclick={() => library.share(entry.id)}>
-										{t('share.open_button')}
-									</button>
+									{#if entry.type !== 'pda'}
+										<button type="button" onclick={() => library.share(entry.id)}>
+											{t('share.open_button')}
+										</button>
+									{/if}
 								{/if}
 								<button
 									type="button"

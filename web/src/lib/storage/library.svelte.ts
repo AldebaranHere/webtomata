@@ -14,10 +14,10 @@ import type { Entry, PendingDeletes, Problem } from './library.ts';
 import { getLocale } from '#lib/i18n/index.svelte.ts';
 import { createMemoryStore } from './memory.ts';
 import { localizedTitle } from './titles.ts';
-import { openStore } from './index.ts';
+import { openStore } from './open-store.ts';
 import { readStoredDocument } from './migrate.ts';
 import { isFsmRecord } from './store.ts';
-import type { MachineStore } from './store.ts';
+import type { MachineStore, SavedPdaMachine } from './store.ts';
 
 export interface Current {
 	opened: Opened;
@@ -43,6 +43,13 @@ class Library {
 	deleted = $state.raw<Announcement | null>(null);
 	count = $derived(this.entries.length);
 
+	/** ID of the currently open PDA machine (set by PdaWorkstation). */
+	pdaCurrentId = $state.raw<string | null>(null);
+	/** Which workstation mode is currently visible. */
+	mode = $state<'fsm' | 'pda'>('fsm');
+	/** ID of the open machine for the currently active mode. */
+	currentId = $derived(this.mode === 'pda' ? this.pdaCurrentId : this.current?.opened.record.id);
+
 	private pending: PendingDeletes | null = null;
 	private sequence = 0;
 	private keys = 0;
@@ -52,6 +59,20 @@ class Library {
 	share: (id: string) => void = () => undefined;
 	/** The page sets this: it opens a file of a machine (`.jff` or JSON) as a new machine. */
 	openFile: (file: File) => void = () => undefined;
+	/** The workstation registers this to flush PDA autosave before switching or deleting. */
+	flushPda: () => Promise<void> = async () => {};
+	/** The page/workstation registers this to open a PDA record by id. */
+	openPda: (id: string) => Promise<Problem | null> = async () => null;
+	/** The workstation registers this to create and open a new empty PDA machine. */
+	newPdaMachine: () => Promise<Problem | null> = async () => null;
+	/** The page registers this to switch activeMode to FSM. */
+	switchToFsm: () => void = () => {};
+	/** Hook for duplicating a PDA record, registered by the page or workstation. */
+	duplicatePda: (store: MachineStore, id: string) => Promise<SavedPdaMachine | undefined> =
+		async () => undefined;
+	/** Hook for renaming a stored PDA record, registered by the page or workstation. */
+	renamePda: (store: MachineStore, id: string, title: string) => Promise<Problem | null> =
+		async () => null;
 
 	/** Opens the machine of the last visit. Starts again if the page was left and came back. */
 	async start(makeSample: () => Sample): Promise<void> {
@@ -205,10 +226,27 @@ class Library {
 		return this.openDocument(createDocument(), keepOpen);
 	}
 
+	/** Opens an entry from the list, switching mode if necessary. */
+	async openEntry(entry: Entry): Promise<Problem | null> {
+		if (entry.type === 'pda') {
+			this.open = false;
+			return await this.openPda(entry.id);
+		}
+		if (this.mode === 'pda') {
+			await this.flushPda();
+			this.switchToFsm();
+		}
+		return await this.openMachine(entry.id);
+	}
+
 	async duplicate(id: string): Promise<Problem | null> {
 		const store = this.store;
 		if (!store) return null;
-		const copy = await duplicateMachine(store, id);
+		const entry = this.entries.find((e) => e.id === id);
+		const copy =
+			entry?.type === 'pda'
+				? await this.duplicatePda(store, id)
+				: await duplicateMachine(store, id);
 		await this.refresh();
 		return copy ? null : this.fail({ key: 'library.unreadable', params: {} });
 	}
@@ -217,12 +255,22 @@ class Library {
 	async rename(id: string, title: string): Promise<Problem | null> {
 		const store = this.store;
 		if (!store) return null;
-		if (this.current?.opened.record.id === id) {
+		const entry = this.entries.find((e) => e.id === id);
+		if (this.currentId === id) {
 			const problem = this.renameCurrent(title);
 			if (problem) return problem;
-			await this.current.autosave.flush();
+			if (this.mode === 'pda') {
+				await this.flushPda();
+			} else {
+				await this.current?.autosave.flush();
+			}
 		} else {
-			const problem = await renameStored(store, id, title);
+			let problem: Problem | null;
+			if (entry?.type === 'pda') {
+				problem = await this.renamePda(store, id, title);
+			} else {
+				problem = await renameStored(store, id, title);
+			}
 			if (problem) return problem;
 		}
 		await this.refresh();
@@ -231,18 +279,27 @@ class Library {
 
 	/**
 	 * The machine leaves the list now and is removed for good after six seconds, unless it is
-	 * brought back. Deleting the open machine opens another one first.
+	 * brought back. Deleting the open machine opens another one first (keeping the student in their mode).
 	 */
 	async deleteMachine(id: string): Promise<void> {
 		const store = this.store;
 		if (!store || !this.pending) return;
 		const entry = this.entries.find((e) => e.id === id);
 		const shown = entry ? localizedTitle(entry.titles, entry.title, getLocale()) : '';
-		if (this.current?.opened.record.id === id) {
-			const next = this.entries.find((e) => e.id !== id && e.readable);
-			// The record of the machine that is left is written once more, so that Urungkan finds it as it was.
-			if (next) {
-				const problem = await this.openMachine(next.id, true);
+		if (this.mode === 'pda' && this.pdaCurrentId === id) {
+			await this.flushPda();
+			const nextPda = this.entries.find((e) => e.id !== id && e.type === 'pda' && e.readable);
+			if (nextPda) {
+				const problem = await this.openPda(nextPda.id);
+				if (problem) return;
+			} else {
+				const problem = await this.newPdaMachine();
+				if (problem) return;
+			}
+		} else if (this.mode !== 'pda' && this.current?.opened.record.id === id) {
+			const nextFsm = this.entries.find((e) => e.id !== id && e.type !== 'pda' && e.readable);
+			if (nextFsm) {
+				const problem = await this.openMachine(nextFsm.id, true);
 				if (problem) return;
 			} else {
 				const problem = await this.newMachine(true);
