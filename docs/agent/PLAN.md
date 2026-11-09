@@ -2587,14 +2587,85 @@ Follow the rules of `AGENTS.md` for every shell command (the Playwright runs are
 
 ---
 
-## Task T-061 — PDA editor, part 10 of 12: editing in the Tabel tab (draft)
+## Task T-061 — PDA editor, part 10 of 12: editing in the Tabel tab
 
-**Status:** proposed (after T-051 and T-063)
+**Status:** todo
 **Owner:** worker
+**Branch:** `task/T-061-pda-table-editing`
 
-**Goal:** The Tabel tab of the PDA editor can do everything the canvas can (it is the accessible alternative to the diagram): the **Alfabet** block (chips for Σ and Γ with `+` and the removal rule of the FSM: the transitions that use a symbol go with it, one undo step, toast with Urungkan), the **State** block (rows with the name, a **mulai** radio, an **accepting** checkbox, delete, and **+ State**), and the **Transisi** block made editable (choosers for Dari, Baca and Ke; Pop and Push as text with the typing rules of the label form, **using its parser, not a second one**; delete; **+ Tambah transisi**; a refused row shows its message under it). Design section 6. See T-051 for the pieces it builds on.
+**Goal:** The Tabel tab of the PDA editor can do everything the canvas can (it is the accessible alternative to the diagram, `design/screens/pda-editor.md`, section 6). Three blocks under the head block of T-051: **Alfabet** (chips for Σ and Γ, a field to add a symbol, a button on each chip to remove it), **State** (a row for each state: the name, the start radio, the accepting checkbox, delete; and **+ State**) and **Transisi (n)** made editable (Dari, Baca, Pop, Push and Ke in every row; delete; **+ Tambah transisi**). Every edit is a command of the document, so undo, the diagram, the definition, the checks and the autosave all follow with no new code. The read-only table of T-051 is replaced by this one; the rows marked by `+ n lagi` keep working.
 
-**Depends on:** T-051, T-063 (its strings go into `pda-messages.ts`).
+**Decisions (planner, 2026-11-09):**
+
+- **A form, not a grid.** The FSM table is an arrow-key grid. The PDA table has free text fields (Pop, Push, names), where the arrows belong to the field, so it is a list of controls in the order of the page: `Tab` and `Shift+Tab` move, the arrows work inside a select, `Enter` sends a text field, `Esc` puts the old value back. No `data-row` and `data-col` grid, no `moveInGrid`.
+- **The parser of the label form is the only parser.** A row is turned into a transition by `parseRows(doc, [row])` of `pda-label.ts` (T-054): the same typing rules as the label form (one symbol in Baca, `ε` or empty, `AB` or `A B` in Pop and Push, 64 symbols at most). Do not write a second parser; export what you need from `pda-label.ts` and say so in the report.
+- **An edit of a row is one batch.** New input or stack symbols first (`addInputSymbol`, `addStackSymbol`), then `removeTransition` of the old row, then `addTransition` of the new one, as one `{ type: 'batch' }`, so one Urungkan puts back the row and the alphabet together. An edit that changes nothing sends nothing.
+- **A row that would equal another row is refused, not merged.** If the edited transition is the same as another row of the table, nothing changes and the row shows `pda_editor.row_duplicate { n }` ("this transition is already in row n") under it. (`rowCommands` of the label form would merge it and the row would silently disappear.)
+- **Rows are in the engine's order and an edited row can move.** After an edit that moves the row, the focus follows it: the same control of the row, at its new place (find the row by its fields after the command, wait for `tick()`, focus). Key the rows by their fields, not by their index, so that the DOM element is not reused for another transition. The announcement says the row number (`pda_editor.row_changed { n }`).
+- **A new row is a draft until it is complete.** **+ Tambah transisi** adds a draft row at the bottom that is not in the document. Baca starts as `ε`, Pop and Push are empty. The draft is sent as one `addTransition` when Dari and Ke are both chosen; then it becomes a real row in its place, the focus follows, and `pda_editor.row_added { n }` is announced. A draft with only one of the two chosen sends nothing. A draft can be removed with its delete button. A draft is not saved and is lost when the tab is closed or the document is replaced (a new document, an undo to another one).
+- **Removing a symbol or a state takes the transitions that use it, with a toast.** `removeInputSymbol`, `removeStackSymbol` and `removeState` already do that in one step. The toast (with Urungkan) says how many transitions went: the existing key `table.symbol_removed { symbol, count }` for symbols and the new `pda_editor.state_removed { name, count }`. Count them before the command from the document (input: rows with that `read`; stack: rows with it in `pop` or `push`; state: rows with it in `from` or `to`), and check the count of the state with the real command before you write the test.
+- **The words of the State block are the FSM's.** The start column is `table.start` and the accepting one `table.accepting`, with `table.start_toggle` and `table.accepting_toggle` for the names that a screen reader reads, `table.rename`, `table.add_state` and the announcements `editor.start_set`, `editor.accepting_on`, `editor.accepting_off`, `editor.renamed`. (The design says "mulai"; one site uses one word for one thing, so the FSM's wording wins. Log it in ADR 0051.) The start control is a radio group: choosing a state makes it the start state; to have none, delete the state or undo.
+- **Symbols and rows reuse the FSM keys where the text fits:** `table.symbol_field`, `table.symbol_add`, `table.symbol_added`, `table.remove_symbol`, and from T-054 `pda_editor.field_label { n, field }`, `pda_editor.row_delete { n }`, `pda_editor.label_hint`, `pda_editor.col_*`. Every new key goes in `web/src/lib/i18n/pda-messages.ts` (both languages) and none in `id.ts` or `en.ts` (ADR 0050; a PDA string in the shared dictionary is refused in review). New keys: `pda_editor.alphabet_input` ("Alfabet input Σ"), `pda_editor.alphabet_stack` ("Alfabet stack Γ"), `pda_editor.add_transition` ("+ Tambah transisi"), `pda_editor.state_delete { name }` ("Hapus state {name}"), `pda_editor.state_removed { name, count }`, `pda_editor.row_duplicate { n }`, `pda_editor.row_added { n }`, `pda_editor.row_changed { n }`, `pda_editor.row_removed { n }`. Write the English too; add terms to `docs/glossary.md` only if you need a word that is not there (mark it `TODO(review)`).
+- **No selection sync.** Focusing a row does not select its edge on the diagram (that is "Tunjukkan", T-062). The marked rows of T-051 are cleared by a change of the document as before.
+- **Refusals** (`document.limit_exceeded`, `document.duplicate_symbol`, the refusal for `eps` or `ε` as a name, `pda_document.string_too_long`, `pda_document.unknown_symbol`, `document.duplicate_name` or whatever the document returns) are shown under the field or the row, in a calm sentence, with `aria-describedby` from the control and `aria-invalid` on it; the typed text stays in the field. A test shows that every refusal key that the table can show has a text in both languages.
+
+**Scope (files):**
+
+- Edit: `web/src/lib/editor/PdaTableView.svelte` (it keeps its name and stays the lazy-loaded entry, now composing the three blocks), `web/src/lib/editor/PdaEditor.svelte` (what the table snippet passes), `web/src/lib/editor/pda-label.ts` (exports only, no behavior change), `web/src/lib/i18n/pda-messages.ts`, `docs/agent/PLAN.md` (status).
+- New: `PdaAlphabetBlock.svelte`, `PdaStatesBlock.svelte`, `PdaTransitionsBlock.svelte`, `pda-table-props.ts` (the type of the props, in its own file so that `PdaEditor.svelte` can name it without loading the component, as `table-props.ts` does for the FSM), `pda-table-edit.ts` and `pda-table-edit.test.ts` (the pure part: symbol use counts, the state placement with `freeSpot`, the batch for a row edit, the duplicate check, the draft rule), `web/e2e/pda-table-edit.spec.ts`, `docs/decisions/0051-pda-table-editing.md`.
+- Props of the table view: `{ doc: PdaDocument; marked: ReadonlySet<number>; onapply: (command: PdaCommand, note?: { say?: …; toast?: boolean }) => Refusal | null }`, the same shape as `TableViewProps.onapply`, wired to `editor.apply`.
+
+**Non-goals:** no determinism badge, pairs or "Tunjukkan" (T-062); no saved machines, files or examples (T-052); no arrow-key grid; no drag to reorder (the order is the engine's); no selection sync; no change to any FSM file (`TableView.svelte`, `table.ts`, `table-props.ts`, `Editor.svelte`, `SidePanel.svelte`, `KindSwitch.svelte`, `checker.ts`) and no change in `crates/`; no new dependency; no new string in `id.ts` or `en.ts`.
+
+**Fixtures (derive them by hand first, then check each with the real functions and paste both):**
+
+- *Machine F* (as in T-051): Σ {a, b}, Γ {A}, states q0 (id 0, start) and q1 (id 1, accepting), rows 1 `q0|a|ε|A|q0`, 2 `q0|b|A|ε|q1`, 3 `q1|b|A|ε|q1`.
+- *Machine H* = F plus the transition `(q1, a, ε→A, q1)`: Σ {a, b}, rows 1 `q0|a|ε|A|q0`, 2 `q0|b|A|ε|q1`, 3 `q1|a|ε|A|q1`, 4 `q1|b|A|ε|q1`.
+- **F1, the batch of an edit:** F, row 1, Push `A` becomes `AA`: `batch [ removeTransition(q0, a, [], [A], q0), addTransition(q0, a, [], [A, A], q0) ]`, no new symbol.
+- **F2, a duplicate:** F, row 1 changed to Baca `b`, Pop `A`, Push empty, Ke `q1` is the same as row 2: no command, the refusal `pda_editor.row_duplicate` with `n` = 2.
+- **F3, a new symbol:** F, row 3, Push `AB` (Γ has only one-character symbols, so `AB` is `A` then `B`): `batch [ addStackSymbol(B), removeTransition(q1, b, [A], [], q1), addTransition(q1, b, [A], [A, B], q1) ]`.
+- **F4, the row that moves:** H, row 1, Dari `q0` becomes `q1`: the transition becomes `(q1, a, ε→A, q0)`. In the engine's order it goes between rows 2 and 3 of H, before `(q1, a, ε→A, q1)` (same from, read, pop and push; then `to` 0 before 1), so the table is `q0|b|A|ε|q1`, `q1|a|ε|A|q0`, `q1|a|ε|A|q1`, `q1|b|A|ε|q1`, and the edited row is now row 2. Check the order with `comparePdaTransitions`.
+- **F5, the counts for the toast:** F, remove input symbol `b`: 2 transitions go (rows 2 and 3); remove stack symbol `A`: 3 go; remove state q0: say the real count after you run it. One Urungkan brings back the symbol (or the state) and the rows.
+- **F6, the draft:** F, a draft with Dari `q0` only sends nothing; with Ke `q1` too it sends `addTransition(q0, null, [], [], q1)`, which in F's order is row 1 (ε before `a`), so the table is `q0|ε|ε|ε|q1`, then the three rows of F.
+
+**Tests (write them first; they must fail before the code):**
+
+- *U, `pda-table-edit.test.ts`:* F1 to F6 (the commands, the refusal, the counts, the new row index), the state placement (a new state never lands on another: use `freeSpot` of `interaction/placement.ts`; the FSM's `newStateCommand` is typed for the FSM document and is not touched), a row that changes nothing gives `null`, a row with a blank Dari or Ke is a draft.
+- *R, refusal texts:* every refusal key that the table can show has a text in `id`, `en` or `pdaId`/`pdaEn` and the same parameters in both languages.
+- *E1 to E8, `e2e/pda-table-edit.spec.ts`* (desktop and phone; all assertions unconditional): (E1) the Alfabet block: add input symbol `c` (chip appears), add `eps` (refused, calm text, nothing changes, the field keeps `eps`), remove `b` from F (rows 2 and 3 go, toast with the count of F5, Urungkan brings all back in one step); (E2) the State block: rename q1 (Enter sends, a name that is in use is refused under the field), choose another start state, toggle accepting, `+ State` adds q2 without overlapping, delete a state (toast with its count, Urungkan); (E3) F4 on H: the edited row moves to row 2 and the focus is on the Dari control of row 2 whose value is `q1`; (E4) a draft row: Dari alone sends nothing (the count in `Transisi (n)` stays), Ke sends it, the row is at its place and announced, and the same with the keyboard only (`Tab`, then the keys of a select); (E5) refusals: F2 shows `row_duplicate` under row 1 and the document is unchanged, 65 symbols in Push show the `string_too_long` text with `aria-invalid="true"` and the text stays in the field; (E6) F3 is one undo step (one Urungkan restores the row and the stack alphabet), and the same for F1; (E7) on the phone: every control of the three blocks is at least 44 px high, the text fields are at least 16 px, the table scrolls sideways with its first column fixed, and `axe` finds no violation on the Tabel tab of F and of H on desktop and phone; (E8) a marked row (`+ n lagi`) is still marked, and it is cleared by an edit.
+- *F-shared, nothing else moves:* `pda-panel`, `pda-editor`, `pda-storage`, `pda-messages`, `switcher`, `editor-checks`, `editor-panel`, `editor-table` pass with no edit. `pda-panel` E5 reads the table rows: if its selectors need the new markup, tell the planner before you edit it (do not change an assertion; keep `tr`, `aria-current` and the accent bar).
+
+**Acceptance criteria:**
+
+- AC1: U, R and E1 to E8 pass; they fail before the change (paste the failures of the tests-first run).
+- AC2: the specs of the F-shared bullet: paste the pass counts on desktop and phone (and `pda-storage` on webkit-phone).
+- AC3: **Sizes from a clean build of `origin/staging` and of the branch, same machine:** no route's first JS grows by more than 0.1 KB (the PDA code is lazy; the shared files are not touched, so it should not grow at all); give the size of the PDA chunks and of the messages chunk before and after.
+- AC4: **Seven deliberate breaks, each run on the final code, with the failing line and its file:line pasted and the one line of `git diff` that is the break** (a break run before your last change does not count): (B1) send a Pop edit as two separate `apply` calls instead of one batch (E6 fails); (B2) key the rows by index and do not move the focus (E3 fails); (B3) remove the duplicate refusal, so the row is merged (E5 fails); (B4) send the draft as soon as Dari is chosen (E4 fails); (B5) give the toast of a removed symbol a count of 0 (E1 fails); (B6) set the font size of the Pop field to 14 px (E7 fails); (B7) delete a state without the toast (E2 fails).
+- AC5: the new keys are in `pda-messages.ts` only, in both languages; `i18n.test.ts` and `pda-messages.test.ts` pass; the report lists every key that you reused and every new one.
+- AC6: `pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens`, Vitest, `pnpm build && pnpm size` pass; `git diff --stat` shows no FSM file and nothing in `crates/`.
+
+**Verification:**
+
+```
+pnpm --filter web exec vitest run src/lib/editor/pda-table-edit.test.ts src/lib/i18n
+pnpm build && pnpm size
+pnpm --filter web exec playwright test pda-table-edit pda-panel pda-editor pda-storage pda-messages switcher editor-checks editor-panel editor-table --project=desktop
+pnpm --filter web exec playwright test pda-table-edit pda-panel pda-editor pda-storage pda-messages --project=phone
+pnpm --filter web exec playwright test pda-storage --project=webkit-phone
+```
+
+Follow the rules of `AGENTS.md` for every shell command (the Playwright runs are long: run them as background tasks, apply the stuck rule). Use the rules for the report: copy the lines you changed from `git diff`, not from memory.
+
+**Rollback:** `git revert <sha>`. The table goes back to the read-only one of T-051; no document or format changes.
+
+**Depends on:** T-051 and T-063 (both merged).
+
+**Notes for worker:**
+
+- Read `docs/decisions/0049-pda-panel.md` and `0050-lazy-pda-messages.md`, then `PdaTableView.svelte`, `pda-table.ts`, `pda-label.ts` (`parseRows`, `rowCommands`), `pda-commands.ts` (the commands and what each refuses) and the FSM `TableView.svelte` only for how it calls `onapply` and shows a refusal.
+- Before you write anything, check with real commands: what `removeState` removes and what the count is for F5; which refusal key each bad input gives (`eps`, a name in use, 65 symbols, a missing symbol); the order of H after F4 with `comparePdaTransitions`. Paste the outputs in your restatement.
+- The risk to watch is the focus when a row moves or is removed (a keyed list and `tick()`), and a draft row that survives a document change by mistake.
+- Another worker may be working in a different folder on a different task at the same time. If your PR is merged second and `docs/agent/REPORT.md` conflicts, rebase and keep your own report.
 
 ---
 
