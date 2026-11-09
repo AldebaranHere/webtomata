@@ -328,6 +328,19 @@ with nothing else on the machine:
 ```
 It was not touched.
 
+**One thing the owner must know before pushing.** This folder is a git worktree of `~/webtomata`
+(`git worktree list` shows both), so it shares `.git` — and the pre-push hook with it:
+```
+/home/Aldebaran64/webtomata    eafd82c [task/T-069-no-wall-clock-bounds]
+/home/Aldebaran64/webtomata-ds 2fab0ef [task/T-062-pda-determinism-badge]
+```
+The other worktree is the T-069 fix of the very test above, and it is not merged. So the hook's
+`pnpm test:web` may fail on `geometry.test.ts:585` while that worktree is busy. If it does, run the
+push again when the other worker is idle; that failure is not this branch's (everything the hook
+runs passed here: `cargo fmt --check`, lint, format, check, `test:web`, `test:tools`,
+`check:workflows`, `check:contrast`, `check:tokens`, `check:strings`, `check:questions` — all but
+the one known Vitest test).
+
 **Sizes (AC3).** Clean build of the branch, same machine, against the baseline of section 2(e):
 
 ```
