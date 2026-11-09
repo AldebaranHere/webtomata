@@ -70,7 +70,7 @@ dictionary, and that `pda-panel` E4 read the text of a cell that becomes a text 
   definition, the checks and the autosave follow with no new code.
 - `web/src/lib/editor/pda-table-edit.ts` is the pure part (counts, placement, the batch, the
   duplicate check, the draft rule, the reserved names) and is tested by
-  `pda-table-edit.test.ts` (U1 to U13, R1 to R3).
+  `pda-table-edit.test.ts` (U1 to U16, R1 to R3).
 - One line of `pda-panel` E4 changed from `toContainText('A')` on the Push cell to a check of the
   value of that field: the value of a field is not text content (decision of 2026-11-09). The
   heading, the caption, `th.from`, `.wrap`, `aria-current` and the empty line are unchanged.
