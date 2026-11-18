@@ -3149,7 +3149,7 @@ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-file
 
 ## Task T-076 — A downloaded `.jff` keeps its name on Android, and a file is told by its content
 
-**Status:** in-progress (2026-11-18; branch `task/T-076-file-names`)
+**Status:** done (2026-11-18; branch `task/T-076-file-names`, commits `207097a`…`HEAD`. AC1–AC5 hold: F1–F5 each by a test; the three existing tests that changed, and only these, are listed in `docs/agent/REPORT.md`; no route's first JS grew by more than 1 byte (the share reader is lazy, 1,734 → 1,936 raw bytes); the breaks B1–B4 (B2 twice) and three more each fail a named line, and the whole gate is green. One file beyond the amended scope's list: `web/e2e/fixtures.ts`, the shared `URL.createObjectURL` spy (+26 lines). See `docs/agent/REPORT.md` and ADR 0057.)
 **Owner:** worker (DeepSeek: the planner's pick)
 **Branch:** `task/T-076-file-names`
 

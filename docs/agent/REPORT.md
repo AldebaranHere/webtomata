@@ -1,233 +1,116 @@
-# Task T-068 Report — Keep the PDA code out of the first load (split `createPdaHistory`)
+# T-076 — A downloaded `.jff` keeps its name on Android, and a file is told by its content
 
-Branch: `task/T-068-pda-history-lazy`, cut from `origin/staging` at `6123999` (T-075 merged). The
-amended T-068 spec was not yet in `origin/staging` (that was still `6123999`); it was one commit ahead
-on `origin/docs/T-068-amend` (`ccf351c`), so the branch was fast-forwarded to `ccf351c` before the
-first commit, exactly the amended spec this report follows.
+Branch `task/T-076-file-names`, cut from `origin/staging` at `1271d15` (PR 216, the amended spec). Status:
+`done`. Commits: `207097a` (the change) and the last commit of this branch (this report and the status).
 
-Commits:
-
-- `49eaf6b` `docs(agent): start task T-068` — `PLAN.md` set to `in-progress`.
-- `224ae8a` `feat(editor): split the PDA history out of the first load` — the split, the guard, the
-  depth test and ADR 0056.
-- `8700bdd` `docs(agent): record task T-068` — the report and the PLAN status.
-- this commit — `test(editor): read <SCRIPT> blocks in the first-load guard` (the CodeQL fix, section 4).
-
-**Status: AC1–AC5 hold.** The first JS falls by 4,230 bytes on `sandbox.html` and 4,227 on each
-`soal/*.html`, so the exception of ADR 0055 is paid back; no page is larger.
-
----
+The owner's report, reproduced before any change: a `.jff` downloaded from the PDA editor on Android Chrome
+was saved as `aⁿbⁿ (n ≥ 1).jff.xml` and "Buka file…" answered `import.unknown_type`. The run is in the
+pre-flight (section 1).
 
 ## 1. What changed
 
-| File | What |
+| File | Change |
 | --- | --- |
-| `web/src/lib/editor/pda-history.ts` (new) | `createPdaHistory` and `PdaHistory`, moved as they were, importing the generic engine from `history.ts`. |
-| `web/src/lib/editor/history.ts` | Drops the four PDA imports, `PdaHistory` and `createPdaHistory`; exports `createGenericHistory` and `GenericApplyResult`. |
-| `web/src/lib/editor/interaction/pda-editor.ts` | Imports `createPdaHistory` from `../pda-history.ts` (one line). |
-| `web/src/lib/editor/index.ts` | One `export * from './pda-history.ts';` so the barrel's surface is unchanged. |
-| `web/src/lib/editor/pda-commands.ts` | The one comment that named `history.ts` now names `pda-history.ts`. |
-| `web/src/lib/editor/pda-history.property.test.ts` | One import line only. |
-| `web/src/lib/first-load.test.ts` (new) | The F2 guard: a static walk over value imports and re-exports. |
-| `web/src/lib/editor/pda-history.test.ts` (new) | The F1 default-depth test and the oracle of B3. |
-| `docs/decisions/0056-pda-history-module.md` (new) | The decision; it closes the exception of ADR 0055. |
+| `web/src/lib/share/open-file.ts` | `fileKind(name, text)` (exported) = `importKind(name) ?? kindOfText(text)`; `kindOfText` private, first character after `/^\s*/`; `openFile` checks the size, then reads, then tells the kind; `titleOfFileName` strips `.jff`, else `.jff.xml`, else `.xml` |
+| `web/src/lib/share/pda-files.ts` | `isPdaFile` and `openPdaFile` use `fileKind`, with the size check first; the doc comment of `isPdaFile` rewritten |
+| `web/src/lib/share/files.ts` | `DOWNLOAD_TYPE = 'application/octet-stream'` |
+| `ShareDialog.svelte`, `PdaFileDialog.svelte` | pass `DOWNLOAD_TYPE` for the `.jff` and the JSON; SVG and PNG unchanged |
+| tests | `open-file.test.ts`, `pda-files.test.ts`, `files.test.ts`, `open-from-file.test.ts`; e2e `open-file.spec.ts`, `pda-files.spec.ts`, `share-link.spec.ts`; `web/e2e/fixtures.ts` (one shared blob spy, see 6) |
+| docs | `docs/decisions/0057-file-kind-by-content.md`; `docs/agent/PLAN.md` (status) |
 
-No other file changed. The feature commit's stat:
+The size check is now the **first** thing in `openFile`, `isPdaFile` and `openPdaFile`: a file over
+`FILE_BYTE_LIMIT` (1,048,576 bytes) is `import.too_big` (or "not a PDA file" for `isPdaFile`) whatever its
+name, and `text()` is never called. Before, both readers decided the kind before the size, so an unknown
+name was refused as `import.unknown_type` without ever being size-checked.
 
-```
- docs/decisions/0056-pda-history-module.md       |  37 +++++++
- web/src/lib/editor/history.ts                   |  20 +---
- web/src/lib/editor/index.ts                     |   1 +
- web/src/lib/editor/interaction/pda-editor.ts    |   2 +-
- web/src/lib/editor/pda-commands.ts              |   2 +-
- web/src/lib/editor/pda-history.property.test.ts |   2 +-
- web/src/lib/editor/pda-history.test.ts          |  24 +++++
- web/src/lib/editor/pda-history.ts               |  22 ++++
- web/src/lib/first-load.test.ts                  | 136 ++++++++++++++++++++++++
- 9 files changed, 225 insertions(+), 21 deletions(-)
-```
+### The three existing tests that changed, and only these
 
----
+The probe run of the pre-flight (`pnpm --filter web exec vitest run src/lib/share/*.test.ts`, 51 passed)
+and this change:
 
-## 2. Tests first (the red run)
+| Test | Was | Now | Why |
+| --- | --- | --- | --- |
+| `open-file.test.ts:155` `reads a file by its content when the name does not say…` (was `refuses an extension that is not known, and says which one`) | `file('a.txt', '{}')` → `import.unknown_type` | `document.invalid_file` (the text starts with `{`, so it is JSON; the document parser refuses it), and a new `file('a.txt', 'halo')` → `import.unknown_type` | F1: a `.txt` whose text starts with `{` is JSON |
+| `pda-files.test.ts:86` `tells a PDA by its content when the name does not say…` (was `says no for a name that is neither…`) | `isPdaFile('a.txt'/'a', '{"kind":"dpda"}')` → `false` | `true` (and `'a.txt'`/`halo` → `false`, `'a.json'`/`not json` → `false` kept) | F3: a PDA JSON named `anbn.txt` opens |
+| `pda-files.test.ts:204` `checks the size before it reads the text, and reads a .txt that holds a PDA .jff` (was `…and refuses an unknown extension`) | `openPdaFile(file('a.txt', pdaJffText))` → `import.unknown_type` | the engine is called with the text and the result is `ok: true` | F1/F3: the content says `.jff` |
 
-Written against the intended API, before the split. The guard failed on the real chain, and the depth
-test failed because its module did not exist yet:
+No other existing test was edited. The two e2e `catatan.txt`/`halo` cases and every `open-file.wasm`,
+`pda-files.wasm`, `files.wasm` and `open-from-file` case pass unedited.
 
-```
- ❯ src/lib/first-load.test.ts (2 tests | 1 failed) 40ms
-   ❯ the first load (2)
-     ✓ starts from every entry and reaches the editor core 17ms
-     × takes no value import to the PDA document, commands or history 21ms
- ❯ src/lib/editor/pda-history.test.ts (0 test)
+## 2. The derivations of the fixtures
 
-Error: Cannot find module './pda-history.ts' imported from
-/home/Aldebaran64/webtomata-ds/web/src/lib/editor/pda-history.test.ts
+**F1 — `fileKind(name, text)`.** Derivation: the name wins when `importKind` answers. `a.jff` → `jff`
+(whatever the text), `a.json` and `a.webtomata.json` → `json`. Otherwise the first character after every
+white space at the start of the text: `<` → `jff`, `{` → `json`, anything else → `null`. `\s` in
+JavaScript matches `U+FEFF`, so a BOM is white space: `'\uFEFF{'` → `json`, `' \uFEFF\n{'` → `json`,
+`'  \n\t<structure/>'` → `jff`. `halo` → `null`; `[]` → `null`; `''` and `' \n\t\uFEFF '` → `null` (the
+search for `\S` finds nothing).
+**F2 — the title.** The rule is one suffix, matched case-insensitively on the lower-cased name but sliced
+from the original: `.jff` → `a.jff` gives `a`; `.jff.xml` → `aⁿbⁿ (n ≥ 1).jff.xml` gives
+`aⁿbⁿ (n ≥ 1)` (8 characters off, not 4, so not `….jff`); `.xml` → `x.XML` and `a.jff.XML` give `x` and
+`a`. `.jff.xml` alone leaves `''` (`checkTitle('')` is ok, and the empty title already opens as
+`editor.untitled`). The existing cases (`Berakhiran 01.jff`, `x.JFF`, `.jff`, the 300 emoji, the control
+characters) are unchanged because they end in `.jff`.
+**F3 — both readers (Playwright).** The PDA `.jff` of `aⁿbⁿ` is written inline in `pda-files.spec.ts`
+(`anbnJff`, checked against the real engine before the test was written: `ok: true`, states `q0`/`q1`,
+kind `ndpda`). Named `anbn.jff.xml` it has no known extension, so the content decides: `<` → `jff`, and
+`PDA_JFF` matches `<type>pda</type>` → `openPdaFile` → a new PDA record, the mode switches to `pda` in
+the FSM mode and stays in the PDA mode; the title is `anbn` (F2). A PDA JSON named `anbn.txt` is `{` →
+`json` → `PDA_JSON` matches `"kind":"dpda"` → a PDA, with the document's own title. An FSM `.jff` named
+`even-a.jff.xml` is `jff` → `openFile` → the engine → an FSM machine, title `even-a`.
+**F4 — the hostile files.** The unknown name `foto.jpg` (a name that says nothing) is the case that was
+never size-checked before. At `1 MB − 1` and at `1 MB` it is read and sniffed (the text `{"schemaVersion":1}`
+→ `json` → `document.invalid_file`; the PDA `.jff` text → `jff` → the engine); at `1 MB + 1` it is
+`import.too_big` and `text()` is never called, in both readers (the spy count stays at 2). A `1 MB + 1`
+`x.jff.xml` is also `import.too_big` with zero reads. `'\u0000\u0000'` named `x.jff.xml` is neither kind
+→ `import.unknown_type` (the engine is not asked). `<broken` named `x.jff.xml` is `jff` → the engine → the
+real engine answers `jff.xml_invalid` with line 1, column 1 (checked against the WASM engine, and asserted
+in `open-file.spec.ts` as the visible text "File .jff ini rusak: XML-nya tidak terbaca di baris 1, kolom 1.").
+Each refusal writes no record, opens nothing and says why (`open-from-file.test.ts`); the count of records
+and the open machine are as before.
+**F5 — the blob type.** `DOWNLOAD_TYPE` is `application/octet-stream`. `download()` builds
+`new Blob([text], { type: `${type};charset=utf-8` })`, so the type the browser sees is
+`application/octet-stream;charset=utf-8` for a `.jff` and for a JSON, `image/svg+xml;charset=utf-8` for the
+SVG (also a string) and `image/png` for the PNG (a `Blob`, used as it is). The spy wraps
+`URL.createObjectURL` with `page.addInitScript` before the page's first script and records `blob.type`, so
+the test observes what the browser acts on; a `suggestedFilename()` check passes with `application/xml`
+too and proves nothing.
 
-FAIL  src/lib/first-load.test.ts > the first load > takes no value import to the PDA document, commands or history
-AssertionError: expected [ …(2) ] to deeply equal []
+## 3. Verification
 
-- []
-+ [
-+   "lib/editor/interaction/editor.ts
-+   lib/editor/interaction/editor.ts -> ../history.ts
-+   lib/editor/history.ts -> ./pda-commands.ts",
-+   "lib/editor/interaction/editor.ts
-+   lib/editor/interaction/editor.ts -> ../history.ts
-+   lib/editor/history.ts -> ./pda-document.ts",
-+ ]
-```
-
-After the split, the focused files:
-
-```
- ✓ src/lib/first-load.test.ts (2 tests) 49ms
- ✓ src/lib/editor/history.test.ts (20 tests) 31ms
- ✓ src/lib/editor/pda-history.test.ts (1 test) 10ms
- ✓ src/lib/editor/pda-history.property.test.ts (5 tests) 740ms
- ✓ src/lib/editor/history.property.test.ts (7 tests) 798ms
-
- Test Files  5 passed (5)
-      Tests  35 passed (35)
-```
-
----
-
-## 3. F1 — behaviour is the same, and the depth test
-
-The PDA history code moved without a change; the only existing test line edited is
-`pda-history.property.test.ts:12` (`from './history.ts'` → `from './pda-history.ts'`). The property
-test still asserts that random sequences round-trip through undo and redo and that the documents pass
-`checkPdaDocument`; that is all it asserts (it does not count the 15 command types — the spec's
-amendment says so).
-
-**The depth test** (`web/src/lib/editor/pda-history.test.ts`): one state, then 201 moves; 202 steps in
-all. The default depth of 200 drops the add and the first move, so undo stops after 200 steps at
-`x = 1`:
-
-```
- ✓ src/lib/editor/pda-history.test.ts (1 test) 10ms
-```
-
-Break B3 sets the default one lower (`?? 199`), which gives 199 undos and fails; the test is the
-oracle of B3.
-
----
-
-## 4. F2 — the guard
-
-`web/src/lib/first-load.test.ts` (136 lines) walks the source from the six entries the amended spec
-lists: `routes/+layout.svelte`, `routes/+layout.ts`, `routes/sandbox/+page.svelte`,
-`lib/editor/Editor.svelte`, `lib/storage/library.svelte.ts`, `lib/editor/interaction/editor.ts`.
-
-- It follows static value `import … from` and `export … from` only. It skips statement-level
-  `import type` / `export type`, an import whose specifiers are all inline `type`, and `import(…)`.
-  It reads `.ts` files whole and both `<script>` and `<script module>` blocks of `.svelte` files.
-- It resolves `#lib/` and `$lib/` to `src/lib/` and relative paths, trying `.ts` and `.svelte`.
-- It fails on any relative or `#lib/` specifier that names no file (`expect(unresolved).toEqual([])`):
-  a guard that silently skips them can pass with nothing.
-- It cannot pass silently: the first test asserts every entry exists, and that the walk really
-  reached `history.ts` and `interaction/editor.ts` (the canaries, broke in B4).
-- It fails when the walk reaches `pda-document.ts`, `pda-commands.ts` or `pda-history.ts`.
-- Its header comment names the accepted blind spot: the soal route's
-  `storage/index.ts` → `pda-work.ts` chain, which Rollup tree-shakes out of the build; the guard is
-  seeded from the layout and the sandbox only, and the soal route is not touched.
-
-Before the split there were five type-only edges to the PDA modules (`storage/autosave.ts`,
-`storage/library.ts`, `storage/store.ts`, and two in `editor/history.ts`); after it the three storage
-edges remain and the guard skips them, which is what makes it pass on correct code. The walk visits
-85 modules. It passes on the final code:
-
-```
- ✓ src/lib/first-load.test.ts (3 tests) 22ms
-```
-
-**Review fix (PR 214, CodeQL `js/bad-tag-filter`):** the `SCRIPT` regex is now case-insensitive and allows a space
-before the closing `>`; a new guard test reads an upper-case `<SCRIPT lang="ts">` block, which the old regex skipped.
-**Second review fix (same alert):** the closing tag now takes anything up to `>` (`</script\b[^>]*>`), and the test's second fixture ends a block with `</script\t\n bar>`.
-
----
-
-## 5. F3 — bytes, all nine pages
-
-The metric is `tools/check-size.mjs`: the gzip sum of the `.js` files the HTML references (entry and
-modulepreloads), in bytes, before and after.
-
-| Page | Before | After | Delta |
-| --- | ---: | ---: | ---: |
-| `index.html` | 83,812 | 83,801 | −11 |
-| `panduan.html` | 82,960 | 82,949 | −11 |
-| `panduan/berakhiran-x.html` | 89,340 | 89,329 | −11 |
-| `sandbox.html` | 129,020 | 124,790 | **−4,230** |
-| `soal.html` | 84,455 | 84,444 | −11 |
-| `soal/berakhiran-10.html` | 128,376 | 124,149 | **−4,227** |
-| `soal/jumlah-a-genap.html` | 128,376 | 124,149 | **−4,227** |
-| `soal/mengandung-101.html` | 128,376 | 124,149 | **−4,227** |
-| `tentang.html` | 82,258 | 82,247 | −11 |
-
-The limits of F3: `sandbox.html` at or under **128,324** → 124,790 (3,534 under);
-each `soal/*.html` at or under **127,607** → 124,149 (3,458 under); no page is larger than before.
-
-What left the sandbox first load: the preloaded `oVwv-99E.js` (`pda-document.ts`, 2,503 bytes gz) is
-no longer listed, and `pda-commands.ts` left the big chunk (`BJtwTs4m` 30,725 → `B3RvL52T` 29,012,
-−1,713); the page chunk lost 3 and the app chunk 11. Sandbox: 23 → 22 chunks; each soal route: 22 → 21.
-
-**The metric's known gap** (as the amendment asks): the soal node chunk statically imports
-`84qfJG_O.js` (4,959 bytes gz) without the HTML listing it, so the tool does not count it; it is the
-same before and after, so the comparison holds. The real first load of a soal route is about 4,959
-bytes larger than the table's number, before and after.
-
----
-
-## 6. F4 — the PDA mode still loads and works, and what moves into it
-
-The PDA e2e files pass (section 7). The chunks that hold the moved code after the build:
-
-| Chunk | gzip bytes | What |
-| --- | ---: | --- |
-| `oVwv-99E.js` | 2,503 | `pda-document.ts`; no longer in the first load, fetched with the PDA mode |
-| `R52WEoXk.js` | 2,833 | `pda-commands.ts` + `pda-work.ts`; the mode already fetched pda-work's chunk (then `sYFMcK8a.js`), so only the command bytes are added to it |
-| `C6fbBMZT.js` | 11,685 | the PDA editor chunk; holds the new `pda-history.ts` (`createPdaHistory`) and the `pdaKind` object, which the mode already fetched |
-
-The first load no longer has `pda-document.ts` (2,503 bytes gz) and the `pda-commands.ts` code (the
-big chunk shrank by 1,713 bytes gz). This is the cost that moves into the PDA mode's fetch; it was
-not measured as a delay.
-
----
-
-## 7. AC5 — the gate, on the final code
+All of it on the final code (after every break was restored; the restored files are byte-identical to the
+files the checks ran on, `diff -q` empty).
 
 ```
 $ pnpm format:check
 All matched files use Prettier code style!
+
 $ pnpm check
 svelte-check found 0 errors and 0 warnings
+
 $ pnpm lint
+$ pnpm --filter web lint
 $ eslint .
+
 $ pnpm check:strings
 ok   76 components have no hard-coded text
+
 $ pnpm check:tokens
 ok   78 files use no raw colors
-```
 
-```
-$ pnpm --filter web test
+$ pnpm test:web
  Test Files  122 passed (122)
-      Tests  1413 passed | 3 skipped (1416)
-   Duration  10.64s
-```
+      Tests  1424 passed | 3 skipped (1427)
 
-```
-$ pnpm build
-Run npm run preview to preview your production build locally.
+$ pnpm --filter web exec vitest run src/lib/share/
+ Test Files  10 passed (10)
+      Tests  110 passed | 2 skipped (112)
 
-> Using @sveltejs/adapter-static
-Wrote site to "build"
-✔ done
-```
+$ pnpm --filter web exec vitest run src/lib/share/open-file.wasm.test.ts src/lib/share/pda-files.wasm.test.ts src/lib/share/files.wasm.test.ts src/lib/share/local-jff.test.ts
+ Test Files  4 passed (4)
+      Tests  23 passed | 2 skipped (25)
 
-```
-$ pnpm size
+$ pnpm build && pnpm size
 ok   initial JS index.html: 81.8 KB gzip (limit 170 KB)
 ok   initial JS panduan/berakhiran-x.html: 87.2 KB gzip (limit 170 KB)
 ok   initial JS panduan.html: 81.0 KB gzip (limit 170 KB)
@@ -239,157 +122,82 @@ ok   initial JS soal.html: 82.5 KB gzip (limit 170 KB)
 ok   initial JS tentang.html: 80.3 KB gzip (limit 170 KB)
 ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
 ok   wasm _app/immutable/workers/assets/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB gzip (limit 250 KB)
+
+$ cd web && pnpm exec playwright test open-file pda-files share-link cross/open-file --project=desktop --project=phone
+  2 skipped
+  72 passed (1.3m)
 ```
 
-```
-$ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-files cross/pda-storage --project=desktop --project=phone
-Running 74 tests using 6 workers
-  13 skipped
-  61 passed (1.2m)
-```
+The two skipped e2e cases are the tests that each project cannot run (a phone-only test on desktop and the
+reverse).
 
-The 13 skipped are the project-split phone-only/desktop-only tests, as before.
+**Sizes in bytes, all nine pages**, the metric of `tools/check-size.mjs` (the gzip sum of the `.js` that the
+HTML references), before (`11577ba`) and after, measured by the same command both times:
 
----
+| Page | Before | After | Delta |
+| --- | ---: | ---: | ---: |
+| `index.html` | 83,801 | 83,802 | +1 |
+| `panduan.html` | 82,949 | 82,950 | +1 |
+| `panduan/berakhiran-x.html` | 89,329 | 89,330 | +1 |
+| `sandbox.html` | 124,790 | 124,789 | −1 |
+| `soal.html` | 84,444 | 84,445 | +1 |
+| `soal/berakhiran-10.html` | 124,149 | 124,150 | +1 |
+| `soal/jumlah-a-genap.html` | 124,149 | 124,150 | +1 |
+| `soal/mengandung-101.html` | 124,149 | 124,150 | +1 |
+| `tentang.html` | 82,247 | 82,248 | +1 |
 
-## 8. AC4 — the four breaks, on the final code
+No route grew by more than 1 byte (AC3 allows 102). The module that grew is lazy: the share reader is
+`_app/immutable/chunks/BsyC2EOn.js`, 1,936 raw bytes (926 gzip, was 1,734 raw), and no HTML lists it.
 
-Each break was made on `224ae8a`, run, and restored with `git checkout --`; `git status --short` was
-empty after each, and `git diff --stat` is empty now.
+## 4. The breaks (AC4), each on the final code
 
-### B1 — a value import of `pda-document.ts` in `history.ts`
+| Break | The one line | The test that failed |
+| --- | --- | --- |
+| **B1** `kindOfText` always `null` | `function kindOfText(text: string): ImportKind \| null { return null; }` (the five lines that read the character deleted) | `open-file.test.ts:61` `expected null to be 'jff'`; also `:158` and `:209` `expected 'import.unknown_type' to be 'document.invalid_file'`, and `:242` `expected [] to deeply equal [ '<broken' ]` |
+| **B2a** the size check after the read, in `openFile` | `-  if (!(file.size <= FILE_BYTE_LIMIT)) return fail('import.too_big', …);` moved below `const text = await file.text();` | `open-file.test.ts:143` `expected true to be false` (a file of 1 MB + 1 was read); `:216` `expected 3 to be 2`; `:229` `expected 1 to be +0` |
+| **B2b** the same in `isPdaFile` | `-  if (!(file.size <= FILE_BYTE_LIMIT)) return false;` moved below `text = await file.text();` | `pda-files.test.ts:101` `expected 1 to be +0`; `:238` `expected 3 to be 2` |
+| **B3** `titleOfFileName` stops taking off `.xml` | `-const NAME_SUFFIXES = [JFF_EXTENSION, `${JFF_EXTENSION}.xml`, '.xml'] as const;` → without `'.xml'` | `open-file.test.ts:87` `expected 'x.XML' to be 'x'` |
+| **B4** the constant back to `application/xml` | `-export const DOWNLOAD_TYPE = 'application/octet-stream';` → `'application/xml'` | `pda-files.spec.ts:289` and `share-link.spec.ts:464`: `- "application/octet-stream;charset=utf-8"` / `+ "application/xml;charset=utf-8"` |
 
-```diff
-@@ -11,0 +12 @@ import type { MachineDocument } from './document.ts';
-+import { pdaDocumentsEqual } from './pda-document.ts';
-```
+Three further breaks, for rules that AC4 does not name, so that no new test is allowed to be unfalsifiable:
 
-```
- FAIL  src/lib/first-load.test.ts > the first load > takes no value import to the PDA document, commands or history
-AssertionError: expected [ Array(1) ] to deeply equal []
+| Break | The one line | The test that failed |
+| --- | --- | --- |
+| the content wins over the name | `return kindOfText(text) ?? importKind(name);` | `open-file.test.ts:54` `expected 'json' to be 'jff'` |
+| the `.xml` rule before the `.jff.xml` rule | `const NAME_SUFFIXES = ['.xml', `${JFF_EXTENSION}.xml`, JFF_EXTENSION] as const;` | `open-file.test.ts:86` `expected 'aⁿbⁿ (n ≥ 1).jff' to be 'aⁿbⁿ (n ≥ 1)'` |
+| the size check after the read in `openPdaFile` | the same move as B2a, in `openPdaFile` | `pda-files.test.ts:216` `expected 1 to be +0`; `:253` `expected 3 to be 2` |
 
-- []
-+ [
-+   "lib/editor/interaction/editor.ts
-+   lib/editor/interaction/editor.ts -> ../history.ts
-+   lib/editor/history.ts -> ./pda-document.ts",
-+ ]
-```
+Every break was restored; `diff -q` against the backups prints nothing and the suite is green again
+(section 3).
 
-### B2 — `history.ts` re-exports `createPdaHistory`
+## 5. Deepening pass
 
-```diff
-@@ -143,0 +144,2 @@ export function createHistory(initial: MachineDocument, options: { limit?: number } = {}): History {
-+
-+export { createPdaHistory } from './pda-history.ts';
-```
+**New exports.** `fileKind` (`open-file.ts`): used by `openFile`, `isPdaFile` and `openPdaFile` and tested
+directly by F1 — it cannot be private, and `kindOfText` is private because only `fileKind` calls it.
+`DOWNLOAD_TYPE` (`files.ts`): used by the two dialogs and by the constant test; it cannot be private
+because the two dialogs are in two files. `watchBlobs` and `blobTypes` (`web/e2e/fixtures.ts`): test-only,
+used by the two dialog specs; they are a seam because the same spy is needed in two spec files, and the
+alternative was the same ten lines twice. That file is the one file this task touched beyond the scope's
+list; the change is +26 lines, and the two specs import it. **No new member of a public interface**:
+`ImportFile`, `ImportEngine`, `ImportPdaEngine` and `PdaJffEngine` are unchanged.
 
-```
- FAIL  src/lib/first-load.test.ts > the first load > takes no value import to the PDA document, commands or history
-AssertionError: expected [ Array(1) ] to deeply equal []
+**Written twice?** The kind rule is in one place (`fileKind`), the title rule in one place
+(`NAME_SUFFIXES`). The size predicate `file.size <= FILE_BYTE_LIMIT` stands in three readers, as it did
+before, because each answers differently (`fail('import.too_big', …)` with the limit, or `false`); merging
+them would add an interface to save three lines. The `fail` helper already existed in both modules.
 
-- []
-+ [
-+   "lib/editor/interaction/editor.ts
-+   lib/editor/interaction/editor.ts -> ../history.ts
-+   lib/editor/history.ts -> ./pda-history.ts",
-+ ]
-```
+**Casts added: zero.** The e2e spy declares `window.__blobTypes` with `declare global` instead of a cast.
+The `as const` on `NAME_SUFFIXES` is a literal-type annotation, not a cast. No `any`, no `@ts-ignore`, no
+`as unknown as`.
 
-### B3 — a wrong default depth in the new file
+## 6. What I did not run, and the phone re-check
 
-```diff
-@@ -20 +20 @@ export function createPdaHistory(
--		limit: options.limit
-+		limit: options.limit ?? 199
-```
-
-```
- FAIL  src/lib/editor/pda-history.test.ts > the default depth of the PDA history > keeps the last 200 steps and drops the oldest
-AssertionError: expected 199 to be 200 // Object.is equality
-
-- Expected
-+ Received
-
-- 200
-+ 199
-```
-
-### B4 — the guard's canary (an entry renamed in the test's list)
-
-```diff
-@@ -18 +18 @@ const ENTRIES = [
--	'routes/+layout.ts',
-+	'routes/+layoutx.ts',
-```
-
-```
- FAIL  src/lib/first-load.test.ts > the first load > starts from every entry and reaches the editor core
-AssertionError: expected [ Array(1) ] to deeply equal []
-
-- []
-+ [
-+   "/home/Aldebaran64/webtomata-ds/web/src/routes/+layoutx.ts",
-+ ]
-```
-
-The guard also fails on an unresolved `#lib/` or relative specifier by construction
-(`expect(unresolved).toEqual([])`); B4 breaks the other canary. I did not find a test that cannot fail;
-the two new tests each have a break that fails them (B3, B4), and both guard failures (B1, B2) are
-above.
-
----
-
-## 9. AC2 — no behaviour change, and the tests that were run
-
-The one existing test line edited:
-
-```diff
--import { createPdaHistory } from './history.ts';
-+import { createPdaHistory } from './pda-history.ts';
-```
-
-Tests run: the full `pnpm --filter web test` (122 files, 1413 passed, 3 skipped) and the five PDA
-e2e specs above (61 passed, 13 skipped). The focused history/PDA-history files (35 tests) are in
-section 2. No other existing test changed. The FSM history files (`history.test.ts`,
-`history.property.test.ts`) are untouched and pass.
-
----
-
-## 10. Deepening pass
-
-New exports and public members:
-
-- `createPdaHistory` — moved, not new; its consumers are `interaction/pda-editor.ts` and the depth
-  test. It must be public (the editor and the barrel reach it).
-- `PdaHistory` — moved; no consumer names it today. It stays because the spec moves it as-is and the
-  barrel keeps the same surface; it can be dropped later if the surface is allowed to shrink.
-- `createGenericHistory` — new public; used by `pda-history.ts`. It cannot be private: the PDA twin
-  is another module, and copying it was the alternative the spec rejected.
-- `GenericApplyResult` — new type export; it is named in `createGenericHistory`'s signature. It could
-  stay private (legal without declaration emit); it is exported so that the one newly public
-  function's signature names public types, and it is a type (erased, no bytes).
-
-No member was added to `GenericHistory` or to any editor interface. No logic is written twice: the
-depth, coalescing and refusal rules exist only in `createGenericHistory`; `pda-history.ts` is the
-wiring. The new guard is a test, not production code, and exports nothing. Casts added: **0** (the
-two `as` casts are the pre-existing ones; one moved with the function). The interface is smaller than
-the work behind it: two moved functions, one exported helper and one type, for a split that takes
-the PDA code out of the first load of four routes.
-
-Limits and boundaries: no limit was introduced. The one limit involved (the 200-step default) is
-tested past it in `pda-history.test.ts`: 202 steps (the add and 201 moves), 200 of them kept. No random test was tuned,
-so the "ten times the seeds" rule does not apply; the existing PDA property test still runs on its
-200 sequences.
-
----
-
-## 11. What I did not run
-
-- The full e2e suite and the Firefox/WebKit cross specs (the owner's rule: CI runs them; this task
-  changes no layout, touch or storage and only needs the PDA area on desktop and phone).
-- `pnpm test:wasm`: the Rust and WASM code is untouched (`git diff` has no crate file); `pnpm build`
-  did rebuild the wasm and its size is unchanged at 237.0 KB.
-- A real phone; the phone runs were the Playwright Pixel 7 emulation, as in the other tasks.
-
-No out-of-scope work was done; no `proposed` entry was needed.
+- **The owner's phone.** Nothing here reproduces Chrome on Android renaming a download; the type is proved,
+  the rename is not. The owner should check, after the merge: a new `.jff` is saved as `….jff` and opens,
+  and an already-saved `….jff.xml` opens.
+- **The live site.** Not deployed; the check is on the built site.
+- The full e2e suite and `pnpm test:e2e:cross` were not run (the task's verification is the specs of the
+  area), and Firefox/WebKit were not run (the cross specs need `pnpm test:e2e:cross`, CI runs them).
+- **Residual risk, for the phone check:** the picker's `accept=".jff,.json,application/json"` does not list
+  `.xml`, so some phones may not offer a saved `….jff.xml` in the chooser at all. The owner's Chrome did.
+  The list is left as it is (widening it would hide other files), as the spec says.
