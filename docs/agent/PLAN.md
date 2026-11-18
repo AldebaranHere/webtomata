@@ -3149,7 +3149,7 @@ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-file
 
 ## Task T-076 — A downloaded `.jff` keeps its name on Android, and a file is told by its content
 
-**Status:** todo
+**Status:** in-progress (2026-11-18; branch `task/T-076-file-names`)
 **Owner:** worker (DeepSeek: the planner's pick)
 **Branch:** `task/T-076-file-names`
 

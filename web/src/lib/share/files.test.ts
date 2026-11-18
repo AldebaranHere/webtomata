@@ -3,6 +3,7 @@ import { documentFrom, endsWith01 } from '../editor/diagram/samples.ts';
 import { documentsEqual, jffLayout, parseDocumentText, toMachine } from '../editor/document.ts';
 import type { EngineResult, Machine } from '../engine/types.ts';
 import {
+	DOWNLOAD_TYPE,
 	JFF_EXTENSION,
 	JSON_EXTENSION,
 	fileName,
@@ -11,6 +12,14 @@ import {
 	unusedSymbols
 } from './files.ts';
 import type { JffEngine } from './files.ts';
+
+describe('DOWNLOAD_TYPE', () => {
+	it('is a type that a browser puts no extension of its own on, for a .jff or a JSON', () => {
+		// Chrome on Android adds ".xml" to a name whose extension it does not know, when the type is
+		// application/xml: the downloaded file became "aⁿbⁿ (n ≥ 1).jff.xml".
+		expect(DOWNLOAD_TYPE).toBe('application/octet-stream');
+	});
+});
 
 describe('fileName', () => {
 	it('keeps a title that is safe, with the extension', () => {

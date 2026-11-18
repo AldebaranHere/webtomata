@@ -83,9 +83,10 @@ describe('isPdaFile (F5, F7)', () => {
 		expect(await isPdaFile(file('a.json', '{"kind":"ndfsm"}'))).toBe(false);
 	});
 
-	it('says no for a name that is neither, and for text that is not JSON', async () => {
-		expect(await isPdaFile(file('a.txt', '{"kind":"dpda"}'))).toBe(false);
-		expect(await isPdaFile(file('a', '{"kind":"dpda"}'))).toBe(false);
+	it('tells a PDA by its content when the name does not say, and says no for text that is not JSON', async () => {
+		expect(await isPdaFile(file('a.txt', '{"kind":"dpda"}'))).toBe(true);
+		expect(await isPdaFile(file('a', '{"kind":"dpda"}'))).toBe(true);
+		expect(await isPdaFile(file('a.txt', 'halo'))).toBe(false);
 		expect(await isPdaFile(file('a.json', 'not json'))).toBe(false);
 	});
 
@@ -200,19 +201,57 @@ describe('openPdaFile (F5, F7)', () => {
 		expect(!result.ok && result.error.key).toBe('document.limit_exceeded');
 	});
 
-	it('checks the size before it reads the text, and refuses an unknown extension', async () => {
+	it('checks the size before it reads the text, and reads a .txt that holds a PDA .jff', async () => {
 		let read = 0;
 		const big: ImportFile = {
 			name: 'a.jff',
 			size: FILE_BYTE_LIMIT + 1,
 			text: async () => ((read += 1), pdaJffText)
 		};
-		const engine = importEngine({ ok: false, error: { key: 'never', params: {} } });
-		const tooBig = await openPdaFile(big, engine);
+		const tooBig = await openPdaFile(
+			big,
+			importEngine({ ok: false, error: { key: 'never', params: {} } })
+		);
 		expect(!tooBig.ok && tooBig.error.key).toBe('import.too_big');
 		expect(read).toBe(0);
+		const engine = importEngine({ ok: true, value: jffOf(wcwrSample()) });
 		const unknown = await openPdaFile(file('a.txt', pdaJffText), engine);
-		expect(!unknown.ok && unknown.error.key).toBe('import.unknown_type');
+		expect(engine.calls).toEqual([pdaJffText]);
+		expect(unknown.ok).toBe(true);
+	});
+
+	it('checks the size before it reads, for a name that the name does not tell (F4)', async () => {
+		let read = 0;
+		const probe = (size: number): ImportFile => ({
+			name: 'foto.jpg',
+			size,
+			text: async () => ((read += 1), pdaJffText)
+		});
+		// One byte under the limit: read and sniffed as a .jff, and it is a PDA.
+		expect(await isPdaFile(probe(FILE_BYTE_LIMIT - 1))).toBe(true);
+		expect(read).toBe(1);
+		// Exactly the limit: the same.
+		expect(await isPdaFile(probe(FILE_BYTE_LIMIT))).toBe(true);
+		expect(read).toBe(2);
+		// One byte over: not a PDA file, and never read (the FSM reader answers import.too_big).
+		expect(await isPdaFile(probe(FILE_BYTE_LIMIT + 1))).toBe(false);
+		expect(read).toBe(2);
+	});
+
+	it('opens a file of any name at or under the size limit, and refuses one over it (F4)', async () => {
+		let read = 0;
+		const probe = (size: number): ImportFile => ({
+			name: 'foto.jpg',
+			size,
+			text: async () => ((read += 1), pdaJffText)
+		});
+		const engine = importEngine({ ok: true, value: jffOf(wcwrSample()) });
+		expect((await openPdaFile(probe(FILE_BYTE_LIMIT - 1), engine)).ok).toBe(true);
+		expect((await openPdaFile(probe(FILE_BYTE_LIMIT), engine)).ok).toBe(true);
+		const above = await openPdaFile(probe(FILE_BYTE_LIMIT + 1), engine);
+		expect(!above.ok && above.error.key).toBe('import.too_big');
+		expect(read).toBe(2);
+		expect(engine.calls).toHaveLength(2);
 	});
 
 	it('does not throw when the file cannot be read, or the engine fails', async () => {

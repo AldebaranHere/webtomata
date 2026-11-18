@@ -3,13 +3,33 @@
 // back as `.jff` or JSON (F3), and all of it works on a phone (F8).
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { expect, expectNoAxeViolations, engineSettled, openSandbox, test } from './fixtures.ts';
+import {
+	blobTypes,
+	engineSettled,
+	expect,
+	expectNoAxeViolations,
+	openSandbox,
+	test,
+	watchBlobs
+} from './fixtures.ts';
 import type { Page } from '@playwright/test';
 import { putRow, records } from './cross/db.ts';
-import { wcwrSample } from '../src/lib/editor/pda-samples.ts';
+import { anbnSample, wcwrSample } from '../src/lib/editor/pda-samples.ts';
 import { pdaDocumentFrom } from '../src/lib/editor/pda-samples.ts';
 import { serializePdaDocument } from '../src/lib/editor/pda-document.ts';
 import { FILE_BYTE_LIMIT } from '../src/lib/share/open-file.ts';
+
+/** The `aⁿbⁿ` PDA as a `.jff`, written here: no fixture file for it (T-076 F3). */
+const anbnJff = `<structure>
+	<type>pda</type>
+	<automaton>
+		<state id="0" name="q0"><x>180.0</x><y>200.0</y><initial/></state>
+		<state id="1" name="q1"><x>440.0</x><y>200.0</y><final/></state>
+		<transition><from>0</from><to>0</to><read>a</read><pop/><push>A</push></transition>
+		<transition><from>0</from><to>1</to><read>b</read><pop>A</pop><push/></transition>
+		<transition><from>1</from><to>1</to><read>b</read><pop>A</pop><push/></transition>
+	</automaton>
+</structure>`;
 
 const fixture = (name: string) =>
 	readFileSync(fileURLToPath(new URL(`../src/lib/share/fixtures/${name}`, import.meta.url)));
@@ -223,4 +243,51 @@ test('F8: on a phone the button and the dialog are large enough, the dialog is a
 	await expect(page).toHaveURL(/mode=pda/);
 	await expect(state(page, 'q0')).toBeVisible();
 	await engineSettled(page);
+});
+
+test('F3: a file named .jff.xml or .txt opens by its content, in the FSM mode and in the PDA mode', async ({
+	page
+}) => {
+	await openSandbox(page);
+	expect(await ids(page)).toHaveLength(1);
+
+	// The FSM mode: the aⁿbⁿ .jff that a phone saved as .jff.xml is a PDA, so the page switches to the PDA mode.
+	await chooseFile(page, { name: 'anbn.jff.xml', buffer: Buffer.from(anbnJff) });
+	await expect(list(page)).toBeHidden();
+	await expect(page).toHaveURL(/mode=pda/);
+	await expect(state(page, 'q0')).toBeVisible();
+	await expect(note(page)).toContainText('File dibuka sebagai mesin baru: anbn.');
+	expect((await records(page)).filter((row) => row.type === 'pda')).toHaveLength(1);
+
+	// The PDA mode: the same file again is a second PDA, and the mode stays.
+	await chooseFile(page, { name: 'anbn.jff.xml', buffer: Buffer.from(anbnJff) });
+	await expect(list(page)).toBeHidden();
+	await expect(page).toHaveURL(/mode=pda/);
+	await expect(note(page)).toContainText('File dibuka sebagai mesin baru: anbn.');
+	expect((await records(page)).filter((row) => row.type === 'pda')).toHaveLength(2);
+
+	// A PDA JSON named .txt opens as a PDA too, with the title of the document.
+	const json = serializePdaDocument(anbnSample());
+	await chooseFile(page, { name: 'anbn.txt', buffer: Buffer.from(json) });
+	await expect(list(page)).toBeHidden();
+	await expect(note(page)).toContainText('File dibuka sebagai mesin baru: aⁿbⁿ (n ≥ 1).');
+	expect((await records(page)).filter((row) => row.type === 'pda')).toHaveLength(3);
+	await expectNoAxeViolations(page);
+});
+
+test('F5: the .jff and the JSON of the PDA dialog are the octet-stream type', async ({ page }) => {
+	await watchBlobs(page);
+	await openPdaExample(page);
+	await downloadButton(page).click();
+	await expect(filesDialog(page)).toBeVisible();
+	for (const name of ['Unduh .jff (JFLAP)', 'Unduh JSON']) {
+		const waiting = page.waitForEvent('download');
+		await filesDialog(page).getByRole('button', { name }).click();
+		await waiting;
+	}
+	// The essence is octet-stream; `download()` adds the charset to a text blob.
+	expect(await blobTypes(page)).toEqual([
+		'application/octet-stream;charset=utf-8',
+		'application/octet-stream;charset=utf-8'
+	]);
 });
