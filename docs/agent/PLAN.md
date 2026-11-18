@@ -3274,6 +3274,16 @@ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-file
 
 ---
 
+## Task T-079 — The five `clippy::needless_range_loop` lints of clippy 1.100.0
+
+**Status:** done (2026-11-18; branch `task/T-079-clippy-range-loops`. Found by the red `rust` job of PR 217: two lints in `engine-core`, and three more in a test that the same job reached once the lib was fixed. Five loops rewritten mechanically, with no behaviour, order or API change and no `#[allow]`; native and wasm tests, `fmt` and `clippy` pass on 1.99.1 and 1.100.0. See `docs/agent/REPORT.md`.)
+
+**Scope:** `crates/engine-core/src/pda.rs` (`determinism`), `crates/engine-core/src/pda_rnf.rs` (`pda_to_rnf`, the multi-pop split), `crates/engine-core/tests/pda_cfg.rs` (three loops of one test, every assertion and comment untouched), `docs/agent/PLAN.md`, `docs/agent/REPORT.md`. The toolchain is not pinned or edited: `rust-toolchain.toml` still says `channel = "stable"`.
+
+**Depends on:** nothing. Independent of T-076, T-077 and T-078.
+
+---
+
 ## Task T-038 — Conversions and simulation panel for the PDA (draft)
 
 **Status:** proposed (after P-005 is approved and T-051, T-034, T-035, T-037 are merged)

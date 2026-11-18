@@ -333,15 +333,15 @@ fn test_fixture_f1_structure_and_cleanup() {
     );
 
     // Steps 2..8: six 0->0 double pushes (each 9 rules).
-    for idx in 2..8 {
+    for step in res.steps.iter().take(8).skip(2) {
         assert_eq!(
-            res.steps[idx].message,
+            step.message,
             Message::new("pda_cfg.push")
                 .with("from", 0u32)
                 .with("to", 0u32)
                 .with("pushes", 2usize)
         );
-        assert_eq!(res.steps[idx].added.len(), 9);
+        assert_eq!(step.added.len(), 9);
     }
 
     // First transition (0->0, a, [a], [a, a]) rules for (0,0), (0,1), (0,3), (1,0).
@@ -358,15 +358,15 @@ fn test_fixture_f1_structure_and_cleanup() {
     );
 
     // Steps 8..11: three 0->1 single pushes reading c (each 3 rules).
-    for idx in 8..11 {
+    for step in res.steps.iter().take(11).skip(8) {
         assert_eq!(
-            res.steps[idx].message,
+            step.message,
             Message::new("pda_cfg.push")
                 .with("from", 0u32)
                 .with("to", 1u32)
                 .with("pushes", 1usize)
         );
-        assert_eq!(res.steps[idx].added.len(), 3);
+        assert_eq!(step.added.len(), 3);
     }
     assert_eq!(
         res.steps[8]
@@ -402,14 +402,14 @@ fn test_fixture_f1_structure_and_cleanup() {
     );
 
     // Steps 12..14: 1->1 reading a and b (push_none).
-    for idx in 12..14 {
+    for step in res.steps.iter().take(14).skip(12) {
         assert_eq!(
-            res.steps[idx].message,
+            step.message,
             Message::new("pda_cfg.push_none")
                 .with("from", 1u32)
                 .with("to", 1u32)
         );
-        assert_eq!(res.steps[idx].added.len(), 3);
+        assert_eq!(step.added.len(), 3);
     }
     assert_eq!(format_rule(&res.steps[12].added[0]), "V_1g0p0 -> a V_1gep0");
 
