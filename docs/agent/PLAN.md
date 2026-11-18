@@ -3284,6 +3284,51 @@ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-file
 
 ---
 
+## Task T-080 — Pin the Rust toolchain to an exact version
+
+**Status:** todo
+**Owner:** worker (DeepSeek: the planner's pick; it found the cause in T-079)
+**Branch:** `task/T-080-pin-rust`
+
+**Goal:** `rust-toolchain.toml` says `channel = "stable"`, and CI's step `rustup show active-toolchain || rustup toolchain install` follows it, so every new stable release changes CI without any change of ours. It turned the `rust` job red on 2026-11-18 (clippy 1.100.0 added a lint that 1.99.1 does not have; T-079 fixes the code). The owner decided on 2026-11-18 to pin. This task sets `channel` to the exact version `1.100.0` (the version T-079 is clean under), keeps `targets` and `components`, and adds a small guard so that nobody puts `stable` back. A bump becomes a deliberate one-line PR.
+
+**Decisions (planner and owner, 2026-11-18; do not reopen, ask if one looks wrong):**
+
+- **Exact version `1.100.0`**, not a date, not `1.100`. The same file is used by every clone (the owner's WSL, both workers) and by CI.
+- **The guard:** a Node test in `tools/` (next to `check-workflows.mjs` and its test style; `node --test "tools/*.test.mjs"` already runs in `pnpm test:web`) that reads `rust-toolchain.toml` and fails unless `channel` matches `^\d+\.\d+\.\d+$`. About 15 lines. It names the file and the bump procedure in its failure message.
+- **The bump procedure** is five lines in `CONTRIBUTING.md` (where the requirement line says "Rust (stable…)"): change the version in `rust-toolchain.toml`; run `cargo clippy --all-targets -- -D warnings`, `cargo test`, `pnpm build:wasm`; fix what the new lints say in the same PR; one PR. Nothing is scheduled or automated (no new workflow, no bot: a free-tier rule and "code is a cost").
+- **CLAUDE.md section 3:** the stack row `Rust (stable), Cargo workspace, no unsafe` becomes `Rust (exact version in rust-toolchain.toml), Cargo workspace, no unsafe` (the planner makes this edit in the spec PR, with the owner's approval of 2026-11-18; the worker does not touch CLAUDE.md).
+- **Not in scope:** the nightly that `cargo-fuzz` uses (do not change it; say in the report what `fuzz/` and the fuzz workflow use); wasm-pack, wasm-bindgen and binaryen versions; MSRV declarations; any change to code.
+
+**Scope (files):** `rust-toolchain.toml`, a new `tools/check-rust-toolchain.test.mjs` (or the name that matches the folder's convention; say which), `CONTRIBUTING.md` (the requirement line and the five-line procedure), `.github/workflows/ci.yml` **only if the pre-flight shows the install step does not honour the pin** (then the smallest change), `docs/decisions/0060-pinned-rust-toolchain.md` (short), `docs/agent/PLAN.md` (status).
+
+**Fixtures (the oracle):**
+
+- F1 **The file** holds `channel = "1.100.0"` with the same `targets` and `components` as before.
+- F2 **CI uses it:** the `rust` job's log shows `rustc 1.100.0` (or the `rustup` line that installs 1.100.0 and `overridden by rust-toolchain.toml`), and the job is green. Paste the lines.
+- F3 **The guard** passes on the final file; with `channel = "stable"`, with `"1.100"` and with `"nightly"` it fails (one test each, no "or").
+- F4 **Local clones work:** from a clone whose default is a different version, `cargo --version` inside the repo says 1.100.0 (rustup installs the pinned toolchain on first use, or says how; paste what happens, and say in the report what the owner and the workers must run once: probably nothing, or `rustup show`).
+
+**Acceptance criteria:**
+
+- AC1 F1 to F4 hold, each by a pasted command or a test.
+- AC2 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` pass **on the pinned version**; `pnpm test:web` (it runs the tools tests), `pnpm check:*`, and the wasm build pass; the CI `rust` job is green.
+- AC3 **Break the guard once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) `channel = "stable"`; (B2) `channel = "1.100"`. Restore; `git diff --stat` shows only the scope.
+- AC4 No Rust source changes; no change to any `Cargo.toml` or `Cargo.lock`.
+
+**Verification:**
+
+```
+cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+node --test "tools/*.test.mjs"
+```
+
+**Pre-flight (with real commands):** (1) list every place that names a Rust version or a channel (`rg -n "stable|toolchain|rustup|1\.9|1\.100" rust-toolchain.toml .github fuzz tools CONTRIBUTING.md README.md package.json`) and say which of them the pin affects; (2) read the CI step that installs the toolchain and say whether it honours a pinned `channel` with the `targets` and `components` of the file (a runner that has no 1.100.0 must install it with the wasm target and clippy); (3) say what `fuzz/` uses. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
+
+**Depends on:** T-079 (merged): the code must be clean under 1.100.0 first.
+
+---
+
 ## Task T-038 — Conversions and simulation panel for the PDA (draft)
 
 **Status:** proposed (after P-005 is approved and T-051, T-034, T-035, T-037 are merged)
