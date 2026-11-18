@@ -1,7 +1,8 @@
 // Opening a file of a machine: a JFLAP file (`.jff`) or the document file as JSON (S10b-3). The file is untrusted:
 // its size is checked before it is read, a `.jff` goes through the engine (which checks its structure and limits),
-// and JSON goes through `parseDocumentText` (which checks its size and every rule of a document). Nothing here
-// throws, and there is no DOM: the page gives a `File`, which has this shape.
+// and JSON goes through `parseDocumentText` (which checks its size and every rule of a document). A file is told
+// by its name, and by its first character when the name does not say (a `….jff.xml` saved by a phone). Nothing
+// here throws, and there is no DOM: the page gives a `File`, which has this shape.
 import {
 	LIMITS,
 	checkTitle,
@@ -39,11 +40,33 @@ export function importKind(name: string): ImportKind | null {
 	return null;
 }
 
+/**
+ * The kind of a file: its name when the name says (`.jff`, `.json`), else its first character (T-076).
+ * A `.jff` that a phone saved as `….jff.xml` is still a `.jff`. A file that is neither is `null`, which
+ * the readers report as `import.unknown_type`.
+ */
+export function fileKind(name: string, text: string): ImportKind | null {
+	return importKind(name) ?? kindOfText(text);
+}
+
+/** The kind that only the text tells: it starts with `<` for a `.jff` and `{` for JSON. `\s` covers a BOM too. */
+function kindOfText(text: string): ImportKind | null {
+	const at = text.search(/\S/u);
+	if (at < 0) return null;
+	const first = text.charAt(at);
+	if (first === '<') return 'jff';
+	if (first === '{') return 'json';
+	return null;
+}
+
+/** The suffixes of a file name, the longer one first: a `.jff.xml` is not cut down to `a.jff`. */
+const NAME_SUFFIXES = [JFF_EXTENSION, `${JFF_EXTENSION}.xml`, '.xml'] as const;
+
 /** The title that a `.jff` gets from its file name: without the extension, 100 characters at most. */
 export function titleOfFileName(name: string): string {
-	const bare = name.toLowerCase().endsWith(JFF_EXTENSION)
-		? name.slice(0, -JFF_EXTENSION.length)
-		: name;
+	const lower = name.toLowerCase();
+	const suffix = NAME_SUFFIXES.find((one) => lower.endsWith(one));
+	const bare = suffix === undefined ? name : name.slice(0, -suffix.length);
 	const clean = bare
 		.replace(/\p{Cc}/gu, '')
 		.replace(/\s+/gu, ' ')
@@ -55,9 +78,10 @@ export function titleOfFileName(name: string): string {
 /**
  * The machine of a file, with the notes of what was changed on the way (a label of several characters that
  * became a chain of states, a name that was repaired). It is always a machine of its own: the caller opens it
- * as a new one. The failures are messages: `import.too_big`, `import.unknown_type`, `import.unreadable`, the
- * messages of the engine for a `.jff` (`jff.unsupported_type` for a grammar or a PDA...) and of the document
- * for JSON (`document.invalid_file`, `document.unsupported_version`...).
+ * as a new one. The size is checked first, for every name, so a file over the limit is not read. The failures
+ * are messages: `import.too_big`, `import.unknown_type`, `import.unreadable`, the messages of the engine for a
+ * `.jff` (`jff.unsupported_type` for a grammar or a PDA...) and of the document for JSON
+ * (`document.invalid_file`, `document.unsupported_version`...).
  */
 export async function openFile(
 	file: ImportFile,
@@ -67,11 +91,11 @@ export async function openFile(
 		ok: false as const,
 		error: message(key, params)
 	});
-	const kind = importKind(file.name);
-	if (kind === null) return fail('import.unknown_type');
 	if (!(file.size <= FILE_BYTE_LIMIT)) return fail('import.too_big', { limit: FILE_BYTE_LIMIT });
 	try {
 		const text = await file.text();
+		const kind = fileKind(file.name, text);
+		if (kind === null) return fail('import.unknown_type');
 		if (kind === 'json') {
 			const parsed = parseDocumentText(text);
 			return parsed.ok ? { ok: true, value: { doc: parsed.value, notes: [] } } : parsed;

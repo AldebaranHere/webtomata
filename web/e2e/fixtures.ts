@@ -169,3 +169,29 @@ export async function expectNoAxeViolations(page: Page): Promise<void> {
 		'accessibility violations'
 	).toEqual([]);
 }
+
+declare global {
+	interface Window {
+		/** The types of the blobs that the page downloaded, oldest first (filled by `watchBlobs`). */
+		__blobTypes: string[];
+	}
+}
+
+/**
+ * Records the type of every `Blob` that the page turns into an object URL, which is how `download` gives a
+ * file. It is the type that the browser acts on, and a suggested file name cannot show it. Call it before
+ * the page is opened (`openSandbox` navigates, so call it first); a navigation starts a new list.
+ */
+export async function watchBlobs(page: Page): Promise<void> {
+	await page.addInitScript(() => {
+		window.__blobTypes = [];
+		const create = URL.createObjectURL.bind(URL);
+		URL.createObjectURL = (object: Blob | MediaSource): string => {
+			window.__blobTypes.push(object instanceof Blob ? object.type : '');
+			return create(object);
+		};
+	});
+}
+
+/** The blob types that `watchBlobs` recorded, oldest first. */
+export const blobTypes = (page: Page): Promise<string[]> => page.evaluate(() => window.__blobTypes);

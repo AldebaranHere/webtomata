@@ -6,6 +6,7 @@
 	import type { MessageKey } from '#lib/i18n/id.ts';
 	import type { MachineDocument } from '#lib/editor/document.ts';
 	import {
+		DOWNLOAD_TYPE,
 		JFF_EXTENSION,
 		JSON_EXTENSION,
 		download,
@@ -49,7 +50,7 @@
 		}
 		fileProblem = null;
 		const name = fileName(doc.title, JFF_EXTENSION, fallbackName());
-		download(name, result.value, 'application/xml');
+		download(name, result.value, DOWNLOAD_TYPE);
 		saved = name;
 	}
 
@@ -83,7 +84,7 @@
 	function saveJson() {
 		fileProblem = null;
 		const name = fileName(doc.title, JSON_EXTENSION, fallbackName());
-		download(name, jsonFile(doc), 'application/json');
+		download(name, jsonFile(doc), DOWNLOAD_TYPE);
 		saved = name;
 	}
 

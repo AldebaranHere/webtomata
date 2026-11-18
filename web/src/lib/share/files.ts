@@ -8,6 +8,12 @@ import type { EngineResult, JffState, Machine } from '../engine/types.ts';
 export const JFF_EXTENSION = '.jff';
 export const JSON_EXTENSION = '.webtomata.json';
 
+/**
+ * The type of a `.jff` and of a JSON download. A type that the browser knows (application/xml) makes Chrome
+ * on Android put its own extension on a name it does not know: a `.jff` was saved as `….jff.xml` (T-076).
+ */
+export const DOWNLOAD_TYPE = 'application/octet-stream';
+
 const NAME_CHARS = 80;
 // The characters that a name of a file cannot have on Windows (the strictest), and the control characters.
 const FORBIDDEN = /[\\/:*?"<>|\p{Cc}]/gu;

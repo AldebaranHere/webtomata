@@ -1,202 +1,203 @@
-# T-079 — The five `clippy::needless_range_loop` lints of clippy 1.100.0
+# T-076 — A downloaded `.jff` keeps its name on Android, and a file is told by its content
 
-Branch `task/T-079-clippy-range-loops`, cut from `origin/staging` at `1271d15`. Status: `done`.
+Branch `task/T-076-file-names`, cut from `origin/staging` at `1271d15` (PR 216, the amended spec). Status:
+`done`. Commits: `207097a` (the change) and the last commit of this branch (this report and the status).
 
-PR 217 (T-076) had one red check: the `rust` job, `cargo clippy --all-targets -- -D warnings`, because the
-channel `stable` on the runner is clippy 1.100.0 and this code was written under 1.99.1. The job showed two
-lints; fixing the lib let the same job reach a test file with three more. All five are mechanical rewrites:
-no behaviour, order, value or public API changed, no `#[allow]`, no lint configuration change, and
-`rust-toolchain.toml` is untouched.
+The owner's report, reproduced before any change: a `.jff` downloaded from the PDA editor on Android Chrome
+was saved as `aⁿbⁿ (n ≥ 1).jff.xml` and "Buka file…" answered `import.unknown_type`. The run is in the
+pre-flight (section 1).
 
-**The toolchain, in one sentence.** `rust-toolchain.toml` sets `channel = "stable"` (no version), and the CI
-step `rustup show active-toolchain || rustup toolchain install` syncs whatever stable is current — 1.100.0 at
-the run of PR 217 (`clippy 0.1.100 (0ef1bc3860 2026-11-09)`), while the local stable was 1.99.1, which is
-why the lint was invisible here until 1.100.0 was installed for this proof.
+## 1. What changed
 
-## 1. The two lints of the `rust` job, and their fix
+| File | Change |
+| --- | --- |
+| `web/src/lib/share/open-file.ts` | `fileKind(name, text)` (exported) = `importKind(name) ?? kindOfText(text)`; `kindOfText` private, first character after `/^\s*/`; `openFile` checks the size, then reads, then tells the kind; `titleOfFileName` strips `.jff`, else `.jff.xml`, else `.xml` |
+| `web/src/lib/share/pda-files.ts` | `isPdaFile` and `openPdaFile` use `fileKind`, with the size check first; the doc comment of `isPdaFile` rewritten |
+| `web/src/lib/share/files.ts` | `DOWNLOAD_TYPE = 'application/octet-stream'` |
+| `ShareDialog.svelte`, `PdaFileDialog.svelte` | pass `DOWNLOAD_TYPE` for the `.jff` and the JSON; SVG and PNG unchanged |
+| tests | `open-file.test.ts`, `pda-files.test.ts`, `files.test.ts`, `open-from-file.test.ts`; e2e `open-file.spec.ts`, `pda-files.spec.ts`, `share-link.spec.ts`; `web/e2e/fixtures.ts` (one shared blob spy, see 6) |
+| docs | `docs/decisions/0057-file-kind-by-content.md`; `docs/agent/PLAN.md` (status) |
 
-`cargo +1.100.0 clippy --all-targets -- -D warnings`, **before** (the two errors the job showed, and
-nothing else in the lib):
+The size check is now the **first** thing in `openFile`, `isPdaFile` and `openPdaFile`: a file over
+`FILE_BYTE_LIMIT` (1,048,576 bytes) is `import.too_big` (or "not a PDA file" for `isPdaFile`) whatever its
+name, and `text()` is never called. Before, both readers decided the kind before the size, so an unknown
+name was refused as `import.unknown_type` without ever being size-checked.
 
-```
-error: the loop variable `j` is used to index `pda.transitions`
-   --> crates/engine-core/src/pda.rs:323:18
-323 |         for j in (i + 1)..n {
-note: for this index operation
-324 |             let t2 = &pda.transitions[j];
+### The three existing tests that changed, and only these
 
-error: the loop variable `i` is only used to index `t.pop`
-   --> crates/engine-core/src/pda_rnf.rs:160:22
-160 |             for i in 0..(n - 1) {
-note: for this index operation
-181 |                     pop: vec![t.pop[i]],
+The probe run of the pre-flight (`pnpm --filter web exec vitest run src/lib/share/*.test.ts`, 51 passed)
+and this change:
 
-error: could not compile `engine-core` (lib) due to 2 previous errors
-```
+| Test | Was | Now | Why |
+| --- | --- | --- | --- |
+| `open-file.test.ts:155` `reads a file by its content when the name does not say…` (was `refuses an extension that is not known, and says which one`) | `file('a.txt', '{}')` → `import.unknown_type` | `document.invalid_file` (the text starts with `{`, so it is JSON; the document parser refuses it), and a new `file('a.txt', 'halo')` → `import.unknown_type` | F1: a `.txt` whose text starts with `{` is JSON |
+| `pda-files.test.ts:86` `tells a PDA by its content when the name does not say…` (was `says no for a name that is neither…`) | `isPdaFile('a.txt'/'a', '{"kind":"dpda"}')` → `false` | `true` (and `'a.txt'`/`halo` → `false`, `'a.json'`/`not json` → `false` kept) | F3: a PDA JSON named `anbn.txt` opens |
+| `pda-files.test.ts:204` `checks the size before it reads the text, and reads a .txt that holds a PDA .jff` (was `…and refuses an unknown extension`) | `openPdaFile(file('a.txt', pdaJffText))` → `import.unknown_type` | the engine is called with the text and the result is `ok: true` | F1/F3: the content says `.jff` |
 
-**Loop 1 — `crates/engine-core/src/pda.rs`, `determinism`.** The outer `i` stays a counter: it is used for
-its value (`first: i`), not only to index. The inner loop walks the same vector it indexed.
+No other existing test was edited. The two e2e `catatan.txt`/`halo` cases and every `open-file.wasm`,
+`pda-files.wasm`, `files.wasm` and `open-from-file` case pass unedited.
 
-```diff
-     for i in 0..n {
-         let t1 = &pda.transitions[i];
--        for j in (i + 1)..n {
--            let t2 = &pda.transitions[j];
-+        for (j, t2) in pda.transitions.iter().enumerate().skip(i + 1) {
-             if t1.from != t2.from {
-                 break;
-```
+## 2. The derivations of the fixtures
 
-`j` takes `i + 1, i + 2, …, n - 1` in that order, so `second: j` and the order of `competitions` are the
-same, and the `break` on a different `from` still ends the inner loop at the first such pair. Both borrows
-are shared, so `t1` and the iterator coexist.
-
-**Loop 2 — `crates/engine-core/src/pda_rnf.rs`, `pda_to_rnf`, the multi-pop split (Step 4).** `i` existed
-only to read `t.pop[i]`; `n` stays in use (`with_capacity(n)`, `t.pop[n - 1]`, `pops: n as u32`).
-
-```diff
-             let mut prev_state = t.from;
--            for i in 0..(n - 1) {
-+            for &pop_symbol in t.pop.iter().take(n - 1) {
-                 let v_id = next_v_id;
-                 …
-                 let trans = PdaTransition {
-                     from: prev_state,
-                     read: None,
--                    pop: vec![t.pop[i]],
-+                    pop: vec![pop_symbol],
-                     push: Vec::new(),
-                     to: v_state,
-                 };
-```
-
-`take(n - 1)` gives the same symbols in the same order as `0..(n - 1)`; `SymbolId` is `Copy`
-(`crates/engine-core/src/fsm.rs:20`), so `&pop_symbol` copies. The new states, `next_v_id`, `v_counter`,
-the `MAX_STATES` check and the emitted wires are untouched.
-
-## 2. The three lints in `crates/engine-core/tests/pda_cfg.rs` (the one allowed test edit)
-
-With the lib fixed, `--all-targets` reached the tests and stopped:
-
-```
-error: the loop variable `idx` is only used to index `res.steps`
-   --> crates/engine-core/tests/pda_cfg.rs:336:16   (for idx in 2..8;   index at 344)
-error: the loop variable `idx` is only used to index `res.steps`
-   --> crates/engine-core/tests/pda_cfg.rs:361:16   (for idx in 8..11;  index at 369)
-error: the loop variable `idx` is only used to index `res.steps`
-   --> crates/engine-core/tests/pda_cfg.rs:405:16   (for idx in 12..14; index at 412)
-error: could not compile `engine-core` (test "pda_cfg") due to 3 previous errors
-```
-
-No assertion or comment in the three loops mentions `idx`, so no `.enumerate()` is needed: each loop
-becomes a walk over the slice it indexed, `take(b).skip(a)` for the range `a..b`.
-
-```diff
-     // Steps 2..8: six 0->0 double pushes (each 9 rules).
--    for idx in 2..8 {
-+    for step in res.steps.iter().take(8).skip(2) {
-         assert_eq!(
--            res.steps[idx].message,
-+            step.message,
-             Message::new("pda_cfg.push")
-                 .with("from", 0u32)
-                 .with("to", 0u32)
-                 .with("pushes", 2usize)
-         );
--        assert_eq!(res.steps[idx].added.len(), 9);
-+        assert_eq!(step.added.len(), 9);
-     }
-```
-
-```diff
-     // Steps 8..11: three 0->1 single pushes reading c (each 3 rules).
--    for idx in 8..11 {
-+    for step in res.steps.iter().take(11).skip(8) {
-         assert_eq!(
--            res.steps[idx].message,
-+            step.message,
-             Message::new("pda_cfg.push")
-                 .with("from", 0u32)
-                 .with("to", 1u32)
-                 .with("pushes", 1usize)
-         );
--        assert_eq!(res.steps[idx].added.len(), 3);
-+        assert_eq!(step.added.len(), 3);
-     }
-```
-
-```diff
-     // Steps 12..14: 1->1 reading a and b (push_none).
--    for idx in 12..14 {
-+    for step in res.steps.iter().take(14).skip(12) {
-         assert_eq!(
--            res.steps[idx].message,
-+            step.message,
-             Message::new("pda_cfg.push_none")
-                 .with("from", 1u32)
-                 .with("to", 1u32)
-         );
--        assert_eq!(res.steps[idx].added.len(), 3);
-+        assert_eq!(step.added.len(), 3);
-     }
-```
-
-**The number of assertions that run is the same: 6 assertion statements, 22 assertion executions before and
-after** (loop 1 runs 6 times, loop 2 three times, loop 3 twice — `6×2 + 3×2 + 2×2 = 22`).
+**F1 — `fileKind(name, text)`.** Derivation: the name wins when `importKind` answers. `a.jff` → `jff`
+(whatever the text), `a.json` and `a.webtomata.json` → `json`. Otherwise the first character after every
+white space at the start of the text: `<` → `jff`, `{` → `json`, anything else → `null`. `\s` in
+JavaScript matches `U+FEFF`, so a BOM is white space: `'\uFEFF{'` → `json`, `' \uFEFF\n{'` → `json`,
+`'  \n\t<structure/>'` → `jff`. `halo` → `null`; `[]` → `null`; `''` and `' \n\t\uFEFF '` → `null` (the
+search for `\S` finds nothing).
+**F2 — the title.** The rule is one suffix, matched case-insensitively on the lower-cased name but sliced
+from the original: `.jff` → `a.jff` gives `a`; `.jff.xml` → `aⁿbⁿ (n ≥ 1).jff.xml` gives
+`aⁿbⁿ (n ≥ 1)` (8 characters off, not 4, so not `….jff`); `.xml` → `x.XML` and `a.jff.XML` give `x` and
+`a`. `.jff.xml` alone leaves `''` (`checkTitle('')` is ok, and the empty title already opens as
+`editor.untitled`). The existing cases (`Berakhiran 01.jff`, `x.JFF`, `.jff`, the 300 emoji, the control
+characters) are unchanged because they end in `.jff`.
+**F3 — both readers (Playwright).** The PDA `.jff` of `aⁿbⁿ` is written inline in `pda-files.spec.ts`
+(`anbnJff`, checked against the real engine before the test was written: `ok: true`, states `q0`/`q1`,
+kind `ndpda`). Named `anbn.jff.xml` it has no known extension, so the content decides: `<` → `jff`, and
+`PDA_JFF` matches `<type>pda</type>` → `openPdaFile` → a new PDA record, the mode switches to `pda` in
+the FSM mode and stays in the PDA mode; the title is `anbn` (F2). A PDA JSON named `anbn.txt` is `{` →
+`json` → `PDA_JSON` matches `"kind":"dpda"` → a PDA, with the document's own title. An FSM `.jff` named
+`even-a.jff.xml` is `jff` → `openFile` → the engine → an FSM machine, title `even-a`.
+**F4 — the hostile files.** The unknown name `foto.jpg` (a name that says nothing) is the case that was
+never size-checked before. At `1 MB − 1` and at `1 MB` it is read and sniffed (the text `{"schemaVersion":1}`
+→ `json` → `document.invalid_file`; the PDA `.jff` text → `jff` → the engine); at `1 MB + 1` it is
+`import.too_big` and `text()` is never called, in both readers (the spy count stays at 2). A `1 MB + 1`
+`x.jff.xml` is also `import.too_big` with zero reads. `'\u0000\u0000'` named `x.jff.xml` is neither kind
+→ `import.unknown_type` (the engine is not asked). `<broken` named `x.jff.xml` is `jff` → the engine → the
+real engine answers `jff.xml_invalid` with line 1, column 1 (checked against the WASM engine, and asserted
+in `open-file.spec.ts` as the visible text "File .jff ini rusak: XML-nya tidak terbaca di baris 1, kolom 1.").
+Each refusal writes no record, opens nothing and says why (`open-from-file.test.ts`); the count of records
+and the open machine are as before.
+**F5 — the blob type.** `DOWNLOAD_TYPE` is `application/octet-stream`. `download()` builds
+`new Blob([text], { type: `${type};charset=utf-8` })`, so the type the browser sees is
+`application/octet-stream;charset=utf-8` for a `.jff` and for a JSON, `image/svg+xml;charset=utf-8` for the
+SVG (also a string) and `image/png` for the PNG (a `Blob`, used as it is). The spy wraps
+`URL.createObjectURL` with `page.addInitScript` before the page's first script and records `blob.type`, so
+the test observes what the browser acts on; a `suggestedFilename()` check passes with `application/xml`
+too and proves nothing.
 
 ## 3. Verification
 
-**Clippy 1.100.0, `--all-targets`, after the five rewrites — clean:**
+All of it on the final code (after every break was restored; the restored files are byte-identical to the
+files the checks ran on, `diff -q` empty).
 
 ```
-$ cargo +1.100.0 clippy --all-targets -- -D warnings
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s      (exit 0)
+$ pnpm format:check
+All matched files use Prettier code style!
+
+$ pnpm check
+svelte-check found 0 errors and 0 warnings
+
+$ pnpm lint
+$ pnpm --filter web lint
+$ eslint .
+
+$ pnpm check:strings
+ok   76 components have no hard-coded text
+
+$ pnpm check:tokens
+ok   78 files use no raw colors
+
+$ pnpm test:web
+ Test Files  122 passed (122)
+      Tests  1424 passed | 3 skipped (1427)
+
+$ pnpm --filter web exec vitest run src/lib/share/
+ Test Files  10 passed (10)
+      Tests  110 passed | 2 skipped (112)
+
+$ pnpm --filter web exec vitest run src/lib/share/open-file.wasm.test.ts src/lib/share/pda-files.wasm.test.ts src/lib/share/files.wasm.test.ts src/lib/share/local-jff.test.ts
+ Test Files  4 passed (4)
+      Tests  23 passed | 2 skipped (25)
+
+$ pnpm build && pnpm size
+ok   initial JS index.html: 81.8 KB gzip (limit 170 KB)
+ok   initial JS panduan/berakhiran-x.html: 87.2 KB gzip (limit 170 KB)
+ok   initial JS panduan.html: 81.0 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 121.9 KB gzip (limit 170 KB)
+ok   initial JS soal/berakhiran-10.html: 121.2 KB gzip (limit 170 KB)
+ok   initial JS soal/jumlah-a-genap.html: 121.2 KB gzip (limit 170 KB)
+ok   initial JS soal/mengandung-101.html: 121.2 KB gzip (limit 170 KB)
+ok   initial JS soal.html: 82.5 KB gzip (limit 170 KB)
+ok   initial JS tentang.html: 80.3 KB gzip (limit 170 KB)
+ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
+ok   wasm _app/immutable/workers/assets/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB gzip (limit 250 KB)
+
+$ cd web && pnpm exec playwright test open-file pda-files share-link cross/open-file --project=desktop --project=phone
+  2 skipped
+  72 passed (1.3m)
 ```
 
-Because that was a cached run, the changed test target was forced once more:
+The two skipped e2e cases are the tests that each project cannot run (a phone-only test on desktop and the
+reverse).
 
-```
-$ touch crates/engine-core/tests/pda_cfg.rs && cargo +1.100.0 clippy --test pda_cfg -- -D warnings
-    Checking engine-core v0.0.0 (…/crates/engine-core)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.17s      (exit 0)
-```
+**Sizes in bytes, all nine pages**, the metric of `tools/check-size.mjs` (the gzip sum of the `.js` that the
+HTML references), before (`11577ba`) and after, measured by the same command both times:
 
-No fourth lint appeared in any other target; five loops in total, under the ceiling of ten.
+| Page | Before | After | Delta |
+| --- | ---: | ---: | ---: |
+| `index.html` | 83,801 | 83,802 | +1 |
+| `panduan.html` | 82,949 | 82,950 | +1 |
+| `panduan/berakhiran-x.html` | 89,329 | 89,330 | +1 |
+| `sandbox.html` | 124,790 | 124,789 | −1 |
+| `soal.html` | 84,444 | 84,445 | +1 |
+| `soal/berakhiran-10.html` | 124,149 | 124,150 | +1 |
+| `soal/jumlah-a-genap.html` | 124,149 | 124,150 | +1 |
+| `soal/mengandung-101.html` | 124,149 | 124,150 | +1 |
+| `tentang.html` | 82,247 | 82,248 | +1 |
 
-**The rest of the gate:**
+No route grew by more than 1 byte (AC3 allows 102). The module that grew is lazy: the share reader is
+`_app/immutable/chunks/BsyC2EOn.js`, 1,936 raw bytes (926 gzip, was 1,734 raw), and no HTML lists it.
 
-```
-$ cargo test
-    test result: ok. …  (35 test binaries)   passed: 478   failed: 0      (exit 0)
+## 4. The breaks (AC4), each on the final code
 
-$ pnpm build:wasm && pnpm test:wasm
-    test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+| Break | The one line | The test that failed |
+| --- | --- | --- |
+| **B1** `kindOfText` always `null` | `function kindOfText(text: string): ImportKind \| null { return null; }` (the five lines that read the character deleted) | `open-file.test.ts:61` `expected null to be 'jff'`; also `:158` and `:209` `expected 'import.unknown_type' to be 'document.invalid_file'`, and `:242` `expected [] to deeply equal [ '<broken' ]` |
+| **B2a** the size check after the read, in `openFile` | `-  if (!(file.size <= FILE_BYTE_LIMIT)) return fail('import.too_big', …);` moved below `const text = await file.text();` | `open-file.test.ts:143` `expected true to be false` (a file of 1 MB + 1 was read); `:216` `expected 3 to be 2`; `:229` `expected 1 to be +0` |
+| **B2b** the same in `isPdaFile` | `-  if (!(file.size <= FILE_BYTE_LIMIT)) return false;` moved below `text = await file.text();` | `pda-files.test.ts:101` `expected 1 to be +0`; `:238` `expected 3 to be 2` |
+| **B3** `titleOfFileName` stops taking off `.xml` | `-const NAME_SUFFIXES = [JFF_EXTENSION, `${JFF_EXTENSION}.xml`, '.xml'] as const;` → without `'.xml'` | `open-file.test.ts:87` `expected 'x.XML' to be 'x'` |
+| **B4** the constant back to `application/xml` | `-export const DOWNLOAD_TYPE = 'application/octet-stream';` → `'application/xml'` | `pda-files.spec.ts:289` and `share-link.spec.ts:464`: `- "application/octet-stream;charset=utf-8"` / `+ "application/xml;charset=utf-8"` |
 
-$ pnpm --filter web exec vitest run src/lib/editor/pda-determinism.wasm.test.ts
- Test Files  1 passed (1)
-      Tests  5 passed (5)
+Three further breaks, for rules that AC4 does not name, so that no new test is allowed to be unfalsifiable:
 
-$ cargo +1.100.0 fmt --check
-    (clean)
+| Break | The one line | The test that failed |
+| --- | --- | --- |
+| the content wins over the name | `return kindOfText(text) ?? importKind(name);` | `open-file.test.ts:54` `expected 'json' to be 'jff'` |
+| the `.xml` rule before the `.jff.xml` rule | `const NAME_SUFFIXES = ['.xml', `${JFF_EXTENSION}.xml`, JFF_EXTENSION] as const;` | `open-file.test.ts:86` `expected 'aⁿbⁿ (n ≥ 1).jff' to be 'aⁿbⁿ (n ≥ 1)'` |
+| the size check after the read in `openPdaFile` | the same move as B2a, in `openPdaFile` | `pda-files.test.ts:216` `expected 1 to be +0`; `:253` `expected 3 to be 2` |
 
-$ cargo clippy --all-targets -- -D warnings          # the old 1.99.1 toolchain
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.27s      (exit 0)
+Every break was restored; `diff -q` against the backups prints nothing and the suite is green again
+(section 3).
 
-$ pnpm lint:rust
-$ cargo fmt --check && cargo clippy --all-targets -- -D warnings
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.09s
-```
+## 5. Deepening pass
 
-**Why behaviour is unchanged.** The two functions are pinned by existing tests that pass unedited:
-`crates/engine-core/tests/pda_validate.rs:33-96` asserts the exact `Competition` list from `determinism`,
-including `first`/`second` and the order; `crates/engine-core/tests/pda_rnf.rs` asserts the exact
-`RnfStep` order, e.g. "Transitions in split: 0->4 (eps, pop X), 4->5 (eps, pop Y), 5->1 (read a, pop Z,
-push W)"; and the three rewritten test loops assert the same steps, messages and rule counts as before.
+**New exports.** `fileKind` (`open-file.ts`): used by `openFile`, `isPdaFile` and `openPdaFile` and tested
+directly by F1 — it cannot be private, and `kindOfText` is private because only `fileKind` calls it.
+`DOWNLOAD_TYPE` (`files.ts`): used by the two dialogs and by the constant test; it cannot be private
+because the two dialogs are in two files. `watchBlobs` and `blobTypes` (`web/e2e/fixtures.ts`): test-only,
+used by the two dialog specs; they are a seam because the same spy is needed in two spec files, and the
+alternative was the same ten lines twice. That file is the one file this task touched beyond the scope's
+list; the change is +26 lines, and the two specs import it. **No new member of a public interface**:
+`ImportFile`, `ImportEngine`, `ImportPdaEngine` and `PdaJffEngine` are unchanged.
 
-## 4. What was not run, and what was not changed
+**Written twice?** The kind rule is in one place (`fileKind`), the title rule in one place
+(`NAME_SUFFIXES`). The size predicate `file.size <= FILE_BYTE_LIMIT` stands in three readers, as it did
+before, because each answers differently (`fail('import.too_big', …)` with the limit, or `false`); merging
+them would add an interface to save three lines. The `fail` helper already existed in both modules.
 
-- Not run: the e2e suite, Lighthouse, the web build and the sizes. This change touches no web code and no
-  size; the CI runs them.
-- Not changed: no dependency, no lint rule or configuration, no `#[allow]`, no `rust-toolchain.toml`. The
-  1.100.0 toolchain was installed only to reproduce and prove the fix, as the owner approved.
-- The pin question (`stable` versus a version) is the owner's and is not decided here.
+**Casts added: zero.** The e2e spy declares `window.__blobTypes` with `declare global` instead of a cast.
+The `as const` on `NAME_SUFFIXES` is a literal-type annotation, not a cast. No `any`, no `@ts-ignore`, no
+`as unknown as`.
+
+## 6. What I did not run, and the phone re-check
+
+- **The owner's phone.** Nothing here reproduces Chrome on Android renaming a download; the type is proved,
+  the rename is not. The owner should check, after the merge: a new `.jff` is saved as `….jff` and opens,
+  and an already-saved `….jff.xml` opens.
+- **The live site.** Not deployed; the check is on the built site.
+- The full e2e suite and `pnpm test:e2e:cross` were not run (the task's verification is the specs of the
+  area), and Firefox/WebKit were not run (the cross specs need `pnpm test:e2e:cross`, CI runs them).
+- **Residual risk, for the phone check:** the picker's `accept=".jff,.json,application/json"` does not list
+  `.xml`, so some phones may not offer a saved `….jff.xml` in the chooser at all. The owner's Chrome did.
+  The list is left as it is (widening it would hide other files), as the spec says.

@@ -119,3 +119,28 @@ test('the same file can be chosen again, and the button is large enough for a fi
 	expect(box!.height).toBeGreaterThanOrEqual(43.5);
 	expect(box!.width).toBeGreaterThanOrEqual(43.5);
 });
+
+test('a .jff that Android saved as .jff.xml opens as an FSM machine, and the name loses its .xml', async ({
+	page
+}) => {
+	await openSandbox(page);
+	await openFile(page, { name: 'even-a.jff.xml', buffer: fixture('even-a.jff') });
+	await expect(list(page)).toBeHidden();
+	await expect(note(page)).toContainText('File dibuka sebagai mesin baru: even-a.');
+	await expect(state(page, 'genap')).toBeVisible();
+	await expect(state(page, 'ganjil')).toBeVisible();
+	await expect(page.getByRole('button', { name: /^Mesin saya \(2\)/ })).toBeVisible();
+	await expectNoAxeViolations(page);
+});
+
+test('a damaged XML named .jff.xml is refused with the message of the engine, and nothing changes', async ({
+	page
+}) => {
+	await openSandbox(page);
+	await openFile(page, { name: 'x.jff.xml', buffer: Buffer.from('<broken') });
+	await expect(list(page).getByRole('alert')).toContainText(
+		'File .jff ini rusak: XML-nya tidak terbaca di baris 1, kolom 1.'
+	);
+	await expect(list(page)).toBeVisible();
+	await expect(page.getByRole('button', { name: /^Mesin saya \(1\)/ })).toBeVisible();
+});
