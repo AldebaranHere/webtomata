@@ -619,3 +619,12 @@ Format:
 - Alternatives considered: strip the charset for octet-stream in `download()` (outside scope, and the essence is what matters); keep `kindOfText` exported (exported only for a test).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-076); later `open-file.ts`, `pda-files.ts`, `files.ts`, the two dialogs
+
+## 2026-11-18 — Pin the Rust toolchain (T-080)
+
+- Decider: owner (the planner recommended it)
+- Context: `rust-toolchain.toml` says `stable`, and CI installs whatever stable is current. Clippy 1.100.0 added a lint, and the `rust` job went red on PRs 217 and 218 without a change of ours (T-079 fixes the code). It is the second time an unpinned tool broke CI.
+- Decision: pin `channel` to the exact version `1.100.0`; a guard test in `tools/` fails if the channel is not `x.y.z`; a bump is one small PR, with a five-line procedure in `CONTRIBUTING.md`; CLAUDE.md section 3 names the file instead of "stable". Nothing is automated.
+- Alternatives considered: stay on `stable` and accept occasional red CI (a surprise at a bad moment, for free); a scheduled bump bot (a new workflow to maintain).
+- Reversible? yes (one line)
+- Affects: `rust-toolchain.toml`, `CONTRIBUTING.md`, `CLAUDE.md` section 3, `tools/`; later every clone runs 1.100.0
