@@ -3234,7 +3234,7 @@ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-file
 
 ## Task T-078 — "Mesin baru" and delete behave in the PDA mode
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker (Gemini: the planner's pick, it wrote T-074)
 **Branch:** `task/T-078-library-in-pda-mode`
 
