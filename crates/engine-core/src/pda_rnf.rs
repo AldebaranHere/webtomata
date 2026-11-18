@@ -157,7 +157,7 @@ pub fn pda_to_rnf(pda: &Pda) -> Result<RnfResult, Message> {
             let mut split_wires = Vec::with_capacity(n);
 
             let mut prev_state = t.from;
-            for i in 0..(n - 1) {
+            for &pop_symbol in t.pop.iter().take(n - 1) {
                 let v_id = next_v_id;
                 next_v_id = next_v_id
                     .checked_add(1)
@@ -178,7 +178,7 @@ pub fn pda_to_rnf(pda: &Pda) -> Result<RnfResult, Message> {
                 let trans = PdaTransition {
                     from: prev_state,
                     read: None,
-                    pop: vec![t.pop[i]],
+                    pop: vec![pop_symbol],
                     push: Vec::new(),
                     to: v_state,
                 };
