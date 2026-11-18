@@ -222,7 +222,12 @@ class Library {
 	}
 
 	/** A new empty machine, saved and opened. */
-	newMachine(keepOpen = false): Promise<Problem | null> {
+	async newMachine(keepOpen = false): Promise<Problem | null> {
+		if (this.mode === 'pda' && !keepOpen) {
+			const problem = await this.newPdaMachine();
+			if (!problem) this.hide();
+			return problem;
+		}
 		return this.openDocument(createDocument(), keepOpen);
 	}
 
@@ -296,7 +301,7 @@ class Library {
 				const problem = await this.newPdaMachine();
 				if (problem) return;
 			}
-		} else if (this.mode !== 'pda' && this.current?.opened.record.id === id) {
+		} else if (this.current?.opened.record.id === id) {
 			const nextFsm = this.entries.find((e) => e.id !== id && e.type !== 'pda' && e.readable);
 			if (nextFsm) {
 				const problem = await this.openMachine(nextFsm.id, true);
@@ -313,6 +318,10 @@ class Library {
 			seq: ++this.sequence
 		};
 		await this.refresh();
+	}
+
+	isPending(id: string): boolean {
+		return this.pending?.isPending(id) ?? false;
 	}
 
 	undoDelete(): void {

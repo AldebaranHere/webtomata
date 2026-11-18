@@ -1,7 +1,7 @@
 // "Mesin saya" with FSM and PDA machines (docs/agent/PLAN.md Task T-074, F3 to F8).
 import { expect, expectNoAxeViolations, openPda, openSandbox, test } from './fixtures.ts';
 import type { Locator, Page } from '@playwright/test';
-import { putRow } from './cross/db.ts';
+import { putRow, records } from './cross/db.ts';
 import { serializePdaDocument } from '../src/lib/editor/pda-document.ts';
 import { anbnSample } from '../src/lib/editor/pda-samples.ts';
 
@@ -314,4 +314,238 @@ test('F8: phone viewport has >=44px touch targets and no axe violations', async 
 
 	const rowBtnBox = await dialog(page).locator('button.open').first().boundingBox();
 	expect(rowBtnBox?.height).toBeGreaterThanOrEqual(44);
+});
+
+async function switchMode(page: Page, optionName: RegExp, isMobile: boolean) {
+	await press(page.locator('.switcher-trigger'), isMobile);
+	await press(
+		page.locator('.switcher-popover[role="listbox"]').getByRole('option', { name: optionName }),
+		isMobile
+	);
+	await page.locator('.editor[data-ready]').waitFor();
+}
+
+test('T-078 F1: in PDA mode, Mesin baru opens a new empty PDA with first-run card, closes the list, and adds no FSM record', async ({
+	page,
+	isMobile
+}) => {
+	await page.goto('/sandbox?mode=pda');
+	await page.locator('.editor[data-ready]').waitFor();
+	await press(page.getByRole('button', { name: /^aⁿbⁿ/ }), isMobile);
+	await expect(page.locator('.first-run')).toHaveCount(0);
+	await waitSaved(page);
+
+	const before = await records(page);
+	const fsmBefore = before.filter((r) => r.type !== 'pda').length;
+	const pdaBefore = before.filter((r) => r.type === 'pda').length;
+
+	await openList(page, isMobile);
+	await press(dialog(page).getByRole('button', { name: 'Mesin baru' }), isMobile);
+	await expect(dialog(page)).toBeHidden();
+	await expect(page).toHaveURL(/mode=pda/);
+	await expect(page.locator('.first-run')).toBeVisible();
+	await expect(page.locator('svg.world g.node')).toHaveCount(0);
+
+	const after = await records(page);
+	expect(after.filter((r) => r.type !== 'pda')).toHaveLength(fsmBefore);
+	expect(after.filter((r) => r.type === 'pda')).toHaveLength(pdaBefore + 1);
+
+	await openList(page, isMobile);
+	const newPdaRow = dialog(page)
+		.getByRole('listitem')
+		.filter({ hasText: 'NDPDA' })
+		.filter({ hasText: 'Tanpa judul' });
+	await expect(newPdaRow).toBeVisible();
+	await expect(newPdaRow).toContainText('Sedang dibuka');
+	await expect(row(page, 'aⁿbⁿ (n ≥ 1)')).toBeVisible();
+});
+
+test('T-078 F3: in PDA mode, deleting the FSM current record replaces it with the other FSM or a new empty FSM without touching the open PDA, and after 6s + edit it never returns', async ({
+	page,
+	isMobile
+}) => {
+	test.setTimeout(30_000);
+	await openSandbox(page);
+	await waitSaved(page);
+
+	// Duplicate Berakhiran 01 and rename the copy to 'FSM Cadangan' so there are two FSM records
+	await openList(page, isMobile);
+	await openActions(page, 'Berakhiran 01', isMobile);
+	await press(dialog(page).getByRole('button', { name: 'Duplikat' }), isMobile);
+	await openActions(page, 'Berakhiran 01 (salinan)', isMobile);
+	await press(dialog(page).getByRole('button', { name: 'Ubah nama' }), isMobile);
+	const renameInput = dialog(page).getByRole('textbox', { name: 'Nama mesin' });
+	await renameInput.fill('FSM Cadangan');
+	await renameInput.press('Enter');
+	await expect(row(page, 'FSM Cadangan')).toBeVisible();
+	await closeList(page, isMobile);
+
+	const initialRecords = await records(page);
+	const fsmCurrent = initialRecords.find((r) => r.type !== 'pda' && r.title === 'Berakhiran 01')!;
+	const fsmBackup = initialRecords.find((r) => r.type !== 'pda' && r.title === 'FSM Cadangan')!;
+	expect(fsmCurrent).toBeDefined();
+	expect(fsmBackup).toBeDefined();
+
+	// Switch to PDA mode and open wcwR
+	await switchMode(page, /^Otomata Pushdown/, isMobile);
+	await press(page.getByRole('button', { name: /^wcwᴿ/ }), isMobile);
+	await waitSaved(page);
+
+	const pdaBefore = (await records(page)).find((r) => r.type === 'pda')!;
+	expect(pdaBefore).toBeDefined();
+
+	// Case A: delete the FSM current record ('Berakhiran 01') while in PDA mode (two FSMs exist)
+	await openList(page, isMobile);
+	await openActions(page, 'Berakhiran 01', isMobile);
+	await press(dialog(page).getByRole('button', { name: 'Hapus' }), isMobile);
+	await expect(dialog(page)).toBeVisible();
+	await expect(row(page, 'Berakhiran 01')).toHaveCount(0);
+	await expect(row(page, 'FSM Cadangan')).toBeVisible();
+	await expect(page).toHaveURL(/mode=pda/);
+
+	// Wait for the 6-second pending delete to remove Berakhiran 01 from IndexedDB
+	await expect
+		.poll(async () => (await records(page)).some((r) => r.id === fsmCurrent.id), { timeout: 9000 })
+		.toBe(false);
+
+	// Switch to FSM mode: shows 'FSM Cadangan', not the deleted 'Berakhiran 01' and not an empty FSM
+	await closeList(page, isMobile);
+	await switchMode(page, /^Mesin FSM/, isMobile);
+	await expect(page.locator('p.title')).toHaveText('FSM Cadangan');
+
+	// Edit in FSM mode and wait for save: deleted FSM id does not come back
+	await page.getByRole('application', { name: 'Kanvas mesin' }).focus();
+	await page.keyboard.press('n');
+	await waitSaved(page);
+	expect((await records(page)).some((r) => r.id === fsmCurrent.id)).toBe(false);
+
+	// Case B: switch back to PDA mode and delete the last remaining FSM ('FSM Cadangan')
+	await switchMode(page, /^Otomata Pushdown/, isMobile);
+	await expect(page.locator('p.title')).toContainText('wcwᴿ');
+	const pdaMid = (await records(page)).find((r) => r.type === 'pda')!;
+
+	await openList(page, isMobile);
+	await openActions(page, 'FSM Cadangan', isMobile);
+	await press(dialog(page).getByRole('button', { name: 'Hapus' }), isMobile);
+
+	// Dialog stays open, a new empty FSM is created as current for FSM mode, and open PDA is untouched
+	await expect(dialog(page)).toBeVisible();
+	await expect(row(page, 'FSM Cadangan')).toHaveCount(0);
+	const newEmptyFsmRow = dialog(page)
+		.getByRole('listitem')
+		.filter({ hasText: 'DFSM' })
+		.filter({ hasText: 'Tanpa judul' });
+	await expect(newEmptyFsmRow).toBeVisible();
+	await expect(row(page, /wcwᴿ/)).toContainText('Sedang dibuka');
+
+	const afterLastFsmDelete = await records(page);
+	const pdaListAfter = afterLastFsmDelete.filter((r) => r.type === 'pda');
+	expect(pdaListAfter).toHaveLength(1);
+	expect(pdaListAfter[0]!.id).toBe(pdaMid.id);
+	expect(pdaListAfter[0]!.doc).toBe(pdaMid.doc);
+
+	await closeList(page, isMobile);
+	await switchMode(page, /^Mesin FSM/, isMobile);
+	await expect(page.locator('p.title')).toHaveText('Tanpa judul');
+	await expect(page.locator('.first-run')).toBeVisible();
+});
+
+test('T-078 F4 (path i): in FSM mode, deleting the latest PDA and switching to PDA mode within 6s opens the other PDA, and Urungkan restores the deleted row', async ({
+	page,
+	isMobile
+}) => {
+	await openSandbox(page);
+	await putRow(page, {
+		id: 'pda-cadangan',
+		recordVersion: 1,
+		type: 'pda',
+		title: 'PDA Cadangan',
+		kind: 'dpda',
+		createdAt: 1000,
+		updatedAt: 1000,
+		openedAt: 1000,
+		doc: serializePdaDocument(anbnSample('PDA Cadangan'))
+	});
+	await putRow(page, {
+		id: 'pda-terbaru',
+		recordVersion: 1,
+		type: 'pda',
+		title: 'PDA Terbaru',
+		kind: 'dpda',
+		createdAt: 2000,
+		updatedAt: 2000,
+		openedAt: 2000,
+		doc: serializePdaDocument(anbnSample('PDA Terbaru'))
+	});
+
+	await openList(page, isMobile);
+	await openActions(page, 'PDA Terbaru', isMobile);
+	await press(dialog(page).getByRole('button', { name: 'Hapus' }), isMobile);
+	await closeList(page, isMobile);
+
+	// Switch to PDA mode right away (within 6s): opens PDA Cadangan, not the pending-delete PDA Terbaru
+	await switchMode(page, /^Otomata Pushdown/, isMobile);
+	await expect(page.locator('p.title')).toHaveText('PDA Cadangan');
+
+	// Pressing Urungkan before 6s restores PDA Terbaru in the list
+	const toast = page.getByRole('group', { name: 'Pesan' });
+	await expect(toast).toBeVisible();
+	await press(toast.getByRole('button', { name: 'Urungkan' }), isMobile);
+
+	await openList(page, isMobile);
+	await expect(row(page, 'PDA Terbaru')).toBeVisible();
+});
+
+test('T-078 F4 (path ii): opening a PDA row from FSM mode, switching back to FSM, deleting that row, and switching to PDA within 6s does not reopen the deleted PDA; Urungkan restores it', async ({
+	page,
+	isMobile
+}) => {
+	await openSandbox(page);
+	await putRow(page, {
+		id: 'pda-cadangan',
+		recordVersion: 1,
+		type: 'pda',
+		title: 'PDA Cadangan',
+		kind: 'dpda',
+		createdAt: 1000,
+		updatedAt: 1000,
+		openedAt: 1000,
+		doc: serializePdaDocument(anbnSample('PDA Cadangan'))
+	});
+	await putRow(page, {
+		id: 'pda-terbaru',
+		recordVersion: 1,
+		type: 'pda',
+		title: 'PDA Terbaru',
+		kind: 'dpda',
+		createdAt: 2000,
+		updatedAt: 2000,
+		openedAt: 2000,
+		doc: serializePdaDocument(anbnSample('PDA Terbaru'))
+	});
+
+	// Open PDA Terbaru from FSM mode (sets pdaOpenRequest on the page)
+	await openList(page, isMobile);
+	await press(row(page, 'PDA Terbaru').locator('button.open'), isMobile);
+	await expect(dialog(page)).toBeHidden();
+	await expect(page).toHaveURL(/mode=pda/);
+	await expect(page.locator('p.title')).toHaveText('PDA Terbaru');
+
+	// Switch back to FSM mode, delete PDA Terbaru, and switch to PDA mode within 6s
+	await switchMode(page, /^Mesin FSM/, isMobile);
+	await openList(page, isMobile);
+	await openActions(page, 'PDA Terbaru', isMobile);
+	await press(dialog(page).getByRole('button', { name: 'Hapus' }), isMobile);
+	await closeList(page, isMobile);
+
+	await switchMode(page, /^Otomata Pushdown/, isMobile);
+	await expect(page.locator('p.title')).toHaveText('PDA Cadangan');
+
+	// Pressing Urungkan before 6s restores PDA Terbaru
+	const toast = page.getByRole('group', { name: 'Pesan' });
+	await expect(toast).toBeVisible();
+	await press(toast.getByRole('button', { name: 'Urungkan' }), isMobile);
+
+	await openList(page, isMobile);
+	await expect(row(page, 'PDA Terbaru')).toBeVisible();
 });

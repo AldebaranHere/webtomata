@@ -1,11 +1,16 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { endsWith01 } from '../editor/diagram/samples.ts';
 import { LIMITS } from '../editor/document.ts';
 import { anbnSample, wwrSample } from '../editor/pda-samples.ts';
-import { listEntries } from './library.ts';
+import { createPendingDeletes, listEntries } from './library.ts';
 import { createMachine } from './machines.ts';
 import { createMemoryStore } from './memory.ts';
-import { createPdaMachine, duplicatePdaMachine, renamePdaStored } from './pda-work.ts';
+import {
+	createPdaMachine,
+	duplicatePdaMachine,
+	openLatestPda,
+	renamePdaStored
+} from './pda-work.ts';
 import type { SavedPdaMachine } from './store.ts';
 
 describe('pda-library: listEntries (F1, F2, F6)', () => {
@@ -190,5 +195,67 @@ describe('pda-library: duplicatePdaMachine and renamePdaStored (F4)', () => {
 		const store = createMemoryStore();
 		const problem = await renamePdaStored(store, 'nonexistent', 'Title');
 		expect(problem).toEqual({ key: 'library.missing', params: {} });
+	});
+});
+
+describe('pda-library: T-078 pending PDA deletes and filtered openLatestPda (F4)', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('F4 (two PDA records): pending delete hides the latest PDA from listEntries and filtered openLatestPda, and undo restores it', async () => {
+		const store = createMemoryStore();
+		const pdaBackup = await createPdaMachine(store, wwrSample('PDA Cadangan'), () => 1000);
+		const pdaLatest = await createPdaMachine(store, anbnSample('PDA Terbaru'), () => 2000);
+
+		const pending = createPendingDeletes({ store, onChange: () => {} });
+		pending.begin(pdaLatest.id);
+		expect(pending.isPending(pdaLatest.id)).toBe(true);
+		expect(pending.isPending(pdaBackup.id)).toBe(false);
+
+		// Visible entries exclude the pending-delete PDA
+		const visible = (await listEntries(store)).filter((e) => !pending.isPending(e.id));
+		expect(visible.map((e) => e.id)).toEqual([pdaBackup.id]);
+
+		// Filtered store view passed to openLatestPda skips the pending-delete PDA and opens the backup PDA
+		const filteredStore = {
+			...store,
+			list: async () => (await store.list()).filter((r) => !pending.isPending(r.id))
+		};
+		const opened = await openLatestPda(filteredStore, () => 3000);
+		expect(opened.record.id).toBe(pdaBackup.id);
+		expect(opened.doc.title).toBe('PDA Cadangan');
+
+		// Undo before 6 seconds restores the deleted PDA
+		await vi.advanceTimersByTimeAsync(3000);
+		pending.undo(pdaLatest.id);
+		expect(pending.isPending(pdaLatest.id)).toBe(false);
+		const afterUndo = (await listEntries(store)).filter((e) => !pending.isPending(e.id));
+		expect(afterUndo.map((e) => e.id)).toEqual([pdaBackup.id, pdaLatest.id]);
+	});
+
+	it('F4 (only PDA record): when the only PDA is pending delete, filtered openLatestPda creates a new empty PDA while the pending one awaits its timer', async () => {
+		const store = createMemoryStore();
+		const pdaOnly = await createPdaMachine(store, anbnSample('Satu-satunya'), () => 2000);
+
+		const pending = createPendingDeletes({ store, onChange: () => {} });
+		pending.begin(pdaOnly.id);
+
+		const filteredStore = {
+			...store,
+			list: async () => (await store.list()).filter((r) => !pending.isPending(r.id))
+		};
+		const opened = await openLatestPda(filteredStore, () => 3000);
+		expect(opened.record.id).not.toBe(pdaOnly.id);
+		expect(opened.doc.states).toHaveLength(0);
+		expect(opened.doc.title).toBe('');
+
+		// After 6 seconds, only the new empty PDA remains in the store
+		await vi.advanceTimersByTimeAsync(6001);
+		expect(await store.get(pdaOnly.id)).toBeUndefined();
+		expect(await store.get(opened.record.id)).toBeDefined();
 	});
 });
