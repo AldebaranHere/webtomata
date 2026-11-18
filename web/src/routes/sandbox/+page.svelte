@@ -102,6 +102,7 @@
 
 	async function selectMode(mode: WorkstationMode) {
 		if (activeMode === 'pda' && mode !== 'pda') {
+			pdaOpenRequest = null;
 			await library.flushPda();
 		}
 		activeMode = mode;
