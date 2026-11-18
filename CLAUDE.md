@@ -72,7 +72,7 @@ Change these only when the human approves it in this file first.
 
 | Area | Choice |
 | --- | --- |
-| Engine | Rust (stable), Cargo workspace, no `unsafe` |
+| Engine | Rust (exact version in `rust-toolchain.toml`), Cargo workspace, no `unsafe` |
 | Engine → browser | `wasm-bindgen` + `wasm-pack`, `serde` / `serde-wasm-bindgen`; generate TypeScript types from Rust types (for example with `tsify`) so both sides stay in sync |
 | Frontend | TypeScript (strict) + Svelte 5 + SvelteKit with `adapter-static` (prerender guide and question pages for SEO) |
 | Engine execution | Inside a dedicated Web Worker, never on the main thread |
