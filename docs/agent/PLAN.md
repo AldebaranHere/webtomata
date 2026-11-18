@@ -3234,7 +3234,7 @@ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-file
 
 ## Task T-078 — "Mesin baru" and delete behave in the PDA mode
 
-**Status:** in-progress
+**Status:** done (2026-11-18; branch `task/T-078-library-in-pda-mode`, commits `a1a5c25`…`HEAD`. AC1–AC5 hold; first JS: `sandbox.html` +38 bytes, other routes +27 bytes; `wasm` 237.0 KB unchanged. See `docs/agent/REPORT.md` and ADR 0059.)
 **Owner:** worker (Gemini: the planner's pick, it wrote T-074)
 **Branch:** `task/T-078-library-in-pda-mode`
 
