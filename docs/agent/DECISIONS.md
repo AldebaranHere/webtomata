@@ -601,3 +601,12 @@ Format:
 - Alternatives considered: broaden the guard to the soal route and change its import line (a scope change for a path that costs no bytes); drop the guard (the next shared import would silently cost the bytes again).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-068); later `web/src/lib/first-load.test.ts`, `pda-history.ts`, `history.ts`
+
+## 2026-11-18 — The owner's phone pass: T-076, T-077 and T-078
+
+- Decider: planner
+- Context: the owner tested the staging preview on a real Android phone (Chrome) on 2026-11-18 and found: (1) a `.jff` downloaded from the PDA editor is saved as `….jff.xml` (the download type `application/xml` makes Chrome on Android add an extension), and "Buka file…" then refuses it because the name is not `.jff` or `.json`; (2) the PDA label sheet is 320 px wide (a fixed width that only the laptop popover wants) and the keyboard hides its buttons. The planner's own emulated pass on 2026-11-17 found: (3) "Mesin baru" in the PDA mode makes an FSM record, and T-074's report showed that deleting the FSM's current record from the PDA mode leaves it as the library's current.
+- Decision: three small tasks on disjoint files. T-076: give `.jff` and JSON as `application/octet-stream`, and tell a file by its content when its name does not say (the name still wins when known). T-077: the sheet is full width, the action row comes right after the fields (DOM order), the inputs get `enterkeyhint`; no change to the viewport meta. T-078: "Mesin baru" follows the mode, delete of the FSM's current record works from the PDA mode, and the pending-delete PDA is not opened by the workstation's first load. T-076 and T-077 go to DeepSeek one after the other; T-078 goes to Gemini in parallel. The owner re-checks T-076 and T-077 on the phone after the merge, because Playwright cannot reproduce Android's download rename or its on-screen keyboard.
+- Alternatives considered: `interactive-widget=resizes-content` in the viewport meta (an app-wide change for one sheet, Chrome-only); a visual-viewport script to lift the sheet (more code than moving three buttons); a file picker `accept` list (it can hide `.xml` files on some phones); sniffing the content for every file even when the name is known (changes the existing rule for no gain).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-076, T-077, T-078); later `web/src/lib/share/`, `PdaLabelForm.svelte`, `library.svelte.ts`
