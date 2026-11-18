@@ -3147,6 +3147,133 @@ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-file
 
 ---
 
+## Task T-076 — A downloaded `.jff` keeps its name on Android, and a file is told by its content
+
+**Status:** todo
+**Owner:** worker (DeepSeek: the planner's pick)
+**Branch:** `task/T-076-file-names`
+
+**Goal:** Found by the owner on a real Android phone on 2026-11-18, after T-075: the `.jff` that the PDA editor downloads is saved by Chrome as `aⁿbⁿ (n ≥ 1).jff.xml` (the notification shows it), and when the owner chooses that file in "Buka file…" the page answers "File ini bukan keduanya" (`import.unknown_type`), because `importKind(name)` knows only `.jff` and `.json`. The cause is the type that `download` gives the blob: `application/xml` makes Chrome on Android append `.xml` to a name whose extension it does not know. The FSM's "Bagikan" dialog gives its `.jff` the same type, so the FSM has the same fault on a phone. Two fixes: (1) the `.jff` and the JSON are given as `application/octet-stream`, so the browser keeps the name; (2) the opener no longer depends on the name alone: when the name does not say, the content does. A file that was already downloaded as `….jff.xml` must open.
+
+**Decisions (planner, 2026-11-18; do not reopen, ask if one looks wrong):**
+
+- **The name still wins when it is known.** `importKind(name)` is unchanged (`.jff`, `.json`, `.webtomata.json`), and its tests pass unedited. When it answers `null`, the opener reads the text (the size is checked first, for every name, so a large file of any name is not read: `import.too_big`) and tells the kind by its first character after a leading BOM (`U+FEFF`) and white space: `<` is a `.jff`, `{` is JSON, anything else is `import.unknown_type` as today. The parsers still validate everything; the sniff only picks the reader. A `.txt` with the text `halo` is still refused; a `.xml`, a `.jff.xml`, a file with no extension and a `.txt` that holds a `.jff` open.
+- **One function, one place.** A pure `kindOfText(text)` and the combination `importKind(name) ?? kindOfText(text)` live in `web/src/lib/share/open-file.ts`; `openFile` (FSM) and `share/pda-files.ts` (`isPdaFile`, `openPdaFile`) both use it, so that the two readers cannot disagree. `isPdaFile` still reads the text once, after the size check.
+- **The title of the machine** is the file name without its extension. `titleOfFileName` also takes off a trailing `.jff.xml` or `.xml` (case-insensitive) after the `.jff` rule it has; `aⁿbⁿ (n ≥ 1).jff.xml` gives `aⁿbⁿ (n ≥ 1)`. The existing cases do not change.
+- **The download type.** `files.ts` exports one constant for the type of a `.jff` and a JSON download (`application/octet-stream`); `ShareDialog.svelte` and `PdaFileDialog.svelte` pass it for their `.jff` and JSON buttons. The SVG and PNG downloads keep their types. The names that `fileName` writes do not change.
+- **Honest limit:** nothing in Playwright reproduces Chrome on Android renaming a download. The tests prove the opener and the constant; the planner asks the owner to check on the phone, after the merge, that a new download is saved as `….jff` and opens.
+
+**Scope (files):** `web/src/lib/share/open-file.ts` (`kindOfText`, the order of the size check and the read, `titleOfFileName`), `web/src/lib/share/pda-files.ts`, `web/src/lib/share/files.ts` (the constant), `ShareDialog.svelte` and `PdaFileDialog.svelte` (the constant), tests (`open-file.test.ts` and `pda-files.test.ts` get new cases; new e2e cases in `web/e2e/pda-files.spec.ts` and `web/e2e/open-file.spec.ts`), `docs/decisions/0057-file-kind-by-content.md` (short), `docs/agent/PLAN.md` (status). **Existing tests that may change, and only these:** an existing `openFile` unit or e2e case that asserts `import.unknown_type` for a file that is over the size limit and whose name is neither `.jff` nor `.json` (it is now `import.too_big`); list each one you edit in the report. Everything else passes unedited.
+
+**Non-goals:** a share link; drag and drop; a new file type; changing the names `fileName` writes; the viewport or any layout; the engine; opening several files; the picker's `accept` attribute (an `accept` list would hide `.xml` files on some phones: leave it as it is).
+
+**Fixtures (the oracle; derive by hand and write the derivation in `REPORT.md`):**
+
+- F1 The kind of a file by name and text: `a.jff` and `a.json` and `a.webtomata.json` as today; `a.jff.xml` with text starting `<?xml` is a `.jff`; `a.xml` and a file named `a` with that text, the same; `a.txt` whose text starts with `{` is JSON; `a.txt` with `halo` is `null` (`import.unknown_type`); a text that starts with a BOM and then `{` is JSON; an empty text is `null`.
+- F2 The title: `aⁿbⁿ (n ≥ 1).jff.xml` gives `aⁿbⁿ (n ≥ 1)`; `x.XML` gives `x`; `Berakhiran 01.jff` and `x.JFF` as the existing tests say; `.jff.xml` alone gives an empty title.
+- F3 Both readers: the PDA `.jff` of `aⁿbⁿ` named `anbn.jff.xml`, chosen in "Mesin saya" in the FSM mode and in the PDA mode, opens as a new PDA in the PDA mode (as T-075 F4); an FSM `.jff` named `even-a.jff.xml` opens as an FSM machine in the FSM mode; a PDA JSON named `anbn.txt` opens as a PDA.
+- F4 Hostile: a file of 1 MB + 1 byte of any name (`foto.jpg`, `x.jff.xml`) answers `import.too_big` and its `text()` is never called (a spy); binary text named `x.jff.xml` gives `import.unknown_type` or the engine's `jff.*` message and writes no record; the count of records and the open machine are as before each refusal.
+- F5 The download type: the constant is `application/octet-stream`, and the two dialogs use it for `.jff` and JSON (a unit test on the constant and a test that reads the two components' calls, or a Playwright `download` event whose `suggestedFilename()` is the written name).
+
+**Acceptance criteria:**
+
+- AC1 F1 to F5 hold, each by a test (unit for F1, F2, F4, F5; Playwright for F3).
+- AC2 **Nothing else changes:** the existing open-file, files and PDA file tests pass without any edit but the ones named in the scope.
+- AC3 **Size:** no route's first JS grows by more than 0.1 KB (102 bytes), measured in bytes as in T-075; the files modules are lazy, so no growth is expected.
+- AC4 **Break each guard once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) `kindOfText` always answers `null`; (B2) the size check moves after the read; (B3) `titleOfFileName` stops taking off `.xml`; (B4) the constant goes back to `application/xml`. Restore each file; `git diff --stat` at the end shows only the scope.
+- AC5 `pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens`, Vitest, `pnpm build && pnpm size`, and Playwright for `open-file`, `pda-files`, `cross/open-file` on desktop and phone pass.
+
+**Pre-flight (with real commands):** (1) show that the three call sites that use `importKind` today are the only ones; (2) show the order of the size check and the read in `openFile` and in `isPdaFile`, and what changes for an unknown name; (3) say whether a `.jff.xml` that the owner already has opens after the change (run it); (4) the sizes in bytes before. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
+
+**Depends on:** T-075 (merged). Independent of T-077 and T-078 (different files).
+
+---
+
+## Task T-077 — The PDA label sheet fills the width of a phone and keeps its buttons above the keyboard
+
+**Status:** todo
+**Owner:** worker (DeepSeek: the planner's pick)
+**Branch:** `task/T-077-label-sheet-phone`
+
+**Goal:** Found by the owner on a real Android phone on 2026-11-18, and the first half also in the planner's emulated 375 px run: (1) on a phone the label sheet (Baca, Pop, Push) is 320 px wide because `PdaLabelForm.svelte` sets `.form { width: 320px }`, so on a 375 px screen the right 15% of the sheet's row is blank (the popover of a laptop wants 320 px, the sheet of a phone wants the full width); (2) with the keyboard open, the row "Ketik ε / Batal / Simpan" is behind the keyboard, so the student cannot save without closing the keyboard first. In the owner's screenshot the keyboard begins about 190 css px below the top of the sheet; the fields and the "+ Transisi lain" button are visible, the hint line is half visible and the buttons are not.
+
+**Decisions (planner, 2026-11-18; do not reopen, ask if one looks wrong):**
+
+- **Width.** In the sheet (the `.pda-sheet` aside of `PdaEditor.svelte`) the form is `width: 100%`; in the popover it stays 320 px. State in the pre-flight which of the two sets the width (a prop, a class from the parent, or a rule in `.pda-sheet`); no new prop if a rule in `.pda-sheet` does it.
+- **Order.** The action row (Ketik ε, Batal, Simpan) comes **right after the fields**, before "+ Transisi lain di antara …" and the hint, in the **DOM order** (not only visually), in both the sheet and the popover, so that the tab order is the order a person sees: the fields, Ketik ε, Batal, Simpan, then the add-row button. The refusal line (`.problem`) stays above the action row, as now. With one row of fields, the buttons are then within the first 130 css px of the sheet; with the keyboard open (190 css px visible) they are visible. With several rows the rows list scrolls inside itself (it already has `max-height: 240px`): the pre-flight must say what the visible height is at 2 and 3 rows, and the task proposes a smaller max-height for the sheet if the buttons would fall out of 190 css px.
+- **The keyboard's key.** The three inputs get `enterkeyhint`: `next` on Baca and Pop, `done` on Push. Enter in Push commits as `onkeydown` does today; check that Enter in Baca and Pop moves to the next field (and say what it does today).
+- **Not in this task:** the viewport meta (`interactive-widget`), any other page's inputs, and the FSM's label box. An app-wide change to how the keyboard resizes the page is a separate decision that the planner takes only if the owner sees the same fault elsewhere.
+- **Honest limit:** Playwright has no on-screen keyboard. The tests use a short viewport that stands for the visible part above a keyboard; the owner checks the real keyboard on the phone after the merge.
+
+**Scope (files):** `web/src/lib/editor/PdaLabelForm.svelte` (the order of the template, `enterkeyhint`, the width), `PdaEditor.svelte` (the `.pda-sheet` rule only, if the width is set there), tests (new `web/e2e/pda-label-sheet.spec.ts`; the existing label and PDA e2e files), `docs/decisions/0058-pda-label-sheet-phone.md` (short), `docs/agent/PLAN.md` (status). **Existing tests that may change, and only these:** a PDA e2e or unit case that locates the buttons or the add-row button by their position (not by name). List each in the report. Everything else passes unedited, and the laptop popover is still 320 px.
+
+**Non-goals:** the viewport meta; the grammar and FSM editors; a redesign of the sheet; changing the labels' texts; a visual-viewport script.
+
+**Fixtures (the oracle; derive by hand and write the derivation in `REPORT.md`):**
+
+- F1 Width: at 375 px and at 360 px wide (phone project), with the sheet open on a new transition, the form's width equals the sheet's content width (within 1 px) and its right edge is inside the viewport with the same gap as its left edge.
+- F2 Above the keyboard: a viewport 375 wide and 190 css px of the sheet visible stands for an open keyboard; build it by setting the viewport height so that the top of the sheet plus 190 px is the bottom of the viewport (or by a short viewport, with the reasoning written down); after tapping the Push field, the three buttons are fully inside the viewport.
+- F3 Order: in the DOM the action row is after the last field row and before the add-row button and the hint (sheet and popover); a keyboard Tab from the Push field reaches Ketik ε, then Batal, then Simpan.
+- F4 The keyboard's key: the inputs have `enterkeyhint` `next`, `next`, `done`; Enter in Push saves (as today); Enter in Baca moves to Pop (say what it does today; do not change it if it already does this).
+- F5 Laptop: the popover is 320 px wide and floats where it did (every existing popover and label test passes unedited).
+- F6 Several rows: with 2 and 3 rows the buttons are still visible in the 190 px case (the rows list scrolls inside), and nothing scrolls the page sideways.
+
+**Acceptance criteria:**
+
+- AC1 F1 to F6 hold, each by a test on the phone project; F5 on the desktop project.
+- AC2 **Nothing else changes:** list the existing tests you ran; only the ones named in the scope may be edited.
+- AC3 **Size:** no route's first JS grows by more than 0.1 KB (102 bytes), in bytes; the label form is in the lazy PDA chunks.
+- AC4 **Break each guard once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) the width of the form in the sheet goes back to 320 px; (B2) the action row is moved after the hint; (B3) an `enterkeyhint` is removed. Restore each file; `git diff --stat` at the end shows only the scope.
+- AC5 The format, check, lint, strings, tokens, Vitest, build and size commands, and Playwright for the PDA specs and `pda-label-sheet` on desktop and phone pass; axe has no violation on the sheet.
+
+**Pre-flight (with real commands):** (1) show where the 320 px comes from at 375 px and at 360 px (a computed style); (2) measure the heights from the top of the sheet to the bottom of each element at one, two and three rows (css px); (3) say what Enter does in each of the three inputs today; (4) propose the exact DOM order and the sheet's max-height for rows, with the numbers; (5) the sizes in bytes before. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
+
+**Depends on:** T-054 (the form), T-057 (the sheet). Independent of T-076 and T-078 (different files).
+
+---
+
+## Task T-078 — "Mesin baru" and delete behave in the PDA mode
+
+**Status:** todo
+**Owner:** worker (Gemini: the planner's pick, it wrote T-074)
+**Branch:** `task/T-078-library-in-pda-mode`
+
+**Goal:** Three faults found while the planner tested T-074 on the preview on 2026-11-17 and read its report: (1) in the PDA mode, "Mesin baru" in "Mesin saya" makes an empty **FSM** record and closes the list, but the screen stays on the PDA, so nothing seems to happen and an FSM machine piles up (the count goes from 2 to 3; the new row says DFSM); (2) in the PDA mode, deleting the FSM machine that is the library's current leaves it as `library.current` (T-074's condition needs the FSM mode), so that when the student switches to the FSM mode the deleted machine is shown, and the next edit writes it back after the six seconds; (3) to check: in the FSM mode, delete a PDA row and switch to the PDA mode before the six seconds are over: the workstation's first load (`openLatestPda`) reads the store directly and may open the PDA that is only waiting to be deleted.
+
+**Decisions (planner, 2026-11-18; do not reopen, ask if one looks wrong):**
+
+- **"Mesin baru" follows the mode.** In the PDA mode the list's "Mesin baru" button makes and opens a new **empty PDA** through the hook the workstation has registered (`newPdaMachine`), and closes the list; the first-run card of T-073 shows on it. In the FSM mode it does what it does today. The other callers of `newMachine` (the delete's replacement of an empty library, conversions, examples) keep their behaviour.
+- **Delete of the FSM's current record in the PDA mode.** The branch of `deleteMachine` that replaces the FSM's current record no longer requires the FSM mode: it opens the next readable FSM row (or a new empty FSM) as `library.current` with `keepOpen` true, and does not switch the mode. The student in the PDA mode sees nothing change; in the FSM mode later they see a living machine.
+- **Delete of a PDA row in the FSM mode** must never come back by itself. The pre-flight **runs** fault 3 and reports; if it is real, the PDA workstation's first load and `openLatestPda` skip the ids that the library hides while a delete is pending (the smallest change that does it; no new store function if the library can give the ids), and Urungkan still brings the row back as in T-074 F4. If it already holds, no code: the run and a test that pins it.
+- **Not in this task:** the empty FSM record that `library.start` makes for a student who only uses the PDA (a separate decision about `start`), the viewport, and any change to the FSM's own storage tests.
+- **Size.** No route's first JS grows by more than 0.1 KB (102 bytes), in bytes; `library.svelte.ts` is in the first JS, and the change should shrink or hold it (a removed condition and one branch).
+
+**Scope (files):** `web/src/lib/storage/library.svelte.ts` (`newMachine`, the branch in `deleteMachine`), `web/src/lib/editor/LibraryDialog.svelte` only if the button must call something else, `PdaWorkstation.svelte` only for fault 3 if it is real, `web/src/routes/sandbox/+page.svelte` only if the hook needs it, `web/src/lib/storage/pda-library.test.ts` and `web/e2e/pda-library.spec.ts` (new cases), `docs/decisions/0059-library-in-pda-mode.md` (short), `docs/agent/PLAN.md` (status). **Existing tests that may change: none.** `library.test.ts`, `machines.test.ts`, `cross/library.spec.ts`, every T-074 case and every PDA e2e pass unedited.
+
+**Non-goals:** the empty FSM record for a PDA-only student; a different list for each type; a share link; a change to how rows are sorted; the viewport.
+
+**Fixtures (the oracle; derive by hand and write the derivation in `REPORT.md`):**
+
+- F1 PDA mode, "Mesin baru": the address stays `?mode=pda`, a new empty PDA record is open and shown with the first-run card, the list is closed, the count of records goes up by one, and **no FSM record is added** (count the records by `type` before and after).
+- F2 FSM mode, "Mesin baru": as today (the existing tests).
+- F3 PDA mode, delete the FSM machine that is the library's current (the row that is not marked open, which is the FSM's current): the row leaves the list; switching to the FSM mode shows a different, readable machine; after the six seconds the deleted id is gone from the store; an edit made in the FSM mode does not bring it back. With no other FSM row, a new empty FSM is the current and the delete still works.
+- F4 FSM mode, delete a PDA row (the latest by `openedAt`) and switch to the PDA mode at once: the open PDA is not the deleted one (another PDA, or a new empty one if none is left); pressing Urungkan before the six seconds brings the row back as in T-074 F4.
+- F5 The T-074 cases F3 to F8 and every library test pass unedited.
+
+**Acceptance criteria:**
+
+- AC1 F1 to F5 hold, each by a test (unit for the library where it can be, Playwright for F1, F3, F4).
+- AC2 **Nothing else changes:** state which existing tests you ran (the list above), none edited.
+- AC3 **Size:** `pnpm size` before and after in bytes, pasted; no route's first JS grows by more than 102 bytes.
+- AC4 **Break each guard once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) `newMachine` ignores the mode (an FSM record is made in the PDA mode); (B2) the mode condition comes back in the FSM-current branch of `deleteMachine`; (B3) if fault 3 was real: the workstation opens a pending-delete record again. Restore each file; `git diff --stat` at the end shows only the scope.
+- AC5 The format, check, lint, strings, tokens, Vitest, build and size commands, and Playwright for `pda-library`, `cross/library`, `cross/storage` on desktop and phone pass.
+
+**Pre-flight (with real commands):** (1) reproduce fault 1 on the built site (a count by `type` before and after); (2) reproduce fault 2 with the real delete and a six-second wait, and say what the FSM mode shows; (3) run fault 3 and say if it is real; (4) the hook the workstation has for a new PDA (`newPdaMachine`) and when it is registered (is it set when the student has never opened the PDA mode in this visit? the list is reachable from the FSM mode too); (5) the sizes in bytes before. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
+
+**Depends on:** T-074 (merged). Independent of T-076 and T-077 (different files).
+
+---
+
 ## Task T-038 — Conversions and simulation panel for the PDA (draft)
 
 **Status:** proposed (after P-005 is approved and T-051, T-034, T-035, T-037 are merged)
