@@ -683,6 +683,16 @@ Format:
 - Reversible? yes (one line in `pnpm-workspace.yaml`)
 - Affects: `pnpm-workspace.yaml`, `pnpm-lock.yaml`; later, when a 14-day-old `eslint` or `@eslint/config-array` already needs `minimatch` 11, the entry goes
 
+## 2026-11-23 — T-084 amended after the worker's pre-flight (two tests change, the count is refreshed, the filter names the FSM current's id)
+
+- Decider: planner (the owner approves with the merge)
+- Context: DeepSeek reproduced the fault on the built site (a fresh PDA visit holds an empty DFSM that the library made 18 ms before the PDA, listed and counted) and found that two existing e2e cases assert exactly the row T-084 hides, that the button shows a stale count (1) while the store holds two records, that `currentId` is mode-dependent (it would match nothing), and that `listEntries` already parses each FSM record and throws the document away.
+- Decision: `Entry` gets an `empty` flag from that parse; the filter is in `Library.refresh()` and uses the FSM current's record id; `PdaWorkstation` refreshes the library after it creates its record; the two e2e cases are edited as ruled; F1 asserts the visible row.
+- Alternatives considered: narrowing the filter so the two cases pass (it would hide less than the owner's wish); a record flag set at creation (a second source of truth).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-084); later `library.ts`, `library.svelte.ts`, `PdaWorkstation.svelte`, `pda-library.spec.ts`
+
+
 ## 2026-11-23 — Refuse ε words on symbol add only, unify EPSILON_WORDS, and move duplicate_symbol to shared i18n (T-065)
 
 - Decider: planner / owner (rulings on 2026-11-23)

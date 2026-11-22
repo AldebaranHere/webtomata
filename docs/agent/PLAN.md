@@ -3553,34 +3553,37 @@ pnpm --filter web exec playwright test pda-label-sheet pda-editor --project=phon
 
 ## Task T-084 — An empty FSM that the student never opened is not a saved machine in "Mesin saya"
 
-**Status:** todo
-**Owner:** worker (DeepSeek: the planner's pick; after T-082)
+**Status:** todo (amended 2026-11-23 after the worker's pre-flight; T-082 is merged)
+**Owner:** worker (DeepSeek: the planner's pick)
 **Branch:** `task/T-084-hide-untouched-fsm`
 
 **Goal:** Found while reading T-078 (2026-11-18). `library.start` opens the latest machine of the last visit, or makes a sample, so **a student who comes to use only the PDA** still gets an FSM record (the library's current): "Mesin saya" lists a machine that the student never made, with a count of 1 that is not theirs, and a row that opens the FSM mode. T-078 left it as a separate decision. This task decides it: **an FSM record that is the library's current, has no state and no transition (an empty document) and is shown while the mode is PDA is not listed and not counted.** The moment the student opens the FSM mode, or edits it, it is an ordinary machine again.
 
 **Decisions (planner, 2026-11-23; do not reopen, ask if one looks wrong):**
 
-- **The filter, not a new record flag.** In the library store's list (`refresh`/`entries`) and in the count that the PDA bar's "Mesin saya" button shows, leave out an entry that is (a) an FSM, (b) the library's current record, (c) empty (no state, no transition), and (d) listed while `mode === 'pda'`. In the FSM mode nothing is hidden (the open machine is on screen). A row of an empty FSM that is **not** the current one (the student made it, then opened another) is listed as always.
+- **The filter, not a new record flag (ruled after the pre-flight).** In `Library.refresh()` (so that `entries` and `count = entries.length` follow, and with them every reader: the dialog's rows, `SiteHeader.svelte` (the button a laptop user sees, text only), the two editors' `.machines` buttons and the `PdaWorkstation` prop), leave out an entry that is (a) an FSM (`Entry.type !== 'pda'`, the field `listEntries` sets; an FSM record carries no `type`), (b) the library's current FSM record, (c) empty, and (d) listed while `mode === 'pda'`. **(b) is `this.current?.opened.record.id`, not `currentId`:** `currentId` returns the PDA's id in the PDA mode and would match nothing. **(c) is exactly `states.length === 0 && transitions.length === 0`**: a record with no state but stray transitions is not empty and stays listed (test it). In the FSM mode nothing is hidden. An empty FSM that is **not** the current one stays listed as always. The empty PDA of a fresh visit stays listed (the filter is FSM-only).
+- **Emptiness comes from the parse that `listEntries` already does** (`readStoredDocument` gives the document; today it is thrown away): add one boolean to `Entry` (`empty`, true only for a readable FSM record that meets (c)), no second store read, no regex. The filter in `refresh()` combines it with the mode and the current id.
+- **`others` in `sandbox/+page.svelte` must not change** (it already excludes the current FSM by id). `deleteMachine`, `duplicate` and `rename` look entries up in `entries`; the hidden record is not reachable from the UI, so no behaviour or test is added for its id.
+- **The count must be fresh (ruled).** The pre-flight measured that on a fresh PDA visit the button says (1) while the store already has two records, because `Library.start()` refreshes once and the PDA workstation creates its record after that and nothing refreshes. With the filter that would show "Mesin saya (0)" beside a list that has one PDA row. So call `library.refresh()` after the workstation has created or opened its record (one call in `PdaWorkstation.svelte`, at the place the pre-flight names), and say in the report that this also fixes the stale count of today.
 - **No change to what is stored.** The record is still created as today (the page needs a current FSM); only the list and the count change. No migration.
 - **Opening it again** (the student switches to the FSM mode) shows the empty machine as today; nothing is created or deleted by this task.
 - **Not in this task:** making the FSM record lazy, any change to the "Mesin baru" button, the T-078 delete rules, and the PDA's own first record.
 
-**Scope (files):** `web/src/lib/storage/library.svelte.ts` (the filter and the count), `web/src/lib/storage/pda-library.test.ts` (new cases), `web/e2e/pda-library.spec.ts` (one case), `docs/decisions/0062-hide-untouched-fsm.md` (short; check the next free number), `docs/agent/PLAN.md` (status), `docs/agent/REPORT.md`. **Existing tests that may change, and only these:** a case that counts the records of a fresh visit in the PDA mode (list each).
+**Scope (files):** `web/src/lib/storage/library.ts` (`Entry.empty`, set in `listEntries`), `web/src/lib/storage/library.svelte.ts` (the filter in `refresh()`), `web/src/lib/editor/PdaWorkstation.svelte` (the one `refresh()` call), `web/src/lib/storage/pda-library.test.ts` and `library.test.ts` (new cases), `web/e2e/pda-library.spec.ts`, `docs/decisions/0063-hide-untouched-fsm.md` (short; 0062 is taken by T-065, check the next free number), `docs/agent/PLAN.md` (status), the task's report (see the note below). **Existing tests that change, and only these (found by the pre-flight):** `web/e2e/pda-library.spec.ts` T-074 F3 (it taps the empty `Tanpa judul` DFSM row on a fresh PDA visit to switch modes: that row is now hidden, so make the machine non-empty first, for example an example opened in the FSM mode, keeping what the case proves: opening an FSM row from the PDA mode switches the mode) and T-078 F3 case B (after the last FSM is deleted in the PDA mode the new empty FSM is the hidden one: assert instead that the store holds a new empty FSM record, that the list does not show it, and that switching to the FSM mode shows an empty machine) and the comment "Both FSM and PDA should be in the list". There is no row-count assertion elsewhere (`cross/library.spec.ts` counts in the FSM mode and is unaffected): list the two edited cases in the report with the reason.
 
 **Fixtures (the oracle):**
 
-- F1 A fresh browser profile, `/sandbox?mode=pda`: "Mesin saya" lists no machine until the first PDA exists (the PDA workstation makes its own first record: say what the list shows then: one PDA row), and the button's count equals the rows.
+- F1 A fresh browser profile, `/sandbox?mode=pda` (the two records are written 18 ms apart and exist before the editor is ready, so there is no moment with only the FSM; assert what can be seen): once the editor is ready, the button says **"Mesin saya (1)"**, and the list has exactly one row, the PDA (NDPDA, open); the store still holds two records (the empty FSM and the PDA). On `staging` the list has two rows and the button says (1) or (2): the row assertion is the red.
 - F2 After the student switches to the FSM mode, the empty FSM is on screen, and back in the PDA mode with it still empty the list does not show it; after an edit (one state) it is listed in the PDA mode too.
 - F3 An empty FSM that is not the library's current (made with "Mesin baru", then another machine opened) is listed in both modes.
-- F4 The T-078 cases and the T-074 cases pass unedited.
+- F4 The T-078 and T-074 cases pass, except the two named in the scope, which are edited as ruled and still prove what they proved.
 
 **Acceptance criteria:**
 
-- AC1 F1 to F4 hold, each by a test written first and seen to fail on `staging`.
-- AC2 **Nothing else changes:** list the existing tests you ran.
+- AC1 F1 to F4 hold, each by a test written first and seen to fail on `staging` (the row assertion of F1, not a count comparison, is the red).
+- AC2 **Nothing else changes:** list the existing tests you ran; only the two cases named in the scope are edited.
 - AC3 **Size:** no route's first JS grows by more than 102 bytes (`library.svelte.ts` is in the first JS).
-- AC4 **Break once each, on the final code:** (B1) the filter ignores the mode (the FSM mode hides its own empty machine); (B2) the filter ignores "is current" (an empty machine that is not current is hidden); (B3) the count shows the unfiltered number. Failing line and one-line diff pasted; restore each.
+- AC4 **Break once each, on the final code:** (B1) the filter ignores the mode (the FSM mode hides its own empty machine); (B2) the filter ignores "is current" (an empty machine that is not current is hidden); (B3) the count shows the unfiltered number; (B4) the filter uses `currentId` instead of the FSM current's id (nothing is hidden). Failing line and one-line diff pasted; restore each.
 - AC5 `pnpm lint`, `pnpm check`, `pnpm test:web`, `pnpm build && pnpm size`, and Playwright for `pda-library`, `cross/library`, `cross/storage` on desktop and phone pass.
 
 **Verification:**
@@ -3593,9 +3596,11 @@ pnpm --filter web exec playwright test pda-library cross/library cross/storage -
 
 **Rollback:** `git revert <sha>`: the empty FSM is listed in the PDA mode again.
 
-**Pre-flight (with real commands):** (1) reproduce on the built site with a fresh profile: what "Mesin saya" lists and counts in the PDA mode before any PDA exists, and after the first one; (2) how "empty" is read cheaply from an entry (do the list entries carry the state count, or must the record be read? the least read that works; state it); (3) every user of `entries` and `count` (the dialog, the two bars' buttons, the delete logic of T-078) and which must see the filtered list; (4) sizes in bytes before. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
+**Pre-flight:** done by the worker on 2026-11-23 (its answers are the facts above; sizes before: `sandbox.html` 124,879 B, `index.html` 83,876 B). The original list, for the record: (1) reproduce on the built site with a fresh profile: what "Mesin saya" lists and counts in the PDA mode before any PDA exists, and after the first one; (2) how "empty" is read cheaply from an entry (do the list entries carry the state count, or must the record be read? the least read that works; state it); (3) every user of `entries` and `count` (the dialog, the two bars' buttons, the delete logic of T-078) and which must see the filtered list; (4) sizes in bytes before. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
 
-**Depends on:** T-078 (merged). Start after T-082 (the same worker).
+**Depends on:** T-078 (merged), T-082 (merged).
+
+**Report:** from the day the report convention PR is merged, a task writes `docs/agent/reports/T-084.md` (see AGENTS.md); until then, `docs/agent/REPORT.md`. The planner tells you which in the "Go".
 
 ---
 
