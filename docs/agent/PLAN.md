@@ -252,47 +252,53 @@ Expected: both pass. Paste the output into `REPORT.md`.
 
 ## Task T-005 — Remove the `wrangler` and `miniflare` age-rule exclusions
 
-**Status:** todo (not before 2026-11-12; the owner decided on 2026-11-02 to keep `wrangler` 4.155.0 until then)
-**Owner:** worker
+**Status:** todo (not before 2026-11-12; the owner decided on 2026-11-02 to keep `wrangler` 4.155.0 until then; amended 2026-11-23 after the worker's pre-flight)
+**Owner:** worker (DeepSeek)
 **Branch:** `task/T-005-remove-age-exclusions`
 
-**Goal:** PR 103 let `wrangler@4.155.0` (published 2026-10-28 20:28 UTC) and `miniflare@5.20261023.2-beta` (2026-10-28 20:19 UTC) skip the two-week `minimumReleaseAge` rule in `pnpm-workspace.yaml`. Both are 14 days old on 2026-11-11. Remove the two exclusions, so that the rule applies to every package again.
+**Goal:** PR 103 let `wrangler@4.155.0` (published 2026-10-28 20:28 UTC) and `miniflare@5.20261023.2-beta` (2026-10-28 20:19 UTC) skip pnpm's release-age check through `minimumReleaseAgeExclude` in `pnpm-workspace.yaml`. Remove the two exclusions, so that the check applies to every package again. **The check is pnpm 12's built-in default of 1440 minutes (one day), non-strict.** The repo never set `minimumReleaseAge` itself; the "two-week rule" that this task and PR 103 called it was never a setting. Both packages are 24.7 days old on 2026-11-23, so they pass the default and the 14-day policy alike. Whether the repo should set `minimumReleaseAge: 20160` (two weeks, enforced) is a separate decision of the owner, not part of this task.
+
+**Decisions (owner 2026-11-02 for the removal; planner 2026-11-23 for the rest):**
+
+- **Authority.** The owner's decision of 2026-11-02 (DECISIONS) authorises exactly this removal; AGENTS.md's "worker never decides alone" rule about age rules is satisfied by it. Nothing else about dependency rules changes.
+- **No `minimumReleaseAge` key is added** in this task, and no new exclusion, ever: if a package is too young, stop (AC4).
 
 **Scope (in):**
 
-- Delete the `minimumReleaseAgeExclude` block (the two entries) from `pnpm-workspace.yaml`.
+- Delete the `minimumReleaseAgeExclude` block (the key and its two entries) from `pnpm-workspace.yaml`.
+- `docs/agent/PLAN.md` (status) and `docs/agent/REPORT.md`.
 
 **Non-goals (out):**
 
 - No version change of `wrangler` or `miniflare`. If a newer `wrangler` exists, do nothing about it.
 - No change to the upload retry loop of PR 103.
+- No `minimumReleaseAge` setting (separate decision).
 
-**Files expected to touch:**
-
-- `pnpm-workspace.yaml`
+**Files expected to touch:** `pnpm-workspace.yaml`, `docs/agent/PLAN.md`, `docs/agent/REPORT.md`.
 
 **Design reference:** none.
 
 **Acceptance criteria:**
 
-- AC1: `pnpm install --frozen-lockfile` succeeds with the exclusions removed (the age rule now accepts both versions).
-- AC2: `pnpm check:workflows` and `pnpm build` pass.
-- AC3: In the PR's CI run, the preview upload step succeeds and the bot comment shows a preview URL.
-- AC4: If the install fails because a package is still too young, stop and report the package and its date. Do not add a new exclusion.
+- AC1: `pnpm install --frozen-lockfile` succeeds with the exclusions removed, and the verification line shows `"minimumReleaseAgeExclude":[]` (the worker's pre-flight showed all 406 entries pass).
+- AC2: `grep -n minimumReleaseAgeExclude pnpm-workspace.yaml` finds nothing; `pnpm check:workflows` and `pnpm build` pass (the build needs Rust and `wasm-pack`: it is heavy for a config change, and it is the proof that the toolchain around the lockfile is intact).
+- AC3: **Preview upload.** The PR's CI run is green, and the report names the job and the step of the preview upload and pastes its log line. If the step prints "No production deployment yet; skipping preview" or no bot comment appears, say so; that is not a failure of this task, and the planner reads it from the log.
+- AC4: **If a package is too young,** `pnpm install --frozen-lockfile` exits 1 with `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`, naming the package, its publish time and the cutoff: stop and report them. **Never run a plain `pnpm install` for this check**: under the non-strict default it silently appends the package to `minimumReleaseAgeExclude`, which recreates the block that this task deletes. If `pnpm-workspace.yaml` contains `minimumReleaseAgeExclude` at the end of the work, the task has failed.
 
 **Verification:**
 
 ```
 pnpm install --frozen-lockfile
+grep -n minimumReleaseAgeExclude pnpm-workspace.yaml || echo "gone"
 pnpm check:workflows
 pnpm build
 ```
 
-Expected: all exit 0. Paste the real output into `REPORT.md`, and name the CI job that did the preview upload.
+Expected: install, check and build exit 0, and the grep prints `gone`. Paste the real output into `REPORT.md`, and name the CI job that did the preview upload.
 
 **Rollback:** `git revert <sha>`.
 
-**Depends on:** none; not before 2026-11-12.
+**Depends on:** none; not before 2026-11-12 (passed).
 
 **Notes for worker:** This is a dependency rule, so stop and ask if anything is unclear (see "Decisions the worker never makes alone" in `AGENTS.md`).
 
