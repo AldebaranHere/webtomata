@@ -79,7 +79,30 @@ export const pdaId = {
 		'File .jff bisa dibuka di JFLAP. JSON menyimpan semuanya, termasuk simbol yang lebih dari satu karakter.',
 	'pda_files.download_jff': 'Unduh .jff (JFLAP)',
 	'pda_files.download_json': 'Unduh JSON',
-	'pda_files.saved': 'File {name} diunduh.'
+	'pda_files.saved': 'File {name} diunduh.',
+	// The Simulasi tab (T-038a). The stack is a column, top at the top; the peak is the number of
+	// configurations alive at one BFS level (glossary: both terms are TODO(review)).
+	'pda_sim.stack': 'Stack (puncak di atas)',
+	'pda_sim.stack_top': '← puncak',
+	'pda_sim.stack_empty': 'kosong',
+	'pda_sim.stack_more': '… {count} lagi',
+	'pda_sim.state': 'State: {name}',
+	'pda_sim.stack_row': 'stack: {stack}',
+	'pda_sim.peak': 'Konfigurasi bersamaan terbanyak: {count}',
+	'pda_sim.peak_help': 'Banyaknya komputasi yang hidup di satu tingkat BFS. DPDA selalu 1.',
+	'pda_sim.explored': 'Dijelajahi: {count} konfigurasi',
+	'pda_sim.shown_accepted': 'Yang ditunjukkan: komputasi yang menerima (satu jalur).',
+	'pda_sim.shown_furthest': 'Yang ditunjukkan: komputasi yang paling jauh (satu jalur).',
+	'pda_sim.stopped_max_steps': 'Dihentikan: batas langkah tercapai.',
+	'pda_sim.stopped_max_configurations': 'Dihentikan: batas konfigurasi tercapai.',
+	'pda_sim.stopped_max_stack': 'Dihentikan: batas kedalaman stack tercapai.',
+	'pda_sim.stopped_other': 'Dihentikan: komputasi ini terlalu besar untuk dijalankan di sini.',
+	'pda_sim.step_announce':
+		'Langkah {position} dari {total}: state {state}, stack {stack}, puncak {top}',
+	'pda_sim.column_string': 'String',
+	'pda_sim.column_result': 'Hasil',
+	'pda_sim.column_peak': 'Puncak',
+	'pda_sim.run_row': 'Jalankan {string}'
 } as const;
 
 export const pdaEn: Record<keyof typeof pdaId, string> = {
@@ -149,7 +172,28 @@ export const pdaEn: Record<keyof typeof pdaId, string> = {
 		'The .jff file opens in JFLAP. JSON keeps everything, including symbols of more than one character.',
 	'pda_files.download_jff': 'Download .jff (JFLAP)',
 	'pda_files.download_json': 'Download JSON',
-	'pda_files.saved': 'The file {name} was downloaded.'
+	'pda_files.saved': 'The file {name} was downloaded.',
+	// The Simulasi tab (T-038a).
+	'pda_sim.stack': 'Stack (top at the top)',
+	'pda_sim.stack_top': '← top',
+	'pda_sim.stack_empty': 'empty',
+	'pda_sim.stack_more': '… {count} more',
+	'pda_sim.state': 'State: {name}',
+	'pda_sim.stack_row': 'stack: {stack}',
+	'pda_sim.peak': 'Peak concurrent configurations: {count}',
+	'pda_sim.peak_help': 'The number of computations alive at one BFS level. A DPDA is always 1.',
+	'pda_sim.explored': 'Explored: {count} configurations',
+	'pda_sim.shown_accepted': 'Shown: the accepting computation (one path).',
+	'pda_sim.shown_furthest': 'Shown: the furthest computation (one path).',
+	'pda_sim.stopped_max_steps': 'Stopped: the step limit was reached.',
+	'pda_sim.stopped_max_configurations': 'Stopped: the configuration limit was reached.',
+	'pda_sim.stopped_max_stack': 'Stopped: the stack depth limit was reached.',
+	'pda_sim.stopped_other': 'Stopped: this computation is too big to run here.',
+	'pda_sim.step_announce': 'Step {position} of {total}: state {state}, stack {stack}, top {top}',
+	'pda_sim.column_string': 'String',
+	'pda_sim.column_result': 'Result',
+	'pda_sim.column_peak': 'Peak',
+	'pda_sim.run_row': 'Run {string}'
 };
 
 addMessages('id', pdaId);
