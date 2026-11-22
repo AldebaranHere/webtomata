@@ -3193,42 +3193,58 @@ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-file
 
 **Status:** todo
 **Owner:** worker (DeepSeek: the planner's pick)
-**Branch:** `task/T-077-label-sheet-phone`
+**Branch:** `task/T-077-label-sheet`
 
-**Goal:** Found by the owner on a real Android phone on 2026-11-18, and the first half also in the planner's emulated 375 px run: (1) on a phone the label sheet (Baca, Pop, Push) is 320 px wide because `PdaLabelForm.svelte` sets `.form { width: 320px }`, so on a 375 px screen the right 15% of the sheet's row is blank (the popover of a laptop wants 320 px, the sheet of a phone wants the full width); (2) with the keyboard open, the row "Ketik ε / Batal / Simpan" is behind the keyboard, so the student cannot save without closing the keyboard first. In the owner's screenshot the keyboard begins about 190 css px below the top of the sheet; the fields and the "+ Transisi lain" button are visible, the hint line is half visible and the buttons are not.
+**Goal:** Found by the owner on a real Android phone on 2026-11-18, and the first half also in the planner's emulated 375 px run: (1) on a phone the label sheet (Baca, Pop, Push) is 320 px wide because `PdaLabelForm.svelte` sets `.form { width: 320px }`, so on a 375 px screen the right 15% of the sheet's row is blank (the popover of a laptop wants 320 px, the sheet of a phone wants the full width); (2) with the keyboard open, the row "Ketik ε / Batal / Simpan" is behind the keyboard, so the student cannot save without closing the keyboard first. In the owner's screenshot the keyboard begins about 190 css px below the top of the sheet; the fields and the "+ Transisi lain" button are visible, the hint line is half visible and the buttons are not. The worker's pre-flight (2026-11-22) measured the sheet at 375 px: the buttons run 204.5 to 248.5 css px below the top of the sheet today.
 
-**Decisions (planner, 2026-11-18; do not reopen, ask if one looks wrong):**
+**Decisions (planner, 2026-11-18, amended 2026-11-22 after the pre-flight; do not reopen, ask if one looks wrong):**
 
-- **Width.** In the sheet (the `.pda-sheet` aside of `PdaEditor.svelte`) the form is `width: 100%`; in the popover it stays 320 px. State in the pre-flight which of the two sets the width (a prop, a class from the parent, or a rule in `.pda-sheet`); no new prop if a rule in `.pda-sheet` does it.
-- **Order.** The action row (Ketik ε, Batal, Simpan) comes **right after the fields**, before "+ Transisi lain di antara …" and the hint, in the **DOM order** (not only visually), in both the sheet and the popover, so that the tab order is the order a person sees: the fields, Ketik ε, Batal, Simpan, then the add-row button. The refusal line (`.problem`) stays above the action row, as now. With one row of fields, the buttons are then within the first 130 css px of the sheet; with the keyboard open (190 css px visible) they are visible. With several rows the rows list scrolls inside itself (it already has `max-height: 240px`): the pre-flight must say what the visible height is at 2 and 3 rows, and the task proposes a smaller max-height for the sheet if the buttons would fall out of 190 css px.
-- **The keyboard's key.** The three inputs get `enterkeyhint`: `next` on Baca and Pop, `done` on Push. Enter in Push commits as `onkeydown` does today; check that Enter in Baca and Pop moves to the next field (and say what it does today).
-- **Not in this task:** the viewport meta (`interactive-widget`), any other page's inputs, and the FSM's label box. An app-wide change to how the keyboard resizes the page is a separate decision that the planner takes only if the owner sees the same fault elsewhere.
-- **Honest limit:** Playwright has no on-screen keyboard. The tests use a short viewport that stands for the visible part above a keyboard; the owner checks the real keyboard on the phone after the merge.
+- **Width.** In the sheet the form is `width: 100%`; in the popover it stays 320 px. The 320 px is the form's own rule (`PdaLabelForm.svelte`, `.form`), so the change is **one rule in `PdaEditor.svelte`**: `.pda-sheet :global(.pda-label-form) { width: 100%; }`. It must be a stylesheet rule (the CSP refuses an inline `style=`). `PdaLabelPopover.WIDTH = 320` stays; the two 320s are one note for the report, not a change.
+- **Order.** The action row (Ketik ε, Batal, Simpan) comes **right after the fields**, before "+ Transisi lain di antara …" and the hint, in the **DOM order**, in both the sheet and the popover. The tab order is then: the fields of a row, its Hapus button, … , Ketik ε, Batal, Simpan, the add-row button. The refusal line (`.problem`) stays above the action row.
+- **The rows list in the sheet shows about one and a half rows.** In the sheet only (the popover keeps `max-height: 240px`), `.rows` gets `max-height: 72px` (one row of 44 px, the 8 px gap, and 20 px of the next row, so that a second row shows that the list scrolls), through a rule in `PdaEditor.svelte` (`.pda-sheet :global(.pda-label-form .rows)`) or the smallest equivalent. With that, measured by the worker: one row puts the buttons at 105.5 to 149.5 css px below the top of the sheet, two or more rows at about 133.5 to 177.5, both inside the 190 line. A new row (the add-row button) must scroll into view inside the list and take the focus, as today.
+- **The empty `aria-live` wrapper** above the buttons (8 px) and the 4 px top margin of the action row may be tightened (the wrapper takes no space while it is empty) if the accessibility tree does not change; say what you did.
+- **The refusal is the exception.** When a refusal shows (74.5 px), the buttons go about 34 px lower, past the 190 line with one row. That is accepted: the student has just pressed Simpan and the refusal is what to read; the keyboard can be closed. The test only pins that the refusal is above the buttons in the DOM.
+- **The keyboard's key (changed 2026-11-22).** The pre-flight found that Enter commits the edge in **all three** fields today (`a` and Enter makes `a / ε / ε`), and that `docs/ux` and `design/screens/pda-editor.md` section 8 say "Enter sends". A Next key (`enterkeyhint="next"`) sends Enter on Android, so it would commit too: the key would lie. So all three inputs get **`enterkeyhint="done"`**, Enter commits in all three as today, and **no behaviour changes**. A test pins Enter in each field (none exists today). The planner's earlier `next`, `next`, `done` is dropped.
+- **Design sheet.** The planner amends `design/screens/pda-editor.md` section 8 in the spec PR (the order of the buttons and the hint); the worker does not edit `design/`.
+- **Not in this task:** the viewport meta (`interactive-widget`), any other page's inputs, the FSM's label box, the add-row button's place (it follows the buttons; it may be partly hidden by a keyboard, which is accepted: it is rarely needed). An app-wide change to how the keyboard resizes the page is a separate decision that the planner takes only if the owner sees the same fault elsewhere.
+- **Honest limit:** Playwright has no on-screen keyboard and cannot show the key of the keyboard. The tests measure geometry (the distance from the top of the sheet), which stands for the 190 px; the owner checks the real keyboard on the phone after the merge. The ADR and the report say so.
 
-**Scope (files):** `web/src/lib/editor/PdaLabelForm.svelte` (the order of the template, `enterkeyhint`, the width), `PdaEditor.svelte` (the `.pda-sheet` rule only, if the width is set there), tests (new `web/e2e/pda-label-sheet.spec.ts`; the existing label and PDA e2e files), `docs/decisions/0058-pda-label-sheet-phone.md` (short), `docs/agent/PLAN.md` (status). **Existing tests that may change, and only these:** a PDA e2e or unit case that locates the buttons or the add-row button by their position (not by name). List each in the report. Everything else passes unedited, and the laptop popover is still 320 px.
+**Scope (files):** `web/src/lib/editor/PdaLabelForm.svelte` (the order of the template, `enterkeyhint`, the empty wrapper), `PdaEditor.svelte` (the two `.pda-sheet` rules), tests (new `web/e2e/pda-label-sheet.spec.ts`; `web/e2e/pda-editor.spec.ts` for the one tab-order test that the new order changes: lines about 189 to 214, desktop; and the E8 measurements if they move), `docs/decisions/0058-pda-label-sheet-phone.md` (short; the number is free), `docs/agent/PLAN.md` (status), `docs/agent/REPORT.md`. **Existing tests that may change, and only these:** the tab-order test above, and any case that the pre-flight shows locates the buttons or the add-row button by position. List each in the report. Everything else passes unedited, and the laptop popover is still 320 px.
 
-**Non-goals:** the viewport meta; the grammar and FSM editors; a redesign of the sheet; changing the labels' texts; a visual-viewport script.
+**Design reference:** `design/screens/pda-editor.md` sections 8 and 9 (amended by the planner on 2026-11-22: the buttons come before "+ Transisi lain" and the hint); `docs/ux/editor-interactions.md` (Enter sends).
 
-**Fixtures (the oracle; derive by hand and write the derivation in `REPORT.md`):**
+**Non-goals:** the viewport meta; the grammar and FSM editors; a redesign of the sheet; changing the labels' texts; a visual-viewport script; any change of what Enter does.
 
-- F1 Width: at 375 px and at 360 px wide (phone project), with the sheet open on a new transition, the form's width equals the sheet's content width (within 1 px) and its right edge is inside the viewport with the same gap as its left edge.
-- F2 Above the keyboard: a viewport 375 wide and 190 css px of the sheet visible stands for an open keyboard; build it by setting the viewport height so that the top of the sheet plus 190 px is the bottom of the viewport (or by a short viewport, with the reasoning written down); after tapping the Push field, the three buttons are fully inside the viewport.
-- F3 Order: in the DOM the action row is after the last field row and before the add-row button and the hint (sheet and popover); a keyboard Tab from the Push field reaches Ketik ε, then Batal, then Simpan.
-- F4 The keyboard's key: the inputs have `enterkeyhint` `next`, `next`, `done`; Enter in Push saves (as today); Enter in Baca moves to Pop (say what it does today; do not change it if it already does this).
-- F5 Laptop: the popover is 320 px wide and floats where it did (every existing popover and label test passes unedited).
-- F6 Several rows: with 2 and 3 rows the buttons are still visible in the 190 px case (the rows list scrolls inside), and nothing scrolls the page sideways.
+**Fixtures (the oracle; derive by hand and write the derivation in `REPORT.md`):** the phone fixtures run in a test that sets the viewport to 375 × 667 and to 360 × 740 (`setViewportSize`; the phone project is 412 × 915) and skips on the desktop project; the popover fixture runs on the desktop project.
+
+- F1 Width: at 375 px and at 360 px, with the sheet open on a new transition, the form's width equals the sheet's content width (within 1 px) and its right edge has the same gap to the viewport as its left edge.
+- F2 Above the keyboard (geometry, not visibility: the buttons are on the screen already without a keyboard, so a visibility test cannot fail): the distance from the **top of the sheet to the bottom of the Simpan button is at most 190 css px** with one row, with two rows and with three rows, with no refusal shown. The test fails on `staging` (it is about 249 at one row).
+- F3 Order: in the DOM the action row is after the last field row and before the add-row button and the hint (**sheet, phone project; popover, desktop project**); a keyboard Tab from the Push field of the only row reaches Hapus, then Ketik ε, then Batal, then Simpan, then the add-row button. The refusal line is before the action row in the DOM.
+- F4 The keyboard's key: the three inputs have `enterkeyhint="done"`; Enter in Baca, in Pop and in Push each commits the edge (a `a / ε / ε` for Enter in Baca after typing `a`), as today.
+- F5 Laptop: the popover is **320 px wide** (new assertion on the desktop project) and floats where it did; every existing popover and label test passes unedited except the tab-order test named in the scope.
+- F6 Several rows: with 2 and 3 rows the rows list scrolls inside itself (its `scrollHeight` is larger than its `clientHeight`, and `clientHeight` is at most 72), the page does not scroll sideways, and the add-row button's new row is scrolled into view and focused.
 
 **Acceptance criteria:**
 
-- AC1 F1 to F6 hold, each by a test on the phone project; F5 on the desktop project.
-- AC2 **Nothing else changes:** list the existing tests you ran; only the ones named in the scope may be edited.
+- AC1 F1 to F4 and F6 hold on the phone project and F5 on the desktop project, each by a test written first and seen to fail on `staging` (F5's width assertion may pass on `staging`: say so).
+- AC2 **Nothing else changes:** list the existing tests you ran; only the ones named in the scope may be edited. Run the new spec also on Firefox and the WebKit phone project if the config has them (they run in CI); if they cannot run in WSL, say so in the report.
 - AC3 **Size:** no route's first JS grows by more than 0.1 KB (102 bytes), in bytes; the label form is in the lazy PDA chunks.
-- AC4 **Break each guard once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) the width of the form in the sheet goes back to 320 px; (B2) the action row is moved after the hint; (B3) an `enterkeyhint` is removed. Restore each file; `git diff --stat` at the end shows only the scope.
+- AC4 **Break each guard once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) the width rule of the sheet is removed; (B2) the action row is moved after the hint; (B3) an `enterkeyhint` is removed; (B4) the `.rows` cap of the sheet is removed. Restore each file; `git diff --stat` at the end shows only the scope.
 - AC5 The format, check, lint, strings, tokens, Vitest, build and size commands, and Playwright for the PDA specs and `pda-label-sheet` on desktop and phone pass; axe has no violation on the sheet.
 
-**Pre-flight (with real commands):** (1) show where the 320 px comes from at 375 px and at 360 px (a computed style); (2) measure the heights from the top of the sheet to the bottom of each element at one, two and three rows (css px); (3) say what Enter does in each of the three inputs today; (4) propose the exact DOM order and the sheet's max-height for rows, with the numbers; (5) the sizes in bytes before. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
+**Verification:**
 
-**Depends on:** T-054 (the form), T-057 (the sheet). Independent of T-076 and T-078 (different files).
+```
+pnpm lint && pnpm check && pnpm test:web && pnpm test:tools
+pnpm build && pnpm size
+pnpm --filter web exec playwright test pda-label-sheet pda-editor pda-panel pda-table-edit --project=phone --project=desktop
+```
+
+**Rollback:** `git revert <sha>`: the sheet is 320 px again and the buttons come after the hint; nothing in the documents or the formats changes.
+
+**Pre-flight:** done by the worker on 2026-11-22 (measurements in its report of that day); the numbers above are its numbers. Anything else in this spec that your reading shows to be wrong: stop and tell the planner.
+
+**Depends on:** T-054 (the form), T-057 (the sheet). Independent of T-076 and T-078 (different files). T-081 starts after this.
 
 ---
 
