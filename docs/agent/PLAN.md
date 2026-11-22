@@ -3508,7 +3508,7 @@ pnpm build && pnpm size
 
 ## Task T-083 — The new row of the PDA label sheet scrolls fully into view in every browser, and the sheet is tested on Firefox and WebKit
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker (Gemini: the planner's pick)
 **Branch:** `task/T-083-label-sheet-webkit`
 
