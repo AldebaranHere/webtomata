@@ -3191,7 +3191,7 @@ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-file
 
 ## Task T-077 — The PDA label sheet fills the width of a phone and keeps its buttons above the keyboard
 
-**Status:** in-progress
+**Status:** done (2026-11-22; branch `task/T-077-label-sheet`, commits `1779845`…`HEAD`. F1–F6 hold: the form is 375 px and 360 px wide in the sheet (55 px and 40 px of blank on staging); the buttons are 149.5 px below the top of the sheet at one row and 177.5 at two and three (248.5 on staging at one row); the DOM order and the tab sequence put the buttons before add-row, with Hapus in the sequence and the refusal above the buttons; `enterkeyhint="done"` on the three inputs, and Enter commits from each (no `enterkeyhint` before); the popover is still 320 px wide; the rows list caps at 72 px, scrolls inside itself and the new row is focused and in view. B1–B4 each fail a named line on the final code; first JS −1 byte on `sandbox.html` and 0 on the others; axe is clean. In WebKit the new row's field is clipped by 10 px (the browser's focus scroll), recorded in the ADR. See `docs/agent/REPORT.md` and ADR 0058.)
 **Owner:** worker (DeepSeek: the planner's pick)
 **Branch:** `task/T-077-label-sheet`
 
