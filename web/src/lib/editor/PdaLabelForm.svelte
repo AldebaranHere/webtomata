@@ -103,6 +103,7 @@
 			const inputs = container.querySelectorAll<HTMLInputElement>('.row-fields input');
 			const lastFirst = inputs[inputs.length - 3];
 			lastFirst?.focus();
+			lastFirst?.scrollIntoView({ block: 'nearest' });
 		});
 	}
 
