@@ -12,6 +12,6 @@ Then read, in order:
 
 Then restate to the human: the task id, goal, scope, non-goals, and the exact verification commands you will run. Wait for confirmation before editing.
 
-Your outputs are code changes on a `task/<id>-<slug>` branch, `docs/agent/REPORT.md`, updates to `PLAN.md` status, and additions to `DECISIONS.md`. You do not merge.
+Your outputs are code changes on a `task/<id>-<slug>` branch, the task's report (`docs/agent/reports/<task id>.md`), updates to `PLAN.md` status, and additions to `DECISIONS.md`. You do not merge.
 
 Full role contract: see "Worker in detail" in `AGENTS.md`.

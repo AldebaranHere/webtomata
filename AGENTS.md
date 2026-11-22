@@ -81,7 +81,7 @@ Why: Windows blocks `wasm-pack` (Device Guard), so the WASM build and the WASM t
 6. **Git.** Commit and push from WSL (in Mode B, through the bridge). `git remote -v` must show `https://github.com/AldebaranHere/webtomata.git`. If a push asks for a password or a token, stop. Never type a secret, and never ask the owner to paste one. The pre-push hook `.git/hooks/pre-push` must exist in the WSL clone. If it is missing, stop and tell the owner. Never push without it, and never use `--no-verify`.
 7. **Pull request.** `gh` is not installed in WSL. Use the Windows `gh.exe`, which is already signed in. Mode A: `cat body.md | gh.exe pr create --repo AldebaranHere/webtomata --base staging --head <branch> --title "<title>" --body-file -`. Mode B: run `gh` directly in PowerShell, with `--repo AldebaranHere/webtomata --base staging --head <branch> --title '<title>' --body-file \\wsl.localhost\Ubuntu\home\Aldebaran64\tmp\body.md`. Keep temporary files (PR text, scripts) in `~/tmp`, not in the repository.
 8. **E2E tests** need the Playwright browsers in WSL. Check `ls ~/.cache/ms-playwright`. If it is empty and the task needs e2e, stop and tell the owner. Do not run `playwright install --with-deps` yourself. Engine, documentation and unit-test tasks do not need e2e.
-9. **What you cannot run** (a phone, the live site) is the owner's. Say in `REPORT.md` what you did not run and why.
+9. **What you cannot run** (a phone, the live site) is the owner's. Say in the report what you did not run and why.
 10. **Line endings.** Files must have LF line endings and no byte-order mark. In Mode B your editor writes through a Windows path, so run `pnpm format` before the checks, and look at `git diff --stat` for files that you did not mean to change.
 11. **Private folders.** `MD_FILES/`, `REFERENCES/` and `.agents/` in `~/webtomata` are the one real copy that the owner and the planner read. They are git-ignored, so git keeps no history of them. (a) Treat them as read-only: never edit, move or delete a file in them; if one is wrong, tell the owner. (b) Never run `git clean -x`, `git clean -X` or `git clean -fdx`: they delete ignored files. (c) Never replace one of these folders by a link; the editor does not follow a link that leaves the workspace.
 12. **Searching, and commands that can hang (both modes).** (a) Search and read with the editor's own search and read tools. Use shell `grep` only for what they cannot do, and in Mode B only through a script file. (b) A one-liner in the bridge contains no `"`, `|`, `&&`, `;` or `$(...)`: anything with those goes in a script file. (c) A command that could read standard input (`grep`, `cat` or `xargs` with no file, anything at the end of a pipe) ends with `< /dev/null`, and a command that could run long is wrapped with `timeout` (for example `timeout 120`). (d) A search or a short command that has run for more than 30 seconds is stuck, not slow: stop it, look at the exact command line that bash received (`set -x`, or print the script), fix the quoting and run it again. Do not wait for it, and do not poll a background task more than twice without reading its output.
@@ -129,7 +129,7 @@ The owner's standing rules for every task:
 
 ## Decisions the worker never makes alone
 
-Stop and write a `blocked` entry (or a question in `REPORT.md`) for any of these:
+Stop and write a `blocked` entry (or a question in the report) for any of these:
 
 - adding or updating a dependency, or changing a dependency age rule (`minimumReleaseAge`, `minimumReleaseAgeExclude`, `auditConfig`, the audit ignores);
 - anything about security headers, CSP, workflow permissions, secrets, or deploy settings;
@@ -161,11 +161,11 @@ The planner reviews every worker pull request with the same checks as the worker
 - No unrequested changes. Out-of-scope work becomes a `proposed` entry in `PLAN.md`.
 - If the plan is wrong or impossible: stop, write a `blocked` defect entry with evidence, hand back.
 - Respects `design/`. Does not invent tokens, spacing, colors, or component patterns.
-- Ends the session by writing `REPORT.md` with actual verification output (paste, do not summarize) and updating `PLAN.md` status.
+- Ends the session by writing the report with actual verification output (paste, do not summarize) and updating `PLAN.md` status. **The report is one file for each task: `docs/agent/reports/<task id>.md` (for example `T-084.md`), written by the worker of that task and never edited by another task.** `docs/agent/REPORT.md` is only an index. (A shared rolling file made every worker PR conflict with the one before it.)
 - **No conditional assertions.** Never put an `expect` inside an `if`, a `try` or a `.catch`. If a test passes only when it is allowed to skip its check, the code has a bug: report it.
 - **A deliberate break counts only when it is shown failing on the final code.** Re-run each break after the last change to the code under test, and paste the failing line. A break run before a later change does not count.
 - **A change to a file that the FSM editor also uses** (the canvas, the frame, storage, the shared history) needs a test of the FSM side, or it is left out of the task.
-- **The report matches the code.** Names, props, numbers and commands in `REPORT.md` are copied from the code and the output, not from memory.
+- **The report matches the code.** Names, props, numbers and commands in the report are copied from the code and the output, not from memory.
 - **Stuck rule.** If the same check gives the same result twice, or a command shows no new output for five minutes, stop waiting. Run it once in the foreground with a timeout, read the output, and act on it. If it is still unclear after two tries, write a `blocked` entry and hand back.
 
 ## Definition of ready (planner side)
@@ -188,12 +188,12 @@ If any field is missing, the worker must reject the task back to the planner.
 
 A task is done only when:
 
-- Every verification command passed and its actual output is pasted into `REPORT.md`.
+- Every verification command passed and its actual output is pasted into the report.
 - The diff matches the stated scope.
 - `PLAN.md` task `Status: done` and the commit/branch is recorded.
 - Any new decisions are appended to `DECISIONS.md`.
 - Any out-of-scope observations are logged as `proposed`.
-- **The deepening pass is written in `REPORT.md`** (do it before you open the pull request): (1) list every new export and every new member of a public interface; for each, say whether it can be private, whether something that exists already does the same, and whether any logic is written twice (also inside the new code); remove or merge what you can, and give a reason for each duplicate or test-only export that stays. (2) The interface is smaller than the work behind it. (3) Count the casts you added (the goal is zero).
+- **The deepening pass is written in the report** (do it before you open the pull request): (1) list every new export and every new member of a public interface; for each, say whether it can be private, whether something that exists already does the same, and whether any logic is written twice (also inside the new code); remove or merge what you can, and give a reason for each duplicate or test-only export that stays. (2) The interface is smaller than the work behind it. (3) Count the casts you added (the goal is zero).
 - **Every test can fail.** For each rule or property that a new test checks, name a one-line break that would violate it, make the break, see the test fail, and restore it. Report the breaks you tried, and any that the tests did not catch, with what you did about it. A test that cannot fail is not a test.
 - **Limits and boundaries.** Every limit is tested at one below, at, and one above (the exact values, not only a far-over case), and the check runs before the work it protects (before the loop, the allocation or the build), not after.
 - **Random tests are judged on the larger run.** When a constant is tuned with a seeded property test (a spacing, a size, a count), run at least ten times as many seeds as you used to tune it, and paste that result. A value that holds for the seeds it was tuned on is not yet a bound.
