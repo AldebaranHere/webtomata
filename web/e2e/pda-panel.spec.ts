@@ -63,7 +63,7 @@ async function makeEdge(
 }
 
 test.describe('E1: Panel tabs and layout', () => {
-	test('desktop: exactly two tabs (Tabel, Definisi), Tabel open by default, remembers valid tab', async ({
+	test('desktop: three tabs (Simulasi, Tabel, Definisi), Simulasi open by default, remembers valid tab', async ({
 		page,
 		isMobile
 	}) => {
@@ -73,26 +73,31 @@ test.describe('E1: Panel tabs and layout', () => {
 		const side = panel(page);
 		await expect(side).toBeVisible();
 
-		// Only two tabs, neither is disabled
+		// Three tabs, in the order the sheet gives them, and no Konversi (that is T-038b).
+		const simTab = tab(page, 'Simulasi');
 		const tabelTab = tab(page, 'Tabel');
 		const defTab = tab(page, 'Definisi');
-		await expect(tabelTab).toBeVisible();
-		await expect(defTab).toBeVisible();
-		await expect(panel(page).getByRole('tab', { name: 'Simulasi' })).toHaveCount(0);
+		await expect(side.getByRole('tab')).toHaveCount(3);
+		await expect(side.getByRole('tab').nth(0)).toHaveText('Simulasi');
+		await expect(side.getByRole('tab').nth(1)).toHaveText('Tabel');
+		await expect(side.getByRole('tab').nth(2)).toHaveText('Definisi');
 		await expect(panel(page).getByRole('tab', { name: 'Konversi' })).toHaveCount(0);
 
-		// Tabel is open first time
-		await expect(tabelTab).toHaveAttribute('aria-selected', 'true');
+		// Simulasi is open first time; the others are not.
+		await expect(simTab).toHaveAttribute('aria-selected', 'true');
+		await expect(tabelTab).toHaveAttribute('aria-selected', 'false');
 		await expect(defTab).toHaveAttribute('aria-selected', 'false');
 
-		// Arrow keys move between tabs
-		await tabelTab.focus();
+		// Arrow keys go round the three tabs.
+		await simTab.focus();
+		await page.keyboard.press('ArrowRight');
+		await expect(tabelTab).toHaveAttribute('aria-selected', 'true');
 		await page.keyboard.press('ArrowRight');
 		await expect(defTab).toHaveAttribute('aria-selected', 'true');
-		await expect(tabelTab).toHaveAttribute('aria-selected', 'false');
-
+		await page.keyboard.press('ArrowRight');
+		await expect(simTab).toHaveAttribute('aria-selected', 'true');
 		await page.keyboard.press('ArrowLeft');
-		await expect(tabelTab).toHaveAttribute('aria-selected', 'true');
+		await expect(defTab).toHaveAttribute('aria-selected', 'true');
 
 		// Switch to Definisi, reload, it is remembered
 		await defTab.click();
@@ -103,12 +108,12 @@ test.describe('E1: Panel tabs and layout', () => {
 		await dismissFirstRun(page);
 		await expect(tab(page, 'Definisi')).toHaveAttribute('aria-selected', 'true');
 
-		// If storage had an invalid tab (e.g. simulation from FSM), falls back to table
-		await page.evaluate(() => localStorage.setItem('webtomata.panel.tab', 'simulation'));
+		// A saved tab that this panel does not have falls back to its first: Simulasi.
+		await page.evaluate(() => localStorage.setItem('webtomata.panel.tab', 'conversion'));
 		await page.reload();
 		await page.locator('.editor[data-ready]').waitFor();
 		await dismissFirstRun(page);
-		await expect(tab(page, 'Tabel')).toHaveAttribute('aria-selected', 'true');
+		await expect(tab(page, 'Simulasi')).toHaveAttribute('aria-selected', 'true');
 	});
 
 	test('phone: panel is under canvas with drag bar, sheet replaces it during label editing', async ({
