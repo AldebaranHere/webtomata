@@ -3286,7 +3286,7 @@ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-file
 
 ## Task T-080 — Pin the Rust toolchain to an exact version
 
-**Status:** in-progress (2026-11-22; branch `task/T-080-pin-rust`)
+**Status:** done (2026-11-22; branch `task/T-080-pin-rust`, commits `e728b7d`…`HEAD`. F1–F4 hold: the guard passes on the final file and on white space, a trailing comment, single quotes and a commented-out channel, and fails on `stable`, `1.100`, `nightly`, no channel and a duplicate; B1 and B2 fail the real-file test on the final code and were restored. `cargo fmt --check`, clippy, `cargo test`, `pnpm build:wasm`, `pnpm test:tools`, `pnpm test:web`, `pnpm lint`, `pnpm check`, `pnpm format:check` and `pnpm check:*` pass on 1.100.0. F2 (the CI log) waits for the push. See `docs/agent/REPORT.md` and ADR 0060.)
 **Owner:** worker (DeepSeek: the planner's pick; it found the cause in T-079)
 **Branch:** `task/T-080-pin-rust`
 
