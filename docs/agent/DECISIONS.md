@@ -656,3 +656,12 @@ Format:
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-081), `design/screens/editor-bar-phone.md`; later the files in the T-081 scope
 
+## 2026-11-23 — Housekeeping after T-081: default branch, four tasks for the debt, Turing machines before production
+
+- Decider: owner (the answers of 2026-11-23); the planner wrote the tasks
+- Context: Looking for debt after T-081, the planner found that the weekly `audit.yml` had never run (a scheduled workflow runs only from the default branch, `main`, which is still the 25 October build); a run by hand found seven dev-only findings in `pnpm audit` (production dependencies are clean). Four merged branches were left on GitHub. The owner said that production is promoted when Turing machines are done, and that M1's date moves until then.
+- Decision: the default branch is `staging` (reversible in Settings; deploys use `main` explicitly and are unaffected); the four merged branches are deleted; T-082 (dependency refresh), T-065 (symbol names), T-083 (WebKit scroll and cross-browser label-sheet test) and T-084 (untouched empty FSM hidden in the PDA mode) are specified; `staging` is promoted to `main` when Turing machines are done; M1's date is delayed until then.
+- Alternatives considered: keep `main` as the default and run the audit by hand each week (a chore that is forgotten); a lazy FSM record for T-084 (a larger change for the same effect).
+- Reversible? yes (each part)
+- Affects: the GitHub settings; `docs/agent/PLAN.md` (T-065, T-082 to T-084); `MD_FILES/ROADMAP.md` (M1 date; the owner's file)
+
