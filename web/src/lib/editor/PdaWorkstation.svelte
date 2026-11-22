@@ -114,6 +114,7 @@
 		if (opened?.record.id === id) {
 			return null;
 		}
+		if (library.isPending(id)) return { key: 'library.missing', params: {} };
 		const record = await machineStore.get(id);
 		if (!record || !isPdaRecord(record)) return { key: 'library.missing', params: {} };
 		const read = readStoredPda(record.doc);
@@ -206,7 +207,13 @@
 			if (req?.id && (await openPdaById(req.id)) === null) return;
 			let result: OpenedPda;
 			try {
-				result = await openLatestPda(store, () => Date.now());
+				result = await openLatestPda(
+					{
+						...store,
+						list: async () => (await store.list()).filter((r) => !library.isPending(r.id))
+					},
+					() => Date.now()
+				);
 			} catch {
 				// The store opened but list threw: fall back to memory store
 				store = createMemoryStore();
