@@ -17,8 +17,8 @@ Three roles:
    - writes the tests first and shows a deliberate break of each new rule;
    - runs the checks of the task (the pre-push hook also runs the fast CI checks);
    - stops and writes a `blocked` entry in `PLAN.md` if the plan is wrong or a decision is needed. It never improvises. The owner takes a `blocked` task back to the planner.
-6. **After it codes**, the worker pushes the branch, opens a PR to `staging` (title and body in Google's change-description style), writes `docs/agent/REPORT.md` with the **real pasted output** of every verification command, sets the task status in `PLAN.md`, adds any decision to `DECISIONS.md`, and lists out-of-scope findings as `proposed` entries. It does not merge, and it does not start the next task.
-7. **The worker is done** when all four are true: the PR is open, the required CI checks are green, `REPORT.md` has the pasted output, and `PLAN.md` shows the new status. The owner then tells the planner: "T-xxx is ready for review: PR NN."
+6. **After it codes**, the worker pushes the branch, opens a PR to `staging` (title and body in Google's change-description style), writes `docs/agent/reports/<task id>.md` with the **real pasted output** of every verification command, sets the task status in `PLAN.md`, adds any decision to `DECISIONS.md`, and lists out-of-scope findings as `proposed` entries. It does not merge, and it does not start the next task.
+7. **The worker is done** when all four are true: the PR is open, the required CI checks are green, the report has the pasted output, and `PLAN.md` shows the new status. The owner then tells the planner: "T-xxx is ready for review: PR NN."
 8. **The planner reviews** the diff and the actual command output, not only the summary. The verdict is one of:
    - **Accepted.** The owner merges the PR and says "NN merged".
    - **Fix task.** The planner writes a fix task (`T-xxx-fix`, `todo`). Go back to step 3 with it.
@@ -43,7 +43,7 @@ or, to start a new task:
 
 | Question | Answer |
 |---|---|
-| Is the worker done? | PR open, required checks green, `REPORT.md` filled with real output, `PLAN.md` status updated. |
+| Is the worker done? | PR open, required checks green, the report filled with real output, `PLAN.md` status updated. |
 | Is the task accepted? | Only when the planner says "Accepted". The worker's word is not enough. |
 | Can the PR be merged? | After "Accepted" and green CI. Only the owner merges. |
 | Can the next task start? | When the owner names it in the start prompt. It must be `todo`, and the tasks it depends on must be merged. |
