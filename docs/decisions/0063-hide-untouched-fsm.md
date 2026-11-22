@@ -14,17 +14,21 @@ it says (1) while the store already has two records, until the list has been ope
 
 ## Decision
 
-1. **A filter, not a new record flag.** `Library.refresh()` passes the rows to
-   `visibleEntries(entries, mode, currentFsmId)` (`web/src/lib/storage/library.ts`). In the PDA mode
-   it leaves out an entry that is (a) an FSM, (b) the library's current FSM record and (c) empty.
-   (b) is `this.current?.opened.record.id`, not `currentId`: `currentId` is the PDA's id in the PDA
-   mode and would match nothing. The FSM mode hides nothing; an empty FSM that is not the current
-   one stays listed; an empty PDA stays listed.
+1. **A filter, not a new record flag.** `Library` keeps the raw rows (`rawEntries`, after the
+   pending-delete filter) and `entries` is `$derived(visibleEntries(rawEntries, this.mode,
+   this.current?.opened.record.id))`; `visibleEntries` lives in `web/src/lib/storage/library.ts`. In
+   the PDA mode it leaves out an entry that is (a) an FSM, (b) the library's current FSM record and
+   (c) empty. (b) is `this.current?.opened.record.id`, not `currentId`: `currentId` is the PDA's id
+   in the PDA mode and would match nothing. The FSM mode hides nothing; an empty FSM that is not the
+   current one stays listed; an empty PDA stays listed. **The mode is part of the derivation**: the
+   page writes `library.mode` on every mode change, and the rows and the count follow at once, with
+   no store read and without opening the list. `refresh()` only fills the raw rows.
 2. **Emptiness comes from the parse that `listEntries` already does.** `Entry.empty` is
    `states.length === 0 && transitions.length === 0` for a readable FSM record, and false for a PDA
    record and for one that cannot be read. No second store read, no regex.
-3. **The count stays fresh.** `PdaWorkstation` calls `library.refresh()` once after its first load
-   created or opened its record. That also fixes the stale count of before this task.
+3. **The raw rows are read again after the PDA record exists.** `PdaWorkstation` calls
+   `library.refresh()` once after its first load created or opened its record; that fills `rawEntries`,
+   so the derived rows and the count see it. It also fixes the stale count of before this task.
 4. **Nothing stored changes.** The FSM record is still created as today; there is no migration.
 
 The rule lives in `library.ts` rather than only inside `refresh()` because `vitest.config.ts` runs
@@ -36,6 +40,8 @@ from the filtered rows, so the list and the count cannot disagree.
 
 - A fresh PDA visit lists one row (the PDA) and counts 1; the store still holds the empty FSM.
   Switching to the FSM mode shows the empty machine; adding one state lists it in the PDA mode too.
+- The count follows the mode without opening the list: the FSM mode counts both machines and the PDA
+  mode counts one, because the rows are derived from `mode` (T-084 F3).
 - The list's rows and the button's count are the same fact (`entries`), which is why break B3 of the
   task needed a temporary unfiltered field to reproduce at all.
 - Two existing e2e cases changed, because they asserted the row that is now hidden: T-074 F3 (it
