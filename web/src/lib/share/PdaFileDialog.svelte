@@ -5,7 +5,7 @@
 	import { id as idMessages } from '#lib/i18n/id.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
 	import type { PdaDocument } from '#lib/editor/pda-document.ts';
-	import { JFF_EXTENSION, JSON_EXTENSION, download, fileName } from './files.ts';
+	import { DOWNLOAD_TYPE, JFF_EXTENSION, JSON_EXTENSION, download, fileName } from './files.ts';
 	import { pdaJffFile, pdaJsonFile } from './pda-files.ts';
 
 	// "Unduh": the open PDA as a file. A native <dialog> (as "Bagikan"): the focus trap, Esc and the
@@ -34,14 +34,14 @@
 		}
 		fileProblem = null;
 		const name = fileName(doc.title, JFF_EXTENSION, fallbackName());
-		download(name, result.value, 'application/xml');
+		download(name, result.value, DOWNLOAD_TYPE);
 		saved = name;
 	}
 
 	function saveJson() {
 		fileProblem = null;
 		const name = fileName(doc.title, JSON_EXTENSION, fallbackName());
-		download(name, pdaJsonFile(doc), 'application/json');
+		download(name, pdaJsonFile(doc), DOWNLOAD_TYPE);
 		saved = name;
 	}
 

@@ -610,3 +610,21 @@ Format:
 - Alternatives considered: `interactive-widget=resizes-content` in the viewport meta (an app-wide change for one sheet, Chrome-only); a visual-viewport script to lift the sheet (more code than moving three buttons); a file picker `accept` list (it can hide `.xml` files on some phones); sniffing the content for every file even when the name is known (changes the existing rule for no gain).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-076, T-077, T-078); later `web/src/lib/share/`, `PdaLabelForm.svelte`, `library.svelte.ts`
+
+## 2026-11-18 — T-076 amended after the worker's pre-flight (one `fileKind`, size first, three tests change)
+
+- Decider: planner
+- Context: DeepSeek ran the pre-flight and found that the scope named a test that does not exist (a big unknown-named file) and omitted three that must change; that the precedence rule would live in three readers; that `download()` adds `;charset=utf-8`; that the F5 proof (a suggested file name) passes even with the bug; that F4 lacked the repo's boundary trio and had an "or" expectation; and that the title rule order was ambiguous.
+- Decision: one exported `fileKind(name, text)` and a private `kindOfText`; order size, read, kind in both readers; the three named tests may change; the scope gains `files.test.ts`, `open-from-file.test.ts` and `share-link.spec.ts`; the F3 XML is inline; F4 gets the boundary trio in both readers and one message per case; F5 is proved by a `URL.createObjectURL` spy and a constant test; the title strips `.jff`, else `.jff.xml`, else `.xml`, slicing the original name; `download()` is not changed.
+- Alternatives considered: strip the charset for octet-stream in `download()` (outside scope, and the essence is what matters); keep `kindOfText` exported (exported only for a test).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-076); later `open-file.ts`, `pda-files.ts`, `files.ts`, the two dialogs
+
+## 2026-11-18 — Pin the Rust toolchain (T-080)
+
+- Decider: owner (the planner recommended it)
+- Context: `rust-toolchain.toml` says `stable`, and CI installs whatever stable is current. Clippy 1.100.0 added a lint, and the `rust` job went red on PRs 217 and 218 without a change of ours (T-079 fixes the code). It is the second time an unpinned tool broke CI.
+- Decision: pin `channel` to the exact version `1.100.0`; a guard test in `tools/` fails if the channel is not `x.y.z`; a bump is one small PR, with a five-line procedure in `CONTRIBUTING.md`; CLAUDE.md section 3 names the file instead of "stable". Nothing is automated.
+- Alternatives considered: stay on `stable` and accept occasional red CI (a surprise at a bad moment, for free); a scheduled bump bot (a new workflow to maintain).
+- Reversible? yes (one line)
+- Affects: `rust-toolchain.toml`, `CONTRIBUTING.md`, `CLAUDE.md` section 3, `tools/`; later every clone runs 1.100.0

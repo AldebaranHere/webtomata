@@ -2,7 +2,14 @@
 // opening a link as a machine of its own (never over the student's), and a link that is damaged, huge or
 // too long. The link comes from outside, so these tests also try what a person could make on purpose.
 import { deflateRawSync } from 'node:zlib';
-import { expect, expectNoAxeViolations, openSandbox, test } from './fixtures.ts';
+import {
+	blobTypes,
+	expect,
+	expectNoAxeViolations,
+	openSandbox,
+	test,
+	watchBlobs
+} from './fixtures.ts';
 import type { Page } from '@playwright/test';
 import { records } from './cross/db.ts';
 import { touchTap } from './touch.ts';
@@ -439,4 +446,25 @@ test('the buttons of the files are at least 44 px, and a finger gives the file t
 	const waiting = page.waitForEvent('download');
 	await touchTap(page, dialog(page).getByRole('button', { name: 'Unduh JSON' }));
 	expect((await waiting).suggestedFilename()).toBe('Berakhiran 01.webtomata.json');
+});
+
+test('F5: the .jff and the JSON are the octet-stream type, and the pictures keep theirs', async ({
+	page
+}) => {
+	await watchBlobs(page);
+	await openSandbox(page);
+	await openShare(page);
+	for (const name of ['Unduh .jff (JFLAP)', 'Unduh JSON', 'Unduh SVG', 'Unduh PNG']) {
+		const waiting = page.waitForEvent('download');
+		await dialog(page).getByRole('button', { name }).click();
+		await waiting;
+	}
+	// The essence is octet-stream, which a browser gives no extension of its own; `download()` adds the
+	// charset to a text blob, and the PNG is a Blob (used as it is).
+	expect(await blobTypes(page)).toEqual([
+		'application/octet-stream;charset=utf-8',
+		'application/octet-stream;charset=utf-8',
+		'image/svg+xml;charset=utf-8',
+		'image/png'
+	]);
 });

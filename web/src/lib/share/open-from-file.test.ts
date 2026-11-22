@@ -12,6 +12,7 @@ import type { MachineStore } from '../storage/store.ts';
 import type { Problem } from '../storage/library.ts';
 import type { OpenFromFileContext } from './open-from-file.ts';
 import { openFromFile } from './open-from-file.ts';
+import { FILE_BYTE_LIMIT } from './open-file.ts';
 
 const engineMock = vi.hoisted(() => ({
 	importJff: vi.fn(),
@@ -233,5 +234,46 @@ describe('openFromFile: a finite automaton file (F4, F5)', () => {
 
 		expect(selectMode).not.toHaveBeenCalled();
 		expect(library.problem).toEqual({ key: 'jff.xml_invalid', params: { line: 1, column: 2 } });
+	});
+});
+
+describe('openFromFile: a refusal writes nothing (F4)', () => {
+	it('writes no record, opens nothing and says why, for each hostile file', async () => {
+		const store = createMemoryStore();
+		await createMachine(store, endsWith01());
+		const library = fakeLibrary(store);
+		const { context, selectMode, notice, requestPda } = fakeContext(library, 'fsm');
+
+		// Over the size limit with a name that does not say: refused, and never read.
+		let bigReads = 0;
+		await openFromFile(
+			{
+				name: 'foto.jpg',
+				size: FILE_BYTE_LIMIT + 1,
+				text: async () => ((bigReads += 1), '<structure/>')
+			},
+			context
+		);
+		expect(library.problem).toEqual({ key: 'import.too_big', params: { limit: FILE_BYTE_LIMIT } });
+		expect(bigReads).toBe(0);
+
+		// A binary text named like a downloaded .jff: neither kind.
+		await openFromFile({ name: 'x.jff.xml', size: 2, text: async () => '\u0000\u0000' }, context);
+		expect(library.problem).toEqual({ key: 'import.unknown_type', params: {} });
+
+		// A broken XML named like a downloaded .jff: the engine's message.
+		engineMock.importJff.mockResolvedValue({
+			ok: false,
+			error: { key: 'jff.xml_invalid', params: { line: 1, column: 1 } }
+		} satisfies EngineResult<Jff>);
+		await openFromFile({ name: 'x.jff.xml', size: 7, text: async () => '<broken' }, context);
+		expect(library.problem).toEqual({ key: 'jff.xml_invalid', params: { line: 1, column: 1 } });
+
+		// Nothing was written, opened or announced, in all three.
+		expect(await store.list()).toHaveLength(1);
+		expect(library.hidden).toBe(0);
+		expect(selectMode).not.toHaveBeenCalled();
+		expect(requestPda).not.toHaveBeenCalled();
+		expect(notice).not.toHaveBeenCalled();
 	});
 });

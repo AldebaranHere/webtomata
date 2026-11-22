@@ -320,8 +320,7 @@ pub fn determinism(pda: &Pda) -> Vec<Competition> {
 
     for i in 0..n {
         let t1 = &pda.transitions[i];
-        for j in (i + 1)..n {
-            let t2 = &pda.transitions[j];
+        for (j, t2) in pda.transitions.iter().enumerate().skip(i + 1) {
             if t1.from != t2.from {
                 break;
             }

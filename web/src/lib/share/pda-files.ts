@@ -12,7 +12,7 @@ import {
 } from '../editor/pda-document.ts';
 import type { PdaDocument } from '../editor/pda-document.ts';
 import type { EngineResult, JffState, Pda, PdaJff } from '../engine/types.ts';
-import { FILE_BYTE_LIMIT, importKind, titleOfFileName } from './open-file.ts';
+import { FILE_BYTE_LIMIT, fileKind, titleOfFileName } from './open-file.ts';
 import type { ImportFile } from './open-file.ts';
 
 /** A `.jff` is a PDA when its type is `pda`; the engine trims the type, so `<type> pda </type>` counts. */
@@ -35,13 +35,12 @@ const fail = (key: string, params: Record<string, string | number> = {}): Result
 });
 
 /**
- * Is this file a PDA? The size is checked first, so a file over the limit is not read and the FSM
- * reader answers `import.too_big` as it does today. A file that cannot be read is not a PDA file
- * (the FSM reader says so with `import.unreadable`). It never throws.
+ * Is this file a PDA? The size is checked first, so a file over the limit is not read and is not a PDA
+ * file; the FSM reader then answers `import.too_big`. The name tells the kind when it can, else the first
+ * character of the text. A file that cannot be read is not a PDA file (the FSM reader says
+ * `import.unreadable`). It never throws.
  */
 export async function isPdaFile(file: ImportFile): Promise<boolean> {
-	const kind = importKind(file.name);
-	if (kind === null) return false;
 	if (!(file.size <= FILE_BYTE_LIMIT)) return false;
 	let text: string;
 	try {
@@ -49,24 +48,26 @@ export async function isPdaFile(file: ImportFile): Promise<boolean> {
 	} catch {
 		return false;
 	}
+	const kind = fileKind(file.name, text);
+	if (kind === null) return false;
 	return (kind === 'jff' ? PDA_JFF : PDA_JSON).test(text);
 }
 
 /**
  * The PDA document of a file, with the notes of what was changed on the way (nothing for a `.jff`: the
- * names are repaired by `fromEnginePda` without a list). The failures are messages: `import.too_big`,
- * `import.unknown_type`, `import.unreadable`, the messages of the engine for a `.jff`, and the rules of
- * a PDA document. It never throws.
+ * names are repaired by `fromEnginePda` without a list). The size is checked first, for every name. The
+ * failures are messages: `import.too_big`, `import.unknown_type`, `import.unreadable`, the messages of the
+ * engine for a `.jff`, and the rules of a PDA document. It never throws.
  */
 export async function openPdaFile(
 	file: ImportFile,
 	engine: ImportPdaEngine
 ): Promise<Result<PdaDocument>> {
-	const kind = importKind(file.name);
-	if (kind === null) return fail('import.unknown_type');
 	if (!(file.size <= FILE_BYTE_LIMIT)) return fail('import.too_big', { limit: FILE_BYTE_LIMIT });
 	try {
 		const text = await file.text();
+		const kind = fileKind(file.name, text);
+		if (kind === null) return fail('import.unknown_type');
 		if (kind === 'json') return parsePdaDocumentText(text);
 		const answer = await engine.importPdaJff(text);
 		if (!answer.ok) return answer;

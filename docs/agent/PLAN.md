@@ -3149,7 +3149,7 @@ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-file
 
 ## Task T-076 — A downloaded `.jff` keeps its name on Android, and a file is told by its content
 
-**Status:** todo
+**Status:** done (2026-11-18; branch `task/T-076-file-names`, commits `207097a`…`HEAD`. AC1–AC5 hold: F1–F5 each by a test; the three existing tests that changed, and only these, are listed in `docs/agent/REPORT.md`; no route's first JS grew by more than 1 byte (the share reader is lazy, 1,734 → 1,936 raw bytes); the breaks B1–B4 (B2 twice) and three more each fail a named line, and the whole gate is green. One file beyond the amended scope's list: `web/e2e/fixtures.ts`, the shared `URL.createObjectURL` spy (+26 lines). See `docs/agent/REPORT.md` and ADR 0057.)
 **Owner:** worker (DeepSeek: the planner's pick)
 **Branch:** `task/T-076-file-names`
 
@@ -3158,32 +3158,32 @@ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-file
 **Decisions (planner, 2026-11-18; do not reopen, ask if one looks wrong):**
 
 - **The name still wins when it is known.** `importKind(name)` is unchanged (`.jff`, `.json`, `.webtomata.json`), and its tests pass unedited. When it answers `null`, the opener reads the text (the size is checked first, for every name, so a large file of any name is not read: `import.too_big`) and tells the kind by its first character after a leading BOM (`U+FEFF`) and white space: `<` is a `.jff`, `{` is JSON, anything else is `import.unknown_type` as today. The parsers still validate everything; the sniff only picks the reader. A `.txt` with the text `halo` is still refused; a `.xml`, a `.jff.xml`, a file with no extension and a `.txt` that holds a `.jff` open.
-- **One function, one place.** A pure `kindOfText(text)` and the combination `importKind(name) ?? kindOfText(text)` live in `web/src/lib/share/open-file.ts`; `openFile` (FSM) and `share/pda-files.ts` (`isPdaFile`, `openPdaFile`) both use it, so that the two readers cannot disagree. `isPdaFile` still reads the text once, after the size check.
-- **The title of the machine** is the file name without its extension. `titleOfFileName` also takes off a trailing `.jff.xml` or `.xml` (case-insensitive) after the `.jff` rule it has; `aⁿbⁿ (n ≥ 1).jff.xml` gives `aⁿbⁿ (n ≥ 1)`. The existing cases do not change.
-- **The download type.** `files.ts` exports one constant for the type of a `.jff` and a JSON download (`application/octet-stream`); `ShareDialog.svelte` and `PdaFileDialog.svelte` pass it for their `.jff` and JSON buttons. The SVG and PNG downloads keep their types. The names that `fileName` writes do not change.
+- **One function, one place (amended 2026-11-18 after the worker's pre-flight).** `web/src/lib/share/open-file.ts` exports one function `fileKind(name, text)` that answers `importKind(name) ?? kindOfText(text)`; `kindOfText` stays private. `openFile` (FSM) and `share/pda-files.ts` (`isPdaFile`, `openPdaFile`) all use `fileKind`, so the precedence rule lives in one place and F1 tests it directly. The order in both readers is **size, then read, then kind**: today both decide the kind first, so an unknown name was never size-checked; after this task a file over the limit is `import.too_big` whatever its name, and is never read. `kindOfText` looks at the first character after `/^\s*/` (JavaScript's `\s` already matches `U+FEFF`, so no separate BOM step). The doc comment of `isPdaFile` that says the FSM reader answers `import.too_big` "as it does today" is rewritten.
+- **The title of the machine (amended).** The title is the file name without its extension, and the rule is, in this order, always slicing the **original** name (never the lower-cased copy): a trailing `.jff` (as today), else a trailing `.jff.xml`, else a trailing `.xml`, each matched case-insensitively. `aⁿbⁿ (n ≥ 1).jff.xml` gives `aⁿbⁿ (n ≥ 1)`, not `aⁿbⁿ (n ≥ 1).jff`. The existing cases do not change.
+- **The download type (amended).** `files.ts` exports one constant for the type of a `.jff` and a JSON download (`application/octet-stream`); `ShareDialog.svelte` and `PdaFileDialog.svelte` pass it for their `.jff` and JSON buttons. The SVG and PNG downloads keep their types. The names that `fileName` writes do not change. `download()` is **not** changed: it appends `;charset=utf-8` to string blobs, so the blob's type is `application/octet-stream;charset=utf-8`; its MIME essence is what Chrome looks at, and every assertion on a blob type expects that suffix.
 - **Honest limit:** nothing in Playwright reproduces Chrome on Android renaming a download. The tests prove the opener and the constant; the planner asks the owner to check on the phone, after the merge, that a new download is saved as `….jff` and opens.
 
-**Scope (files):** `web/src/lib/share/open-file.ts` (`kindOfText`, the order of the size check and the read, `titleOfFileName`), `web/src/lib/share/pda-files.ts`, `web/src/lib/share/files.ts` (the constant), `ShareDialog.svelte` and `PdaFileDialog.svelte` (the constant), tests (`open-file.test.ts` and `pda-files.test.ts` get new cases; new e2e cases in `web/e2e/pda-files.spec.ts` and `web/e2e/open-file.spec.ts`), `docs/decisions/0057-file-kind-by-content.md` (short), `docs/agent/PLAN.md` (status). **Existing tests that may change, and only these:** an existing `openFile` unit or e2e case that asserts `import.unknown_type` for a file that is over the size limit and whose name is neither `.jff` nor `.json` (it is now `import.too_big`); list each one you edit in the report. Everything else passes unedited.
+**Scope (files):** `web/src/lib/share/open-file.ts` (`fileKind`, the order of the size check and the read, `titleOfFileName`), `web/src/lib/share/pda-files.ts`, `web/src/lib/share/files.ts` (the constant), `ShareDialog.svelte` and `PdaFileDialog.svelte` (the constant), tests: `open-file.test.ts`, `pda-files.test.ts`, `files.test.ts` (the constant), `open-from-file.test.ts` (no record written on a refusal) and e2e `web/e2e/pda-files.spec.ts`, `web/e2e/open-file.spec.ts`, `web/e2e/share-link.spec.ts` (the FSM dialog's blob type), `docs/decisions/0057-file-kind-by-content.md` (short), `docs/agent/PLAN.md` (status). **Existing tests that may change, and only these three (the worker's pre-flight showed that no test asserts `unknown_type` for a big unknown-named file, so that clause is dropped):** `open-file.test.ts` the case `file('a.txt', '{}')` (now JSON, so it answers `document.invalid_file`); `pda-files.test.ts` the `isPdaFile` cases for `a.txt` and `a` with `{"kind":"dpda"}` (now `true`) and the `openPdaFile(file('a.txt', pdaJffText))` case (now reaches the engine). Say in the report which line you changed in each and why. Everything else passes unedited, including the two e2e `catatan.txt`/`halo` cases.
 
 **Non-goals:** a share link; drag and drop; a new file type; changing the names `fileName` writes; the viewport or any layout; the engine; opening several files; the picker's `accept` attribute (an `accept` list would hide `.xml` files on some phones: leave it as it is).
 
 **Fixtures (the oracle; derive by hand and write the derivation in `REPORT.md`):**
 
-- F1 The kind of a file by name and text: `a.jff` and `a.json` and `a.webtomata.json` as today; `a.jff.xml` with text starting `<?xml` is a `.jff`; `a.xml` and a file named `a` with that text, the same; `a.txt` whose text starts with `{` is JSON; `a.txt` with `halo` is `null` (`import.unknown_type`); a text that starts with a BOM and then `{` is JSON; an empty text is `null`.
-- F2 The title: `aⁿbⁿ (n ≥ 1).jff.xml` gives `aⁿbⁿ (n ≥ 1)`; `x.XML` gives `x`; `Berakhiran 01.jff` and `x.JFF` as the existing tests say; `.jff.xml` alone gives an empty title.
-- F3 Both readers: the PDA `.jff` of `aⁿbⁿ` named `anbn.jff.xml`, chosen in "Mesin saya" in the FSM mode and in the PDA mode, opens as a new PDA in the PDA mode (as T-075 F4); an FSM `.jff` named `even-a.jff.xml` opens as an FSM machine in the FSM mode; a PDA JSON named `anbn.txt` opens as a PDA.
-- F4 Hostile: a file of 1 MB + 1 byte of any name (`foto.jpg`, `x.jff.xml`) answers `import.too_big` and its `text()` is never called (a spy); binary text named `x.jff.xml` gives `import.unknown_type` or the engine's `jff.*` message and writes no record; the count of records and the open machine are as before each refusal.
-- F5 The download type: the constant is `application/octet-stream`, and the two dialogs use it for `.jff` and JSON (a unit test on the constant and a test that reads the two components' calls, or a Playwright `download` event whose `suggestedFilename()` is the written name).
+- F1 `fileKind(name, text)`: `a.jff` and `a.json` and `a.webtomata.json` as today (the name wins, whatever the text); `a.jff.xml` with text starting `<?xml` is a `.jff`; `a.xml` and a file named `a` with that text, the same; `a.txt` whose text starts with `{` is JSON; `a.txt` with `halo` is `null` (`import.unknown_type`); a text that starts with a BOM then `{` is JSON; white space then `<` is a `.jff`; an empty text is `null`.
+- F2 The title: `aⁿbⁿ (n ≥ 1).jff.xml` gives `aⁿbⁿ (n ≥ 1)`; `x.XML` gives `x`; `a.jff.XML` gives `a`; `Berakhiran 01.jff` and `x.JFF` as the existing tests say; `.jff.xml` alone gives an empty title.
+- F3 Both readers (e2e): the PDA `.jff` of `aⁿbⁿ` named `anbn.jff.xml` (**the XML is written inline in the spec file**, as `twoCharRead` is in `pda-files.spec.ts`; no new fixture file), chosen in "Mesin saya" in the FSM mode and in the PDA mode, opens as a new PDA in the PDA mode (as T-075 F4); an FSM `.jff` named `even-a.jff.xml` opens as an FSM machine in the FSM mode; a PDA JSON named `anbn.txt` opens as a PDA.
+- F4 Hostile (**one case, one asserted message each; no "or"**): in **both** readers (`openFile` and `isPdaFile`/`openPdaFile`) the size trio for an **unknown name** (`foto.jpg`): 1 MB − 1 (read and sniffed), exactly 1 MB (`FILE_BYTE_LIMIT`, read and sniffed), 1 MB + 1 (`import.too_big`, and the `text()` spy was never called); a 1 MB + 1 file named `x.jff.xml` also `import.too_big`; text starting with `\x00` named `x.jff.xml` gives `import.unknown_type`; text `<broken` named `x.jff.xml` gives the engine's `jff.xml_invalid` (assert the exact key the engine returns); each refusal writes no record, and the count of records and the open machine are as before. Note in the report that a non-machine file whose first character is `<` now gets the engine's `jff.*` message instead of "neither" (it is a refusal either way).
+- F5 The download type: (a) a unit test in `files.test.ts` that the constant is `application/octet-stream`; (b) a Playwright test in each dialog's spec (`pda-files.spec.ts`, `share-link.spec.ts`) that installs a spy with `page.addInitScript` on `URL.createObjectURL`, records `blob.type` for each download, and expects `application/octet-stream;charset=utf-8` for the `.jff` and the JSON of **both** dialogs (and the SVG/PNG types unchanged). A `suggestedFilename()` check alone proves nothing (it passes with `application/xml`), so it is not the proof.
 
 **Acceptance criteria:**
 
 - AC1 F1 to F5 hold, each by a test (unit for F1, F2, F4, F5; Playwright for F3).
 - AC2 **Nothing else changes:** the existing open-file, files and PDA file tests pass without any edit but the ones named in the scope.
 - AC3 **Size:** no route's first JS grows by more than 0.1 KB (102 bytes), measured in bytes as in T-075; the files modules are lazy, so no growth is expected.
-- AC4 **Break each guard once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) `kindOfText` always answers `null`; (B2) the size check moves after the read; (B3) `titleOfFileName` stops taking off `.xml`; (B4) the constant goes back to `application/xml`. Restore each file; `git diff --stat` at the end shows only the scope.
+- AC4 **Break each guard once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) `kindOfText` always answers `null`; (B2) the size check moves after the read in `openFile` (and again, separately, in `isPdaFile`); (B3) `titleOfFileName` stops taking off `.xml`; (B4) the constant goes back to `application/xml` (the blob-type test of each dialog fails). Restore each file; `git diff --stat` at the end shows only the scope.
 - AC5 `pnpm format:check && pnpm check && pnpm lint && pnpm check:strings && pnpm check:tokens`, Vitest, `pnpm build && pnpm size`, and Playwright for `open-file`, `pda-files`, `cross/open-file` on desktop and phone pass.
 
-**Pre-flight (with real commands):** (1) show that the three call sites that use `importKind` today are the only ones; (2) show the order of the size check and the read in `openFile` and in `isPdaFile`, and what changes for an unknown name; (3) say whether a `.jff.xml` that the owner already has opens after the change (run it); (4) the sizes in bytes before. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
+**Pre-flight: done by the worker on 2026-11-18 and folded into this amendment** (three `importKind` call sites only: `open-file.ts:70`, `pda-files.ts:43`, `pda-files.ts:65`; today both readers decide the kind before the size check, so a 1 MB + 1 `a.txt` answers `import.unknown_type` with zero reads; the owner's file under its name is refused today as the owner saw; baseline sizes in bytes: `index` 83,801, `panduan` 82,949, `panduan/berakhiran-x` 89,329, `sandbox` 124,790, `soal` 84,444, the three `soal/*.html` 124,149 each, `tentang` 82,247). **Left for you:** the sizes again after the change, for AC3. Residual risk to state in the report and in the phone re-check: the picker's `accept=".jff,.json,application/json"` does not list `.xml`, so some phones may not offer a saved `….jff.xml`; the owner's Chrome did. Anything else in this spec that your reading shows to be wrong: stop and tell the planner.
 
 **Depends on:** T-075 (merged). Independent of T-077 and T-078 (different files).
 
@@ -3271,6 +3271,61 @@ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-file
 **Pre-flight (with real commands):** (1) reproduce fault 1 on the built site (a count by `type` before and after); (2) reproduce fault 2 with the real delete and a six-second wait, and say what the FSM mode shows; (3) run fault 3 and say if it is real; (4) the hook the workstation has for a new PDA (`newPdaMachine`) and when it is registered (is it set when the student has never opened the PDA mode in this visit? the list is reachable from the FSM mode too); (5) the sizes in bytes before. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
 
 **Depends on:** T-074 (merged). Independent of T-076 and T-077 (different files).
+
+---
+
+## Task T-079 — The five `clippy::needless_range_loop` lints of clippy 1.100.0
+
+**Status:** done (2026-11-18; branch `task/T-079-clippy-range-loops`. Found by the red `rust` job of PR 217: two lints in `engine-core`, and three more in a test that the same job reached once the lib was fixed. Five loops rewritten mechanically, with no behaviour, order or API change and no `#[allow]`; native and wasm tests, `fmt` and `clippy` pass on 1.99.1 and 1.100.0. See `docs/agent/REPORT.md`.)
+
+**Scope:** `crates/engine-core/src/pda.rs` (`determinism`), `crates/engine-core/src/pda_rnf.rs` (`pda_to_rnf`, the multi-pop split), `crates/engine-core/tests/pda_cfg.rs` (three loops of one test, every assertion and comment untouched), `docs/agent/PLAN.md`, `docs/agent/REPORT.md`. The toolchain is not pinned or edited: `rust-toolchain.toml` still says `channel = "stable"`.
+
+**Depends on:** nothing. Independent of T-076, T-077 and T-078.
+
+---
+
+## Task T-080 — Pin the Rust toolchain to an exact version
+
+**Status:** todo
+**Owner:** worker (DeepSeek: the planner's pick; it found the cause in T-079)
+**Branch:** `task/T-080-pin-rust`
+
+**Goal:** `rust-toolchain.toml` says `channel = "stable"`, and CI's step `rustup show active-toolchain || rustup toolchain install` follows it, so every new stable release changes CI without any change of ours. It turned the `rust` job red on 2026-11-18 (clippy 1.100.0 added a lint that 1.99.1 does not have; T-079 fixes the code). The owner decided on 2026-11-18 to pin. This task sets `channel` to the exact version `1.100.0` (the version T-079 is clean under), keeps `targets` and `components`, and adds a small guard so that nobody puts `stable` back. A bump becomes a deliberate one-line PR.
+
+**Decisions (planner and owner, 2026-11-18; do not reopen, ask if one looks wrong):**
+
+- **Exact version `1.100.0`**, not a date, not `1.100`. The same file is used by every clone (the owner's WSL, both workers) and by CI.
+- **The guard:** a Node test in `tools/` (next to `check-workflows.mjs` and its test style; `node --test "tools/*.test.mjs"` already runs in `pnpm test:web`) that reads `rust-toolchain.toml` and fails unless `channel` matches `^\d+\.\d+\.\d+$`. About 15 lines. It names the file and the bump procedure in its failure message.
+- **The bump procedure** is five lines in `CONTRIBUTING.md` (where the requirement line says "Rust (stable…)"): change the version in `rust-toolchain.toml`; run `cargo clippy --all-targets -- -D warnings`, `cargo test`, `pnpm build:wasm`; fix what the new lints say in the same PR; one PR. Nothing is scheduled or automated (no new workflow, no bot: a free-tier rule and "code is a cost").
+- **CLAUDE.md section 3:** the stack row `Rust (stable), Cargo workspace, no unsafe` becomes `Rust (exact version in rust-toolchain.toml), Cargo workspace, no unsafe` (the planner makes this edit in the spec PR, with the owner's approval of 2026-11-18; the worker does not touch CLAUDE.md).
+- **Not in scope:** the nightly that `cargo-fuzz` uses (do not change it; say in the report what `fuzz/` and the fuzz workflow use); wasm-pack, wasm-bindgen and binaryen versions; MSRV declarations; any change to code.
+
+**Scope (files):** `rust-toolchain.toml`, a new `tools/check-rust-toolchain.test.mjs` (or the name that matches the folder's convention; say which), `CONTRIBUTING.md` (the requirement line and the five-line procedure), `.github/workflows/ci.yml` **only if the pre-flight shows the install step does not honour the pin** (then the smallest change), `docs/decisions/0060-pinned-rust-toolchain.md` (short), `docs/agent/PLAN.md` (status).
+
+**Fixtures (the oracle):**
+
+- F1 **The file** holds `channel = "1.100.0"` with the same `targets` and `components` as before.
+- F2 **CI uses it:** the `rust` job's log shows `rustc 1.100.0` (or the `rustup` line that installs 1.100.0 and `overridden by rust-toolchain.toml`), and the job is green. Paste the lines.
+- F3 **The guard** passes on the final file; with `channel = "stable"`, with `"1.100"` and with `"nightly"` it fails (one test each, no "or").
+- F4 **Local clones work:** from a clone whose default is a different version, `cargo --version` inside the repo says 1.100.0 (rustup installs the pinned toolchain on first use, or says how; paste what happens, and say in the report what the owner and the workers must run once: probably nothing, or `rustup show`).
+
+**Acceptance criteria:**
+
+- AC1 F1 to F4 hold, each by a pasted command or a test.
+- AC2 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` pass **on the pinned version**; `pnpm test:web` (it runs the tools tests), `pnpm check:*`, and the wasm build pass; the CI `rust` job is green.
+- AC3 **Break the guard once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) `channel = "stable"`; (B2) `channel = "1.100"`. Restore; `git diff --stat` shows only the scope.
+- AC4 No Rust source changes; no change to any `Cargo.toml` or `Cargo.lock`.
+
+**Verification:**
+
+```
+cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+node --test "tools/*.test.mjs"
+```
+
+**Pre-flight (with real commands):** (1) list every place that names a Rust version or a channel (`rg -n "stable|toolchain|rustup|1\.9|1\.100" rust-toolchain.toml .github fuzz tools CONTRIBUTING.md README.md package.json`) and say which of them the pin affects; (2) read the CI step that installs the toolchain and say whether it honours a pinned `channel` with the `targets` and `components` of the file (a runner that has no 1.100.0 must install it with the wasm target and clippy); (3) say what `fuzz/` uses. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
+
+**Depends on:** T-079 (merged): the code must be clean under 1.100.0 first.
 
 ---
 
