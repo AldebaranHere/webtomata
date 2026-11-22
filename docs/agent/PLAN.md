@@ -3286,7 +3286,7 @@ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-file
 
 ## Task T-080 — Pin the Rust toolchain to an exact version
 
-**Status:** todo
+**Status:** in-progress (2026-11-22; branch `task/T-080-pin-rust`)
 **Owner:** worker (DeepSeek: the planner's pick; it found the cause in T-079)
 **Branch:** `task/T-080-pin-rust`
 
