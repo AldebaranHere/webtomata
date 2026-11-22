@@ -638,3 +638,12 @@ Format:
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-077), `design/screens/pda-editor.md` section 8; later `PdaLabelForm.svelte`, `PdaEditor.svelte`
 
+## 2026-11-23 — T-005 amended after the worker's pre-flight (the "two-week rule" was never a setting)
+
+- Decider: planner (the owner approves with the merge); the choice of a real two-week policy is the owner's and is left open
+- Context: DeepSeek found that `pnpm-workspace.yaml` never set `minimumReleaseAge`. The only enforced check is pnpm 12's built-in default of 1440 minutes (one day), non-strict. PR 103's `minimumReleaseAgeExclude` skipped that one-day check for two packages, and T-005 called it "the two-week rule". Removing the exclusions restores the one-day check, which both packages pass (24.7 days old).
+- Decision: T-005 stays as a small removal, its text is corrected, and the acceptance is made checkable (the grep, the exact error for a too-young package, a warning that a plain `pnpm install` re-adds the block). A repo-wide `minimumReleaseAge: 20160` is not added here: the lockfile would have to be checked against it first, and it is the owner's decision whether two weeks is wanted.
+- Alternatives considered: add `minimumReleaseAge: 20160` in the same task (a policy change and a lockfile audit inside a chore); leave the exclusions (they do nothing useful now).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-005); later `pnpm-workspace.yaml`
+
