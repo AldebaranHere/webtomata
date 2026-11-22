@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+	EPSILON_WORDS,
 	LIMITS,
 	checkDocument,
 	checkName,
+	checkNewSymbol,
 	checkSymbol,
 	createDocument,
 	documentFromJff,
@@ -14,6 +16,10 @@ import {
 	toMachine
 } from './document.ts';
 import type { MachineDocument } from './document.ts';
+import { parsePdaDocumentText } from './pda-document.ts';
+import { decodeLink, encodePlainLink } from '../share/link.ts';
+import { readStoredDocument } from '../storage/migrate.ts';
+import { readStoredPda } from '../storage/pda-work.ts';
 import type { Jff, Machine } from '../engine/types.ts';
 
 /** A complete DFSM for "an even number of a's", with names and places, written by hand. */
@@ -93,6 +99,76 @@ describe('the rules for symbols (the same as the engine)', () => {
 		expect(long.ok ? undefined : long.error.params.reason).toBe('too_long');
 		const epsilon = checkSymbol('ε');
 		expect(epsilon.ok ? undefined : epsilon.error.params.reason).toBe('epsilon');
+	});
+
+	it('checkNewSymbol refuses ε words with document.reserved_symbol while checkSymbol keeps accepting eps', () => {
+		expect(EPSILON_WORDS).toContain('eps');
+		expect(EPSILON_WORDS).toContain('ε');
+		expect(checkSymbol('eps')).toEqual({ ok: true });
+		expect(checkNewSymbol('eps')).toEqual({
+			ok: false,
+			error: { key: 'document.reserved_symbol', params: { symbol: 'eps' } }
+		});
+		expect(checkNewSymbol('ε')).toEqual({
+			ok: false,
+			error: { key: 'document.invalid_symbol', params: { symbol: 'ε', reason: 'epsilon' } }
+		});
+		for (const ok of ['a', 'eps2', 'EPS', '0']) {
+			expect(checkNewSymbol(ok), ok).toEqual({ ok: true });
+		}
+	});
+
+	it('legacy stored records, JSON files and share links carrying symbol eps still load', async () => {
+		const legacyFsm: MachineDocument = {
+			schemaVersion: 1,
+			title: 'Legacy eps FSM',
+			kind: 'dfsm',
+			alphabet: ['eps'],
+			states: [
+				{ id: 0, name: 'q0', x: 100, y: 100 },
+				{ id: 1, name: 'q1', x: 240, y: 100 }
+			],
+			start: 0,
+			accepting: [1],
+			transitions: [{ from: 0, on: 'eps', to: 1 }],
+			nextStateId: 2
+		};
+		const fsmJson = serializeDocument(legacyFsm);
+
+		const storedFsm = readStoredDocument(fsmJson);
+		expect(storedFsm).toEqual({ ok: true, doc: legacyFsm });
+
+		const parsedFsm = parseDocumentText(fsmJson);
+		expect(parsedFsm).toEqual({ ok: true, value: legacyFsm });
+
+		const decodedLink = await decodeLink(encodePlainLink(legacyFsm));
+		expect(decodedLink).toEqual({ ok: true, value: legacyFsm });
+
+		const legacyPdaJson = JSON.stringify({
+			schemaVersion: 1,
+			title: 'Legacy eps PDA',
+			kind: 'ndpda',
+			inputAlphabet: ['eps'],
+			stackAlphabet: ['eps'],
+			states: [
+				{ id: 0, name: 'q0', x: 100, y: 100 },
+				{ id: 1, name: 'q1', x: 240, y: 100 }
+			],
+			start: 0,
+			accepting: [1],
+			transitions: [{ from: 0, read: 'eps', pop: ['eps'], push: ['eps'], to: 1 }],
+			nextStateId: 2
+		});
+
+		const storedPda = readStoredPda(legacyPdaJson);
+		expect(storedPda.ok).toBe(true);
+		expect(storedPda.ok ? storedPda.doc.inputAlphabet : []).toEqual(['eps']);
+		expect(storedPda.ok ? storedPda.doc.stackAlphabet : []).toEqual(['eps']);
+
+		const parsedPda = parsePdaDocumentText(legacyPdaJson);
+		expect(parsedPda.ok).toBe(true);
+		expect(parsedPda.ok ? parsedPda.value.inputAlphabet : []).toEqual(['eps']);
+		expect(parsedPda.ok ? parsedPda.value.stackAlphabet : []).toEqual(['eps']);
 	});
 });
 

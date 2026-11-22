@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { LIMITS } from './document.ts';
-import { MAX_PDA_STRING, createPdaDocument, pdaDocumentsEqual } from './pda-document.ts';
+import {
+	MAX_PDA_STRING,
+	createPdaDocument,
+	parsePdaDocument,
+	pdaDocumentsEqual
+} from './pda-document.ts';
 import type { PdaDocument } from './pda-document.ts';
 import { applyPdaCommand } from './pda-commands.ts';
 import type { PdaCommand } from './pda-commands.ts';
@@ -135,6 +140,49 @@ describe('PDA alphabets and cascade removal', () => {
 			key: 'document.limit_exceeded',
 			params: { what: 'symbols', limit: LIMITS.symbols }
 		});
+	});
+
+	it('addInputSymbol and addStackSymbol refuse eps with document.reserved_symbol while keeping addTransition working for legacy eps', () => {
+		const doc = createPdaDocument();
+		expect(applyPdaCommand(doc, { type: 'addInputSymbol', symbol: 'eps' })).toEqual({
+			ok: false,
+			error: { key: 'document.reserved_symbol', params: { symbol: 'eps' } }
+		});
+		expect(applyPdaCommand(doc, { type: 'addStackSymbol', symbol: 'eps' })).toEqual({
+			ok: false,
+			error: { key: 'document.reserved_symbol', params: { symbol: 'eps' } }
+		});
+		expect(refused(doc, { type: 'addInputSymbol', symbol: 'ε' })?.key).toBe(
+			'document.invalid_symbol'
+		);
+		expect(refused(doc, { type: 'addStackSymbol', symbol: 'ε' })?.key).toBe(
+			'document.invalid_symbol'
+		);
+		expect(applyPdaCommand(doc, { type: 'addInputSymbol', symbol: 'a' }).ok).toBe(true);
+		expect(applyPdaCommand(doc, { type: 'addStackSymbol', symbol: 'A' }).ok).toBe(true);
+
+		const legacy = parsePdaDocument({
+			schemaVersion: 1,
+			title: '',
+			kind: 'ndpda',
+			inputAlphabet: ['eps'],
+			stackAlphabet: ['eps'],
+			states: [{ id: 0, name: 'q0', x: 100, y: 100 }],
+			start: 0,
+			accepting: [],
+			transitions: [],
+			nextStateId: 1
+		});
+		expect(legacy.ok).toBe(true);
+		const added = applyPdaCommand(legacy.ok ? legacy.value : doc, {
+			type: 'addTransition',
+			from: 0,
+			read: 'eps',
+			pop: ['eps'],
+			push: ['eps'],
+			to: 0
+		});
+		expect(added.ok).toBe(true);
 	});
 
 	it('removeInputSymbol removes transitions that read it and leaves ε transitions and stackAlphabet intact', () => {

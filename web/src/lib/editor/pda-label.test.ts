@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ComponentProps } from 'svelte';
 import { createPdaEditor } from './interaction/pda-editor.ts';
+import { parsePdaDocument } from './pda-document.ts';
 import { pdaDocumentFrom, wwrSample } from './pda-samples.ts';
 import type { PdaCommand } from './pda-commands.ts';
 import type PdaLabelForm from './PdaLabelForm.svelte';
@@ -208,16 +209,25 @@ describe('T-054 PDA label logic', () => {
 			expect(parseRows(docMultiComma, rows3)).toEqual([{ read: 'a', pop: ['a,b'], push: [] }]);
 			expect(rowCommands(docMultiComma, 0, 1, rows3)).toEqual([]);
 
-			// Probe 4: stack ["A", "eps"] with pop ["eps"]
-			const docEps = pdaDocumentFrom({
+			// Probe 4: legacy PDA with stack ["A", "eps"] and pop ["eps"] (loaded via parsePdaDocument; T-065)
+			const parsedEps = parsePdaDocument({
+				schemaVersion: 1,
+				title: '',
+				kind: 'ndpda',
 				inputAlphabet: ['a'],
 				stackAlphabet: ['A', 'eps'],
 				states: [
-					[0, 0, 'q0'],
-					[100, 0, 'q1']
+					{ id: 0, name: 'q0', x: 0, y: 0 },
+					{ id: 1, name: 'q1', x: 100, y: 0 }
 				],
-				transitions: [[0, 'a', ['eps'], [], 1]]
+				start: null,
+				accepting: [],
+				transitions: [{ from: 0, read: 'a', pop: ['eps'], push: [], to: 1 }],
+				nextStateId: 2
 			});
+			expect(parsedEps.ok).toBe(true);
+			if (!parsedEps.ok) throw new Error(parsedEps.error.key);
+			const docEps = parsedEps.value;
 			const rows4 = rowsOf(docEps, 0, 1);
 			expect(rows4).toEqual([{ read: 'a', pop: 'eps', push: 'ε' }]);
 			expect(parseRows(docEps, rows4)).toEqual([{ read: 'a', pop: ['eps'], push: [] }]);

@@ -85,3 +85,36 @@ test('the table is the same machine on a laptop and on a phone: the first row is
 			.filter({ has: page.getByRole('rowheader', { name: 'q2' }) })
 	).toHaveAttribute('aria-selected', 'true');
 });
+
+test('the table shows localized refusals for duplicate symbols and the eps word in id and en', async ({
+	page
+}) => {
+	await openTable(page);
+	const field = panel(page).getByRole('textbox', { name: 'Simbol baru' });
+
+	await field.fill('0');
+	await field.press('Enter');
+	await expect(panel(page).getByText('Simbol 0 sudah ada.')).toBeVisible();
+	await expect(panel(page).getByText('document.duplicate_symbol')).toHaveCount(0);
+
+	await field.fill('eps');
+	await field.press('Enter');
+	await expect(
+		panel(page).getByText('eps berarti ε, jadi tidak bisa dipakai sebagai nama simbol.')
+	).toBeVisible();
+
+	await page.evaluate(() => localStorage.setItem('webtomata.lang', 'en'));
+	await page.reload();
+	await page.locator('.editor[data-ready]').waitFor();
+	await panel(page).getByRole('tab', { name: 'Table' }).click();
+	const fieldEn = panel(page).getByRole('textbox', { name: 'New symbol' });
+
+	await fieldEn.fill('0');
+	await fieldEn.press('Enter');
+	await expect(panel(page).getByText('Symbol 0 already exists.')).toBeVisible();
+	await expect(panel(page).getByText('document.duplicate_symbol')).toHaveCount(0);
+
+	await fieldEn.fill('eps');
+	await fieldEn.press('Enter');
+	await expect(panel(page).getByText('eps means ε, so it cannot be a symbol name.')).toBeVisible();
+});

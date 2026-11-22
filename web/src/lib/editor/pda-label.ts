@@ -5,6 +5,7 @@ import type { MessageKey } from '#lib/i18n/id.ts';
 import { formatStackSeq, stackSeparator } from './diagram/pda-diagram.ts';
 import type { Refusal } from './interaction/editor.ts';
 import type { MenuAction } from './interaction/menu.ts';
+import { EPSILON_WORDS } from './document.ts';
 import type { PdaCommand } from './pda-commands.ts';
 import type { PdaDocument } from './pda-document.ts';
 
@@ -23,12 +24,6 @@ export interface ParsedTransition {
 export const pdaMenuLabels: Partial<Record<MenuAction, MessageKey>> = {
 	edit: 'pda_editor.menu_edit'
 };
-
-/**
- * The words that mean ε in a field of the label form, and so cannot be the name of a symbol
- * either. The table's Alfabet field refuses them before it sends anything (T-061).
- */
-export const EPSILON_WORDS: readonly string[] = ['eps', 'ε'];
 
 function sameList(a: readonly string[], b: readonly string[]): boolean {
 	if (a.length !== b.length) return false;
