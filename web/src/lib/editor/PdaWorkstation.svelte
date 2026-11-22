@@ -227,6 +227,9 @@
 			machineStore = store;
 			opened = result;
 			library.pdaCurrentId = result.record.id;
+			// The record above may have just been created, after `library.start` read the list once; read it again
+			// so that the button of "Mesin saya" counts what the list will show (T-084).
+			void library.refresh();
 			onskipped?.(result.skipped);
 			autosave = createAutosave({
 				store,

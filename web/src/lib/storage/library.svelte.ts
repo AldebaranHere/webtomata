@@ -9,7 +9,13 @@ import { createAutosave } from './autosave.ts';
 import type { Autosave } from './autosave.ts';
 import { createMachine, openLatest, placeExample } from './machines.ts';
 import type { Opened, Placeable, Sample, Skipped } from './machines.ts';
-import { createPendingDeletes, duplicateMachine, listEntries, renameStored } from './library.ts';
+import {
+	createPendingDeletes,
+	duplicateMachine,
+	listEntries,
+	renameStored,
+	visibleEntries
+} from './library.ts';
 import type { Entry, PendingDeletes, Problem } from './library.ts';
 import { getLocale } from '#lib/i18n/index.svelte.ts';
 import { createMemoryStore } from './memory.ts';
@@ -123,7 +129,9 @@ class Library {
 	async refresh(): Promise<void> {
 		if (!this.store) return;
 		const all = await listEntries(this.store);
-		this.entries = all.filter((entry) => !this.pending?.isPending(entry.id));
+		const shown = all.filter((entry) => !this.pending?.isPending(entry.id));
+		// The FSM record that the page made for itself is not a machine of the student (T-084).
+		this.entries = visibleEntries(shown, this.mode, this.current?.opened.record.id);
 	}
 
 	private async afterPendingChange(): Promise<void> {
