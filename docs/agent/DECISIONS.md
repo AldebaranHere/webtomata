@@ -628,3 +628,13 @@ Format:
 - Alternatives considered: stay on `stable` and accept occasional red CI (a surprise at a bad moment, for free); a scheduled bump bot (a new workflow to maintain).
 - Reversible? yes (one line)
 - Affects: `rust-toolchain.toml`, `CONTRIBUTING.md`, `CLAUDE.md` section 3, `tools/`; later every clone runs 1.100.0
+
+## 2026-11-22 — T-077 amended after the worker's pre-flight (buttons first, a short rows list, `done` on every input)
+
+- Decider: planner (the owner approves with the merge)
+- Context: DeepSeek measured the label sheet on the built site. With the width fixed and the buttons moved up, two rows still put the buttons 11.5 px past the owner's 190 px line, and three rows 63 px past; a visibility test cannot fail (the buttons are on screen without a keyboard); and Enter commits in all three fields today, so the planned `enterkeyhint="next"` on Baca and Pop would be a lie (the Next key of Android sends Enter).
+- Decision: the sheet's rows list is capped at 72 px (one row and a peek of the next), which keeps the buttons within about 178 px at any number of rows; the proof is a geometric one (distance from the top of the sheet), not visibility; all three inputs get `enterkeyhint="done"` and Enter keeps committing; a refusal may push the buttons past the line (accepted); the design sheet is amended.
+- Alternatives considered: Enter moves to the next field in Baca and Pop (costs the laptop's fast `a`, Enter; changes a behaviour that the design sheet and `docs/ux` promise); the buttons in the sheet's header (a bigger redesign, for the owner to approve first); a visual-viewport script (rejected on 2026-11-18).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-077), `design/screens/pda-editor.md` section 8; later `PdaLabelForm.svelte`, `PdaEditor.svelte`
+
