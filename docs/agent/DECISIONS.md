@@ -15,6 +15,17 @@ Format:
 
 ---
 
+## 2026-11-23 — Refuse ε words on symbol add only, unify EPSILON_WORDS, and move duplicate_symbol to shared i18n (T-065)
+
+- Decider: planner / owner (rulings on 2026-11-23)
+- Context: `checkSymbol` allowed `eps` as a symbol name (even though `eps` means ε in transition labels), `EPSILON_WORDS` was duplicated in `pda-label.ts` and `interaction/label.ts`, and `document.duplicate_symbol` lived only in lazy `pda-messages.ts` so the FSM table showed the raw key. Moving `document.duplicate_symbol` + adding `document.reserved_symbol` in both languages plus moving `EPSILON_WORDS`/`checkNewSymbol` to `document.ts` added +111 B to +124 B gzip per route, exceeding the initial +102 B AC3 cap.
+- Decision: Keep `checkSymbol` unchanged (preserving all readers of legacy stored records, JSON files, share links, PDA `addTransition`, and WASM engine parity); add `checkNewSymbol` in `document.ts` called only by `addSymbol`, `addInputSymbol`, and `addStackSymbol`; move `EPSILON_WORDS` to `document.ts` and import it in `pda-label.ts` and `interaction/label.ts`; remove the ε-word branch from `symbolNameRefusal` in `pda-table-edit.ts` and shorten `pda_editor.symbol_reserved`; move `document.duplicate_symbol` into `id.ts`/`en.ts` alongside ASCII-only `document.reserved_symbol`; raise T-065 AC3 cap to +130 B per route (~120 B inherent for two shared keys in two languages and the moved list).
+- Alternatives considered: Refusing `eps` inside `checkSymbol` (rejected: breaks legacy stored machines, share links, JSON files, and `document.wasm.test.ts` engine parity); shortening the shared messages into unclear text to fit +102 B (rejected by owner/planner).
+- Reversible? yes
+- Affects: `docs/decisions/0062-symbol-names-refuse-epsilon-words.md`, `web/src/lib/editor/document.ts`, `commands.ts`, `pda-commands.ts`, `pda-label.ts`, `interaction/label.ts`, `pda-table-edit.ts`, `web/src/lib/i18n/id.ts`, `en.ts`, `pda-messages.ts`.
+
+---
+
 ## 2026-11-10 — FSM and PDA machines in one "Mesin saya" list with shared store and openStore decoupling (T-074)
 
 - Decider: worker (approved by owner)
@@ -673,4 +684,3 @@ Format:
 - Alternatives considered: a `minimumReleaseAge` of two weeks (the owner's separate decision); importing the ε list from `pda-label.ts` into the document (pulls PDA code into the first load); refusing `eps` in `checkSymbol` (would reject old files).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-065, T-082, T-038 family, P-005); later `pnpm-workspace.yaml`, `web/package.json`, the editor documents and dictionaries
-

@@ -1,149 +1,185 @@
-# T-081 — One editor bar on a phone for the FSM and the PDA mode
+# T-065 — Symbol names: refuse the ε word in the document, and the missing text of `document.duplicate_symbol`
 
-Branch `task/T-081-editor-bar-phone`, rebased onto `origin/staging` at `5925484` (PR 229, amended spec).
+Branch `task/T-065-symbol-names`, cut from `origin/staging` at `1b7fc81` (PR 234, amended spec).
+Commits: `59cd0f9` (`in-progress`), `7d80bf8` (implementation & tests), `HEAD` (ADR 0062, `DECISIONS.md`, `REPORT.md`, `PLAN.md` `done`).
 Status: `done`. **Not pushed:** awaiting owner review.
 
 ## 1. What changed
 
-| File | Change |
-| --- | --- |
-| `web/src/lib/editor/EditorFrame.svelte` | Moved `.fit` out of `.bar` into `.stage` (`position: relative`); styled `.fit` as a floating 44 × 44 px `"Pas"` button at bottom-right of `.stage` under `max-width: 39.99rem`; moved `.work > :global(.toast)` to `bottom: calc(var(--target-min) + var(--space-5))` on phone so it never intersects `.fit`. |
-| `web/src/lib/editor/Editor.svelte` | Swapped DOM order in `{#snippet actions()}` so `.machines` comes before `.help` (and `.share` stays after `.help`, hidden on phone). |
-| `web/src/lib/editor/PdaEditor.svelte` | Added optional `onhelp?: () => void`; rendered `.help` after `.machines` and before `.files`; hid `.files` under `max-width: 39.99rem`. |
-| `web/src/lib/editor/PdaWorkstation.svelte` | Added optional `onhelp?: () => void` and forwarded `{onhelp}` to `PdaEditor`. |
-| `web/src/routes/sandbox/+page.svelte` | Passed `onhelp={openTour}` to `PdaWorkstation`. |
-| `web/src/lib/storage/pda-work.ts` | Added `readPdaDocument(store, id)` to read a saved PDA document by id (returns `null` if missing, non-PDA, or corrupt). |
-| `web/src/lib/share/PdaFileDialog.svelte` | Added `import '#lib/i18n/pda-messages.ts';` so opening the dialog from FSM mode registers PDA file messages and never shows raw keys. |
-| `web/src/lib/editor/LibraryDialog.svelte` | Added `"Unduh"` (`library.download`) button on readable PDA rows (no `"Unduh"` on FSM or unreadable rows); lazily flushes `library.flushPda()` if open, reads via `readPdaDocument`, hides the list, and opens lazy `PdaFileDialog`. |
-| `web/src/lib/components/WorkstationSwitcher.svelte` | Full-width 44 px trigger under `max-width: 39.99rem` with ellipsis on `.trigger-current`; guarded `.switcher-trigger:hover` inside `@media (hover: hover)`; narrowed transition to `border-color, background-color`; kept `triggerBtn?.focus()`. |
-| `web/src/lib/i18n/id.ts`, `en.ts` | Added `library.download` (`Unduh` / `Download`); appended `(pada mode FSM)` / `(in FSM mode)` to `tour.s4_body` and `tour.s5_body`. |
-| `web/src/lib/storage/pda-library.test.ts` | Added unit test for `readPdaDocument` (valid PDA, missing id, FSM record, corrupt PDA). |
-| `web/e2e/editor-bar-phone.spec.ts` | Updated and expanded for F1–F8 (phone 320/360/412 px, desktop 1280 × 800, floating `"Pas"` vs dock/handle/toast, PDA `?` tour, library row `"Unduh"` in FSM & PDA with autosave flush, switcher width/hover guard/Tab focus, axe). |
-| `web/e2e/pda-files.spec.ts` | Updated F3, F5, and F8 on `isMobile` to open the PDA download dialog via `"Mesin saya"` → row → `"Unduh"` (desktop still uses the bar button). |
-| `docs/decisions/0061-one-editor-bar-on-a-phone.md` | ADR recording the layout, lazy download handling, hover guard, and real-phone check limit. |
-| `docs/agent/PLAN.md` | Status set to `in-progress` in first commit and `done` in last commit. |
+| File                                                       | Change                                                                                                                                                                                                                                                                                   |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `web/src/lib/editor/document.ts`                           | Exported `EPSILON_WORDS: readonly string[] = ['eps', 'ε']` (single source of truth) and added `checkNewSymbol(symbol)` calling `checkSymbol` and refusing `EPSILON_WORDS` with `document.reserved_symbol { symbol }`. `checkSymbol` and `checkDocument` are unchanged.                   |
+| `web/src/lib/editor/commands.ts`                           | `addSymbol` now calls `checkNewSymbol(command.symbol)`.                                                                                                                                                                                                                                  |
+| `web/src/lib/editor/pda-commands.ts`                       | `addInputSymbol` and `addStackSymbol` now call `checkNewSymbol(command.symbol)`. `addTransition` keeps `checkSymbol` so legacy PDAs carrying `eps` in their alphabet still work.                                                                                                         |
+| `web/src/lib/editor/pda-label.ts`                          | Removed its copy of `EPSILON_WORDS` and imported `EPSILON_WORDS` from `./document.ts`.                                                                                                                                                                                                   |
+| `web/src/lib/editor/interaction/label.ts`                  | Removed private `const EPSILON_WORDS = new Set(['eps', 'ε'])` and imported `EPSILON_WORDS` from `../document.ts` (`EPSILON_WORDS.includes(word)`).                                                                                                                                       |
+| `web/src/lib/editor/pda-table-edit.ts`                     | Removed `EPSILON_WORDS` check (and unused import) from `symbolNameRefusal`; it now refuses only whitespace and commas (`pda_editor.symbol_reserved`).                                                                                                                                    |
+| `web/src/lib/i18n/id.ts`                                   | Added ASCII-only `'document.reserved_symbol'` (`'{symbol} berarti ε, jadi tidak bisa dipakai sebagai nama simbol.'`) and moved `'document.duplicate_symbol'` (`'Simbol {symbol} sudah ada.'`).                                                                                           |
+| `web/src/lib/i18n/en.ts`                                   | Added ASCII-only `'document.reserved_symbol'` (`'{symbol} means ε, so it cannot be a symbol name.'`) and moved `'document.duplicate_symbol'` (`'Symbol {symbol} already exists.'`).                                                                                                      |
+| `web/src/lib/i18n/pda-messages.ts`                         | Removed `'document.duplicate_symbol'` from `pdaId`/`pdaEn` and shortened `'pda_editor.symbol_reserved'` to `'Nama simbol tidak boleh berisi spasi atau koma.'` / `'A symbol name cannot contain spaces or commas.'`.                                                                     |
+| `web/src/lib/editor/document.test.ts`                      | Added unit tests for `EPSILON_WORDS`, `checkNewSymbol`, `checkSymbol('eps')`, and F2 legacy readers (`readStoredDocument`, `parseDocumentText`, `encodePlainLink`/`decodeLink`, `readStoredPda`, `parsePdaDocumentText`).                                                                |
+| `web/src/lib/editor/commands.test.ts`                      | Added F1 test: `addSymbol` refuses `eps` with `document.reserved_symbol { symbol: 'eps' }`, keeps `ε` as `document.invalid_symbol`, accepts `a`.                                                                                                                                         |
+| `web/src/lib/editor/pda-commands.test.ts`                  | Added F1 test for `addInputSymbol`/`addStackSymbol` and verified legacy PDA `addTransition` with `eps` still succeeds.                                                                                                                                                                   |
+| `web/src/lib/editor/pda-table-edit.test.ts`                | Updated `symbolNameRefusal` test for F4 (and pinned `' eps '.trim()` → `document.reserved_symbol`), extended `TABLE_KEYS` with `document.reserved_symbol`, and updated `R3` to reflect `document.duplicate_symbol` + `document.reserved_symbol` moving to `id`/`en` (approved in Scope). |
+| `web/src/lib/i18n/pda-messages.test.ts`                    | Removed `'document.duplicate_symbol'` from `PDA_KEYS` (approved in Scope).                                                                                                                                                                                                               |
+| `web/src/lib/editor/pda-label.test.ts`                     | **Existing test edited (owner-approved):** built legacy `docEps` (Probe 4) via `parsePdaDocument` instead of `pdaDocumentFrom`, because `pdaDocumentFrom` runs `addStackSymbol` which now refuses `eps`.                                                                                 |
+| `web/src/lib/editor/pda-label.property.test.ts`            | **Existing test edited (owner-approved):** removed `'eps'` from `ADVERSARIAL_SYMBOLS` with a one-line comment pointing to the legacy case in `pda-label.test.ts` (`makeRandomPda` unchanged), because `pdaDocumentFrom` now refuses `eps`.                                               |
+| `web/e2e/pda-table-edit.spec.ts`                           | Updated E1 (F4) to assert the document's text for `eps` and the shortened `pda_editor.symbol_reserved` text for `a b` and `a,b` (approved in Scope).                                                                                                                                     |
+| `web/e2e/editor-table.spec.ts`                             | Added F3 e2e test verifying FSM table shows localized `document.duplicate_symbol` (not the raw key) and `document.reserved_symbol` in both `id` and `en`.                                                                                                                                |
+| `docs/decisions/0062-symbol-names-refuse-epsilon-words.md` | ADR recording the `checkNewSymbol` split, single `EPSILON_WORDS`, shared dictionary move, and the 2026-11-23 +130 B size-cap ruling.                                                                                                                                                     |
+| `docs/agent/DECISIONS.md`                                  | Appended T-065 decision entry.                                                                                                                                                                                                                                                           |
+| `docs/agent/PLAN.md`                                       | Marked T-065 `in-progress` in first commit and `done` in last commit.                                                                                                                                                                                                                    |
 
-## 2. Tests first (AC1): RED run on `staging`
+## 2. Fixture derivations (F1–F4)
 
-All new tests were written first and run against `staging` (`5925484`) before any source edit:
+- **F1:** `checkNewSymbol('eps')` passes `checkSymbol('eps')` (3 ASCII letters, not `ε`), then hits `EPSILON_WORDS.includes('eps')` → `{ ok: false, error: { key: 'document.reserved_symbol', params: { symbol: 'eps' } } }`. `checkNewSymbol('ε')` hits `checkSymbol('ε')` first → `{ ok: false, error: { key: 'document.invalid_symbol', params: { symbol: 'ε', reason: 'epsilon' } } }`. `addSymbol`, `addInputSymbol`, and `addStackSymbol` all call `checkNewSymbol`; `'a'` / `'A'` pass.
+- **F2:** Legacy FSM JSON (`alphabet: ['eps']`, transition `0 --eps--> 1`) and legacy PDA JSON (`inputAlphabet: ['eps']`, `stackAlphabet: ['eps']`, transition `0 --eps, eps/eps--> 1`) are validated through `checkDocument` / `parsePdaDocument`, which call `checkSymbol` (not `checkNewSymbol`). All five readers (`readStoredDocument`, `parseDocumentText`, `decodeLink(encodePlainLink(...))`, `readStoredPda`, `parsePdaDocumentText`) return `ok: true` with `'eps'` intact in the alphabets, and `checkSymbol('eps')` returns `{ ok: true }`.
+- **F3:** Adding existing symbol `'0'` in the FSM table calls `addSymbol('0')` → `{ key: 'document.duplicate_symbol', params: { symbol: '0' } }`, formatted via shared `id.ts`/`en.ts` as `Simbol 0 sudah ada.` (`id`) and `Symbol 0 already exists.` (`en`), never the raw key. `TABLE_KEYS` in `pda-table-edit.test.ts` (R1/R2) covers every refusal key of both tables (now including `document.reserved_symbol`) across `id` and `en` with matching parameters.
+- **F4:** In `PdaAlphabetBlock.svelte`, `drafts[kind].trim()` turns `' eps '` → `'eps'`. `symbolNameRefusal` returns `null` for `'eps'`, `'ε'`, and `' eps '` and returns `pda_editor.symbol_reserved` (`Nama simbol tidak boleh berisi spasi atau koma.`) for `'a b'`, `'a,b'`, `'a\tb'`. `'eps'` then reaches `addInputSymbol`/`addStackSymbol` and displays `eps berarti ε, jadi tidak bisa dipakai sebagai nama simbol.`.
 
-- **Unit (`src/lib/storage/pda-library.test.ts`):** `1 failed | 11 passed`:
-  ```text
-  FAIL  src/lib/storage/pda-library.test.ts > pda-library: readPdaDocument (T-081 F5) > reads a saved PDA document by id, and returns null for missing, FSM, or corrupt records
-  TypeError: readPdaDocument is not a function
-   ❯ src/lib/storage/pda-library.test.ts:282:24
-  ```
-- **E2E (`editor-bar-phone.spec.ts --project=phone --project=desktop`):** `11 failed | 7 skipped | 0 passed` (every single F1–F8 test failed on `staging`).
+## 3. Tests first (AC1): RED run on `staging`
 
-## 3. Deepening pass
-
-- **New exports / public interface members:**
-  1. `readPdaDocument(store: MachineStore, id: string): Promise<PdaDocument | null>` in `web/src/lib/storage/pda-work.ts`: called lazily by `LibraryDialog.svelte` and unit-tested in `pda-library.test.ts`. Cannot be private because its caller is in `lib/editor/`. Reuses `isPdaRecord` and `readStoredPda` (no duplicated validation/parsing).
-  2. `onhelp?: () => void` on `PdaWorkstation.svelte` and `PdaEditor.svelte`: mirrors `Editor.svelte`'s existing `onhelp` prop.
-  3. **Zero new hooks** on `library.svelte.ts`: moving `downloadPda` + lazy `PdaFileDialog` into lazy-loaded `LibraryDialog.svelte` kept `library.svelte.ts` untouched and kept `sandbox.html` first-load JS growth at +48 bytes (vs +284 bytes when initially placed in `sandbox/+page.svelte`).
-- **Duplication check:** The 5-line `?` SVG inside `PdaEditor.svelte` matches `Editor.svelte` (same pattern as the existing `.machines` SVG in both components; left inline to avoid a new shared icon module for a single button).
-- **Type casts added:** **0** (`any`, `@ts-ignore`, `as unknown as`: 0).
-
-## 4. Route sizes in gzip bytes (AC3)
-
-Baseline measured on `staging` (`24b268d`/`5925484`) vs final build (budget: ≤ +102 bytes per route):
-
-| Route | Before (bytes) | After (bytes) | Delta |
-| --- | ---: | ---: | ---: |
-| `index.html` | 83,827 | 83,867 | +40 B |
-| `panduan.html` | 82,976 | 83,016 | +40 B |
-| `panduan/berakhiran-x.html` | 89,356 | 89,399 | +43 B |
-| `sandbox.html` | 124,822 | 124,870 | +48 B |
-| `soal.html` | 84,471 | 84,510 | +39 B |
-| `soal/berakhiran-10.html` | 124,175 | 124,209 | +34 B |
-| `soal/jumlah-a-genap.html` | 124,175 | 124,209 | +34 B |
-| `soal/mengandung-101.html` | 124,175 | 124,209 | +34 B |
-| `tentang.html` | 82,274 | 82,314 | +40 B |
-| `wasm` | 236.9 KB | 236.9 KB | 0 B |
+Before editing any production file, the new/updated unit tests were run on `origin/staging` (`1b7fc81`):
 
 ```text
-$ pnpm size
-ok   initial JS index.html: 81.9 KB gzip (limit 170 KB)
-ok   initial JS panduan/berakhiran-x.html: 87.3 KB gzip (limit 170 KB)
-ok   initial JS panduan.html: 81.1 KB gzip (limit 170 KB)
-ok   initial JS sandbox.html: 121.9 KB gzip (limit 170 KB)
-ok   initial JS soal/berakhiran-10.html: 121.3 KB gzip (limit 170 KB)
-ok   initial JS soal/jumlah-a-genap.html: 121.3 KB gzip (limit 170 KB)
-ok   initial JS soal/mengandung-101.html: 121.3 KB gzip (limit 170 KB)
-ok   initial JS soal.html: 82.5 KB gzip (limit 170 KB)
-ok   initial JS tentang.html: 80.4 KB gzip (limit 170 KB)
+ Test Files  5 failed (5)
+      Tests  8 failed | 91 passed (99)
+
+ FAIL  src/lib/editor/commands.test.ts > the alphabet > addSymbol refuses the ε word eps with document.reserved_symbol
+ FAIL  src/lib/editor/document.test.ts > the rules for symbols (the same as the engine) > checkNewSymbol refuses ε words with document.reserved_symbol while checkSymbol keeps accepting eps
+ FAIL  src/lib/editor/pda-commands.test.ts > PDA alphabets and cascade removal > addInputSymbol and addStackSymbol refuse eps with document.reserved_symbol while keeping addTransition working for legacy eps
+ FAIL  src/lib/editor/pda-table-edit.test.ts > U: the commands of the editable table > refuses spaces and commas, and leaves ε words to the document command
+ FAIL  src/lib/editor/pda-table-edit.test.ts > R: every text that the table can show exists in both languages > R1
+ FAIL  src/lib/editor/pda-table-edit.test.ts > R: every text that the table can show exists in both languages > R2
+ FAIL  src/lib/editor/pda-table-edit.test.ts > R: every text that the table can show exists in both languages > R3
+ FAIL  src/lib/i18n/pda-messages.test.ts > the PDA messages > U1: have the same keys in Indonesian and English
+```
+
+## 4. Deepening pass
+
+- **New exports / public interface members:**
+  1. `EPSILON_WORDS: readonly string[]` in `web/src/lib/editor/document.ts`: moved from `pda-label.ts` (so the shared FSM bundle never imports from the lazy PDA chunk). Imported by `pda-label.ts` and `interaction/label.ts`, and used internally by `checkNewSymbol`. Cannot be private because both label parsers share it; eliminates the previous duplicate `Set` in `interaction/label.ts`. (Not imported in `pda-table-edit.ts` because `symbolNameRefusal` no longer checks ε words.)
+  2. `checkNewSymbol(symbol: string): Check` in `web/src/lib/editor/document.ts`: called by `commands.ts` (`addSymbol`) and `pda-commands.ts` (`addInputSymbol`, `addStackSymbol`). Cannot be private because those callers live in sibling modules; reuses `checkSymbol` with zero duplicated validation logic.
+- **Duplication check:** Zero copies of `EPSILON_WORDS` remain outside `document.ts`; `symbolNameRefusal` no longer duplicates the ε-word refusal; `document.duplicate_symbol` exists in one dictionary (`id.ts`/`en.ts`) only.
+- **Type casts added:** **0** (`any`, `@ts-ignore`, `as unknown as`: 0).
+
+## 5. Route sizes in gzip bytes (AC3)
+
+Baseline measured from a clean build of `origin/staging` (`960cecc`, identical build output to `1b7fc81`) vs final build.
+**Size-cap ruling (2026-11-23):** The initial +102 B cap was exceeded (+111 B to +124 B per route) because moving `document.duplicate_symbol` into the shared dictionary, adding `document.reserved_symbol` in both languages, and moving `EPSILON_WORDS`/`checkNewSymbol` into `document.ts` inherently costs ~120 B gzip on every route. By planner/owner ruling on 2026-11-23, AC3 for T-065 was raised to **≤ +130 B per route** without shortening the texts.
+
+| Route                       | Before (bytes) | After (bytes) |  Delta |
+| --------------------------- | -------------: | ------------: | -----: |
+| `index.html`                |         83,867 |        83,989 | +122 B |
+| `panduan.html`              |         83,016 |        83,138 | +122 B |
+| `panduan/berakhiran-x.html` |         89,399 |        89,523 | +124 B |
+| `sandbox.html`              |        124,870 |       124,986 | +116 B |
+| `soal.html`                 |         84,510 |        84,628 | +118 B |
+| `soal/berakhiran-10.html`   |        124,209 |       124,320 | +111 B |
+| `soal/jumlah-a-genap.html`  |        124,209 |       124,320 | +111 B |
+| `soal/mengandung-101.html`  |        124,209 |       124,320 | +111 B |
+| `tentang.html`              |         82,314 |        82,438 | +124 B |
+| `wasm`                      |       236.9 KB |      236.9 KB |    0 B |
+
+```text
+$ node tools/check-size.mjs
+ok   initial JS index.html: 82.0 KB gzip (limit 170 KB)
+ok   initial JS panduan/berakhiran-x.html: 87.4 KB gzip (limit 170 KB)
+ok   initial JS panduan.html: 81.2 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 122.1 KB gzip (limit 170 KB)
+ok   initial JS soal/berakhiran-10.html: 121.4 KB gzip (limit 170 KB)
+ok   initial JS soal/jumlah-a-genap.html: 121.4 KB gzip (limit 170 KB)
+ok   initial JS soal/mengandung-101.html: 121.4 KB gzip (limit 170 KB)
+ok   initial JS soal.html: 82.6 KB gzip (limit 170 KB)
+ok   initial JS tentang.html: 80.5 KB gzip (limit 170 KB)
 ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
 ok   wasm _app/immutable/workers/assets/engine_wasm_bg-Ii0Gidl3.wasm: 236.9 KB gzip (limit 250 KB)
 ```
 
-## 5. Verification output (AC2, AC5)
+## 6. Deliberate breaks on final code (AC4)
 
-- `pnpm check` → `svelte-check found 0 errors and 0 warnings`
-- `pnpm lint` → exited 0 (no output)
-- `pnpm format:check` → `All matched files use Prettier code style!` + `cargo fmt --check` exited 0
-- `pnpm check:strings`, `pnpm check:tokens`, `pnpm check:contrast` → all passed (exited 0)
-- `pnpm test:web` → all unit tests passed (including `pda-library.test.ts`, `tour.test.ts`, `first-load.test.ts`)
-- `pnpm test:tools` → `tests 147, pass 147, fail 0`
-- `pnpm --filter web exec playwright test editor-bar-phone pda-files --project=phone --project=desktop` → `23 passed, 7 skipped (35.6s)`
-- `pnpm --filter web exec playwright test editor-view editor-layout switcher pda-library cross/cross cross/first-run cross/library cross/bar-phone --project=phone --project=desktop` → `166 tests run, 0 failed`
-- `pnpm --filter web exec playwright test cross/bar-phone cross/cross cross/first-run cross/library --project=webkit-phone` → `0 failed`
-- `pnpm --filter web exec playwright test editor-bar-phone --project=phone --project=desktop --repeat-each=5` → `55 passed, 35 skipped (1.3m)`
-- **Not run locally:** Firefox (cannot start on the owner's laptop per `AGENTS.md`; runs in CI) and real Android phone check (owner checks sticky `:hover` and touch ergonomics on the preview).
+All four breaks were run against final commit `7d80bf8` and restored cleanly:
 
-## 6. Deliberate breaks on the final code (AC4)
+- **B1 — `addSymbol` accepts `eps` again** (`web/src/lib/editor/commands.ts`):
 
-Each break was applied to the final code, rebuilt, run against the targeted Playwright test, and restored cleanly:
-
-- **B1 — swap Mesin and `?` in PDA mode only (`PdaEditor.svelte`):**
-  Diff: moved `{#if onhelp}...{/if}` before `{#if library}...{/if}` in `PdaEditor.svelte`.
-  Failing line:
-  ```text
-  1) [phone] › e2e/editor-bar-phone.spec.ts:94:2 › F1, F2, F8 (FSM + PDA at 360x740)
-    -   StringMatching /^Mesin saya \(\d+\)$/,
-        "Bantuan: tur 1 menit",
-    +   "Mesin saya (2)",
-    > 119 | expect(pdaBoxes.map((b) => b.name)).toEqual([
-  ```
-
-- **B2 — remove `onhelp` from PDA (`PdaWorkstation.svelte`):**
-  Diff:
   ```diff
-  -			{onhelp}
-  ```
-  Failing line:
-  ```text
-  1) [phone] › e2e/editor-bar-phone.spec.ts:282:2 › F4: "?" in PDA mode opens the tour dialog
-    Locator: getByRole('button', { name: 'Bantuan: tur 1 menit' })
-    Expected: visible / Error: element(s) not found
-    > 288 | await expect(helpBtn).toBeVisible();
+  -	checkNewSymbol,
+  +	checkSymbol,
+  -			const bad = failed(checkNewSymbol(command.symbol));
+  +			const bad = failed(checkSymbol(command.symbol));
   ```
 
-- **B3 — show `.files` on a phone again (`PdaEditor.svelte`):**
-  Diff:
-  ```diff
-  -			display: none;
-  +			display: flex;
-  ```
-  Failing line:
   ```text
-  1) [phone] › e2e/editor-bar-phone.spec.ts:94:2 › F1, F2, F8 (FSM + PDA at 360x740)
-        "Bantuan: tur 1 menit",
-    +   "Unduh mesin ini sebagai file",
-        "Urungkan",
-    > 119 | expect(pdaBoxes.map((b) => b.name)).toEqual([
+  FAIL  src/lib/editor/commands.test.ts > the alphabet > addSymbol refuses the ε word eps with document.reserved_symbol
+  AssertionError: expected { ok: true, doc: { …(9) } } to deeply equal { ok: false, error: { …(2) } }
   ```
 
-- **B4 — show `"Unduh"` on an FSM row (`LibraryDialog.svelte`):**
-  Diff:
+- **B2 — reader refuses a stored `eps`** (`web/src/lib/editor/document.ts`):
+
   ```diff
-  -									{:else}
-  +									{/if}
-  +									{#if true}
+  -		rule('symbol', checkSymbol(symbol).ok, { symbol });
+  +		rule('symbol', checkNewSymbol(symbol).ok, { symbol });
   ```
-  Failing line:
+
   ```text
-  1) [desktop] › e2e/editor-bar-phone.spec.ts:306:2 › F5: "Unduh" in a PDA row...
-    Locator: getByRole('dialog', { name: 'Mesin saya' }).getByRole('button', { name: 'Unduh', exact: true })
-    Expected: 0 / Received: 1
-    > 347 | await expect(list(page).getByRole('button', { name: 'Unduh', exact: true })).toHaveCount(0);
+  FAIL  src/lib/editor/document.test.ts > the rules for symbols (the same as the engine) > legacy stored records, JSON files and share links carrying symbol eps still load
+  AssertionError: expected { ok: false, reason: 'corrupt' } to deeply equal { ok: true, doc: { …(9) } }
   ```
+
+- **B3 — table's `eps` branch put back** (`web/src/lib/editor/pda-table-edit.ts`):
+
+  ```diff
+  -	if (/\s/.test(name) || name.includes(',')) {
+  +	if (name === 'eps' || /\s/.test(name) || name.includes(',')) {
+  ```
+
+  ```text
+  FAIL  src/lib/editor/pda-table-edit.test.ts > U: the commands of the editable table > refuses spaces and commas, and leaves ε words to the document command
+  AssertionError: name "eps": expected { …(2) } to be null // Object.is equality
+  ```
+
+- **B4 — `document.duplicate_symbol` loses its `en` text** (`web/src/lib/i18n/en.ts`):
+  ```diff
+  -	'document.duplicate_symbol': 'Symbol {symbol} already exists.',
+  ```
+  ```text
+  FAIL  src/lib/i18n/i18n.test.ts > the messages > have the same keys in Indonesian and English
+  AssertionError: expected [ 'app.name', 'app.privacy', …(897) ] to deeply equal [ 'app.name', 'app.privacy', …(898) ]
+  ```
+
+## 7. Verification output (AC2, AC5)
+
+```text
+$ pnpm lint
+$ eslint .
+
+$ pnpm check
+svelte-check found 0 errors and 0 warnings
+
+$ pnpm test:web
+ Test Files  122 passed (122)
+      Tests  1432 passed | 2 skipped (1434)
+
+$ pnpm check:strings
+ok   76 components have no hard-coded text
+
+$ pnpm check:tokens
+ok   78 files use no raw colors
+
+$ pnpm format:check
+Checking formatting...
+All matched files use Prettier code style!
+```
+
+Playwright specs named in pre-flight (`e2e/pda-table-edit.spec.ts`, `e2e/editor-table.spec.ts`, `e2e/cross/table.spec.ts`) on `desktop` and `phone`, plus 5× repeat of the new test:
+
+```text
+$ pnpm --filter web exec playwright test e2e/pda-table-edit.spec.ts e2e/editor-table.spec.ts e2e/cross/table.spec.ts --project=desktop --project=phone
+  3 skipped
+  59 passed (1.0m)
+
+$ pnpm --filter web exec playwright test e2e/editor-table.spec.ts -g "localized refusals" --project=desktop --project=phone --repeat-each=5
+  10 passed (16.2s)
+```
+
+Not run locally: full Playwright suite (CI runs all 4 shards) and Firefox (cannot start on the owner's laptop per `AGENTS.md`).
