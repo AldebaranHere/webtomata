@@ -148,3 +148,5 @@ The grammar workstation, the language workstation and the mode switcher were bui
 The PDA editor (proposed 2026-11-06, planner task P-004, becomes task T-033 when approved) is in `design/screens/pda-editor.md` and `.svg`: the diagram with the label `c / pop / push`, the Tabel and Definisi tabs, the DPDA | NDPDA switch, the determinism badge with its list of competing pairs, the three-field label form, and the phone layout.
 
 The editor bar on a phone, the same for the FSM and the PDA mode (proposed 2026-11-22, planner task P-006), is in `design/screens/editor-bar-phone.md` and `.svg`: four fixed slots after the title (Mesin, Bantuan, Urungkan, Ulangi), "Pas" floating on the canvas, export in "Mesin saya", and a mode selector of a fixed width.
+
+The PDA simulation with the stack drawn as a column, the peak number of configurations, the Konversi tab (PDA to a grammar, in two stages) and the "Ke PDA" tab of the grammar mode (proposed 2026-11-23, planner task P-005, becomes tasks T-038a to T-038c when approved) are in `design/screens/pda-simulation-conversion.md` and `.svg`.
