@@ -665,3 +665,12 @@ Format:
 - Reversible? yes (each part)
 - Affects: the GitHub settings; `docs/agent/PLAN.md` (T-065, T-082 to T-084); `MD_FILES/ROADMAP.md` (M1 date; the owner's file)
 
+## 2026-11-23 — T-082 and T-065 amended after the pre-flights; P-005 approved and T-038 split
+
+- Decider: planner for the amendments; owner for P-005 (the planner's pick on all five questions)
+- Context: DeepSeek found that T-082's own method resolves `@sveltejs/kit` to 3.4.0 (four days old) and still passes every fixture; `minimatch` also comes through `eslint` and `typescript-estree`, and no eligible `eslint` needs version 11; `.cargo/audit.toml` ignores nothing and `rustix` 1.1.6 is a 26-day-old one-package patch. Gemini found that `document.duplicate_symbol` already exists in the PDA dictionary, that no rename-symbol command exists, that `.jff` cannot carry a symbol `eps`, that a second private ε list lives in `interaction/label.ts`, and that the list must not be imported from the lazy PDA chunk.
+- Decision: T-082 pins `@sveltejs/kit` 3.1.1 and `adapter-static` 4.0.1 with `pnpm --filter web update … --lockfile-only`, overrides `minimatch` to 11.0.5, bumps `rustix` to 1.1.6 in its own commit, and checks the lockfile for the exact versions. T-065 adds a command-side `checkNewSymbol`, leaves `checkSymbol` and every reader alone, moves `EPSILON_WORDS` to `document.ts`, moves `document.duplicate_symbol` into the shared dictionary, shortens `pda_editor.symbol_reserved`, and tests old data from stored records, JSON files and share links. T-038 is split into T-038a (Simulasi tab), T-038b (PDA to grammar) and T-038c (CFG to PDA in the grammar mode).
+- Alternatives considered: a `minimumReleaseAge` of two weeks (the owner's separate decision); importing the ε list from `pda-label.ts` into the document (pulls PDA code into the first load); refusing `eps` in `checkSymbol` (would reject old files).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-065, T-082, T-038 family, P-005); later `pnpm-workspace.yaml`, `web/package.json`, the editor documents and dictionaries
+
