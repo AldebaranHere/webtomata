@@ -674,3 +674,12 @@ Format:
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-065, T-082, T-038 family, P-005); later `pnpm-workspace.yaml`, `web/package.json`, the editor documents and dictionaries
 
+## 2026-11-23 — T-082: the `minimatch` override, and the two-week habit is a snapshot
+
+- Decider: planner (the owner approves with the merge); the order of the `minimatch` options was ruled in the T-082 block
+- Context: `pnpm audit` found seven dev-only findings. Six of them go with `@sveltejs/kit` 3.1.1 and `@sveltejs/adapter-static` 4.0.1. The seventh is `minimatch` 10.2.6 (GHSA-g3hv-75wg-m249), which reaches us through `eslint`, `@eslint/config-array@0.23.5` and `@typescript-eslint/typescript-estree@8.72.0`. Option (a) is unavailable: the newest `eslint` that is two weeks old (10.14.0) still declares `minimatch ^10.2.6`, and the first `@eslint/config-array` that wants 11 (`0.23.6`, published 2026-11-13) is nine days old. Pnpm enforces only its one-day default, non-strict, so our two-week habit is not a setting: a later `pnpm install` or `pnpm update` can take a newer version of any of these packages.
+- Decision: an exact `overrides: minimatch: 11.0.5` in `pnpm-workspace.yaml` (11.0.5, published 2026-11-05, is the newest version that is two weeks old), with a comment that gives the date, the reason and when to remove it. It was proved benign before it was written: `pnpm lint` passes and `eslint . --format json` covers the same 408 files as on `staging`. The three packages are pinned by the committed lockfile, not by the ranges in `web/package.json`; this task is a snapshot of 2026-11-23, not a policy.
+- Alternatives considered: bump `eslint` to 10.14.0 (no help: it still wants minimatch 10); bump `@eslint/config-array` to 0.23.6 (too young); add `GHSA-g3hv-75wg-m249` to `auditConfig.ignoreGhsas` (option c, not needed once the override passed lint); set `minimumReleaseAge: 20160` (the owner's separate decision, not taken here).
+- Reversible? yes (one line in `pnpm-workspace.yaml`)
+- Affects: `pnpm-workspace.yaml`, `pnpm-lock.yaml`; later, when a 14-day-old `eslint` or `@eslint/config-array` already needs `minimatch` 11, the entry goes
+

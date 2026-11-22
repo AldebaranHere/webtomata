@@ -3453,7 +3453,7 @@ pnpm test:tools
 
 ## Task T-082 — Dependency refresh: the seven audit findings of 2026-11-23
 
-**Status:** todo (amended 2026-11-23 after the worker's pre-flight)
+**Status:** done (2026-11-23; branch `task/T-082-audit-deps`, commits `2919bf7`…`HEAD`. The lockfile pins `@sveltejs/kit` 3.1.1 and `@sveltejs/adapter-static` 4.0.1 (both 2026-10-29), `minimatch` is overridden to 11.0.5 (2026-11-05) and `rustix` is 1.1.6; `pnpm audit` and `pnpm audit --prod` are clean, `cargo audit` is clean on 1.100.0, `pnpm lint` covers the same 408 files, every route's first JS moved +9 bytes gzip, and the named Playwright specs pass on `desktop` and `phone` (86 passed, 32 project skips). AC4 (CI on the PR) waits for the push. See `docs/agent/REPORT.md` and the 2026-11-23 decision in `DECISIONS.md`.)
 **Owner:** worker (DeepSeek: the planner's pick; it did the Rust pin and T-005)
 **Branch:** `task/T-082-audit-deps`
 

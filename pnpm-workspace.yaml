@@ -14,6 +14,13 @@ allowBuilds:
 # only undici is moved. Remove the entry when the pinned wrangler already needs undici 7.30.1 or later.
 overrides:
   undici: 7.30.1
+  # minimatch 10.2.6 reaches us through eslint, @eslint/config-array and
+  # @typescript-eslint/typescript-estree, and GHSA-g3hv-75wg-m249 is fixed in 11.0.1. The natural fix is a
+  # newer @eslint/config-array, but 0.23.6 (2026-11-13) is younger than our two weeks, and the newest
+  # eslint that is two weeks old (10.14.0) still wants minimatch 10. This entry is from 2026-11-23;
+  # 11.0.5 (2026-11-05) is the newest version that is two weeks old. It is an exact version. Remove the
+  # entry when a 14-day-old eslint or @eslint/config-array already needs minimatch 11 or later.
+  minimatch: 11.0.5
 
 # Advisories that we accept, with the reason and the date.
 # GHSA-gcqx-w48m-w2h4 (low): deepmerge 4.3.1 mergeObject() lets a crafted object poison prototypes. There is
