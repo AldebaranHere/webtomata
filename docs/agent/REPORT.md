@@ -1,149 +1,271 @@
-# T-081 — One editor bar on a phone for the FSM and the PDA mode
+# T-082 — Dependency refresh: the seven audit findings of 2026-11-23
 
-Branch `task/T-081-editor-bar-phone`, rebased onto `origin/staging` at `5925484` (PR 229, amended spec).
+Branch `task/T-082-audit-deps`, cut from `origin/staging` at `1b7fc81` (PR 234, the amended spec).
 Status: `done`. **Not pushed:** awaiting owner review.
 
 ## 1. What changed
 
 | File | Change |
 | --- | --- |
-| `web/src/lib/editor/EditorFrame.svelte` | Moved `.fit` out of `.bar` into `.stage` (`position: relative`); styled `.fit` as a floating 44 × 44 px `"Pas"` button at bottom-right of `.stage` under `max-width: 39.99rem`; moved `.work > :global(.toast)` to `bottom: calc(var(--target-min) + var(--space-5))` on phone so it never intersects `.fit`. |
-| `web/src/lib/editor/Editor.svelte` | Swapped DOM order in `{#snippet actions()}` so `.machines` comes before `.help` (and `.share` stays after `.help`, hidden on phone). |
-| `web/src/lib/editor/PdaEditor.svelte` | Added optional `onhelp?: () => void`; rendered `.help` after `.machines` and before `.files`; hid `.files` under `max-width: 39.99rem`. |
-| `web/src/lib/editor/PdaWorkstation.svelte` | Added optional `onhelp?: () => void` and forwarded `{onhelp}` to `PdaEditor`. |
-| `web/src/routes/sandbox/+page.svelte` | Passed `onhelp={openTour}` to `PdaWorkstation`. |
-| `web/src/lib/storage/pda-work.ts` | Added `readPdaDocument(store, id)` to read a saved PDA document by id (returns `null` if missing, non-PDA, or corrupt). |
-| `web/src/lib/share/PdaFileDialog.svelte` | Added `import '#lib/i18n/pda-messages.ts';` so opening the dialog from FSM mode registers PDA file messages and never shows raw keys. |
-| `web/src/lib/editor/LibraryDialog.svelte` | Added `"Unduh"` (`library.download`) button on readable PDA rows (no `"Unduh"` on FSM or unreadable rows); lazily flushes `library.flushPda()` if open, reads via `readPdaDocument`, hides the list, and opens lazy `PdaFileDialog`. |
-| `web/src/lib/components/WorkstationSwitcher.svelte` | Full-width 44 px trigger under `max-width: 39.99rem` with ellipsis on `.trigger-current`; guarded `.switcher-trigger:hover` inside `@media (hover: hover)`; narrowed transition to `border-color, background-color`; kept `triggerBtn?.focus()`. |
-| `web/src/lib/i18n/id.ts`, `en.ts` | Added `library.download` (`Unduh` / `Download`); appended `(pada mode FSM)` / `(in FSM mode)` to `tour.s4_body` and `tour.s5_body`. |
-| `web/src/lib/storage/pda-library.test.ts` | Added unit test for `readPdaDocument` (valid PDA, missing id, FSM record, corrupt PDA). |
-| `web/e2e/editor-bar-phone.spec.ts` | Updated and expanded for F1–F8 (phone 320/360/412 px, desktop 1280 × 800, floating `"Pas"` vs dock/handle/toast, PDA `?` tour, library row `"Unduh"` in FSM & PDA with autosave flush, switcher width/hover guard/Tab focus, axe). |
-| `web/e2e/pda-files.spec.ts` | Updated F3, F5, and F8 on `isMobile` to open the PDA download dialog via `"Mesin saya"` → row → `"Unduh"` (desktop still uses the bar button). |
-| `docs/decisions/0061-one-editor-bar-on-a-phone.md` | ADR recording the layout, lazy download handling, hover guard, and real-phone check limit. |
-| `docs/agent/PLAN.md` | Status set to `in-progress` in first commit and `done` in last commit. |
+| `web/package.json` | `@sveltejs/adapter-static` `^4.0.0` → `^4.0.1`; `@sveltejs/kit` `^3.1.0` → `^3.1.1` (the only two lines that change). |
+| `pnpm-lock.yaml` | Pinned to `@sveltejs/kit@3.1.1`, `@sveltejs/adapter-static@4.0.1`, `minimatch@11.0.5`. |
+| `pnpm-workspace.yaml` | One `overrides` entry, `minimatch: 11.0.5`, with the comment that gives the date, the reason and when to remove it. |
+| `Cargo.lock` | `rustix` 1.1.5 → 1.1.6 (version and checksum only; `tempfile` is its one dependent). |
+| `docs/agent/DECISIONS.md` | One entry: the override, and the two-week habit as a snapshot. |
+| `docs/agent/PLAN.md` | Status `in-progress` in the first commit, `done` in the last. |
+| `docs/agent/REPORT.md` | This report. |
 
-## 2. Tests first (AC1): RED run on `staging`
+Three commits, as AC6 asks:
 
-All new tests were written first and run against `staging` (`5925484`) before any source edit:
+```
+2919bf7 chore(deps): move @sveltejs/kit to 3.1.1 and adapter-static to 4.0.1
+3fc5c09 chore(deps): override minimatch to 11.0.5
+(tip)   chore(deps): move rustix to 1.1.6
+```
 
-- **Unit (`src/lib/storage/pda-library.test.ts`):** `1 failed | 11 passed`:
-  ```text
-  FAIL  src/lib/storage/pda-library.test.ts > pda-library: readPdaDocument (T-081 F5) > reads a saved PDA document by id, and returns null for missing, FSM, or corrupt records
-  TypeError: readPdaDocument is not a function
-   ❯ src/lib/storage/pda-library.test.ts:282:24
-  ```
-- **E2E (`editor-bar-phone.spec.ts --project=phone --project=desktop`):** `11 failed | 7 skipped | 0 passed` (every single F1–F8 test failed on `staging`).
+The third commit is the tip of the branch; a commit cannot carry its own hash, so it is named by its
+message here and by `HEAD` in `PLAN.md`.
 
-## 3. Deepening pass
+## 2. The chosen versions (AC2)
 
-- **New exports / public interface members:**
-  1. `readPdaDocument(store: MachineStore, id: string): Promise<PdaDocument | null>` in `web/src/lib/storage/pda-work.ts`: called lazily by `LibraryDialog.svelte` and unit-tested in `pda-library.test.ts`. Cannot be private because its caller is in `lib/editor/`. Reuses `isPdaRecord` and `readStoredPda` (no duplicated validation/parsing).
-  2. `onhelp?: () => void` on `PdaWorkstation.svelte` and `PdaEditor.svelte`: mirrors `Editor.svelte`'s existing `onhelp` prop.
-  3. **Zero new hooks** on `library.svelte.ts`: moving `downloadPda` + lazy `PdaFileDialog` into lazy-loaded `LibraryDialog.svelte` kept `library.svelte.ts` untouched and kept `sandbox.html` first-load JS growth at +48 bytes (vs +284 bytes when initially placed in `sandbox/+page.svelte`).
-- **Duplication check:** The 5-line `?` SVG inside `PdaEditor.svelte` matches `Editor.svelte` (same pattern as the existing `.machines` SVG in both components; left inline to avoid a new shared icon module for a single button).
-- **Type casts added:** **0** (`any`, `@ts-ignore`, `as unknown as`: 0).
+Day of work 2026-11-23 UTC ⇒ **cutoff 2026-11-09** (a publish on 2026-11-09 is exactly 14 days old).
+Command: `pnpm view <pkg> time --json`, filtered by age.
 
-## 4. Route sizes in gzip bytes (AC3)
+| Package | Chosen | Published (UTC) | Age | Why this and not a newer one |
+| --- | --- | --- | --- | --- |
+| `@sveltejs/kit` | **3.1.1** | 2026-10-29T23:48:42Z | 24 d | 3.2.0 is 2026-11-10 (12 d), 3.2.1/3.3.0/3.3.1 are 2026-11-17 (5 d), 3.4.0 is 2026-11-18 (4 d). |
+| `@sveltejs/adapter-static` | **4.0.1** | 2026-10-29T23:53:05Z | 24 d | It is the newest 4.x; 4.0.0 is 2026-10-01. |
+| `minimatch` | **11.0.5** | 2026-11-05T23:30:59Z | 17 d | 11.0.6 and 11.0.7 are 2026-11-10 (12 d), 11.0.8 is 2026-11-11 (11 d), 11.0.9 is 2026-11-16 (6 d). |
 
-Baseline measured on `staging` (`24b268d`/`5925484`) vs final build (budget: ≤ +102 bytes per route):
+The dependency update pulled two transitive changes as well; both are older than the cutoff, so the
+habit holds for them too: `legacy-javascript` 0.0.3 → 0.0.4 (2026-10-23, 30 d) and
+`@isaacs/nonrecursive-glob-match` 1.1.0 added (2026-11-05, 17 d, a dependency of `minimatch` 11).
 
-| Route | Before (bytes) | After (bytes) | Delta |
-| --- | ---: | ---: | ---: |
-| `index.html` | 83,827 | 83,867 | +40 B |
-| `panduan.html` | 82,976 | 83,016 | +40 B |
-| `panduan/berakhiran-x.html` | 89,356 | 89,399 | +43 B |
-| `sandbox.html` | 124,822 | 124,870 | +48 B |
-| `soal.html` | 84,471 | 84,510 | +39 B |
-| `soal/berakhiran-10.html` | 124,175 | 124,209 | +34 B |
-| `soal/jumlah-a-genap.html` | 124,175 | 124,209 | +34 B |
-| `soal/mengandung-101.html` | 124,175 | 124,209 | +34 B |
-| `tentang.html` | 82,274 | 82,314 | +40 B |
-| `wasm` | 236.9 KB | 236.9 KB | 0 B |
+**The `minimatch` order, and which step applied.** (a) A newer `eslint` or `@eslint/config-array`
+that is two weeks old and already needs `minimatch` 11: **unavailable.** The newest two-week-old
+`eslint` (10.14.0, 2026-10-30) still declares `minimatch ^10.2.6` and `@eslint/config-array ^0.23.5`;
+the first `@eslint/config-array` that wants 11 is 0.23.6 (2026-11-13, 9 d, too young), and
+`eslint` 10.15.0 is also 2026-11-13. (b) **Applied:** an exact `overrides` entry. (c) Not needed.
 
-```text
-$ pnpm size
+## 3. F1 — `pnpm audit` before and after
+
+Before (on `staging` at `1b7fc81`):
+
+```
+$ pnpm audit
+7 vulnerabilities found
+Severity: 5 moderate | 2 high
+EXIT=1
+```
+
+Final tree:
+
+```
+$ pnpm audit
+No known vulnerabilities found
+EXIT=0
+
+$ pnpm audit --prod
+No known vulnerabilities found
+EXIT=0
+```
+
+The intermediate state is honest: commit 1 closes six of the seven and leaves
+`1 vulnerabilities found / Severity: 1 moderate` (the `minimatch` one), which commit 2 closes.
+`pnpm audit --prod` is clean at every step.
+
+## 4. F2 — frozen lockfile and no new exclusion
+
+```
+$ pnpm install --frozen-lockfile
+Scope: all 2 workspace projects
+✓ Lockfile passes supply-chain policies (verified 3s ago)
+Lockfile is up to date, resolution step is skipped
+Done in 1.1s using pnpm v12.14.0
+EXIT=0
+```
+
+```
+$ grep -n minimumReleaseAgeExclude pnpm-workspace.yaml || echo "gone"
+gone
+```
+
+`git diff pnpm-workspace.yaml` is the override and its comment and nothing else:
+
+```
+@@ -14,6 +14,13 @@ allowBuilds:
+ overrides:
+   undici: 7.30.1
++  # minimatch 10.2.6 reaches us through eslint, @eslint/config-array and
++  # @typescript-eslint/typescript-estree, and GHSA-g3hv-75wg-m249 is fixed in 11.0.1. ...
++  minimatch: 11.0.5
+```
+
+No plain `pnpm install` was run at any point. The lockfile was regenerated with
+`pnpm install --lockfile-only` and then materialised with `pnpm install --frozen-lockfile`.
+
+## 5. F3 — the site is the same
+
+`pnpm build && pnpm size` pass, and every route moved by **+9 bytes** gzip (limit 102):
+
+```
+route                                                      before    after   delta
+_app/immutable/workers/assets/engine_wasm_bg-*.wasm        242582   242582       0
+index.html                                                  83867    83876      +9
+panduan.html                                                83016    83025      +9
+panduan/berakhiran-x.html                                   89399    89408      +9
+sandbox.html                                               124870   124879      +9
+soal.html                                                   84510    84519      +9
+soal/berakhiran-10.html                                    124209   124218      +9
+soal/jumlah-a-genap.html                                   124209   124218      +9
+soal/mengandung-101.html                                   124209   124218      +9
+tentang.html                                                82314    82323      +9
+```
+
+`pnpm size` on the final tree:
+
+```
 ok   initial JS index.html: 81.9 KB gzip (limit 170 KB)
 ok   initial JS panduan/berakhiran-x.html: 87.3 KB gzip (limit 170 KB)
 ok   initial JS panduan.html: 81.1 KB gzip (limit 170 KB)
-ok   initial JS sandbox.html: 121.9 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 122.0 KB gzip (limit 170 KB)
 ok   initial JS soal/berakhiran-10.html: 121.3 KB gzip (limit 170 KB)
 ok   initial JS soal/jumlah-a-genap.html: 121.3 KB gzip (limit 170 KB)
 ok   initial JS soal/mengandung-101.html: 121.3 KB gzip (limit 170 KB)
 ok   initial JS soal.html: 82.5 KB gzip (limit 170 KB)
 ok   initial JS tentang.html: 80.4 KB gzip (limit 170 KB)
-ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
-ok   wasm _app/immutable/workers/assets/engine_wasm_bg-Ii0Gidl3.wasm: 236.9 KB gzip (limit 250 KB)
+ok   layout worker _app/immutable/workers/layout.worker-*.js: 15.6 KB gzip (limit 40 KB)
+ok   wasm _app/immutable/workers/assets/engine_wasm_bg-*.wasm: 236.9 KB gzip (limit 250 KB)
 ```
 
-## 5. Verification output (AC2, AC5)
+The byte counts are measured with the same rule as `tools/check-size.mjs` (sum of the gzip sizes of
+the `.js` each page loads first), printed in bytes because `pnpm size` rounds to 0.1 KB.
 
-- `pnpm check` → `svelte-check found 0 errors and 0 warnings`
-- `pnpm lint` → exited 0 (no output)
-- `pnpm format:check` → `All matched files use Prettier code style!` + `cargo fmt --check` exited 0
-- `pnpm check:strings`, `pnpm check:tokens`, `pnpm check:contrast` → all passed (exited 0)
-- `pnpm test:web` → all unit tests passed (including `pda-library.test.ts`, `tour.test.ts`, `first-load.test.ts`)
-- `pnpm test:tools` → `tests 147, pass 147, fail 0`
-- `pnpm --filter web exec playwright test editor-bar-phone pda-files --project=phone --project=desktop` → `23 passed, 7 skipped (35.6s)`
-- `pnpm --filter web exec playwright test editor-view editor-layout switcher pda-library cross/cross cross/first-run cross/library cross/bar-phone --project=phone --project=desktop` → `166 tests run, 0 failed`
-- `pnpm --filter web exec playwright test cross/bar-phone cross/cross cross/first-run cross/library --project=webkit-phone` → `0 failed`
-- `pnpm --filter web exec playwright test editor-bar-phone --project=phone --project=desktop --repeat-each=5` → `55 passed, 35 skipped (1.3m)`
-- **Not run locally:** Firefox (cannot start on the owner's laptop per `AGENTS.md`; runs in CI) and real Android phone check (owner checks sticky `:hover` and touch ergonomics on the preview).
+## 6. F4 — the named checks
 
-## 6. Deliberate breaks on the final code (AC4)
+```
+$ pnpm lint
+$ pnpm --filter web lint
+$ eslint .
+EXIT=0
 
-Each break was applied to the final code, rebuilt, run against the targeted Playwright test, and restored cleanly:
+$ pnpm check
+svelte-check found 0 errors and 0 warnings
+EXIT=0
 
-- **B1 — swap Mesin and `?` in PDA mode only (`PdaEditor.svelte`):**
-  Diff: moved `{#if onhelp}...{/if}` before `{#if library}...{/if}` in `PdaEditor.svelte`.
-  Failing line:
-  ```text
-  1) [phone] › e2e/editor-bar-phone.spec.ts:94:2 › F1, F2, F8 (FSM + PDA at 360x740)
-    -   StringMatching /^Mesin saya \(\d+\)$/,
-        "Bantuan: tur 1 menit",
-    +   "Mesin saya (2)",
-    > 119 | expect(pdaBoxes.map((b) => b.name)).toEqual([
-  ```
+$ pnpm test:web
+ Test Files  122 passed (122)
+      Tests  1427 passed | 3 skipped (1430)
+EXIT=0
 
-- **B2 — remove `onhelp` from PDA (`PdaWorkstation.svelte`):**
-  Diff:
-  ```diff
-  -			{onhelp}
-  ```
-  Failing line:
-  ```text
-  1) [phone] › e2e/editor-bar-phone.spec.ts:282:2 › F4: "?" in PDA mode opens the tour dialog
-    Locator: getByRole('button', { name: 'Bantuan: tur 1 menit' })
-    Expected: visible / Error: element(s) not found
-    > 288 | await expect(helpBtn).toBeVisible();
-  ```
+$ pnpm --filter web exec playwright test editor-bar-phone pda-editor pda-panel pda-files pda-library editor-layout switcher --project=desktop --project=phone
+  32 skipped
+  86 passed (2.4m)
+EXIT=0
+```
 
-- **B3 — show `.files` on a phone again (`PdaEditor.svelte`):**
-  Diff:
-  ```diff
-  -			display: none;
-  +			display: flex;
-  ```
-  Failing line:
-  ```text
-  1) [phone] › e2e/editor-bar-phone.spec.ts:94:2 › F1, F2, F8 (FSM + PDA at 360x740)
-        "Bantuan: tur 1 menit",
-    +   "Unduh mesin ini sebagai file",
-        "Urungkan",
-    > 119 | expect(pdaBoxes.map((b) => b.name)).toEqual([
-  ```
+The 32 skips are the specs' own project guards (desktop-only cases under `phone`, phone cases under
+`desktop`), not failures.
 
-- **B4 — show `"Unduh"` on an FSM row (`LibraryDialog.svelte`):**
-  Diff:
-  ```diff
-  -									{:else}
-  +									{/if}
-  +									{#if true}
-  ```
-  Failing line:
-  ```text
-  1) [desktop] › e2e/editor-bar-phone.spec.ts:306:2 › F5: "Unduh" in a PDA row...
-    Locator: getByRole('dialog', { name: 'Mesin saya' }).getByRole('button', { name: 'Unduh', exact: true })
-    Expected: 0 / Received: 1
-    > 347 | await expect(list(page).getByRole('button', { name: 'Unduh', exact: true })).toHaveCount(0);
-  ```
+## 7. F5 — the override lints the same files
+
+```
+$ (cd web && npx eslint . --format json) → files: 408      # with minimatch 11.0.5
+$ (cd web && npx eslint . --format json) → files: 408      # baseline on staging
+```
+
+`pnpm lint` prints no count, so the count comes from the JSON formatter.
+
+## 8. AC5 — the versions are pinned, not just "audit is quiet"
+
+```
+$ grep -nE "^  '?@sveltejs/kit@|^  '?@sveltejs/adapter-static@|^  minimatch@" pnpm-lock.yaml
+991:  '@sveltejs/adapter-static@4.0.1':
+996:  '@sveltejs/kit@3.1.1':
+1688:  minimatch@11.0.5:
+3500:  minimatch@11.0.5:
+
+$ grep -c "@sveltejs/kit@3.4.0" pnpm-lock.yaml   → 0
+$ grep -c "minimatch@10" pnpm-lock.yaml          → 0
+```
+
+This fixture can fail: in the pre-flight scratch copy, where the ranges were raised and a plain
+lockfile update was run, the same grep found `'@sveltejs/kit@3.4.0':` — a four-day-old package that
+`pnpm audit` accepts. That is exactly the case AC5 exists to catch.
+
+## 9. The `rustix` commit
+
+```
+$ cargo update -p rustix --precise 1.1.6
+    Updating crates.io index
+    Updating rustix v1.1.5 -> v1.1.6
+```
+
+`Cargo.lock` changes only that package (version and checksum); `rustix` reaches us through
+`tempfile` and is not in `fuzz/Cargo.lock`. On the pinned toolchain
+(`1.100.0-x86_64-unknown-linux-gnu`, `rustc 1.100.0 (0ef1bc386 2026-11-09)`):
+
+```
+$ cargo audit
+    Scanning Cargo.lock for vulnerabilities (107 crate dependencies)
+EXIT=0                      # before: "Warning: unsound rustix 1.1.5 ... warning: 1 allowed warning found"
+
+$ cargo test
+test binaries: 35, total passed: 478, 0 failed
+EXIT=0
+```
+
+## 10. AC6 — three commits, each green
+
+| Commit | `pnpm install --frozen-lockfile` | `pnpm lint` | `pnpm audit` |
+| --- | --- | --- | --- |
+| 1. kit + adapter-static | pass | pass | **1 moderate left** (the `minimatch` finding) |
+| 2. `minimatch` override | pass | pass (408 files) | clean |
+| 3. `rustix` | pass | pass | clean; `cargo audit` clean |
+
+Commit 1 cannot be audit-clean and also leave the `minimatch` finding for its own commit; the task is
+the series. `pnpm lint`, `pnpm check`, `pnpm test:web` and the build are green at every commit. The
+CI `audit` job runs on the pull request as a whole, not per commit, and it is not a required check.
+
+## 11. AC3 — the diff is the scope
+
+```
+$ git diff --stat origin/staging      # taken just before this report was written
+ Cargo.lock              |  4 ++--
+ docs/agent/DECISIONS.md |  9 +++++++++
+ docs/agent/PLAN.md      |  2 +-
+ pnpm-lock.yaml          | 51 ++++++++++++++++++++++++++++---------------------
+ pnpm-workspace.yaml     |  7 +++++++
+ web/package.json        |  4 ++--
+ 6 files changed, 50 insertions(+), 27 deletions(-)
+```
+
+`docs/agent/REPORT.md` (this file) is the seventh and last file, added by the third commit. No source
+file changed; `web/package.json` changes two version ranges and nothing else.
+
+## 12. What was not run, and why
+
+- **AC4 (CI on the PR)** waits for the push; it cannot exist locally.
+- The full e2e suite and Lighthouse were not run: AGENTS.md forbids the full suite on a laptop and
+  F4 names the area's specs instead.
+- The `firefox` and `webkit-phone` projects were not run: F4 asks for `phone` and `desktop`, and no
+  source changed.
+- A real phone and the live site are the owner's.
+
+## 13. Deepening pass
+
+- **New exports / public interface members:** none. No TypeScript, Svelte or Rust source changed.
+- **Casts added:** zero.
+- **Duplication:** none introduced. The `undici` comment style is reused, not copied into a helper.
+- **The interface is smaller than the work behind it:** the work is three lines of configuration plus
+  the lockfiles; the reviewable surface is `web/package.json` (two ranges), one `overrides` entry and
+  one `Cargo.lock` version.
+
+## 14. Worth the planner's eye
+
+- The two-week habit is still **not enforced** (pnpm checks one day, non-strict). The lockfile is the
+  pin; a later `pnpm update` can move all three packages to versions younger than two weeks without
+  any check failing. Recorded in `DECISIONS.md`; a `minimumReleaseAge` of 20160 is the owner's
+  separate decision.
+- `pnpm-lock.yaml` carries `minimatch` in two places (the package entry and the snapshot), so the
+  AC5 grep prints two lines for it. That is the lockfile's normal shape, not a second version.
