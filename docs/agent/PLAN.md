@@ -3284,6 +3284,63 @@ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-file
 
 ---
 
+## Task T-081 — One editor bar on a phone for the FSM and the PDA mode
+
+**Status:** todo (start after T-077 is merged: both change `PdaEditor.svelte`; one after the other)
+**Owner:** worker (Gemini: the planner's pick; it is Svelte and layout)
+**Branch:** `task/T-081-editor-bar-phone`
+
+**Goal:** On a 360 px phone the bar of the FSM mode and the bar of the PDA mode differ: the PDA has no "?" and has a download icon in the bar, the FSM hides share and auto layout there, and both leave the title about 90 px. The owner approved `design/screens/editor-bar-phone.md` (P-006) on 2026-11-22: one bar for both modes, the title and the save status, then four fixed 44 px slots in this order (**1 Mesin, 2 Bantuan "?", 3 Urungkan, 4 Ulangi**), "Pas" floating on the canvas, the PDA download moved into "Mesin saya", and a mode selector of a fixed width. Read the sheet in full first; its numbers are the numbers here.
+
+**Decisions (planner and owner, 2026-11-22; do not reopen, ask if one looks wrong):**
+
+- **Phone only (the CSS breakpoint the code already uses, `max-width: 39.99rem`).** The laptop bar keeps its buttons; the only laptop change is that the PDA editor also gets "?" (rule 1 of the sheet). Say in the pre-flight how the laptop bar of the PDA looks after the change.
+- **The order on a phone is Mesin, then "?"** in both modes, then Urungkan and Ulangi. In the FSM the two buttons swap places (today: "?", then Mesin). Do it with the DOM order, not with `order:` in CSS, so that the tab order is what a person sees.
+- **"?" in the PDA mode** opens the same tour as in the FSM mode (the page's `openTour`). Pass `onhelp` to the PDA editor through `PdaWorkstation`. Read `tour.ts` and say in the pre-flight whether any step names something that the PDA editor does not have (a tab, a button); if one does, the smallest text change in `id` and `en`, and no new steps.
+- **"Pas" floats on the canvas on a phone:** a 44 × 44 px button in the **bottom right corner of the canvas box**, inside it, with the same accessible name and the same `onfit`. Prefer **the same button element** restyled by the media query (so there is one test id, one handler, and the laptop keeps it in the bar); if that cannot be done without a second element, say why in the pre-flight and use two with one handler. It must not cover the dock, the panel's drag bar or the toast; say in the pre-flight what the canvas box is on a phone (its bottom edge: the stage or the panel's top) and how the button is placed.
+- **The PDA download leaves the phone bar** (the `.files` button is hidden under the breakpoint, as the FSM's `.share` is) and the **row of a PDA in "Mesin saya" gets "Unduh"**, in the actions of the row that today show "Bagikan" for an FSM only (`entry.type !== 'pda'` in `LibraryDialog.svelte`). It opens the PDA file dialog (`PdaFileDialog`: Unduh .jff and Unduh JSON) **for that row's machine, not only the open one**, in both modes, as `shareSaved(id)` of `sandbox/+page.svelte` does for an FSM row: load the saved record by id, and show the dialog. The dialog stays lazy. A row that is not readable shows no "Unduh" (as no "Bagikan"). New key `library.download` in `id` ("Unduh") and `en` ("Download"); "Unduh" is already the word of the PDA dialog (`TODO(review)` is not needed).
+- **The FSM's hidden `.share` and `.layout`** stay hidden on a phone, as now (no change).
+- **The mode selector (`WorkstationSwitcher.svelte`):** full width of the content area on a phone, 44 px high, the label as now ("Mode Kerja: …", the long PDA name may end with …); the thick blue frame shows only for keyboard focus (`:focus-visible`), not after a tap. State in the pre-flight what the frame is today (`:focus`, `:focus-within`, or an `aria-expanded` style) and which rule you change.
+- **Tokens only** (`tokens.css`), no raw colours or sizes; the three states of a button (hover, focus, active) as the other bar buttons have them.
+- **Not in this task:** auto layout of a PDA, the laptop header, the share link for a PDA, the label sheet (T-077), the viewport meta, and any new button in the bar.
+
+**Scope (files):** `EditorFrame.svelte`, `Editor.svelte`, `PdaEditor.svelte`, `PdaWorkstation.svelte`, `LibraryDialog.svelte`, `WorkstationSwitcher.svelte`, `web/src/routes/sandbox/+page.svelte` (the `onhelp` for the PDA and the handler for the "Unduh" of a row), `web/src/lib/i18n/id.ts` and `en.ts` (or the file where the library keys live: say which), their unit tests, the tests and e2e that the pre-flight says change, `docs/decisions/0061-one-editor-bar-on-a-phone.md` (short; check that 0061 is the next free number), `docs/agent/PLAN.md` (status), `docs/agent/REPORT.md`.
+
+**Fixtures (the oracle):**
+
+- F1 **Same bar, both modes (360 × 740, `phone` project):** in the FSM mode with at least one state, and in the PDA mode with at least one state, the buttons of the bar in DOM and tab order are exactly: Mesin, Bantuan, Urungkan, Ulangi, with the accessible names the code uses today, and nothing else; each is at least 44 × 44 px; the bar does not scroll the page sideways (`scrollWidth <= clientWidth` of the page).
+- F2 **The title** gets at least 120 px at 360 px in both modes (measure `getBoundingClientRect().width` of the title element; today about 90).
+- F3 **"Pas" on the canvas:** in both modes the fit button is inside the canvas box, 44 × 44 px, and its box does not intersect the dock's box, the panel's drag bar or the toast slot; pressing it still fits the diagram (the existing fit test passes on the phone project).
+- F4 **"?" in the PDA mode** opens the tour dialog (the same dialog as in the FSM mode); Escape closes it and returns the focus to the "?" button.
+- F5 **"Unduh" in the library row:** with a saved PDA, in the PDA mode and in the FSM mode, "Mesin saya", the row of that PDA, "Unduh" opens the PDA file dialog for **that** PDA (the dialog shows its name or the file name derived from its title); "Unduh .jff" saves a file named after it (`watchBlobs` of `e2e/fixtures.ts`: the blob type is `application/octet-stream;charset=utf-8`). An FSM row still shows "Bagikan", no "Unduh"; an unreadable row shows neither.
+- F6 **The mode selector:** at 360 px it is 44 px high and as wide as the content area in both modes; after a tap on an option the computed `outline` or `border-color` is the normal one (not the accent frame); with the keyboard (`Tab` onto it) the focus ring shows.
+- F7 **The laptop (1280 × 800):** the FSM bar is unchanged; the PDA bar has "?" in addition; the PDA download is still in the bar; no test of the laptop bar breaks.
+- F8 **axe:** zero violations on `/sandbox` in the FSM mode and in the PDA mode on the phone project.
+
+**Acceptance criteria:**
+
+- AC1 F1 to F8 hold, each by a test (unit where the logic is, Playwright where it is layout), each test written first and seen to fail on `staging`.
+- AC2 `pnpm lint`, `pnpm check`, `pnpm test:web`, `pnpm build && pnpm size`, `pnpm test:tools`, and the Playwright files that the pre-flight lists pass on the phone and desktop projects. CI is green.
+- AC3 **Size:** the report gives the gzip bytes of `sandbox.html` and of the other routes before and after. The gate allows 102 bytes for each route for a task; if the build is over, stop and tell the planner (do not raise the budget).
+- AC4 **Break each once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) swap Mesin and "?" in the PDA mode only; (B2) remove `onhelp` from the PDA; (B3) show `.files` on a phone again; (B4) show "Unduh" on an FSM row. Restore; `git diff --stat` shows only the scope.
+- AC5 Every new string is in `id` and `en`; no raw colour or size; the touch targets are at least 44 px.
+
+**Verification:**
+
+```
+pnpm lint && pnpm check && pnpm test:web && pnpm test:tools
+pnpm build && pnpm size
+pnpm --filter web exec playwright test <the files of the pre-flight> --project=phone --project=desktop
+```
+
+**Pre-flight (with real commands):** (1) list every place that renders the bar's buttons, the `.files`, `.share`, `.fit`, `.machines` and `.help` rules and the media queries that hide or move them (`grep -n`); (2) list every existing unit test and e2e that taps one of these buttons on a phone, and say which change; (3) read `tour.ts` and `TourDialog.svelte` for steps that do not fit the PDA (see the decision); (4) read how `shareSaved` loads a saved FSM record and say how the same is done for a PDA record (the storage function that returns a PDA record by id); (5) say what the canvas box is on a phone and where "Pas" goes; (6) say what the blue frame of the selector is today; (7) the bytes of the five routes now. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
+
+**Rollback:** `git revert <sha>`: the bars go back as they were; nothing in the documents or the formats changes.
+
+**Depends on:** T-077 (merged), P-006 (approved).
+
+---
+
 ## Task T-080 — Pin the Rust toolchain to an exact version
 
 **Status:** done (2026-11-22; branch `task/T-080-pin-rust`, commits `e728b7d`…`HEAD`. F1–F4 hold: the guard passes on the final file and on white space, a trailing comment, single quotes and a commented-out channel, and fails on `stable`, `1.100`, `nightly`, no channel and a duplicate; B1 and B2 fail the real-file test on the final code and were restored. `cargo fmt --check`, clippy, `cargo test`, `pnpm build:wasm`, `pnpm test:tools`, `pnpm test:web`, `pnpm lint`, `pnpm check`, `pnpm format:check` and `pnpm check:*` pass on 1.100.0. F2 (the CI log) waits for the push. See `docs/agent/REPORT.md` and ADR 0060.)
@@ -3347,7 +3404,7 @@ pnpm test:tools
 
 ## Planner task P-006 — One editor bar on a phone for the FSM and the PDA mode
 
-**Status:** drawn on 2026-11-22 in `design/screens/editor-bar-phone.md` and `.svg`; waits for the owner's answers to three questions (move "Pas" onto the canvas, "?" in the bar for both modes, export in two taps). It becomes a build task (one worker, one PR) when approved.
+**Status:** done (drawn on 2026-11-22 in `design/screens/editor-bar-phone.md` and `.svg`; the owner accepted the planner's pick on all three questions the same day: "Pas" moves onto the canvas, "?" stays in the bar for both modes, export takes two taps; built by T-081)
 **Owner:** planner
 
 The owner's phone check of 2026-11-22 found that the bar of the FSM mode and the bar of the PDA mode differ, and asked for one design in which "?" stays usable. The sheet lists what differs (measured in the code), three rules (same place and same meaning; visible help and file actions in one place; the bar holds actions on the document, the canvas holds actions on the view), and a bar of four fixed slots (Mesin, Bantuan, Urungkan, Ulangi) with "Pas" floating on the canvas.

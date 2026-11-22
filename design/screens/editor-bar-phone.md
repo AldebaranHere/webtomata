@@ -1,6 +1,6 @@
 # The editor bar on a phone: one bar for the FSM and the PDA mode (P-006, proposal)
 
-**Status:** proposal, 2026-11-22. The owner asked for it after a real-phone check: the bar of the FSM mode and the bar of the PDA mode differ, and the "?" button must stay usable. The owner approves it (the questions at the end) before a build task is written.
+**Status:** approved by the owner on 2026-11-22, with the planner's pick on all three questions at the end. It is built by T-081. The owner asked for it after a real-phone check: the bar of the FSM mode and the bar of the PDA mode differ, and the "?" button must stay usable.
 **Picture:** `editor-bar-phone.svg` (the bars as built, and the proposal; 1 px in the picture is 1 CSS px).
 **Sources:** the code at `staging` (`EditorFrame.svelte`, `Editor.svelte`, `PdaEditor.svelte`) and two phone screenshots of 2026-11-22.
 
@@ -40,7 +40,7 @@ A student who learns the FSM bar finds a different bar in PDA mode: "?" is gone,
 
 `EditorFrame.svelte` (the bar slots and the floating "Pas"), `Editor.svelte` and `PdaEditor.svelte` (what each passes), `PdaWorkstation.svelte` and `LibraryDialog.svelte` (the "Unduh" action in the row), the mode switcher's styles, message keys for "Unduh" in the row (id and en), and the tests: a Playwright test that opens both modes at 360 px and checks that the bar has the same four buttons in the same order, 44 px targets, no horizontal scroll, and that "Pas" does not overlap the dock; an axe pass on both. It is one task for one worker; the size budget applies (the sandbox route is near its limit: the task reports bytes).
 
-## Questions for the owner, with the planner's pick
+## Questions, and the owner's answers (2026-11-22: the planner's pick on all three)
 
 1. **Move "Pas" onto the canvas** (this sheet), or keep it in the bar and accept a title of about 90 px? Pick: move it. The title is the part that truncates today, and fit is an action on the view. Risk: on a small canvas (the panel open at 40%) a 44 px button covers some of the drawing; the student can pan, and the build task checks it with the largest example.
 2. **Is "?" in the bar for both modes** (this sheet), or one help item inside a menu? Pick: in the bar. A hidden help button is not found by the students who need it.
