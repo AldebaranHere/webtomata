@@ -701,3 +701,13 @@ Format:
 - Alternatives considered: Refusing `eps` inside `checkSymbol` (rejected: breaks legacy stored machines, share links, JSON files, and `document.wasm.test.ts` engine parity); shortening the shared messages into unclear text to fit +102 B (rejected by owner/planner).
 - Reversible? yes
 - Affects: `docs/decisions/0062-symbol-names-refuse-epsilon-words.md`, `web/src/lib/editor/document.ts`, `commands.ts`, `pda-commands.ts`, `pda-label.ts`, `interaction/label.ts`, `pda-table-edit.ts`, `web/src/lib/i18n/id.ts`, `en.ts`, `pda-messages.ts`.
+
+
+## 2026-11-23 — T-083 rulings, and T-038a written (the Simulasi tab of the PDA)
+
+- Decider: planner (T-083 rulings were given in the review of PR 239; the T-038a decisions are the planner's, for the pre-flight to test)
+- Context: T-083 needed four small rulings during its pre-flight and review; T-038a is the first of three tasks after P-005, and reading the code showed that the PDA has no many-strings call and no field for a saved test list.
+- Decision (T-083): the report goes to `docs/agent/reports/T-083.md` (the PR 238 convention); the measured WebKit clip is 11 px, not the 10 px that T-077 wrote (that was the assertion's tolerance); the new cross-browser spec is not skipped on any project (Firefox is read from CI because it does not start in WSL); WebKit and Chromium run in WSL. Decision (T-038a): copy the FSM's panel files for the PDA instead of generalizing them; show one computation from the engine's trace; add `simulate_pda_many` (a small loop, one call per user action) with a fallback of one call per string if the `.wasm` budget fails; the test list is not saved (no schema change) and lives for the session; rejection reasons use the engine's existing `pda.sim.*` keys, only stopped reasons and UI labels are new keys in `pda-messages.ts`; the panel's tabs are Simulasi, Tabel, Definisi with Simulasi first and default.
+- Alternatives considered: one generic run panel for FSM and PDA (rejected: it would touch every FSM test and the shared first JS for no student-visible gain; revisit when T-071 unifies the schedulers); saving the list in the PDA document now (rejected: a schema change and a migration belong to their own task); a per-string call only (kept as the fallback).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-038a, and the T-038b/T-038c shells: their wasm entry points exist), later `crates/engine-core/src/api.rs`, `crates/engine-wasm/src/lib.rs`, `web/src/lib/engine/`, `web/src/lib/editor/Pda*`, `pda-messages.ts`, ADR 0064
