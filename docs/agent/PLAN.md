@@ -3345,6 +3345,15 @@ pnpm test:tools
 
 ---
 
+## Planner task P-006 — One editor bar on a phone for the FSM and the PDA mode
+
+**Status:** drawn on 2026-11-22 in `design/screens/editor-bar-phone.md` and `.svg`; waits for the owner's answers to three questions (move "Pas" onto the canvas, "?" in the bar for both modes, export in two taps). It becomes a build task (one worker, one PR) when approved.
+**Owner:** planner
+
+The owner's phone check of 2026-11-22 found that the bar of the FSM mode and the bar of the PDA mode differ, and asked for one design in which "?" stays usable. The sheet lists what differs (measured in the code), three rules (same place and same meaning; visible help and file actions in one place; the bar holds actions on the document, the canvas holds actions on the view), and a bar of four fixed slots (Mesin, Bantuan, Urungkan, Ulangi) with "Pas" floating on the canvas.
+
+---
+
 ## Planner task P-004 — Wireframe of the PDA editor
 
 **Status:** done (drawn on 2026-11-06 in `design/screens/pda-editor.md` and `.svg`; the owner accepted the planner's pick on all five questions the same day; the build is split into T-033, T-039, T-049, T-051 and T-052)

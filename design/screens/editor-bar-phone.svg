@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="470" viewBox="0 0 780 470" role="img">
+  <title>Editor bar on a phone: now and proposed</title>
+  <desc>Left: the bar of the FSM mode and the bar of the PDA mode as built, with different buttons in different places. Right: the proposed bar, the same in both modes, with four fixed slots after the title, the fit button floating on the canvas, and a mode selector of a fixed width.</desc>
+  <rect width="780" height="470" fill="#f6f7f9"/>
+  <g font-family="sans-serif" font-size="13" fill="#16181d">
+    <text x="20" y="26" font-size="15" font-weight="bold">Now (360 px wide)</text>
+    <text x="400" y="26" font-size="15" font-weight="bold">Proposed: the same in FSM and PDA</text>
+
+    <!-- NOW: FSM -->
+    <text x="20" y="52" font-size="12" fill="#5b6270">FSM mode</text>
+    <rect x="20" y="58" width="360" height="44" fill="#fff" stroke="#c9ced6"/>
+    <text x="28" y="85">Pilihan denga…</text>
+    <text x="118" y="85" fill="#1f7a45">✓</text>
+    <text x="148" y="85">Pas</text>
+    <circle cx="214" cy="80" r="11" fill="none" stroke="#16181d" stroke-width="1.6"/><text x="214" y="85" text-anchor="middle" font-size="13">?</text>
+    <text x="258" y="86" text-anchor="middle" font-size="18">≋</text>
+    <text x="302" y="86" text-anchor="middle" font-size="18">↶</text>
+    <text x="346" y="86" text-anchor="middle" font-size="18">↷</text>
+    <text x="20" y="120" font-size="12" fill="#5b6270">Title gets about 90 px. The share button and auto layout are hidden on a phone.</text>
+
+    <!-- NOW: PDA -->
+    <text x="20" y="160" font-size="12" fill="#5b6270">PDA mode</text>
+    <rect x="20" y="166" width="360" height="44" fill="#fff" stroke="#c9ced6"/>
+    <text x="28" y="193">aⁿbⁿ (n ≥ 1)</text>
+    <text x="118" y="193" fill="#1f7a45">✓</text>
+    <text x="148" y="193">Pas</text>
+    <text x="214" y="194" text-anchor="middle" font-size="18">≋</text>
+    <text x="258" y="194" text-anchor="middle" font-size="18">⤓</text>
+    <text x="302" y="194" text-anchor="middle" font-size="18">↶</text>
+    <text x="346" y="194" text-anchor="middle" font-size="18">↷</text>
+    <text x="20" y="228" font-size="12" fill="#5b6270">No help button. A download button sits in the bar. Every icon is one slot off the FSM bar.</text>
+
+    <!-- NOW: selector -->
+    <text x="20" y="268" font-size="12" fill="#5b6270">Mode selector: its width follows its label</text>
+    <rect x="20" y="274" width="140" height="40" rx="8" fill="#fff" stroke="#c9ced6"/><text x="30" y="299">Mode Kerja: Mesin FSM ▾</text>
+    <rect x="20" y="322" width="250" height="40" rx="8" fill="#fff" stroke="#2f5bd3" stroke-width="2"/><text x="30" y="347">Mode Kerja: Otomata Pushdown (PDA) ▾</text>
+
+    <!-- PROPOSED -->
+    <text x="400" y="52" font-size="12" fill="#5b6270">Mode selector: full width, 44 px, focus ring only for the keyboard</text>
+    <rect x="400" y="58" width="360" height="44" rx="8" fill="#fff" stroke="#c9ced6"/>
+    <text x="412" y="85">Mode Kerja: Otomata Pushdown (PDA) ▾</text>
+
+    <text x="400" y="132" font-size="12" fill="#5b6270">The bar: title, then four slots of 44 px, always in this order</text>
+    <rect x="400" y="138" width="360" height="44" fill="#fff" stroke="#c9ced6"/>
+    <text x="408" y="165">aⁿbⁿ (n ≥ 1)</text>
+    <text x="528" y="165" fill="#1f7a45">✓</text>
+    <g stroke="#2f5bd3" stroke-width="1" stroke-dasharray="3 3" fill="#eaf0fd">
+      <rect x="560" y="140" width="48" height="40"/><rect x="608" y="140" width="48" height="40"/>
+      <rect x="656" y="140" width="48" height="40"/><rect x="704" y="140" width="48" height="40"/>
+    </g>
+    <text x="584" y="166" text-anchor="middle" font-size="18">≋</text>
+    <circle cx="632" cy="160" r="11" fill="none" stroke="#16181d" stroke-width="1.6"/><text x="632" y="165" text-anchor="middle">?</text>
+    <text x="680" y="166" text-anchor="middle" font-size="18">↶</text>
+    <text x="728" y="166" text-anchor="middle" font-size="18">↷</text>
+    <text x="584" y="198" text-anchor="middle" font-size="11" fill="#1e3f9e">1 Mesin</text>
+    <text x="632" y="198" text-anchor="middle" font-size="11" fill="#1e3f9e">2 Bantuan</text>
+    <text x="680" y="198" text-anchor="middle" font-size="11" fill="#1e3f9e">3 Urungkan</text>
+    <text x="728" y="198" text-anchor="middle" font-size="11" fill="#1e3f9e">4 Ulangi</text>
+    <text x="400" y="216" font-size="12" fill="#5b6270">Title gets about 140 px.</text>
+
+    <rect x="400" y="230" width="360" height="130" fill="#fff" stroke="#c9ced6"/>
+    <circle cx="470" cy="300" r="20" fill="#fff" stroke="#16181d"/><text x="470" y="305" text-anchor="middle">q0</text>
+    <line x1="490" y1="300" x2="650" y2="300" stroke="#3b414c" stroke-width="1.5"/>
+    <circle cx="670" cy="300" r="20" fill="#fff" stroke="#16181d"/><text x="670" y="305" text-anchor="middle">q1</text>
+    <rect x="708" y="312" width="44" height="40" rx="8" fill="#fff" stroke="#16181d" stroke-width="1.5"/>
+    <text x="730" y="337" text-anchor="middle" font-size="13">Pas</text>
+    <text x="400" y="378" font-size="12" fill="#5b6270">"Pas" floats in the bottom right corner of the canvas (44 px).</text>
+
+    <text x="400" y="412" font-size="12" font-weight="bold">Where the rest went</text>
+    <text x="400" y="430" font-size="12" fill="#5b6270">Share / download: in the row of the machine in "Mesin saya" (as FSM does today).</text>
+    <text x="400" y="446" font-size="12" fill="#5b6270">Auto layout: in the menu of the empty canvas (as FSM does today).</text>
+  </g>
+</svg>
