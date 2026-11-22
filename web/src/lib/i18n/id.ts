@@ -95,6 +95,8 @@ export const id = {
 	'editor.edge_removed': 'Transisi dari {from} ke {to} dihapus.',
 	'document.invalid_symbol':
 		'Simbol "{symbol}" tidak bisa dipakai: tidak boleh kosong, terlalu panjang, atau berisi karakter terlarang.',
+	'document.reserved_symbol': '{symbol} berarti ε, jadi tidak bisa dipakai sebagai nama simbol.',
+	'document.duplicate_symbol': 'Simbol {symbol} sudah ada.',
 	'editor.edge': 'Transisi dari {from} ke {to}: {symbols}',
 	'editor.edge_selected': 'Transisi dari {from} ke {to}: {symbols} dipilih.',
 	'editor.menu.edit': 'Ubah simbol',

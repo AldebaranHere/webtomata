@@ -146,9 +146,18 @@ test.describe('E1: the Alfabet block', () => {
 		await expect(status(page)).toContainText('Simbol c ditambahkan.');
 		await expect(symbolField).toHaveValue('');
 
-		// The reserved names: refused, nothing changes, the text stays in the field.
-		const reserved = 'Nama simbol tidak boleh eps atau ε, dan tidak boleh berisi spasi atau koma.';
-		for (const name of ['eps', 'a b', 'a,b']) {
+		// The reserved names: eps gets the document's refusal; spaces and commas get the table's.
+		await symbolField.fill('eps');
+		await symbolField.press('Enter');
+		await expect(
+			sigma.getByText('eps berarti ε, jadi tidak bisa dipakai sebagai nama simbol.')
+		).toBeVisible();
+		await expect(sigma.locator('.chip')).toHaveCount(3);
+		await expect(symbolField).toHaveValue('eps');
+		await expect(panel(page).getByRole('heading', { name: 'Transisi (3)' })).toBeVisible();
+
+		const reserved = 'Nama simbol tidak boleh berisi spasi atau koma.';
+		for (const name of ['a b', 'a,b']) {
 			await symbolField.fill(name);
 			await symbolField.press('Enter');
 			await expect(sigma.getByText(reserved)).toBeVisible();

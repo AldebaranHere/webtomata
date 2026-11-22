@@ -42,7 +42,6 @@ const PDA_KEYS: readonly MessageKey[] = [
 	'pda_editor.row_changed',
 	'pda_editor.row_removed',
 	'pda_editor.symbol_reserved',
-	'document.duplicate_symbol',
 	// The determinism badge (T-062).
 	'pda_editor.badge_deterministic',
 	'pda_editor.badge_nondeterministic',

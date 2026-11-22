@@ -85,6 +85,9 @@ function characters(text: string, limit: number): number {
 	return [...text].length;
 }
 
+/** The words that mean ε in transition labels and therefore cannot be added as symbol names. */
+export const EPSILON_WORDS: readonly string[] = ['eps', 'ε'];
+
 /** Checks a symbol with the rules of the engine. */
 export function checkSymbol(symbol: string): Check {
 	const bad = (reason: string) =>
@@ -93,6 +96,14 @@ export function checkSymbol(symbol: string): Check {
 	if (symbol === 'ε') return bad('epsilon');
 	if (characters(symbol, LIMITS.symbolChars) > LIMITS.symbolChars) return bad('too_long');
 	if (LONE_SURROGATE.test(symbol) || WHITE_OR_CONTROL.test(symbol)) return bad('characters');
+	return { ok: true };
+}
+
+/** Checks a symbol added by a command: engine rules plus refusal of words that mean ε in labels. */
+export function checkNewSymbol(symbol: string): Check {
+	const checked = checkSymbol(symbol);
+	if (!checked.ok) return checked;
+	if (EPSILON_WORDS.includes(symbol)) return refuse('document.reserved_symbol', { symbol });
 	return { ok: true };
 }
 

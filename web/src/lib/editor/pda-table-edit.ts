@@ -8,7 +8,7 @@ import { freeSpot } from './interaction/placement.ts';
 import type { Refusal } from './interaction/editor.ts';
 import type { PdaCommand } from './pda-commands.ts';
 import type { PdaDocument, PdaTransitionEntry } from './pda-document.ts';
-import { EPSILON_WORDS, parseRows } from './pda-label.ts';
+import { parseRows } from './pda-label.ts';
 import type { ParsedTransition } from './pda-label.ts';
 
 /** The five controls of a row as the student left them; an empty `read` means ε. */
@@ -183,13 +183,12 @@ export function draftCommand(doc: PdaDocument, fields: RowFields): PdaCommand | 
 }
 
 /**
- * Why the Alfabet field refuses a name before it sends a command, or null. `eps` and ε are the
- * words that mean ε in a transition field, so neither can be a symbol's name; a name with a space
- * or a comma could not be typed in Pop or Push. The document checks the rest (empty, too long).
+ * Why the Alfabet field refuses a name before it sends a command, or null. A name with a space or
+ * a comma cannot be typed in Pop or Push. The document checks the rest (empty, ε words, too long).
  */
 export function symbolNameRefusal(text: string): Refusal | null {
 	const name = text.trim();
-	if (EPSILON_WORDS.includes(name) || /\s/.test(name) || name.includes(',')) {
+	if (/\s/.test(name) || name.includes(',')) {
 		return refuse('pda_editor.symbol_reserved');
 	}
 	return null;

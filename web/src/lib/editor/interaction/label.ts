@@ -2,12 +2,11 @@
 // from the symbols the edge has is turned into commands (docs/ux/editor-interactions.md, "Edit the
 // symbols of an edge"). No DOM, so that every rule can be tested.
 import type { Command } from '../commands.ts';
+import { EPSILON_WORDS } from '../document.ts';
 import type { MachineDocument } from '../document.ts';
 
 /** A symbol, or null for ε. */
 export type Part = string | null;
-
-const EPSILON_WORDS = new Set(['eps', 'ε']);
 
 /** The characters of a text. An emoji or a combined character counts as one. */
 const characters = (text: string) => [...text];
@@ -17,7 +16,7 @@ export function parseLabel(text: string): Part[] {
 	const parts: Part[] = [];
 	for (const word of text.split(/[\s,]+/)) {
 		if (word === '') continue;
-		const part = EPSILON_WORDS.has(word) ? null : word;
+		const part = EPSILON_WORDS.includes(word) ? null : word;
 		if (!parts.includes(part)) parts.push(part);
 	}
 	return parts;

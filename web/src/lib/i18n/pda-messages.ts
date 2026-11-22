@@ -43,10 +43,7 @@ export const pdaId = {
 	'pda_editor.row_added': 'Baris {n} ditambahkan.',
 	'pda_editor.row_changed': 'Baris {n} diubah.',
 	'pda_editor.row_removed': 'Baris {n} dihapus.',
-	'pda_editor.symbol_reserved':
-		'Nama simbol tidak boleh eps atau ε, dan tidak boleh berisi spasi atau koma.',
-	// The shared dictionary has no text for this refusal yet (the FSM table shows the key; T-065).
-	'document.duplicate_symbol': 'Simbol {symbol} sudah ada.',
+	'pda_editor.symbol_reserved': 'Nama simbol tidak boleh berisi spasi atau koma.',
 	// The determinism badge (T-062). The phone's text is short, and the button's aria-label is the
 	// full text. "pasangan bersaing" is in the glossary with TODO(review).
 	'pda_editor.badge_deterministic': 'Deterministik',
@@ -125,9 +122,7 @@ export const pdaEn: Record<keyof typeof pdaId, string> = {
 	'pda_editor.row_added': 'Row {n} was added.',
 	'pda_editor.row_changed': 'Row {n} was changed.',
 	'pda_editor.row_removed': 'Row {n} was removed.',
-	'pda_editor.symbol_reserved':
-		'A symbol name cannot be eps or ε, and cannot contain spaces or commas.',
-	'document.duplicate_symbol': 'Symbol {symbol} already exists.',
+	'pda_editor.symbol_reserved': 'A symbol name cannot contain spaces or commas.',
 	'pda_editor.badge_deterministic': 'Deterministic',
 	'pda_editor.badge_nondeterministic': 'Non-deterministic · {count} competing pairs',
 	'pda_editor.badge_nondeterministic_short': 'Non-det. · {count}',
