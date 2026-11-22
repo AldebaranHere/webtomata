@@ -1,3 +1,164 @@
+# T-005 — Remove the `wrangler` and `miniflare` age-rule exclusions
+
+Branch `task/T-005-remove-age-exclusions`, cut from `origin/staging` at `da6ddd5` and fast-forwarded to the
+amended spec `621e0ff` (PR 228). Status: `done`. Commits: `c7dd19c` (the change) and the last commit of
+this branch (this report and the status). **Not pushed:** the owner reviews first. AC3 waits for the PR's
+CI run; section 3 says what is missing.
+
+## 1. What changed
+
+| File | Change |
+| --- | --- |
+| `pnpm-workspace.yaml` | deleted the `minimumReleaseAgeExclude` block: the key and its two entries, `miniflare@5.20261023.2-beta` and `wrangler@4.155.0` |
+| `docs/agent/PLAN.md` | status |
+| `docs/agent/REPORT.md` | this report |
+
+No other file changed. `web/package.json` still pins `wrangler` 4.155.0 and `pnpm-lock.yaml` is unchanged.
+The check that now applies is pnpm 12's built-in `minimumReleaseAge` default of 1440 minutes (one day),
+non-strict. The repo sets no `minimumReleaseAge` key and this task adds none (the owner's ruling in the
+amended spec). The two-week policy remains a manual rule and a separate decision.
+
+## 2. Verification (AC1, AC2)
+
+The four commands of the amended spec, in order, on the final file.
+
+### `pnpm install --frozen-lockfile` (AC1)
+
+```
+$ pnpm install --frozen-lockfile
+Scope: all 2 workspace projects
+? Verifying lockfile against supply-chain policies (406 entries)...
+✓ Lockfile passes supply-chain policies (406 entries in 1.8s)
+Lockfile is up to date, resolution step is skipped
+Done in 1.9s using pnpm v12.14.0
+```
+
+The install line does not print the exclusion list. pnpm records the policy it verified in
+`~/.cache/pnpm/lockfile-verified.jsonl`; the entry for this lockfile is:
+
+```
+$ node -e 'const fs=require("fs");const l=fs.readFileSync(process.env.HOME+"/.cache/pnpm/lockfile-verified.jsonl","utf8").trim().split("\n").map(JSON.parse).filter(x=>x.lockfile.path.endsWith("webtomata-ds/pnpm-lock.yaml")).pop();console.log(JSON.stringify({verifiedAt:l.verifiedAt,minimumReleaseAge:l.policy.minimumReleaseAge,minimumReleaseAgeExclude:l.policy.minimumReleaseAgeExclude}))'
+{"verifiedAt":"2026-11-22T13:21:23.795Z","minimumReleaseAge":1440,"minimumReleaseAgeExclude":[]}
+```
+
+That is a fresh 406-entry verification, not the 20-day-old cached verdict the first pre-flight run
+reused: the cached entry for this lockfile was removed, the install was run again, and pnpm printed the
+`Verifying lockfile ... (406 entries)` line above.
+
+### The grep (AC2)
+
+```
+$ grep -n minimumReleaseAgeExclude pnpm-workspace.yaml || echo "gone"
+gone
+```
+
+### `pnpm check:workflows`
+
+```
+$ pnpm check:workflows
+ok   6 workflows follow the guard rails
+```
+
+### `pnpm build`
+
+```
+$ pnpm build
+$ pnpm build:wasm && pnpm --filter web build
+$ wasm-pack build crates/engine-wasm --target web --release --out-dir ../../web/src/lib/engine/wasm && pnpm build:types
+[INFO]: 🎯  Checking for the Wasm target...
+[INFO]: 🌀  Compiling to Wasm...
+    Finished `release` profile [optimized] target(s) in 9.98s
+...
+[INFO]: ✨   Done in 34.18s
+[INFO]: 📦   Your wasm pkg is ready to publish at web/src/lib/engine/wasm.
+
+$ cargo test -p engine-core --features ts --test ts_export
+...
+running 1 test
+test the_types_match_the_json ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+$ vite build
+...
+✓ built in 1.99s
+...
+Run npm run preview to preview your production build locally.
+
+> Using @sveltejs/adapter-static
+Wrote site to "build"
+✔ done
+```
+
+The build took 46 s (`real 0m46.498s`) with Rust 1.100.0 and wasm-pack 0.15.0. It regenerated
+`web/src/lib/engine/wasm` and `web/build`; both are gitignored.
+
+## 3. AC3 — the preview upload
+
+Not run locally: the branch is not pushed, so there is no CI run. The job is `deploy`, the step is
+`Upload preview` (`.github/workflows/deploy.yml`). The log line to expect is:
+
+```
+Uploading preview version (attempt 1)...
+```
+
+and, when the URL is parsed, the bot comment:
+
+```
+Preview: https://pr-<n>.<account>.workers.dev (commit <sha>)
+```
+
+If the step prints `No production deployment yet; skipping preview.`, it exits 0 without a comment; the
+amended AC3 says to report that, and it is not a failure of this task. I could not paste the real line
+before the push; the planner can read it from the PR's `deploy` job.
+
+## 4. AC4 — the ages, and the forbidden check
+
+Both pinned versions, from the registry on 2026-11-23 00:07 +11:
+
+```
+wrangler@4.155.0            published 2026-10-28T20:28:31.872Z  24.69 days  35,559 min
+miniflare@5.20261023.2-beta published 2026-10-28T20:19:26.083Z  24.70 days  35,568 min
+```
+
+Both are older than the 1440-minute cutoff (and than 20160 minutes, the manual 14-day policy). The
+frozen install verified all 406 entries with an empty exclusion list. No plain `pnpm install` was run
+for this check. If one were younger, `pnpm install --frozen-lockfile` exits 1 with
+`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`, naming the package, its publish time and the cutoff; the
+pre-flight reproduced that in a throwaway project, and also reproduced the non-strict plain install
+silently appending the entry to `minimumReleaseAgeExclude`, which is why the amended spec forbids it.
+
+## 5. The break (the guard can fail)
+
+| Break | The one line | The failing output |
+| --- | --- | --- |
+| **B1** put the block back | `+minimumReleaseAgeExclude:` / `+  - wrangler@4.155.0` | `27:minimumReleaseAgeExclude:` instead of `gone` |
+
+B1 was made on the final file, after the four commands, and restored. The final grep is `gone` and
+`git diff` shows only the four deleted lines (the block and its blank line). No test is added for the
+YAML key because there is no logic to test; the guard is the grep and pnpm's own policy verification.
+
+## 6. Deepening pass
+
+- **New exports:** none.
+- **New members of a public interface:** none.
+- **Written twice?** No. The removed block was the only exclusion; the policy is read from pnpm, not
+  duplicated here.
+- **Interface smaller than the work behind it:** the change is one deleted YAML key; no code, no new
+  script, no new dependency.
+- **Casts added:** zero.
+- **Tests:** no unit test; a config key has no behaviour. The 406-entry policy verification and B1 are
+  the checks that can fail.
+
+## 7. What I did not run, and notes
+
+- **AC3 / the CI preview.** Not pushed, so the `deploy` job has not run. See section 3.
+- **The full gate (`pnpm verify`) and E2E.** No web or engine code changed, so no e2e spec covers this
+  diff. The amended spec's four commands are the verification; `pnpm build` already ran the WASM build,
+  the TypeScript export test and the SvelteKit build.
+- **The local verification log.** I removed the cached verdict for this lockfile to force a current
+  406-entry verification; the re-run is the install output in section 2. This touched only
+  `~/.cache/pnpm`, not the repository.
+
 # T-077 — The PDA label sheet fills a phone and keeps its buttons above the keyboard
 
 Branch `task/T-077-label-sheet`, cut from `origin/staging` at `1426f16` (PR 226, the amended spec).
