@@ -47,9 +47,11 @@ Chrome-only change for one sheet) and a visual-viewport script (more code than m
   the key of the keyboard. The fixtures measure the distance from the top of the sheet to the Save
   button; a test of "inside the viewport" would pass even without a fix. The owner re-checks the phone
   after the merge.
-- **Limit, WebKit.** With the 72 px cap, Safari's focus scroll leaves the newly added row's field
-  clipped by 10 px at its bottom (WebKit phone, twice, deterministic). The spec says the new row must
-  scroll into view "as today", so no code was added; a `scrollIntoView` in `addRow` would fix it if the
-  planner wants the property on WebKit too.
-- The new spec runs in Chromium only: the `firefox` and `webkit-phone` projects match `cross/**`.
+- **WebKit scroll clip (fixed in T-083).** With the 72 px cap, Safari's focus scroll left the newly
+  added row's `Baca` field clipped by 11 px at its bottom (10 px past the 1 px assertion tolerance,
+  deterministic on WebKit phone). Fixed in T-083 by calling `scrollIntoView({ block: 'nearest' })`
+  on the new row's first input in `addRow`, bringing the clip to 0 px.
+- Cross-browser coverage: `web/e2e/pda-label-sheet.spec.ts` runs on Chromium (`phone` and
+  `desktop`), and T-083 added `web/e2e/cross/pda-label-sheet.spec.ts` covering width, the 190 px
+  keyboard line, and new-row scroll on `firefox`, `webkit-phone`, `phone`, and `desktop`.
 - First-JS: `sandbox.html` −1 byte, every other route ±0 (the form is in the lazy PDA chunks).

@@ -3508,7 +3508,7 @@ pnpm build && pnpm size
 
 ## Task T-083 — The new row of the PDA label sheet scrolls fully into view in every browser, and the sheet is tested on Firefox and WebKit
 
-**Status:** in-progress
+**Status:** done (2026-11-23; branch `task/T-083-label-sheet-webkit`. Added `lastFirst?.scrollIntoView({ block: 'nearest' })` in `PdaLabelForm.svelte` `addRow()` (WebKit clip 11 px → 0 px) and added `web/e2e/cross/pda-label-sheet.spec.ts` (F1–F3). `webkit-phone` passes 15/15 (`--repeat-each=5`), `phone` and `desktop` pass 6/6, existing PDA specs pass 62/62 (22 project skips), B1 fails F3 on `webkit-phone` (`447.5 <= 437.5`) and was restored; first JS `sandbox.html` +3 bytes gzip, other routes −1 byte, `wasm` ±0. Firefox does not start in WSL (`AGENTS.md` line 55) and is verified by CI. See `docs/agent/reports/T-083.md` and ADR 0058.)
 **Owner:** worker (Gemini: the planner's pick)
 **Branch:** `task/T-083-label-sheet-webkit`
 
