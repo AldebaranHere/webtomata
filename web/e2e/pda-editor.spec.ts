@@ -186,8 +186,8 @@ test.describe('E3: Typing and sending transitions', () => {
 		const form = page.locator('.pda-label-form[role="dialog"]');
 		await expect(form).toBeVisible();
 
-		// Tab order verification:
-		// row 0: Baca -> Pop -> Push -> Hapus -> Tambah transisi -> Ketik ε -> Batal -> Simpan
+		// Tab order verification (T-077: the buttons come before the add-row button):
+		// row 0: Baca -> Pop -> Push -> Hapus -> Ketik ε -> Batal -> Simpan -> Tambah transisi
 		const readInput = form.getByRole('textbox', { name: /Baris 1.*Baca/i });
 		const popInput = form.getByRole('textbox', { name: /Baris 1.*Pop/i });
 		const pushInput = form.getByRole('textbox', { name: /Baris 1.*Push/i });
@@ -205,13 +205,13 @@ test.describe('E3: Typing and sending transitions', () => {
 		await page.keyboard.press('Tab');
 		await expect(deleteRowBtn).toBeFocused();
 		await page.keyboard.press('Tab');
-		await expect(addRowBtn).toBeFocused();
-		await page.keyboard.press('Tab');
 		await expect(epsBtn).toBeFocused();
 		await page.keyboard.press('Tab');
 		await expect(cancelBtn).toBeFocused();
 		await page.keyboard.press('Tab');
 		await expect(saveBtn).toBeFocused();
+		await page.keyboard.press('Tab');
+		await expect(addRowBtn).toBeFocused();
 
 		// Type 'a' in Baca, ε in Pop via button, 'A' in Push
 		await readInput.click();

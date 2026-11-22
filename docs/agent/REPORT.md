@@ -1,3 +1,397 @@
+# T-077 — The PDA label sheet fills a phone and keeps its buttons above the keyboard
+
+Branch `task/T-077-label-sheet`, cut from `origin/staging` at `1426f16` (PR 226, the amended spec).
+Status: `done`. Commits: `1779845` (the change) and the last commit of this branch (this report and the
+status). **Not pushed:** the owner reviews first.
+
+## 1. What changed
+
+| File | Change |
+| --- | --- |
+| `web/src/lib/editor/PdaEditor.svelte` | the two rules of the sheet, in its `.pda-sheet` block: `.pda-sheet :global(.pda-label-form) { width: 100% }` and `.pda-sheet :global(.pda-label-form .rows) { max-height: 72px }`, with the numbers and the reason in a comment |
+| `web/src/lib/editor/PdaLabelForm.svelte` | the template: the refusal wrapper and the action row moved before the add-row button and the hint; `enterkeyhint="done"` on the three inputs |
+| `web/e2e/pda-label-sheet.spec.ts` (new) | the seven tests of F1–F6 and the axe check |
+| `web/e2e/pda-editor.spec.ts` | the one tab-order test of E3 (lines 189–214): the buttons now come before the add-row button |
+| `docs/decisions/0058-pda-label-sheet-phone.md` (new) | the decision and its limits |
+| `docs/agent/PLAN.md` | status |
+
+No other source file changed. The popover's 320 px, `PdaLabelPopover.WIDTH = 320`, the sheet's 60 %
+cap, the viewport meta, the FSM label box and every other input are untouched. Nothing in the
+documents or the formats changes.
+
+## 2. Tests first (AC1): the new spec on `staging`'s code
+
+The spec was written before the change and run against the unchanged components. Seven of the eight
+tests failed; the axe test passed (the sheet was already clean). Line numbers are from that run, before
+`prettier --write` shifted them by a few lines.
+
+```
+$ pnpm exec playwright test pda-label-sheet --project=phone --project=desktop
+  ...
+  7 failed
+    [desktop] › F3/F5: the popover keeps its order and is still 320 px wide
+    [phone]   › F1: the form fills the width of the sheet at 375px
+    [phone]   › F1: the form fills the width of the sheet at 360px
+    [phone]   › F2: the buttons stay within the keyboard line, at one, two and three rows
+    [phone]   › F3: the action row follows the refusal and the fields, and the tab order says so
+    [phone]   › F4: the three inputs ask for the done key, and Enter commits from each of them
+    [phone]   › F6: the rows list scrolls inside itself and a new row is scrolled into view
+  8 skipped
+  1 passed
+```
+
+The failing line of each (the fixture derivation is in section 3):
+
+```
+# F1, 375 px and 360 px
+    Error: expect(received).toBeLessThanOrEqual(expected)
+    Expected: <= 1
+    Received:    55            (375 px)
+    Received:    40            (360 px)
+    > 93 | 			expect(Math.abs(formBox.width - sheetBox.width)).toBeLessThanOrEqual(1);
+
+# F2
+    Expected: <= 190
+    Received:    248.5
+    > 123 | 		expect(await distance()).toBeLessThanOrEqual(KEYBOARD_LINE);
+
+# F3 and F5, the DOM order
+    - Expected  - 2
+    + Received  + 2
+      Object {
+        "actionsAfterLastField": true,
+    -   "actionsBeforeAddRow": true,
+    -   "actionsBeforeHint": true,
+    +   "actionsBeforeAddRow": false,
+    +   "actionsBeforeHint": false,
+    > 137 | 			actionsBeforeAddRow: true,
+
+# F4
+    - Expected  - 3
+    + Received  + 3
+      Array [
+    -   "done",
+    -   "done",
+    -   "done",
+    +   null,
+    +   null,
+    +   null,
+    > 177 | 		).toEqual(['done', 'done', 'done']);
+
+# F6
+    Expected: <= 72
+    Received:    96
+    > 223 | 			expect(box.client).toBeLessThanOrEqual(72);
+```
+
+The existing tab-order test was the one test the spec named as changeable. On the new order it failed
+at `pda-editor.spec.ts:208` (`expect(addRowBtn).toBeFocused()`: "Received: inactive"), and was updated:
+
+```
+$ git diff web/e2e/pda-editor.spec.ts
+-		// row 0: Baca -> Pop -> Push -> Hapus -> Tambah transisi -> Ketik ε -> Batal -> Simpan
++		// Tab order verification (T-077: the buttons come before the add-row button):
++		// row 0: Baca -> Pop -> Push -> Hapus -> Ketik ε -> Batal -> Simpan -> Tambah transisi
+...
+-		await page.keyboard.press('Tab');
+-		await expect(addRowBtn).toBeFocused();
+ 		await page.keyboard.press('Tab');
+ 		await expect(epsBtn).toBeFocused();
+ 		await page.keyboard.press('Tab');
+ 		await expect(cancelBtn).toBeFocused();
+ 		await page.keyboard.press('Tab');
+ 		await expect(saveBtn).toBeFocused();
++		await page.keyboard.press('Tab');
++		await expect(addRowBtn).toBeFocused();
+```
+
+## 3. The fixtures (AC1), with the derivation
+
+The phone fixtures set the viewport to 375 × 667 and to 360 × 740 (`setViewportSize`; the `phone`
+project is a Pixel 7 at 412 × 915) and skip on the desktop project. The popover fixture runs on the
+desktop project. All distances are css px from `getBoundingClientRect`.
+
+### F1 — the width
+
+**Derivation.** The sheet is the `<aside class="pda-sheet">` the frame puts in its panel slot. It has
+no horizontal padding and only a top border, so its content width is its border-box width, and on a
+phone that is the viewport's width (the editor fills the viewport). The form's own rule is
+`.form { width: 320px; max-width: 100% }`, so `width` wins over `max-width` and the form is 320 px
+inside a 375 px sheet: 55 px blank on the right, 40 px at 360 px.
+
+**Measured after.** 375: form 375, sheet 375, left gap 0, right gap 0. 360: form 360, sheet 360, 0 and
+0. The two tests are `F1 … at 375px` and `F1 … at 360px`.
+
+### F2 — above the keyboard
+
+**Derivation.** The keyboard's top edge was 190 px below the top of the sheet on the owner's phone
+(2026-11-18). The page is not resized while the keyboard is open, so the sheet keeps its place and
+`save.bottom − sheet.top` is the distance that decides whether the buttons are visible. A visibility
+test cannot fail here: without a keyboard the buttons are on screen already (they sat at 536–580 px in
+a 667 px viewport). One, two and three rows are the same edge with 0, 1 and 2 taps on "+ Transisi lain".
+
+**Measured after** (375 × 667, sheet top to the bottom of Simpan):
+
+| rows | before | after |
+| --- | --- | --- |
+| 1 | 248.5 | **149.5** |
+| 2 | 300.5 | **177.5** |
+| 3 | 352.5 | **177.5** (the list scrolls; `max-height: 72px`) |
+
+### F3 — the order
+
+**Derivation.** In the template the action row follows the last row's fields and the refusal wrapper,
+and precedes the add-row button and the hint. The tab order is the DOM order, so from the Push field
+the next Tab reaches that row's Hapus button (which sits after the three fields in each row), then
+Ketik ε, Batal, Simpan and the add-row button. The refusal `<p class="problem">` is inside the
+`aria-live` wrapper that precedes `.actions`, so it stays above the buttons.
+
+**Measured.** The three `compareDocumentPosition` answers are `true`; the tab sequence is Hapus →
+Ketik ε → Batal → Simpan → add-row on the phone, and the same DOM order on the desktop; the refusal is
+above the buttons.
+
+The refusal is the accepted exception: its 74.5 px line pushes the buttons about 34 px past the 190 px
+line with one row (measured 180.0–224.0). The spec accepts that, and the test pins only the order.
+
+### F4 — the keyboard's key
+
+**Derivation.** `enterkeyhint` decides the icon/label of the phone keyboard's send key; `done` is the
+key the three inputs carry. Enter commits because `onkeydown` handles Enter with `commit()`, for all
+three inputs. The transitions used are three different edges so that each case has its own label:
+`a` in Baca on q0→q1 gives `a / ε / ε`; `A` in Pop on q1→q0 gives `ε / A / ε`; `B` in Push on q1→q1
+gives `ε / ε / B`. No test pressed Enter inside a field before this one.
+
+**Measured.** `["done", "done", "done"]`; the three labels appear, and the form closes each time.
+
+### F5 — the laptop
+
+**Derivation.** The popover keeps the form's own 320 px, and the popover centres itself on the edge with
+`WIDTH = 320`. The width assertion alone **passes on `staging`** (it was 320 px before the change and
+is 320 px after it); it guards the change, not the fault. The same test's DOM-order assertion failed on
+`staging`, so the test as a whole did fail there.
+
+**Measured.** 1440 × 900: the form in `.pda-label-popover` is 320.0 px; no `aside.pda-sheet` exists;
+the DOM order holds.
+
+### F6 — several rows
+
+**Derivation.** 72 px = one row of 44 px + the 8 px gap + 20 px of the next row. With two rows the
+content is 96 px, so the list scrolls inside itself; with three, 148 px. Focus after `addRow()` goes to
+the new row's Baca field, and the browser scrolls it into view inside the list.
+
+**Measured.** Two rows: `clientHeight` 72, `scrollHeight` 96; three rows: 72 and 148. The new field is
+focused and inside the list's box. No sideways scroll (`scrollWidth − clientWidth` = 0).
+
+## 4. The four breaks (AC4), each on the final code
+
+Each break was applied, the build remade, the test run, and the file restored; `git diff --stat` at the
+end shows only the three changed files.
+
+### B1 — the sheet's width rule neutralised (`width: 100%` → `width: 320px`)
+
+```
+$ git diff web/src/lib/editor/PdaEditor.svelte
+-		width: 100%;
++		width: 320px;
+```
+```
+  ✘  1 [phone] › … › F1: the form fills the width of the sheet at 375px
+    Error: expect(received).toBeLessThanOrEqual(expected)
+    Expected: <= 1
+    Received:    55
+    > 93 | 			expect(Math.abs(formBox.width - sheetBox.width)).toBeLessThanOrEqual(1);
+        at /home/Aldebaran64/webtomata-ds/web/e2e/pda-label-sheet.spec.ts:93:53
+```
+
+### B2 — the action row moved after the hint
+
+The `<div class="actions">…</div>` block was moved below `<p class="hint">`, which is the break B2
+names (a block moves; the diff is the two ends of the move):
+
+```
+$ git diff -U0 web/src/lib/editor/PdaLabelForm.svelte   (excerpt)
+-	<button type="button" class="add-row-btn" onmousedown={keep} onclick={addRow}>
+-
+-	<p class="hint">{t('pda_editor.label_hint')}</p>
+-
++	<button type="button" class="add-row-btn" onmousedown={keep} onclick={addRow}>
+```
+```
+  ✘  2 [phone] › … › F3: the action row follows the refusal and the fields, and the tab order says so
+    - Expected  - 2
+    + Received  + 2
+        "actionsAfterLastField": true,
+    -   "actionsBeforeAddRow": true,
+    +   "actionsBeforeAddRow": false,
+    > 136 | 		expect(await domOrder(page)).toEqual({
+```
+
+### B3 — one `enterkeyhint` removed (the first input's)
+
+```
+$ git diff web/src/lib/editor/PdaLabelForm.svelte | grep enterkeyhint
++						enterkeyhint="done"
++						enterkeyhint="done"        ← two, not three
+```
+```
+  ✘  1 [phone] › … › F4: the three inputs ask for the done key, and Enter commits from each of them
+    - Expected  - 1
+    + Received  + 1
+      Array [
+    -   "done",
+    +   null,
+        "done",
+        "done",
+      ]
+    > 177 | 		).toEqual(['done', 'done', 'done']);
+```
+
+### B4 — the sheet's rows cap removed (`max-height: 72px` → `240px`)
+
+```
+$ git diff web/src/lib/editor/PdaEditor.svelte
+-		max-height: 72px;
++		max-height: 240px;
+```
+```
+  ✘  1 [phone] › … › F6: the rows list scrolls inside itself and a new row is scrolled into view
+    Error: expect(received).toBeLessThanOrEqual(expected)
+    Expected: <= 72
+    Received:    96
+    > 223 | 			expect(box.client).toBeLessThanOrEqual(72);
+```
+
+Every fixture was also seen failing on `staging` (section 2), so no test rests only on a break.
+
+## 5. Verification (AC5)
+
+```
+$ pnpm format:check
+$ prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+
+$ pnpm lint
+$ eslint .                       (no output; exit 0)
+
+$ pnpm check
+$ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
+svelte-check found 0 errors and 0 warnings
+
+$ pnpm test:web
+ Test Files  122 passed (122)
+      Tests  1426 passed | 3 skipped (1429)
+   Duration  12.08s
+
+$ pnpm test:tools
+ℹ pass 147
+ℹ fail 0
+
+$ pnpm check:strings
+ok   76 components have no hard-coded text
+
+$ pnpm check:tokens
+ok   78 files use no raw colors
+```
+
+```
+$ pnpm build && pnpm size
+$ pnpm build:wasm && pnpm --filter web build
+...
+✔ done
+$ node tools/check-size.mjs
+ok   initial JS index.html: 81.9 KB gzip (limit 170 KB)
+ok   initial JS panduan/berakhiran-x.html: 87.3 KB gzip (limit 170 KB)
+ok   initial JS panduan.html: 81.0 KB gzip (limit 170 KB)
+ok   initial JS sandbox.html: 121.9 KB gzip (limit 170 KB)
+ok   initial JS soal/berakhiran-10.html: 121.3 KB gzip (limit 170 KB)
+ok   initial JS soal/jumlah-a-genap.html: 121.3 KB gzip (limit 170 KB)
+ok   initial JS soal/mengandung-101.html: 121.3 KB gzip (limit 170 KB)
+ok   initial JS soal.html: 82.5 KB gzip (limit 170 KB)
+ok   initial JS tentang.html: 80.3 KB gzip (limit 170 KB)
+ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
+ok   wasm _app/immutable/workers/assets/engine_wasm_bg-Ii0Gidl3.wasm: 236.9 KB gzip (limit 250 KB)
+```
+
+`check-size` prints tenths of a KB; AC3 is in bytes, so the same gzip sum was taken in bytes before and
+after (the source of the two components stashed, built, measured, restored, built, measured):
+
+| route | before | after | Δ bytes |
+| --- | ---: | ---: | ---: |
+| `index.html` | 83,827 | 83,827 | 0 |
+| `panduan.html` | 82,976 | 82,976 | 0 |
+| `panduan/berakhiran-x.html` | 89,356 | 89,356 | 0 |
+| `sandbox.html` | 124,823 | 124,822 | **−1** |
+| `soal.html` | 84,471 | 84,471 | 0 |
+| `soal/berakhiran-10.html` | 124,175 | 124,175 | 0 |
+| `soal/jumlah-a-genap.html` | 124,175 | 124,175 | 0 |
+| `soal/mengandung-101.html` | 124,175 | 124,175 | 0 |
+| `tentang.html` | 82,274 | 82,274 | 0 |
+
+```
+$ pnpm exec playwright test pda-label-sheet pda-editor pda-panel pda-table-edit \
+    pda-determinism pda-messages --project=phone --project=desktop
+  23 skipped
+  85 passed (1.7m)
+```
+
+The Verification block of the task names four specs; the other two (`pda-determinism`, `pda-messages`)
+also open the label form, so they were run as well. The new spec's axe test (`axe: no violation with
+the sheet open`) is among the 85.
+
+## 6. The existing tests (AC2)
+
+**Edited: one.** `web/e2e/pda-editor.spec.ts`, the tab-order case of E3 (the scope names it). Nothing
+else was edited; the diff is 4 lines changed in that file (section 2).
+
+**Ran unedited and passing:** `pda-editor.spec.ts` E8 (the sheet is at most 60 % of the editor and the
+edited edge stays above it — it passed with the sheet 18.5 px shorter), E7 (axe with the form open),
+E1–E6; `pda-panel.spec.ts` (the sheet replaces the panel, the `+ n lagi` cases, axe with the sheet);
+`pda-table-edit.spec.ts`; `pda-determinism.spec.ts`; `pda-messages.spec.ts`; `pda-label.test.ts` and
+`pda-label.property.test.ts` (they test `pda-label.ts`, which did not change — and the
+`ComponentProps` check of the two components still passes).
+
+Nothing else locates the buttons or the add-row button by position, so nothing else broke.
+
+## 7. Limits, deviations, and what I did not change
+
+1. **The empty `aria-live` wrapper (8 px) and the 4 px top margin of `.actions` were kept.** The
+   decision allows tightening them "if the accessibility tree does not change". Not tightened: with
+   them the measured numbers are 149.5 and 177.5, inside 190, and hiding an empty live region (or
+   replacing it with `display: contents`) risks the announcement, which is what the wrapper is for.
+   The accessibility tree is unchanged.
+2. **WebKit: one real difference.** With the 72 px cap, Safari's focus scroll leaves the newly added
+   row's Baca field clipped by 10 px at the bottom (`447.5` vs the list's `437.5`), twice, deterministic.
+   The spec says the new row must scroll into view "as today", so no code was added: this is the
+   browser's own focus scroll, and one line in `addRow` (`scrollIntoView({ block: 'nearest' })`) would
+   fix it if the planner wants the property on WebKit. Recorded in ADR 0058.
+3. **The new spec runs in Chromium only.** The `firefox` and `webkit-phone` projects have
+   `testMatch: 'cross/**/*.spec.ts'`, so `--project=firefox` answers "No tests found". A scratch copy in
+   `e2e/cross/` (removed after the run) gave: Firefox — the popover test passes, the phone tests skip;
+   WebKit phone — F1, F2, F3, F4 and axe pass, F6 fails by the 10 px of point 2.
+4. **The two 320s stay.** `PdaLabelForm`'s `.form` width and `PdaLabelPopover.WIDTH = 320` must agree
+   (the popover centres on the edge). It is a note, not a change: the spec says so.
+5. **Playwright has no keyboard.** The fixtures measure geometry; the owner re-checks the real keyboard
+   on the phone after the merge. The ADR says so.
+6. **Not run:** the full e2e suite, `pnpm smoke`, `pnpm lighthouse`, the cross projects as configured,
+   and a real phone. `pnpm build` (Rust + wasm + web) and `pnpm size` did run.
+
+## 8. Deepening pass
+
+- **New exports: none.** No module, type or interface changed; the two rules are CSS, the attributes are
+  template, and the tests are a new e2e file.
+- **New members of a public interface: none.** `PdaLabelForm`'s props are unchanged (the width comes
+  from the parent's CSS, not from a prop, which the spec asked for).
+- **Logic written twice: no.** The DOM-order check is one helper (`domOrder`) used by the phone and the
+  desktop test. `activate`, `addTwoStates` and `startEdge` are the three shared steps.
+- **One fact in two places, on purpose:** 72 px lives in `PdaEditor.svelte` and is asserted (`≤ 72`) in
+  the test; 190 px lives in the test with its derivation in a comment and in the ADR. A test that did
+  not name the number could not catch a change of it.
+- **Casts added: 0.** No `as` cast to another type; `] as const` on the two phone sizes is a const
+  assertion, not a bypass. The new spec has 18 non-null assertions (`!`) in the e2e style of the folder
+  (`(await x.boundingBox())!`), none in source.
+- **The interface is smaller than the work behind it:** the change is two CSS rules and a template move.
+
 # T-080 — Pin the Rust toolchain to 1.100.0
 
 Branch `task/T-080-pin-rust`, cut from `origin/staging` at `416f42d` (PR 222, the amended spec). Status:
