@@ -3612,7 +3612,7 @@ pnpm --filter web exec playwright test pda-library cross/library cross/storage -
 
 ## Task T-038a — The Simulasi tab of the PDA editor: the stack, the computation and the peak
 
-**Status:** in-progress (started 2026-11-23 on `task/T-038a-pda-simulation-tab`, from `46da2ff` after PR 242)
+**Status:** done (2026-11-23; branch `task/T-038a-pda-simulation-tab`, commits `07bfb20`, `dc440ab`, `2b42ce1` and the report's commit; report `docs/agent/reports/T-038a.md`)
 **Owner:** worker
 
 **Goal:** The PDA editor's panel gets **Simulasi as its first tab**, built as section 1 of `design/screens/pda-simulation-conversion.md` (frames A and B): String masukan with the FSM's four buttons, the stack as a column (top at the top), the computation list, the verdict with its reason, the peak ("Konfigurasi bersamaan terbanyak"), stopped runs, "Uji banyak string" with a peak column, the screen-reader list and the live region. The tour's "(pada mode FSM)" note is removed. The engine already has `simulate_pda` and the worker already has `simulatePda`; nothing else of the engine is touched except the one new many-strings call of decision 3.
