@@ -1,323 +1,304 @@
-# Worker Report — Task T-078: "Mesin baru" and delete behave in the PDA mode
+# T-080 — Pin the Rust toolchain to 1.100.0
 
-- **Task:** T-078
-- **Branch:** `task/T-078-library-in-pda-mode`
-- **Commits:** `a1a5c25` (`docs(agent): mark T-078 as in-progress`), `33d0db4` (`fix(storage): follow active mode in Mesin baru and cross-mode deletes`)
-- **Status:** `done`
+Branch `task/T-080-pin-rust`, cut from `origin/staging` at `416f42d` (PR 222, the amended spec). Status:
+`done`. Commits: `e728b7d` (the change) and the last commit of this branch (this report and the status).
+**Not pushed:** the owner reviews first. F2 is the only fixture that cannot exist yet; section 2 says so.
 
----
+## 1. What changed
 
-## 1. Pre-flight (Items 1 to 5)
+| File | Change |
+| --- | --- |
+| `rust-toolchain.toml` | `channel = "1.100.0"`; `targets = ["wasm32-unknown-unknown"]` and `components = ["rustfmt", "clippy"]` unchanged |
+| `tools/check-rust-toolchain.test.mjs` (new) | 9 tests. Reads the value as TOML would (strip `#` comments, allow white space around `=` and either quote style), requires exactly one `channel` (none fails, not passes), then `^\d+\.\d+\.\d+$`. Its message names the file and points to the bump procedure. Runs under `pnpm test:tools` |
+| `CONTRIBUTING.md` | requirement line says "the exact version in `rust-toolchain.toml`"; the five-step bump procedure ("Bumping the Rust version"), including `rustup show` once; no version number in prose |
+| `tools/README.md` | one paragraph for the guard, like the other guards |
+| `docs/decisions/0060-pinned-rust-toolchain.md` | the pin, the guard, the CI mechanism, the consequences |
+| `docs/agent/PLAN.md` | status |
+| `.github/workflows/ci.yml` | **unchanged**: the install step already honours the file (section 2, F2) |
 
-### (1) Fault 1 reproduced on the built site
-At `/sandbox?mode=pda`, IndexedDB starts with 2 records (`{"total":2,"fsm":1,"pda":1}`). Clicking **Mesin baru** in **Mesin saya** called `library.newMachine()`, which called `this.openDocument(createDocument(), false)`, creating a second empty FSM record (`{"total":3,"fsm":2,"pda":1}`, chips `["DFSM","NDPDA","DFSM"]`) and closing the dialog while leaving the PDA mode screen unchanged.
+No Rust source, `Cargo.toml` or `Cargo.lock` changed.
 
-### (2) Fault 2 reproduced on the built site (real delete + 6.5s wait)
-1. Opened `/sandbox` in FSM mode (`Berakhiran 01`, 3 states, ID `610cb369-0e9d-4a4a-8304-9b8d7281dc84`).
-2. Switched to PDA mode, opened **Mesin saya**, deleted `Berakhiran 01`, and waited 6.5 seconds.
-3. Confirmed `610cb369-0e9d-4a4a-8304-9b8d7281dc84` was removed from IndexedDB (`In IndexedDB after 6.5s wait: false`).
-4. Switched back to FSM mode: the editor still showed `{ title: 'Berakhiran 01', nodes: 3 }` because `deleteMachine` gated the FSM replacement branch on `this.mode !== 'pda'`.
-5. Added a state (`n`) in FSM mode and waited for autosave: `library.current.autosave` wrote `610cb369-0e9d-4a4a-8304-9b8d7281dc84` back into IndexedDB (`Resurrected in IndexedDB after editing in FSM mode: true`).
+## 2. The fixtures (AC1)
 
-### (3) Fault 3 run on the built site (real)
-Fault 3 is real via two paths:
-- **Path (i) (`openLatestPda`):** Created PDA `aⁿbⁿ (n ≥ 1)` (`aa276431-71c7-4a74-8d78-96d4205b110b`), switched to FSM mode (which unmounts `PdaWorkstation`), deleted `aⁿbⁿ (n ≥ 1)` in **Mesin saya**, and switched to PDA mode within 6 seconds. `PdaWorkstation` called `openLatestPda(store, () => Date.now())`, which read `store.list()` directly (where the record remains until the 6s timer fires) and reopened the deleted PDA (`Shown PDA title: aⁿbⁿ (n ≥ 1)`, `First-run card visible: false`).
-- **Path (ii) (`pdaOpenRequest`):** When a PDA row was previously opened from FSM mode via `openPdaRow(id)`, `pdaOpenRequest` on `sandbox/+page.svelte` kept `{ id, seq }`. Leaving PDA mode unmounted `PdaWorkstation`; re-entering PDA mode within 6s of deleting that PDA in FSM mode mounted a new `PdaWorkstation` with `lastHandledSeq = 0`, which ran `openPdaById(req.id)` before `openLatestPda` and reopened the pending-delete PDA.
+### F1 — the file
 
-```text
-=== FAULT 1 ===
-URL: http://127.0.0.1:46859/sandbox?mode=pda
-Records before Mesin baru: {"total":2,"fsm":1,"pda":1}
-Records after Mesin baru: {"total":3,"fsm":2,"pda":1}
-Button text after: Mesin saya (3)
-Row chips in list after: ["DFSM","NDPDA","DFSM"]
-=== FAULT 2 ===
-Deleted FSM id: 610cb369-0e9d-4a4a-8304-9b8d7281dc84
-In IndexedDB after 6.5s wait: false
-Shown in FSM mode after switching: { title: 'Berakhiran 01', nodes: 3 }
-Resurrected in IndexedDB after editing in FSM mode: true
-=== FAULT 3 ===
-Deleted PDA id: aa276431-71c7-4a74-8d78-96d4205b110b
-Shown PDA title when switching to PDA mode within 6s: aⁿbⁿ (n ≥ 1)
-First-run card visible: false
+```
+$ cat rust-toolchain.toml
+[toolchain]
+channel = "1.100.0"
+targets = ["wasm32-unknown-unknown"]
+components = ["rustfmt", "clippy"]
+
+$ git diff -U0 origin/staging HEAD -- rust-toolchain.toml
+diff --git a/rust-toolchain.toml b/rust-toolchain.toml
+index 86a51eb..02b6208 100644
+--- a/rust-toolchain.toml
++++ b/rust-toolchain.toml
+@@ -2 +2 @@
+-channel = "stable"
++channel = "1.100.0"
 ```
 
-### (4) When `newPdaMachine` is registered
-`library.newPdaMachine` defaults to `async () => null` in `library.svelte.ts:67` and is assigned by `PdaWorkstation.svelte`'s `$effect` (`library.newPdaMachine = newPdaMachine`) when `PdaWorkstation` mounts (`activeMode === 'pda'`). When the student has not opened PDA mode in this visit, `PdaWorkstation` is not mounted and `library.newPdaMachine` is the default no-op; in FSM mode `library.mode === 'fsm'`, so `newPdaMachine` is never called. In PDA mode, the **Mesin saya** button is rendered inside `PdaEditor.svelte` after `PdaWorkstation` has mounted and initialized `machineStore`, so `library.newPdaMachine` is always registered before the dialog can be opened in PDA mode.
+### F2 — CI uses it
 
----
+**This line can only exist after the PR is pushed, so it is not pasted here.** The amended spec says so
+and keeps the local evidence separate. The `rust` job never prints `rustc 1.100.0`; the line to expect is
 
-## 2. Hand-Derived Fixtures (F1 to F5, with Two-Record Derivations)
-
-- **F1 (PDA mode, "Mesin baru"):**
-  - Start at `/sandbox?mode=pda` and load `aⁿbⁿ`: store has 1 FSM record (`type: undefined`, `kind: 'dfsm'`) and 1 PDA record (`type: 'pda'`, `kind: 'dpda'`, `title: 'aⁿbⁿ (n ≥ 1)'`, 2 states).
-  - Open **Mesin saya** (`library.open === true`, `library.mode === 'pda'`) and click **Mesin baru** (`library.newMachine()` with default `keepOpen = false`).
-  - `this.mode === 'pda' && !keepOpen` holds: `await this.newPdaMachine()` flushes the open PDA autosave, writes a new empty PDA record (`type: 'pda'`, `kind: 'ndpda'`, `title: ''`, `states: []`), sets `library.pdaCurrentId` to the new ID, increments `editorKey` (so `PdaEditor` remounts with `leftFirstRun = false` and `states.length === 0`, showing `.first-run`), and refreshes `library.entries`.
-  - `if (!problem) this.hide()` sets `library.open = false`, closing the dialog.
-  - Record counts by `type`: FSM count remains `1` (`fsmAfter === fsmBefore`); PDA count increases from `1` to `2`.
-- **F2 (FSM mode, "Mesin baru"):**
-  - In FSM mode (`library.mode === 'fsm'`), `this.mode === 'pda' && !keepOpen` is false, so `newMachine` calls `this.openDocument(createDocument(), keepOpen)` exactly as before.
-- **F3 (PDA mode, delete the FSM's `library.current` — two-record and single-record derivations):**
-  - **Case A (two FSM records + open PDA):**
-    - Store has `fsmCurrent` (`title: 'Berakhiran 01'`, `openedAt: 200`, `library.current.opened.record.id === fsmCurrent.id`), `fsmBackup` (`title: 'FSM Cadangan'`, `openedAt: 199`), and `pdaOpen` (`title: 'wcwᴿ (w ∈ {a, b}*)'`, `openedAt: 300`, `library.pdaCurrentId === pdaOpen.id`).
-    - In PDA mode (`library.mode === 'pda'`), delete `fsmCurrent`:
-      - `this.mode === 'pda' && this.pdaCurrentId === fsmCurrent.id` is false.
-      - `else if (this.current?.opened.record.id === fsmCurrent.id)` is true.
-      - `nextFsm` finds `fsmBackup` (`e.id !== fsmCurrent.id && e.type !== 'pda' && e.readable`).
-      - `await this.openMachine(fsmBackup.id, true)` flushes and disposes `fsmCurrent`'s autosave, sets `library.current` to `fsmBackup`, keeps `library.open === true` (`keepOpen = true`), and leaves `library.mode === 'pda'` and `library.pdaCurrentId === pdaOpen.id`.
-      - `this.pending.begin(fsmCurrent.id)` hides `fsmCurrent` immediately and deletes it from IndexedDB after 6,000 ms.
-      - Switching to FSM mode shows `FSM Cadangan` (never the deleted `Berakhiran 01` and never a blank new FSM, which proves `nextFsm` was selected rather than falling back to `newMachine`). Editing in FSM mode saves to `fsmBackup.id`; `fsmCurrent.id` remains absent from IndexedDB.
-  - **Case B (last remaining FSM record + open PDA):**
-    - Store now has only 1 FSM record (`fsmBackup`, which is `library.current`) and 1 PDA record (`pdaOpen`, open in PDA mode).
-    - In PDA mode, delete `fsmBackup`:
-      - `this.current?.opened.record.id === fsmBackup.id` is true, and `nextFsm` is `undefined`.
-      - Fallback calls `await this.newMachine(true)`. Because `keepOpen` is `true`, `this.mode === 'pda' && !keepOpen` is false, so `newMachine(true)` calls `this.openDocument(createDocument(), true)`.
-      - A new empty FSM record (`id: fsmNew`, `title: ''`, `states: []`) becomes `library.current`, the dialog stays open (`library.open === true`), and `pdaOpen` is untouched (`pdaListAfter` has length 1, same `id` and `doc`).
-      - Switching to FSM mode displays the new empty FSM (`Tanpa judul`, `.first-run` visible).
-- **F4 (FSM mode, delete a PDA row and switch to PDA mode within 6s — two-record and both-path derivations):**
-  - Store has 1 FSM record (`library.current`) and 2 PDA records: `pdaCadangan` (`id: 'pda-cadangan'`, `title: 'PDA Cadangan'`, `openedAt: 1000`) and `pdaTerbaru` (`id: 'pda-terbaru'`, `title: 'PDA Terbaru'`, `openedAt: 2000`).
-  - **Path (i) (`openLatestPda` on fresh PDA mount):**
-    - In FSM mode, delete `pdaTerbaru`: `this.pending.begin('pda-terbaru')` starts the 6s timer (`library.isPending('pda-terbaru') === true`, `library.isPending('pda-cadangan') === false`).
-    - Switch to PDA mode within 6s (`openRequest === null`): `PdaWorkstation` calls `openLatestPda` with `{ ...store, list: async () => (await store.list()).filter((r) => !library.isPending(r.id)) }`.
-    - `list()` returns only `[fsmRecord, pdaCadangan]`; `openLatestPda` selects `pdaCadangan` (`title: 'PDA Cadangan'`), not the pending-delete `pdaTerbaru` and not a blank fallback PDA.
-    - Pressing **Urungkan** on the page toast within 6s calls `library.undoDelete()`, clearing the pending timer for `'pda-terbaru'` so `PDA Terbaru` reappears in **Mesin saya**.
-  - **Path (ii) (`pdaOpenRequest` after opening a PDA from FSM mode):**
-    - In FSM mode, tap `PDA Terbaru` in **Mesin saya**: `openPdaRow('pda-terbaru')` switches to PDA mode and sets `pdaOpenRequest = { id: 'pda-terbaru', seq: 1 }`.
-    - Switch back to FSM mode: `selectMode('fsm')` sees `activeMode === 'pda' && mode !== 'pda'` and resets `pdaOpenRequest = null` before unmounting `PdaWorkstation` (and `openPdaById` also guards `if (library.isPending(id)) return { key: 'library.missing', params: {} }`).
-    - Delete `PDA Terbaru` in FSM mode and switch to PDA mode within 6s: `PdaWorkstation` mounts with `openRequest === null`, skips `'pda-terbaru'`, and opens `PDA Cadangan`. Pressing **Urungkan** restores `PDA Terbaru`.
-- **F5 (Existing T-074 and library tests):**
-  - All existing tests in `pda-library.test.ts`, `pda-library.spec.ts`, `library.test.ts`, `machines.test.ts`, `cross/library.spec.ts`, `cross/storage.spec.ts`, and `cross/pda-storage.spec.ts` pass unedited.
-
----
-
-## 3. Code Changes (Quoted from `git diff`)
-
-### `web/src/lib/storage/library.svelte.ts`
-```diff
-@@ -222,7 +222,12 @@ class Library {
- 	}
- 
- 	/** A new empty machine, saved and opened. */
--	newMachine(keepOpen = false): Promise<Problem | null> {
-+	async newMachine(keepOpen = false): Promise<Problem | null> {
-+		if (this.mode === 'pda' && !keepOpen) {
-+			const problem = await this.newPdaMachine();
-+			if (!problem) this.hide();
-+			return problem;
-+		}
- 		return this.openDocument(createDocument(), keepOpen);
- 	}
- 
-@@ -296,7 +301,7 @@ class Library {
- 				const problem = await this.newPdaMachine();
- 				if (problem) return;
- 			}
--		} else if (this.mode !== 'pda' && this.current?.opened.record.id === id) {
-+		} else if (this.current?.opened.record.id === id) {
- 			const nextFsm = this.entries.find((e) => e.id !== id && e.type !== 'pda' && e.readable);
- 			if (nextFsm) {
- 				const problem = await this.openMachine(nextFsm.id, true);
-@@ -315,6 +320,10 @@ class Library {
- 		await this.refresh();
- 	}
- 
-+	isPending(id: string): boolean {
-+		return this.pending?.isPending(id) ?? false;
-+	}
-+
- 	undoDelete(): void {
+```
+1.100.0-x86_64-unknown-linux-gnu (overridden by '…/rust-toolchain.toml')
 ```
 
-### `web/src/lib/editor/PdaWorkstation.svelte`
-```diff
-@@ -114,6 +114,7 @@
- 		if (opened?.record.id === id) {
- 			return null;
- 		}
-+		if (library.isPending(id)) return { key: 'library.missing', params: {} };
- 		const record = await machineStore.get(id);
- 		if (!record || !isPdaRecord(record)) return { key: 'library.missing', params: {} };
- 		const read = readStoredPda(record.doc);
-@@ -206,7 +207,13 @@
- 			if (req?.id && (await openPdaById(req.id)) === null) return;
- 			let result: OpenedPda;
- 			try {
--				result = await openLatestPda(store, () => Date.now());
-+				result = await openLatestPda(
-+					{
-+						...store,
-+						list: async () => (await store.list()).filter((r) => !library.isPending(r.id))
-+					},
-+					() => Date.now()
-+				);
- 			} catch {
+and, on a runner without 1.100.0, `info: syncing channel updates …` and `info: the active toolchain … has
+been installed`. The same pin is proved locally:
+
+```
+$ rustup show active-toolchain
+1.100.0-x86_64-unknown-linux-gnu (overridden by '/home/Aldebaran64/webtomata-ds/rust-toolchain.toml')
 ```
 
-### `web/src/routes/sandbox/+page.svelte`
-```diff
-@@ -102,6 +102,7 @@
- 
- 	async function selectMode(mode: WorkstationMode) {
- 		if (activeMode === 'pda' && mode !== 'pda') {
-+			pdaOpenRequest = null;
- 			await library.flushPda();
- 		}
- 		activeMode = mode;
+No workflow change was needed: the pre-flight proved that `rustup show active-toolchain` installs a missing
+pinned toolchain with the file's targets and components, and adds a missing target/component to an
+installed one; the `|| rustup toolchain install` fallback (no argument) installs the active toolchain and
+reads the same file. The same step appears seven times (five jobs of `ci.yml`, `deploy.yml`, `audit.yml`).
+ADR 0060 records this, and the fuzz job's `cargo install` note.
+
+### F3 — the guard
+
+```
+$ node --test tools/check-rust-toolchain.test.mjs
+✔ the toolchain file pins an exact version (1.207033ms)
+✔ the guard accepts white space around = and a trailing comment (0.359826ms)
+✔ the guard accepts single quotes, as TOML does (2.682562ms)
+✔ a commented-out channel is ignored, not read (0.539975ms)
+✔ the guard fails on channel = "stable" (0.429748ms)
+✔ the guard fails on channel = "1.100" (0.181558ms)
+✔ the guard fails on channel = "nightly" (0.233486ms)
+✔ the guard fails closed when the file has no channel (0.474136ms)
+✔ the guard fails when the channel is written twice (0.414121ms)
+ℹ tests 9
+ℹ pass 9
+ℹ fail 0
 ```
 
----
+The write order was test first: the file was written while `rust-toolchain.toml` still said `stable`, and
+the run failed with:
 
-## 4. Deepening Pass
+```
+✖ the toolchain file pins an exact version (1.951051ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  actual: 'rust-toolchain.toml: channel "stable" is not an exact x.y.z version. To bump the pin, follow the five steps in CONTRIBUTING.md ("Bumping the Rust version"): change the version, run rustup show once, then cargo clippy --all-targets -- -D warnings, cargo test and pnpm build:wasm; fix the new lints in the same pull request.',
+  expected: null,
+```
 
-1. **New exports and public interface members:**
-   - `Library.isPending(id: string): boolean` on the exported `library` singleton in `web/src/lib/storage/library.svelte.ts`.
-   - **Can it be private?** No: `PdaWorkstation.svelte` reads `library.isPending(id)` in `openPdaById` and when filtering `store.list()` for `openLatestPda`, while `this.pending` stays private inside `Library`.
-   - **Does something existing already do the same?** `PendingDeletes.isPending` in `library.ts` does the check on the internal timer map; `Library.isPending` delegates directly to `this.pending?.isPending(id) ?? false`.
-   - **Is any logic written twice?** No.
-2. **Interface size vs work behind it:**
-   - One boolean query method (`isPending(id)`) exposes whether a record ID is in the 6-second undo window without exposing `this.pending` or mutating methods (`begin`, `undo`, `dispose`).
-3. **Casts added:** `0`.
+then the pin made it pass (the message is now the pointer in section 4, one place for the steps).
 
----
+### F4 — local clones work
 
-## 5. Deliberate Breaks on the Final Code (AC4)
+```
+$ rustup show
+Default host: x86_64-unknown-linux-gnu
+rustup home:  /home/Aldebaran64/.rustup
 
-### Break B1: `newMachine` ignores the mode (an FSM record is made in the PDA mode)
-- **One-line diff:**
-  ```diff
-  --- a/web/src/lib/storage/library.svelte.ts
-  +++ b/web/src/lib/storage/library.svelte.ts
-  @@ -226,3 +226,3 @@ class Library {
-   	async newMachine(keepOpen = false): Promise<Problem | null> {
-  -		if (this.mode === 'pda' && !keepOpen) {
-  +		if (false && this.mode === 'pda' && !keepOpen) {
-   			const problem = await this.newPdaMachine();
-  ```
-- **Failing test output:**
-  ```text
-  1) [desktop] › e2e/pda-library.spec.ts:328:1 › T-078 F1: in PDA mode, Mesin baru opens a new empty PDA with first-run card, closes the list, and adds no FSM record 
+installed toolchains
+--------------------
+stable-x86_64-unknown-linux-gnu (default)
+nightly-x86_64-unknown-linux-gnu
+1.100.0-x86_64-unknown-linux-gnu (active)
 
-    Error: expect(locator).toBeVisible() failed
+active toolchain
+----------------
+name: 1.100.0-x86_64-unknown-linux-gnu
+active because: overridden by '/home/Aldebaran64/webtomata-ds/rust-toolchain.toml'
+installed targets:
+  wasm32-unknown-unknown
+  x86_64-unknown-linux-gnu
 
-    Locator: locator('.first-run')
-    Expected: visible
-    Timeout: 5000ms
-    Error: element(s) not found
+$ cargo --version
+cargo 1.100.0 (3acc79c0c 2026-11-05)
 
-      344 | 	await expect(dialog(page)).toBeHidden();
-      345 | 	await expect(page).toHaveURL(/mode=pda/);
-    > 346 | 	await expect(page.locator('.first-run')).toBeVisible();
-          | 	                                         ^
-        at /home/Aldebaran64/webtomata/web/e2e/pda-library.spec.ts:346:43
-  ```
-- **Extra Break B1b (`newMachine` omits `!keepOpen`, so `deleteMachine`'s `newMachine(true)` fallback in PDA mode calls `newPdaMachine`):**
-  ```diff
-  --- a/web/src/lib/storage/library.svelte.ts
-  +++ b/web/src/lib/storage/library.svelte.ts
-  @@ -226,3 +226,3 @@ class Library {
-   	async newMachine(keepOpen = false): Promise<Problem | null> {
-  -		if (this.mode === 'pda' && !keepOpen) {
-  +		if (this.mode === 'pda') {
-   			const problem = await this.newPdaMachine();
-  ```
-  Caught by `T-078 F3` Case B (`at /home/Aldebaran64/webtomata/web/e2e/pda-library.spec.ts:432:29`, `expect(dialog(page)).toBeVisible() failed`).
+$ rustup run stable cargo --version
+cargo 1.99.1 (5f94df478 2026-08-27)
+```
 
-### Break B2: The mode condition comes back in the FSM-current branch of `deleteMachine`
-- **One-line diff:**
-  ```diff
-  --- a/web/src/lib/storage/library.svelte.ts
-  +++ b/web/src/lib/storage/library.svelte.ts
-  @@ -304,3 +304,3 @@ class Library {
-   			}
-  -		} else if (this.current?.opened.record.id === id) {
-  +		} else if (this.mode !== 'pda' && this.current?.opened.record.id === id) {
-   			const nextFsm = this.entries.find((e) => e.id !== id && e.type !== 'pda' && e.readable);
-  ```
-- **Failing test output:**
-  ```text
-  1) [desktop] › e2e/pda-library.spec.ts:363:1 › T-078 F3: in PDA mode, deleting the FSM current record replaces it with the other FSM or a new empty FSM without touching the open PDA, and after 6s + edit it never returns 
+This clone's default is another version (1.99.1) and the repo answers 1.100.0. The pre-flight's `E0463` is
+recorded in the ADR: a 1.100.0 installed earlier has no wasm std until `rustup show` once, which the bump
+procedure now has. **After the merge, the owner and both workers run `rustup show` once in their clone.**
 
-    Error: expect(locator).toHaveText(expected) failed
+## 3. Verification (AC2)
 
-    Locator:  locator('p.title')
-    Expected: "FSM Cadangan"
-    Received: "Berakhiran 01"
-    Timeout:  5000ms
+```
+$ cargo fmt --check; echo "fmt exit=$?"
+fmt exit=0
 
-      412 | 	await closeList(page, isMobile);
-      413 | 	await switchMode(page, /^Mesin FSM/, isMobile);
-    > 414 | 	await expect(page.locator('p.title')).toHaveText('FSM Cadangan');
-          | 	                                      ^
-        at /home/Aldebaran64/webtomata/web/e2e/pda-library.spec.ts:414:40
-  ```
+$ cargo clippy --all-targets -- -D warnings; echo "clippy exit=$?"
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.11s
+clippy exit=0
 
-### Break B3: The workstation opens a pending-delete record again
-- **One-line diff:**
-  ```diff
-  --- a/web/src/lib/editor/PdaWorkstation.svelte
-  +++ b/web/src/lib/editor/PdaWorkstation.svelte
-  @@ -212,3 +212,3 @@
-   					{
-   						...store,
-  -						list: async () => (await store.list()).filter((r) => !library.isPending(r.id))
-  +						list: async () => await store.list()
-   					},
-  ```
-- **Failing test output:**
-  ```text
-  1) [desktop] › e2e/pda-library.spec.ts:453:1 › T-078 F4 (path i): in FSM mode, deleting the latest PDA and switching to PDA mode within 6s opens the other PDA, and Urungkan restores the deleted row 
+$ cargo test; echo "test exit=$?"
+test exit=0
+$ grep -E "test result:" ~/tmp/t080/cargo-test.log | awk -F'[ ;]+' '{p+=$4; f+=$6} END {printf "%d result lines: %d passed, %d failed\n", NR, p, f}'
+35 result lines: 478 passed, 0 failed
+```
 
-    Error: expect(locator).toHaveText(expected) failed
+```
+$ pnpm build:wasm
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 27.52s
+     Running tests/ts_export.rs (target/debug/build/engine-core/f1a2c8570d2ac059/out/ts_export-f1a2c8570d2ac059)
+running 1 test
+test the_types_match_the_json ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 
-    Locator:  locator('p.title')
-    Expected: "PDA Cadangan"
-    Received: "PDA Terbaru"
-    Timeout:  5000ms
+$ pnpm test:tools
+ℹ tests 147
+ℹ pass 147
+ℹ fail 0
 
-      486 | 	// Switch to PDA mode right away (within 6s): opens PDA Cadangan, not the pending-delete PDA Terbaru
-      487 | 	await switchMode(page, /^Otomata Pushdown/, isMobile);
-    > 488 | 	await expect(page.locator('p.title')).toHaveText('PDA Cadangan');
-          | 	                                      ^
-        at /home/Aldebaran64/webtomata/web/e2e/pda-library.spec.ts:488:40
-  ```
+$ pnpm test:web
+ Test Files  122 passed (122)
+      Tests  1424 passed | 3 skipped (1427)
 
----
+$ pnpm check:workflows
+ok   6 workflows follow the guard rails
+$ pnpm check:contrast
+ok   4.96 (need 3)  Success on ground (valid, saved)
+$ pnpm check:tokens
+ok   78 files use no raw colors
+$ pnpm check:strings
+ok   76 components have no hard-coded text
+$ pnpm check:questions
+ok   3 question(s) in content/questions
 
-## 6. Size Before and After (AC3)
+$ pnpm lint            → eslint ., exit 0
+$ pnpm check           → svelte-check found 0 errors and 0 warnings
+$ pnpm format:check    → All matched files use Prettier code style! (and cargo fmt --check)
+```
 
-| Target | Before (bytes gz) | After (bytes gz) | Delta (bytes) | `pnpm size` (KB) | Limit |
-|---|---:|---:|---:|---:|---:|
-| `index.html` | 83,801 | 83,828 | +27 | 81.9 KB | 170 KB |
-| `panduan/berakhiran-x.html` | 89,329 | 89,356 | +27 | 87.3 KB | 170 KB |
-| `panduan.html` | 82,949 | 82,976 | +27 | 81.0 KB | 170 KB |
-| `sandbox.html` | 124,790 | 124,828 | +38 | 121.9 KB | 170 KB |
-| `soal/berakhiran-10.html` | 124,149 | 124,176 | +27 | 121.3 KB | 170 KB |
-| `soal/jumlah-a-genap.html` | 124,149 | 124,176 | +27 | 121.3 KB | 170 KB |
-| `soal/mengandung-101.html` | 124,149 | 124,176 | +27 | 121.3 KB | 170 KB |
-| `soal.html` | 84,444 | 84,471 | +27 | 82.5 KB | 170 KB |
-| `tentang.html` | 82,247 | 82,274 | +27 | 80.3 KB | 170 KB |
-| `layout.worker` | 15,943 | 15,943 | 0 | 15.6 KB | 40 KB |
-| `engine_wasm_bg.wasm` | 242,689 | 242,689 | 0 | 237.0 KB | 250 KB |
+The CI `rust` job is the one item of AC2 that waits for the push.
 
-All routes grew by at most **+38 bytes** (limit: +102 bytes). The lazy PDA workstation chunk grew from 11.76 KB to 11.80 KB gzip (+39 bytes).
+## 4. The breaks (AC3), on the committed final code `e728b7d`
 
----
+| Break | The one line of `git diff` | The failing line |
+| --- | --- | --- |
+| **B1** `channel = "stable"` | `-channel = "1.100.0"` / `+channel = "stable"` (`@@ -2 +2 @@`) | `✖ the toolchain file pins an exact version`; `actual: 'rust-toolchain.toml: channel "stable" is not an exact x.y.z version. The bump procedure is "Bumping the Rust version" in CONTRIBUTING.md.'`, `expected: null` |
+| **B2** `channel = "1.100"` | `-channel = "1.100.0"` / `+channel = "1.100"` (`@@ -2 +2 @@`) | `✖ the toolchain file pins an exact version`; `actual: 'rust-toolchain.toml: channel "1.100" is not an exact x.y.z version. The bump procedure is "Bumping the Rust version" in CONTRIBUTING.md.'`, `expected: null` |
 
-## 7. Verification Output (AC2, AC5)
+Both were restored; `node --test tools/check-rust-toolchain.test.mjs` is 9/9 again and `git status --short`
+is empty before this report's commit. The full diff of the branch is section 1's file list.
 
-### Format, Svelte Check, Lint, Strings, Tokens, Size
-```text
+## 5. Deepening pass
+
+- **New exports:** none. The guard's helpers (`channelsOf`, `problemWith`, `check`) are private to
+  `tools/check-rust-toolchain.test.mjs`; `tools/*.test.mjs` files export nothing and are run by the test
+  runner, so they do not need to.
+- **New members of a public interface:** none.
+- **Written twice?** The channel parse exists once, in the guard. The bump steps exist once, in
+  `CONTRIBUTING.md`; the guard's message and `tools/README.md` point to them (the message first repeated the
+  five steps, and was changed to a pointer so the two cannot drift).
+- **Interface smaller than the work behind it:** one test file, no exported surface, no new script, no
+  workflow change.
+- **Casts added:** zero.
+- **Limit, recorded in the ADR:** the guard checks the channel only; a dropped `targets` or `components`
+  entry is F1's one-time check.
+
+## 6. What I did not run, and notes
+
+- **F2 / the CI `rust` job.** Not pushed, so there is no run; the log line is quoted in F2 and the planner
+  can check it on the PR.
+- **E2E and cross-browser.** No web code changed, so no spec opens anything this task touched.
+- **A fuzz run.** Not needed for a toolchain pin; ADR 0060 records that `fuzz.yml`'s `cargo install` now
+  uses the pinned version while `cargo +nightly fuzz` stays on nightly.
+- **The pre-flight's side effects**, reported separately: this machine's rustup self-updated to 1.29.3 and
+  its nightly was updated when the throwaway pin was probed; the throwaway 1.98.0 was uninstalled. Neither
+  is part of the change.
+
+# T-076 — A downloaded `.jff` keeps its name on Android, and a file is told by its content
+
+Branch `task/T-076-file-names`, cut from `origin/staging` at `1271d15` (PR 216, the amended spec). Status:
+`done`. Commits: `207097a` (the change) and the last commit of this branch (this report and the status).
+
+The owner's report, reproduced before any change: a `.jff` downloaded from the PDA editor on Android Chrome
+was saved as `aⁿbⁿ (n ≥ 1).jff.xml` and "Buka file…" answered `import.unknown_type`. The run is in the
+pre-flight (section 1).
+
+## 1. What changed
+
+| File | Change |
+| --- | --- |
+| `web/src/lib/share/open-file.ts` | `fileKind(name, text)` (exported) = `importKind(name) ?? kindOfText(text)`; `kindOfText` private, first character after `/^\s*/`; `openFile` checks the size, then reads, then tells the kind; `titleOfFileName` strips `.jff`, else `.jff.xml`, else `.xml` |
+| `web/src/lib/share/pda-files.ts` | `isPdaFile` and `openPdaFile` use `fileKind`, with the size check first; the doc comment of `isPdaFile` rewritten |
+| `web/src/lib/share/files.ts` | `DOWNLOAD_TYPE = 'application/octet-stream'` |
+| `ShareDialog.svelte`, `PdaFileDialog.svelte` | pass `DOWNLOAD_TYPE` for the `.jff` and the JSON; SVG and PNG unchanged |
+| tests | `open-file.test.ts`, `pda-files.test.ts`, `files.test.ts`, `open-from-file.test.ts`; e2e `open-file.spec.ts`, `pda-files.spec.ts`, `share-link.spec.ts`; `web/e2e/fixtures.ts` (one shared blob spy, see 6) |
+| docs | `docs/decisions/0057-file-kind-by-content.md`; `docs/agent/PLAN.md` (status) |
+
+The size check is now the **first** thing in `openFile`, `isPdaFile` and `openPdaFile`: a file over
+`FILE_BYTE_LIMIT` (1,048,576 bytes) is `import.too_big` (or "not a PDA file" for `isPdaFile`) whatever its
+name, and `text()` is never called. Before, both readers decided the kind before the size, so an unknown
+name was refused as `import.unknown_type` without ever being size-checked.
+
+### The three existing tests that changed, and only these
+
+The probe run of the pre-flight (`pnpm --filter web exec vitest run src/lib/share/*.test.ts`, 51 passed)
+and this change:
+
+| Test | Was | Now | Why |
+| --- | --- | --- | --- |
+| `open-file.test.ts:155` `reads a file by its content when the name does not say…` (was `refuses an extension that is not known, and says which one`) | `file('a.txt', '{}')` → `import.unknown_type` | `document.invalid_file` (the text starts with `{`, so it is JSON; the document parser refuses it), and a new `file('a.txt', 'halo')` → `import.unknown_type` | F1: a `.txt` whose text starts with `{` is JSON |
+| `pda-files.test.ts:86` `tells a PDA by its content when the name does not say…` (was `says no for a name that is neither…`) | `isPdaFile('a.txt'/'a', '{"kind":"dpda"}')` → `false` | `true` (and `'a.txt'`/`halo` → `false`, `'a.json'`/`not json` → `false` kept) | F3: a PDA JSON named `anbn.txt` opens |
+| `pda-files.test.ts:204` `checks the size before it reads the text, and reads a .txt that holds a PDA .jff` (was `…and refuses an unknown extension`) | `openPdaFile(file('a.txt', pdaJffText))` → `import.unknown_type` | the engine is called with the text and the result is `ok: true` | F1/F3: the content says `.jff` |
+
+No other existing test was edited. The two e2e `catatan.txt`/`halo` cases and every `open-file.wasm`,
+`pda-files.wasm`, `files.wasm` and `open-from-file` case pass unedited.
+
+## 2. The derivations of the fixtures
+
+**F1 — `fileKind(name, text)`.** Derivation: the name wins when `importKind` answers. `a.jff` → `jff`
+(whatever the text), `a.json` and `a.webtomata.json` → `json`. Otherwise the first character after every
+white space at the start of the text: `<` → `jff`, `{` → `json`, anything else → `null`. `\s` in
+JavaScript matches `U+FEFF`, so a BOM is white space: `'\uFEFF{'` → `json`, `' \uFEFF\n{'` → `json`,
+`'  \n\t<structure/>'` → `jff`. `halo` → `null`; `[]` → `null`; `''` and `' \n\t\uFEFF '` → `null` (the
+search for `\S` finds nothing).
+**F2 — the title.** The rule is one suffix, matched case-insensitively on the lower-cased name but sliced
+from the original: `.jff` → `a.jff` gives `a`; `.jff.xml` → `aⁿbⁿ (n ≥ 1).jff.xml` gives
+`aⁿbⁿ (n ≥ 1)` (8 characters off, not 4, so not `….jff`); `.xml` → `x.XML` and `a.jff.XML` give `x` and
+`a`. `.jff.xml` alone leaves `''` (`checkTitle('')` is ok, and the empty title already opens as
+`editor.untitled`). The existing cases (`Berakhiran 01.jff`, `x.JFF`, `.jff`, the 300 emoji, the control
+characters) are unchanged because they end in `.jff`.
+**F3 — both readers (Playwright).** The PDA `.jff` of `aⁿbⁿ` is written inline in `pda-files.spec.ts`
+(`anbnJff`, checked against the real engine before the test was written: `ok: true`, states `q0`/`q1`,
+kind `ndpda`). Named `anbn.jff.xml` it has no known extension, so the content decides: `<` → `jff`, and
+`PDA_JFF` matches `<type>pda</type>` → `openPdaFile` → a new PDA record, the mode switches to `pda` in
+the FSM mode and stays in the PDA mode; the title is `anbn` (F2). A PDA JSON named `anbn.txt` is `{` →
+`json` → `PDA_JSON` matches `"kind":"dpda"` → a PDA, with the document's own title. An FSM `.jff` named
+`even-a.jff.xml` is `jff` → `openFile` → the engine → an FSM machine, title `even-a`.
+**F4 — the hostile files.** The unknown name `foto.jpg` (a name that says nothing) is the case that was
+never size-checked before. At `1 MB − 1` and at `1 MB` it is read and sniffed (the text `{"schemaVersion":1}`
+→ `json` → `document.invalid_file`; the PDA `.jff` text → `jff` → the engine); at `1 MB + 1` it is
+`import.too_big` and `text()` is never called, in both readers (the spy count stays at 2). A `1 MB + 1`
+`x.jff.xml` is also `import.too_big` with zero reads. `'\u0000\u0000'` named `x.jff.xml` is neither kind
+→ `import.unknown_type` (the engine is not asked). `<broken` named `x.jff.xml` is `jff` → the engine → the
+real engine answers `jff.xml_invalid` with line 1, column 1 (checked against the WASM engine, and asserted
+in `open-file.spec.ts` as the visible text "File .jff ini rusak: XML-nya tidak terbaca di baris 1, kolom 1.").
+Each refusal writes no record, opens nothing and says why (`open-from-file.test.ts`); the count of records
+and the open machine are as before.
+**F5 — the blob type.** `DOWNLOAD_TYPE` is `application/octet-stream`. `download()` builds
+`new Blob([text], { type: `${type};charset=utf-8` })`, so the type the browser sees is
+`application/octet-stream;charset=utf-8` for a `.jff` and for a JSON, `image/svg+xml;charset=utf-8` for the
+SVG (also a string) and `image/png` for the PNG (a `Blob`, used as it is). The spy wraps
+`URL.createObjectURL` with `page.addInitScript` before the page's first script and records `blob.type`, so
+the test observes what the browser acts on; a `suggestedFilename()` check passes with `application/xml`
+too and proves nothing.
+
+## 3. Verification
+
+All of it on the final code (after every break was restored; the restored files are byte-identical to the
+files the checks ran on, `diff -q` empty).
+
+```
 $ pnpm format:check
-$ pnpm --filter web format:check && cargo fmt --check
-$ prettier --check .
-Checking formatting...
 All matched files use Prettier code style!
 
 $ pnpm check
-$ pnpm --filter web check
-$ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
-Loading svelte-check in workspace: /home/Aldebaran64/webtomata/web
-Getting Svelte diagnostics...
 svelte-check found 0 errors and 0 warnings
 
 $ pnpm lint
@@ -325,85 +306,111 @@ $ pnpm --filter web lint
 $ eslint .
 
 $ pnpm check:strings
-$ node tools/check-strings.mjs
 ok   76 components have no hard-coded text
 
 $ pnpm check:tokens
-$ node tools/check-tokens-usage.mjs
 ok   78 files use no raw colors
 
-$ pnpm size
-$ node tools/check-size.mjs
-ok   initial JS index.html: 81.9 KB gzip (limit 170 KB)
-ok   initial JS panduan/berakhiran-x.html: 87.3 KB gzip (limit 170 KB)
+$ pnpm test:web
+ Test Files  122 passed (122)
+      Tests  1424 passed | 3 skipped (1427)
+
+$ pnpm --filter web exec vitest run src/lib/share/
+ Test Files  10 passed (10)
+      Tests  110 passed | 2 skipped (112)
+
+$ pnpm --filter web exec vitest run src/lib/share/open-file.wasm.test.ts src/lib/share/pda-files.wasm.test.ts src/lib/share/files.wasm.test.ts src/lib/share/local-jff.test.ts
+ Test Files  4 passed (4)
+      Tests  23 passed | 2 skipped (25)
+
+$ pnpm build && pnpm size
+ok   initial JS index.html: 81.8 KB gzip (limit 170 KB)
+ok   initial JS panduan/berakhiran-x.html: 87.2 KB gzip (limit 170 KB)
 ok   initial JS panduan.html: 81.0 KB gzip (limit 170 KB)
 ok   initial JS sandbox.html: 121.9 KB gzip (limit 170 KB)
-ok   initial JS soal/berakhiran-10.html: 121.3 KB gzip (limit 170 KB)
-ok   initial JS soal/jumlah-a-genap.html: 121.3 KB gzip (limit 170 KB)
-ok   initial JS soal/mengandung-101.html: 121.3 KB gzip (limit 170 KB)
+ok   initial JS soal/berakhiran-10.html: 121.2 KB gzip (limit 170 KB)
+ok   initial JS soal/jumlah-a-genap.html: 121.2 KB gzip (limit 170 KB)
+ok   initial JS soal/mengandung-101.html: 121.2 KB gzip (limit 170 KB)
 ok   initial JS soal.html: 82.5 KB gzip (limit 170 KB)
 ok   initial JS tentang.html: 80.3 KB gzip (limit 170 KB)
 ok   layout worker _app/immutable/workers/layout.worker-DvXNapDG.js: 15.6 KB gzip (limit 40 KB)
 ok   wasm _app/immutable/workers/assets/engine_wasm_bg-VlyrwV86.wasm: 237.0 KB gzip (limit 250 KB)
-```
 
-### Unit Tests (`pnpm test:web`)
-Existing tests run unedited included `src/lib/storage/library.test.ts` (16 tests), `src/lib/storage/machines.test.ts` (8 tests), `src/lib/storage/pda-work.test.ts` (26 tests), `src/lib/storage/pda-example.test.ts` (6 tests), `src/lib/first-load.test.ts` (3 tests), and all 9 existing tests in `src/lib/storage/pda-library.test.ts` (11 total with the 2 new T-078 tests):
-```text
-$ pnpm test:web
- RUN  v5.0.3 /home/Aldebaran64/webtomata/web
- ✓ src/lib/first-load.test.ts (3 tests) 30ms
- ✓ src/lib/storage/pda-library.test.ts (11 tests) 102ms
- ✓ src/lib/storage/library.test.ts (16 tests) 16ms
- ✓ src/lib/storage/machines.test.ts (8 tests) 20ms
- ...
- Test Files  122 passed (122)
-      Tests  1416 passed | 2 skipped (1418)
-   Duration  11.12s
-```
-
-### Playwright E2E (`pda-library`, `cross/library`, `cross/storage`, `cross/pda-storage` on `desktop`, `phone`, `webkit-phone`)
-```text
-$ pnpm --filter web exec playwright test pda-library cross/library cross/storage cross/pda-storage --project=desktop --project=phone --project=webkit-phone
-
-Running 100 tests using 6 workers
-  ...
-  ✓  34 [desktop] › e2e/pda-library.spec.ts:328:1 › T-078 F1: in PDA mode, Mesin baru opens a new empty PDA with first-run card, closes the list, and adds no FSM record (2.9s)
-  ✓  35 [desktop] › e2e/pda-library.spec.ts:363:1 › T-078 F3: in PDA mode, deleting the FSM current record replaces it with the other FSM or a new empty FSM without touching the open PDA, and after 6s + edit it never returns (16.2s)
-  ✓  36 [desktop] › e2e/pda-library.spec.ts:453:1 › T-078 F4 (path i): in FSM mode, deleting the latest PDA and switching to PDA mode within 6s opens the other PDA, and Urungkan restores the deleted row (3.9s)
-  ✓  37 [desktop] › e2e/pda-library.spec.ts:499:1 › T-078 F4 (path ii): opening a PDA row from FSM mode, switching back to FSM, deleting that row, and switching to PDA within 6s does not reopen the deleted PDA; Urungkan restores it (4.8s)
-  ✓  71 [phone] › e2e/pda-library.spec.ts:328:1 › T-078 F1: in PDA mode, Mesin baru opens a new empty PDA with first-run card, closes the list, and adds no FSM record (2.8s)
-  ✓  72 [phone] › e2e/pda-library.spec.ts:363:1 › T-078 F3: in PDA mode, deleting the FSM current record replaces it with the other FSM or a new empty FSM without touching the open PDA, and after 6s + edit it never returns (16.3s)
-  ✓  73 [phone] › e2e/pda-library.spec.ts:453:1 › T-078 F4 (path i): in FSM mode, deleting the latest PDA and switching to PDA mode within 6s opens the other PDA, and Urungkan restores the deleted row (3.8s)
-  ✓  74 [phone] › e2e/pda-library.spec.ts:499:1 › T-078 F4 (path ii): opening a PDA row from FSM mode, switching back to FSM, deleting that row, and switching to PDA within 6s does not reopen the deleted PDA; Urungkan restores it (4.6s)
-  ...
+$ cd web && pnpm exec playwright test open-file pda-files share-link cross/open-file --project=desktop --project=phone
   2 skipped
-  98 passed (1.7m)
+  72 passed (1.3m)
 ```
 
-### 10x Repeat Stress Run (`--repeat-each=10` on the 4 new T-078 e2e tests)
-```text
-$ pnpm --filter web exec playwright test pda-library -g T-078 --project=desktop --repeat-each=10
+The two skipped e2e cases are the tests that each project cannot run (a phone-only test on desktop and the
+reverse).
 
-Running 40 tests using 6 workers
-  ...
-  40 passed (1.0m)
-```
+**Sizes in bytes, all nine pages**, the metric of `tools/check-size.mjs` (the gzip sum of the `.js` that the
+HTML references), before (`11577ba`) and after, measured by the same command both times:
 
-### What Was Not Run
-- **Firefox (`--project=firefox`):** Not run locally because Firefox does not start on the owner's laptop (`AGENTS.md`); runs in CI.
-- **Physical phone / live site:** Emulated via Playwright `phone` (Pixel 7) and `webkit-phone` (iPhone 13) projects locally; physical device and live preview belong to the owner.
+| Page | Before | After | Delta |
+| --- | ---: | ---: | ---: |
+| `index.html` | 83,801 | 83,802 | +1 |
+| `panduan.html` | 82,949 | 82,950 | +1 |
+| `panduan/berakhiran-x.html` | 89,329 | 89,330 | +1 |
+| `sandbox.html` | 124,790 | 124,789 | −1 |
+| `soal.html` | 84,444 | 84,445 | +1 |
+| `soal/berakhiran-10.html` | 124,149 | 124,150 | +1 |
+| `soal/jumlah-a-genap.html` | 124,149 | 124,150 | +1 |
+| `soal/mengandung-101.html` | 124,149 | 124,150 | +1 |
+| `tentang.html` | 82,247 | 82,248 | +1 |
 
-### Final `git diff --stat` (against base `11577ba`)
-```text
- docs/agent/PLAN.md                         |   2 +-
- docs/agent/REPORT.md                       | 676 ++++++++++++++---------------
- docs/decisions/0059-library-in-pda-mode.md |  29 ++
- web/e2e/pda-library.spec.ts                | 236 +++++++++-
- web/src/lib/editor/PdaWorkstation.svelte   |   9 +-
- web/src/lib/storage/library.svelte.ts      |  13 +-
- web/src/lib/storage/pda-library.test.ts    |  73 +++-
- web/src/routes/sandbox/+page.svelte        |   1 +
- 8 files changed, 693 insertions(+), 346 deletions(-)
-```
+No route grew by more than 1 byte (AC3 allows 102). The module that grew is lazy: the share reader is
+`_app/immutable/chunks/BsyC2EOn.js`, 1,936 raw bytes (926 gzip, was 1,734 raw), and no HTML lists it.
 
+## 4. The breaks (AC4), each on the final code
+
+| Break | The one line | The test that failed |
+| --- | --- | --- |
+| **B1** `kindOfText` always `null` | `function kindOfText(text: string): ImportKind \| null { return null; }` (the five lines that read the character deleted) | `open-file.test.ts:61` `expected null to be 'jff'`; also `:158` and `:209` `expected 'import.unknown_type' to be 'document.invalid_file'`, and `:242` `expected [] to deeply equal [ '<broken' ]` |
+| **B2a** the size check after the read, in `openFile` | `-  if (!(file.size <= FILE_BYTE_LIMIT)) return fail('import.too_big', …);` moved below `const text = await file.text();` | `open-file.test.ts:143` `expected true to be false` (a file of 1 MB + 1 was read); `:216` `expected 3 to be 2`; `:229` `expected 1 to be +0` |
+| **B2b** the same in `isPdaFile` | `-  if (!(file.size <= FILE_BYTE_LIMIT)) return false;` moved below `text = await file.text();` | `pda-files.test.ts:101` `expected 1 to be +0`; `:238` `expected 3 to be 2` |
+| **B3** `titleOfFileName` stops taking off `.xml` | `-const NAME_SUFFIXES = [JFF_EXTENSION, `${JFF_EXTENSION}.xml`, '.xml'] as const;` → without `'.xml'` | `open-file.test.ts:87` `expected 'x.XML' to be 'x'` |
+| **B4** the constant back to `application/xml` | `-export const DOWNLOAD_TYPE = 'application/octet-stream';` → `'application/xml'` | `pda-files.spec.ts:289` and `share-link.spec.ts:464`: `- "application/octet-stream;charset=utf-8"` / `+ "application/xml;charset=utf-8"` |
+
+Three further breaks, for rules that AC4 does not name, so that no new test is allowed to be unfalsifiable:
+
+| Break | The one line | The test that failed |
+| --- | --- | --- |
+| the content wins over the name | `return kindOfText(text) ?? importKind(name);` | `open-file.test.ts:54` `expected 'json' to be 'jff'` |
+| the `.xml` rule before the `.jff.xml` rule | `const NAME_SUFFIXES = ['.xml', `${JFF_EXTENSION}.xml`, JFF_EXTENSION] as const;` | `open-file.test.ts:86` `expected 'aⁿbⁿ (n ≥ 1).jff' to be 'aⁿbⁿ (n ≥ 1)'` |
+| the size check after the read in `openPdaFile` | the same move as B2a, in `openPdaFile` | `pda-files.test.ts:216` `expected 1 to be +0`; `:253` `expected 3 to be 2` |
+
+Every break was restored; `diff -q` against the backups prints nothing and the suite is green again
+(section 3).
+
+## 5. Deepening pass
+
+**New exports.** `fileKind` (`open-file.ts`): used by `openFile`, `isPdaFile` and `openPdaFile` and tested
+directly by F1 — it cannot be private, and `kindOfText` is private because only `fileKind` calls it.
+`DOWNLOAD_TYPE` (`files.ts`): used by the two dialogs and by the constant test; it cannot be private
+because the two dialogs are in two files. `watchBlobs` and `blobTypes` (`web/e2e/fixtures.ts`): test-only,
+used by the two dialog specs; they are a seam because the same spy is needed in two spec files, and the
+alternative was the same ten lines twice. That file is the one file this task touched beyond the scope's
+list; the change is +26 lines, and the two specs import it. **No new member of a public interface**:
+`ImportFile`, `ImportEngine`, `ImportPdaEngine` and `PdaJffEngine` are unchanged.
+
+**Written twice?** The kind rule is in one place (`fileKind`), the title rule in one place
+(`NAME_SUFFIXES`). The size predicate `file.size <= FILE_BYTE_LIMIT` stands in three readers, as it did
+before, because each answers differently (`fail('import.too_big', …)` with the limit, or `false`); merging
+them would add an interface to save three lines. The `fail` helper already existed in both modules.
+
+**Casts added: zero.** The e2e spy declares `window.__blobTypes` with `declare global` instead of a cast.
+The `as const` on `NAME_SUFFIXES` is a literal-type annotation, not a cast. No `any`, no `@ts-ignore`, no
+`as unknown as`.
+
+## 6. What I did not run, and the phone re-check
+
+- **The owner's phone.** Nothing here reproduces Chrome on Android renaming a download; the type is proved,
+  the rename is not. The owner should check, after the merge: a new `.jff` is saved as `….jff` and opens,
+  and an already-saved `….jff.xml` opens.
+- **The live site.** Not deployed; the check is on the built site.
+- The full e2e suite and `pnpm test:e2e:cross` were not run (the task's verification is the specs of the
+  area), and Firefox/WebKit were not run (the cross specs need `pnpm test:e2e:cross`, CI runs them).
+- **Residual risk, for the phone check:** the picker's `accept=".jff,.json,application/json"` does not list
+  `.xml`, so some phones may not offer a saved `….jff.xml` in the chooser at all. The owner's Chrome did.
+  The list is left as it is (widening it would hide other files), as the spec says.

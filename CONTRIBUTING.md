@@ -34,13 +34,21 @@ Thanks for helping. WebTomata is free, open source (AGPL-3.0), with no accounts 
 
 ## Menjalankan proyek / Running the project
 
-Requirements: Rust (stable, via `rustup`), Node 24.21.x (see `.nvmrc`), pnpm 12.14 (`packageManager` in `package.json`).
+Requirements: Rust (the exact version in `rust-toolchain.toml`, via `rustup`), Node 24.21.x (see `.nvmrc`), pnpm 12.14 (`packageManager` in `package.json`).
 
 ```
 cargo test
 pnpm install
 pnpm build
 ```
+
+### Bumping the Rust version / Menaikkan versi Rust
+
+1. Change the version in `rust-toolchain.toml`.
+2. Run `rustup show` once; it installs that version with the wasm target and the components.
+3. Run `cargo clippy --all-targets -- -D warnings`, `cargo test` and `pnpm build:wasm`.
+4. Fix what the new lints say in the same pull request.
+5. Open one pull request. Nothing is scheduled or automated.
 
 ## Pemeriksaan kode / Code checks
 

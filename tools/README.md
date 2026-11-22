@@ -27,6 +27,10 @@ The seed is fixed. The same versions give the same files, on any computer (also 
 
 `pnpm check:workflows` reads `.github/workflows/*.yml` and fails if the Cloudflare key (`secrets.`) is used outside the job `deploy` of `deploy.yml`, if that job installs without `--ignore-scripts` or runs build code, if an action is not pinned to a full commit, or if `pull_request_target` is used. See `docs/decisions/0015-deploy-isolation.md`. Its tests run with `pnpm test:tools`.
 
+## Pinned Rust toolchain (`check-rust-toolchain.test.mjs`)
+
+`pnpm test:tools` fails if `rust-toolchain.toml` does not name an exact `x.y.z`. It strips `#` comments, accepts white space around `=` and either quote style, requires exactly one `channel` (none fails), and names the bump procedure in `CONTRIBUTING.md` when it fails. It guards the channel only; `targets` and `components` are checked once by hand. See `docs/decisions/0060-pinned-rust-toolchain.md`.
+
 ## Design token checks
 
 `pnpm check:contrast` (`check-contrast.mjs`) reads `web/src/lib/styles/tokens.css` and checks the color pairs in `contrast-pairs.mjs` against WCAG 2.2 (4.5:1 for text, 3:1 for graphics and the edges of controls). It also fails if a color token is in no pair and is not marked decorative. `--markdown` prints the table for `docs/ux/design-system.md`. `pnpm check:tokens` (`check-tokens-usage.mjs`) fails if a component or a css file other than `tokens.css` has a raw color. Their tests run with `pnpm test:tools`.
