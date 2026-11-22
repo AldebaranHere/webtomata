@@ -2740,14 +2740,51 @@ Follow the rules of `AGENTS.md` for every shell command; the loaded runs are lon
 
 ---
 
-## Task T-065 — Symbol names: refuse the ε words in the document, and the missing text of `document.duplicate_symbol` (draft)
+## Task T-065 — Symbol names: refuse the ε word in the document, and the missing text of `document.duplicate_symbol`
 
-**Status:** proposed
-**Owner:** worker
+**Status:** todo (specified 2026-11-23; it was a draft since 2026-11-09)
+**Owner:** worker (Gemini: the planner's pick; it is the shared document code and two dictionaries)
+**Branch:** `task/T-065-symbol-names`
 
-**Goal:** Found by the worker of T-061 on 2026-11-09 with the real functions. (1) `checkSymbol` of the document (`document.ts`) refuses `ε`, an empty name and a name over 32 characters, but accepts the word `eps` as a symbol name, in an FSM and in a PDA, although `eps` means ε in the labels; a file or a share link can carry such a symbol. (2) `document.duplicate_symbol` has no text in `id.ts`, `en.ts` or `pda-messages.ts`, so the FSM table shows the raw key when a symbol is added twice. Decide with the planner whether the document refuses the ε words (a change in shared code, with FSM tests and a migration question for old files) and add the text of the missing key to the shared dictionary with a test that every refusal key of the commands has a text. Not before T-061 is merged.
+**Goal:** Found by the worker of T-061 on 2026-11-09 with the real functions. (1) `checkSymbol` of the document (`document.ts`) refuses `ε`, an empty name and a name over 32 characters, but accepts the word `eps` as a symbol name, in an FSM and in a PDA, although `eps` means ε in the labels; a symbol named `eps` can never be typed in a label, and the machine cannot be read back from its own picture. (2) `document.duplicate_symbol` has no text in `id.ts`, `en.ts` or `pda-messages.ts`, so the FSM table shows the raw key when a symbol is added twice. This task makes the document refuse a new symbol that is an ε word, adds the missing texts, and removes the PDA table's own copy of the `eps` check.
 
-**Depends on:** T-061.
+**Decisions (planner, 2026-11-23; do not reopen, ask if one looks wrong):**
+
+- **Refuse when a symbol is added or renamed, never when a document is read.** The command that adds (or renames to) a symbol refuses an ε word. Reading a stored record, a `.jff`, a JSON file or a share link that already holds a symbol `eps` keeps working exactly as before: no migration, no rejected file, no change of any old machine. State in the pre-flight where `checkSymbol` is called (commands, the readers, the engine's own validation) and whether the check can be put on the commands' side alone; if one function serves both, split the check, do not move the old files' behaviour.
+- **One list of the ε words.** `pda-label.ts` already knows which words mean ε (T-061 exported it for the table). The document uses **the same list from one place**; no second copy. Say in the report where it lives now.
+- **New refusal key `document.reserved_symbol { symbol }`**, text in `id.ts` and `en.ts` (the shared dictionary, where `document.duplicate_symbol` also belongs): id "“{symbol}” berarti ε, jadi tidak bisa dipakai sebagai nama simbol." en "“{symbol}” means ε, so it cannot be a symbol name." And the missing `document.duplicate_symbol { symbol }`: id "Simbol “{symbol}” sudah ada." en "The symbol “{symbol}” already exists." Check the real params of the existing refusal first and use its names. Both are `TODO(review)` in the glossary sense only if a new term appears; none does.
+- **The PDA table's `eps` branch goes.** `pda_editor.symbol_reserved` and its check in the Alfabet field refuse `eps`, `ε` and a name with a space or a comma. After this task the document refuses `eps` and `ε` itself, so the table's check keeps **only the whitespace and comma rule** (which is not a document rule) and shows the document's refusal for the rest. The text of `pda_editor.symbol_reserved` stays for the whitespace and comma case; say in the report if its wording must change.
+- **Not in this task:** any change in `crates/`, the label parsers, the share-link or `.jff` formats, and any migration of stored machines.
+
+**Scope (files):** `web/src/lib/editor/document.ts` (and the PDA document file if it has its own `checkSymbol`), `web/src/lib/editor/pda-label.ts` (only if the list moves), `web/src/lib/editor/PdaAlphabetBlock.svelte` (or the file that holds the table's check), `web/src/lib/i18n/id.ts`, `web/src/lib/i18n/en.ts`, `web/src/lib/i18n/pda-messages.ts` (only if a PDA key changes), their unit tests, the e2e that the pre-flight names, `docs/agent/PLAN.md` (status), `docs/agent/REPORT.md`. **Existing tests that may change, and only these:** the T-061 cases that assert the table's own refusal of `eps` (they must now see the document's text); list each.
+
+**Fixtures (the oracle; derive by hand and write the derivation in `REPORT.md`):**
+
+- F1 In an FSM document, adding the symbol `eps` is refused with `document.reserved_symbol { symbol: 'eps' }`; adding `ε` is refused as before; adding `a` works. The same in a PDA document for the input and the stack alphabet. Renaming a symbol to `eps` is refused.
+- F2 **Old data still loads:** a stored FSM record, a `.jff` and a share link that carry a symbol `eps` (build the fixtures from the real writers or by hand) open as before, with `eps` in the alphabet, and a simulation that reads it gives the same result as on `staging`.
+- F3 The FSM table shows the Indonesian and English text of `document.duplicate_symbol` (not the key) when the same symbol is added twice; a test shows that every refusal key the two tables can show has a text in both languages (extend the existing one).
+- F4 In the PDA Alfabet field, `eps` shows the **document's** text; a name with a space or a comma still shows `pda_editor.symbol_reserved`.
+
+**Acceptance criteria:**
+
+- AC1 F1 to F4 hold, each by a test written first and seen to fail on `staging`.
+- AC2 **Nothing else changes:** list the existing tests you ran; only the ones named in the scope may be edited.
+- AC3 **Size:** `pnpm size` before and after in bytes; no route's first JS grows by more than 102 bytes (the shared dictionary is in the first JS: keep the texts short).
+- AC4 **Break each guard once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) the add command accepts `eps` again; (B2) the reader refuses a stored `eps` (the old-data guard); (B3) the table's `eps` branch is put back (two sources); (B4) `document.duplicate_symbol` loses its `en` text. Restore each; `git diff --stat` shows only the scope.
+- AC5 `pnpm lint`, `pnpm check`, `pnpm test:web`, `pnpm check:strings`, `pnpm build && pnpm size`, and Playwright for the specs that the pre-flight names, on the phone and desktop projects, pass.
+
+**Verification:**
+
+```
+pnpm lint && pnpm check && pnpm test:web && pnpm check:strings
+pnpm build && pnpm size
+```
+
+**Rollback:** `git revert <sha>`: `eps` is accepted as a name again; nothing stored changes.
+
+**Pre-flight (with real commands):** (1) every caller of `checkSymbol` and the function itself; which are commands and which are readers; (2) where the ε words live now and who imports them; (3) the exact refusal object of `document.duplicate_symbol` (its params); (4) the T-061 tests that name `eps` or `symbol_reserved`; (5) sizes in bytes before. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
+
+**Depends on:** T-061 (merged).
 
 ---
 
@@ -3411,6 +3448,150 @@ pnpm test:tools
 **Rollback:** `git revert <sha>`: the channel goes back to `stable`, and the guard test goes with it. Nothing in the documents or the formats changes.
 
 **Depends on:** T-079 (merged): the code must be clean under 1.100.0 first.
+
+---
+
+## Task T-082 — Dependency refresh: the seven audit findings of 2026-11-23
+
+**Status:** todo
+**Owner:** worker (DeepSeek: the planner's pick; it did the Rust pin and T-005)
+**Branch:** `task/T-082-audit-deps`
+
+**Goal:** The weekly `audit.yml` had never run (it lives on `staging`, and the default branch was `main`; the owner moved the default to `staging` on 2026-11-23). A run by hand of `pnpm audit` on `staging` finds **7 findings, all in dev dependencies** (`pnpm audit --prod`: none; the site ships none of them): `@sveltejs/kit` 3.1.0 (five advisories, two high, patched in 3.1.1), `@sveltejs/adapter-static` 4.0.0 (patched in 4.0.1) and `minimatch` 10.2.6 through `eslint > @eslint/config-array` (patched in 11.0.1). `cargo audit` shows one allowed warning (`rustix` 1.1.5, unsound, RUSTSEC-2026-0486). This task moves the three packages to patched versions and keeps the repo green.
+
+**Decisions (planner, 2026-11-23; do not reopen, ask if one looks wrong):**
+
+- **The repo's two-week habit.** Pnpm's own check is one day (T-005); our written habit is "wait two weeks" (see the `undici` note in `pnpm-workspace.yaml`). Pick for each package **the newest version that is at least 14 days old on the day you work and not older than the patched one**, and write the dates (from the registry, with the command) in the report. At the planner's check: `@sveltejs/kit` 3.1.1 is 2026-10-29 and a newer 3.x may be 14 days old; `@sveltejs/adapter-static` 4.0.1 is 2026-10-29; `minimatch` 11.0.1 is 2026-10-27, 11.0.4 is 2026-11-02, 11.0.8 is 2026-11-11 (too young).
+- **No new exclusion and no `minimumReleaseAge` key** (T-005's rule stays).
+- **`@sveltejs/kit` and `adapter-static`:** raise the ranges in `web/package.json` to the chosen versions (keep the caret style the file uses) and update the lockfile with the frozen-lockfile-safe route you prove works (the pre-flight says which command; remember that a plain `pnpm install` appends exclusions under the non-strict default: check `git diff pnpm-workspace.yaml` is empty).
+- **`minimatch` comes through `eslint@10.13.0`.** In order: (a) a newer `eslint` or `@eslint/config-array` that is at least 14 days old and already needs `minimatch` 11 or later (check, do not guess); (b) otherwise an exact `overrides` entry for `minimatch` in `pnpm-workspace.yaml`, like the `undici` one, with a comment in the same style (date, reason, when to remove), **only if `pnpm lint` still passes and finds the same files**; (c) otherwise `GHSA-g3hv-75wg-m249` goes into `auditConfig.ignoreGhsas` with the reason (dev-only; it parses our own globs, no input of a visitor) and the date, as the `deepmerge` one is. Choose in that order and say which and why.
+- **`rustix` 1.1.5** is an allowed warning of `.cargo/audit.toml` (it is already accepted there: say what the file says). Do nothing about it unless the pre-flight shows that `cargo update -p rustix` to a 14-day-old patched version is trivial and green; if so do it in its own commit.
+- **Not in this task:** any other dependency, `pnpm` itself (12.14.0 to 12.21.0 is a separate decision), the Rust toolchain, and any source change.
+
+**Scope (files):** `web/package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` (only an override or an ignore entry, if the order above reaches it), `Cargo.lock` (only for `rustix`, if done), `docs/agent/PLAN.md` (status), `docs/agent/REPORT.md`.
+
+**Fixtures (the oracle):**
+
+- F1 `pnpm audit` on the final tree reports no finding, or only the ones you added to `ignoreGhsas` with a reason; `pnpm audit --prod` still reports none. Paste both outputs.
+- F2 `pnpm install --frozen-lockfile` passes the supply-chain check with `"minimumReleaseAgeExclude":[]` (the verification line), and `git diff pnpm-workspace.yaml` contains no `minimumReleaseAgeExclude`.
+- F3 The site is the same: `pnpm build && pnpm size` pass and the **gzip bytes of each route move by less than 102 bytes** (SvelteKit may change the first JS; report the numbers before and after; above 102 bytes stop and tell the planner).
+- F4 `pnpm lint`, `pnpm check`, `pnpm test:web`, and Playwright for the editor specs on the phone and desktop projects (the specs you run are named in the report) pass.
+- F5 If `minimatch` is overridden: `pnpm lint` lints the same number of files as on `staging` (paste the count of both).
+
+**Acceptance criteria:**
+
+- AC1 F1 to F5 hold, each by pasted output.
+- AC2 The chosen versions are named with their registry dates and the order of the `minimatch` options is shown (which one applied).
+- AC3 No source file changes; `git diff --stat` shows only the scope.
+- AC4 CI is green on the PR, including the `audit` workflow if it starts (it runs when a lockfile changes).
+
+**Verification:**
+
+```
+pnpm install --frozen-lockfile
+pnpm audit; pnpm audit --prod
+pnpm lint && pnpm check && pnpm test:web
+pnpm build && pnpm size
+```
+
+**Rollback:** `git revert <sha>`: the old versions come back; nothing in the site's data changes.
+
+**Pre-flight (with real commands):** (1) the registry dates of every candidate version of the three packages (`pnpm view <pkg> time --json`) and the 14-day cutoff you used; (2) which command updates the lockfile without adding an exclusion (try in a scratch copy, show the result); (3) for `minimatch`: the dependency chain, whether a newer `eslint` or `@eslint/config-array` exists that is 14 days old and needs 11 or later; (4) `pnpm audit` and `pnpm audit --prod` before. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
+
+**Depends on:** none.
+
+---
+
+## Task T-083 — The new row of the PDA label sheet scrolls fully into view in every browser, and the sheet is tested on Firefox and WebKit
+
+**Status:** todo
+**Owner:** worker (Gemini: the planner's pick)
+**Branch:** `task/T-083-label-sheet-webkit`
+
+**Goal:** T-077 (PR 227) left two loose ends, both in its report and ADR 0058. (1) With the sheet's rows list capped at 72 px, after "+ Transisi lain" **WebKit** scrolls the new row so that its Baca field is clipped by 10 px (447.5 against 437.5, twice, deterministic); Chromium and Firefox do not. (2) The new spec `web/e2e/pda-label-sheet.spec.ts` runs on Chromium only, because the `firefox` and `webkit-phone` projects match only `cross/**`; a scratch copy of it passed on Firefox and on six of seven cases on WebKit (the seventh is (1)). A phone layout change had no Firefox or WebKit test.
+
+**Decisions (planner, 2026-11-23; do not reopen, ask if one looks wrong):**
+
+- **One line in `addRow`** of `PdaLabelForm.svelte`: after the new row exists and takes the focus, call `scrollIntoView({ block: 'nearest' })` on the row (or its first field; say which in the pre-flight, with the measurement that shows it works on WebKit). Nothing else in the form changes.
+- **A small cross spec, not a move.** Add `web/e2e/cross/pda-label-sheet.spec.ts` with three cases that run on `firefox` and `webkit-phone` (and on Chromium if the config allows, no more): F1 width, F2 the distance from the top of the sheet to the bottom of Simpan at one row and at three rows (at most 190 css px), F3 the new row's Baca field after "+ Transisi lain" is fully inside the rows list's visible box. Share the viewport and helper code with the existing spec by a small helper only if it already exists; otherwise copy the three short measurements (the cross folder has its own style: look at one file there first). Do not touch the existing spec.
+- **Not in this task:** the cap of 72 px, the order of the buttons, and any other browser difference.
+
+**Scope (files):** `web/src/lib/editor/PdaLabelForm.svelte` (the one line), `web/e2e/cross/pda-label-sheet.spec.ts` (new), `docs/decisions/0058-pda-label-sheet-phone.md` (the "known WebKit difference" sentence becomes "fixed in T-083"), `docs/agent/PLAN.md` (status), `docs/agent/REPORT.md`.
+
+**Fixtures (the oracle):**
+
+- F1 On `webkit-phone`, before the fix, F3 fails with the 10 px (paste the numbers); after the fix it passes.
+- F2 On `firefox` and `webkit-phone` the three cases pass; on the phone and desktop projects the existing `pda-label-sheet`, `pda-editor`, `pda-panel` and `pda-table-edit` specs pass unedited.
+- F3 The size does not grow by more than 102 bytes on any route (it should be a few bytes in the lazy PDA chunk).
+
+**Acceptance criteria:**
+
+- AC1 F1 to F3 hold, the new test written first and seen to fail on WebKit.
+- AC2 **Break once, on the final code:** (B1) remove the `scrollIntoView` line: the WebKit case fails with the numbers; (B2) change the viewport width in the cross spec's F1 to make the form wrong: skip this one if it needs a source change, and say why. Restore; `git diff --stat` shows only the scope.
+- AC3 `pnpm lint`, `pnpm check`, `pnpm test:web`, `pnpm build && pnpm size` pass; the cross projects run locally (`pnpm --filter web test:e2e:cross` or the repo's command); if WebKit cannot run in WSL, say so and use CI.
+
+**Verification:**
+
+```
+pnpm lint && pnpm check && pnpm test:web
+pnpm build && pnpm size
+pnpm --filter web exec playwright test cross/pda-label-sheet --project=firefox --project=webkit-phone
+pnpm --filter web exec playwright test pda-label-sheet pda-editor --project=phone --project=desktop
+```
+
+**Rollback:** `git revert <sha>`: the line and the spec go; Safari clips the field by 10 px again.
+
+**Pre-flight (with real commands):** (1) `addRow` as it is now and what takes the focus; (2) where `.rows` scrolls and which element is the right one to scroll; (3) one file of `web/e2e/cross/` for the style (viewports, helpers, how the app is opened); (4) the sizes in bytes before. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
+
+**Depends on:** T-077 (merged).
+
+---
+
+## Task T-084 — An empty FSM that the student never opened is not a saved machine in "Mesin saya"
+
+**Status:** todo
+**Owner:** worker (DeepSeek: the planner's pick; after T-082)
+**Branch:** `task/T-084-hide-untouched-fsm`
+
+**Goal:** Found while reading T-078 (2026-11-18). `library.start` opens the latest machine of the last visit, or makes a sample, so **a student who comes to use only the PDA** still gets an FSM record (the library's current): "Mesin saya" lists a machine that the student never made, with a count of 1 that is not theirs, and a row that opens the FSM mode. T-078 left it as a separate decision. This task decides it: **an FSM record that is the library's current, has no state and no transition (an empty document) and is shown while the mode is PDA is not listed and not counted.** The moment the student opens the FSM mode, or edits it, it is an ordinary machine again.
+
+**Decisions (planner, 2026-11-23; do not reopen, ask if one looks wrong):**
+
+- **The filter, not a new record flag.** In the library store's list (`refresh`/`entries`) and in the count that the PDA bar's "Mesin saya" button shows, leave out an entry that is (a) an FSM, (b) the library's current record, (c) empty (no state, no transition), and (d) listed while `mode === 'pda'`. In the FSM mode nothing is hidden (the open machine is on screen). A row of an empty FSM that is **not** the current one (the student made it, then opened another) is listed as always.
+- **No change to what is stored.** The record is still created as today (the page needs a current FSM); only the list and the count change. No migration.
+- **Opening it again** (the student switches to the FSM mode) shows the empty machine as today; nothing is created or deleted by this task.
+- **Not in this task:** making the FSM record lazy, any change to the "Mesin baru" button, the T-078 delete rules, and the PDA's own first record.
+
+**Scope (files):** `web/src/lib/storage/library.svelte.ts` (the filter and the count), `web/src/lib/storage/pda-library.test.ts` (new cases), `web/e2e/pda-library.spec.ts` (one case), `docs/decisions/0062-hide-untouched-fsm.md` (short; check the next free number), `docs/agent/PLAN.md` (status), `docs/agent/REPORT.md`. **Existing tests that may change, and only these:** a case that counts the records of a fresh visit in the PDA mode (list each).
+
+**Fixtures (the oracle):**
+
+- F1 A fresh browser profile, `/sandbox?mode=pda`: "Mesin saya" lists no machine until the first PDA exists (the PDA workstation makes its own first record: say what the list shows then: one PDA row), and the button's count equals the rows.
+- F2 After the student switches to the FSM mode, the empty FSM is on screen, and back in the PDA mode with it still empty the list does not show it; after an edit (one state) it is listed in the PDA mode too.
+- F3 An empty FSM that is not the library's current (made with "Mesin baru", then another machine opened) is listed in both modes.
+- F4 The T-078 cases and the T-074 cases pass unedited.
+
+**Acceptance criteria:**
+
+- AC1 F1 to F4 hold, each by a test written first and seen to fail on `staging`.
+- AC2 **Nothing else changes:** list the existing tests you ran.
+- AC3 **Size:** no route's first JS grows by more than 102 bytes (`library.svelte.ts` is in the first JS).
+- AC4 **Break once each, on the final code:** (B1) the filter ignores the mode (the FSM mode hides its own empty machine); (B2) the filter ignores "is current" (an empty machine that is not current is hidden); (B3) the count shows the unfiltered number. Failing line and one-line diff pasted; restore each.
+- AC5 `pnpm lint`, `pnpm check`, `pnpm test:web`, `pnpm build && pnpm size`, and Playwright for `pda-library`, `cross/library`, `cross/storage` on desktop and phone pass.
+
+**Verification:**
+
+```
+pnpm lint && pnpm check && pnpm test:web
+pnpm build && pnpm size
+pnpm --filter web exec playwright test pda-library cross/library cross/storage --project=desktop --project=phone
+```
+
+**Rollback:** `git revert <sha>`: the empty FSM is listed in the PDA mode again.
+
+**Pre-flight (with real commands):** (1) reproduce on the built site with a fresh profile: what "Mesin saya" lists and counts in the PDA mode before any PDA exists, and after the first one; (2) how "empty" is read cheaply from an entry (do the list entries carry the state count, or must the record be read? the least read that works; state it); (3) every user of `entries` and `count` (the dialog, the two bars' buttons, the delete logic of T-078) and which must see the filtered list; (4) sizes in bytes before. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
+
+**Depends on:** T-078 (merged). Start after T-082 (the same worker).
 
 ---
 
