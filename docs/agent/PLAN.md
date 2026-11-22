@@ -3606,6 +3606,15 @@ pnpm --filter web exec playwright test pda-library cross/library cross/storage -
 
 ---
 
+## Planner task P-005 — Wireframe of the PDA simulation, the stack and the conversions
+
+**Status:** drawn on 2026-11-23 in `design/screens/pda-simulation-conversion.md` and `.svg`; waits for the owner's answers to five questions (CFG to PDA lives in the grammar mode, the stack is a column in the panel, "Uji banyak string" in the first version, the peak always visible, three build tasks). T-038 is split into T-038a (Simulasi tab), T-038b (Konversi tab, PDA to CFG) and T-038c ("Ke PDA" in the grammar mode) when it is approved.
+**Owner:** planner
+
+The sheet gives the Simulasi tab (the FSM's blocks plus the stack drawn as a column, top at the top, and the peak number of configurations), the Konversi tab with PDA → CFG in its two stages (RNF, then the grammar) as a stepper with a read-only result canvas, and a third tab "Ke PDA" in the grammar mode for CFG → PDA (top-down and bottom-up). Four phone frames, the message keys as drafts, and what each task builds.
+
+---
+
 ## Planner task P-006 — One editor bar on a phone for the FSM and the PDA mode
 
 **Status:** done (drawn on 2026-11-22 in `design/screens/editor-bar-phone.md` and `.svg`; the owner accepted the planner's pick on all three questions the same day: "Pas" moves onto the canvas, "?" stays in the bar for both modes, export takes two taps; built by T-081)

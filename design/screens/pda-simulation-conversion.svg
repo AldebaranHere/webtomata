@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="640" viewBox="0 0 1480 640" role="img">
+  <title>PDA simulation and conversions: four phone frames</title>
+  <desc>A: Simulasi tab during a run, with the stack drawn as a column and the list of steps. B: the result of a run, with the verdict, the peak number of configurations and the list of test strings. C: Konversi tab, PDA to grammar, stage 1 (restricted normal form) with a step. D: the grammar workstation, a third tab that turns a grammar into a PDA.</desc>
+  <rect width="1480" height="640" fill="#f6f7f9"/>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#3b414c" stroke-width="1.5"/></marker>
+  </defs>
+  <g font-family="sans-serif" font-size="12" fill="#16181d">
+
+    <!-- ============ FRAME A ============ -->
+    <text x="20" y="24" font-size="14" font-weight="bold">A. Simulasi, running "aabb"</text>
+    <rect x="20" y="34" width="340" height="580" fill="#fff" stroke="#c9ced6"/>
+    <!-- canvas stub -->
+    <rect x="20" y="34" width="340" height="110" fill="#fbfbfc" stroke="#e1e4e9"/>
+    <circle cx="100" cy="92" r="22" fill="#eaf0fd" stroke="#2f5bd3" stroke-width="2.5"/><text x="100" y="97" text-anchor="middle">q0</text>
+    <line x1="122" y1="92" x2="248" y2="92" stroke="#3b414c" marker-end="url(#ar)"/><text x="185" y="84" text-anchor="middle" font-family="monospace" font-size="11">b / A / ε</text>
+    <circle cx="270" cy="92" r="22" fill="#fff" stroke="#16181d"/><circle cx="270" cy="92" r="18" fill="none" stroke="#16181d"/><text x="270" y="97" text-anchor="middle">q1</text>
+    <text x="100" y="62" text-anchor="middle" font-family="monospace" font-size="11" fill="#2f5bd3">a / ε / A</text>
+    <!-- tabs -->
+    <g><rect x="28" y="152" width="84" height="32" rx="8" fill="#16181d"/><text x="70" y="173" text-anchor="middle" fill="#fff" font-weight="bold">Simulasi</text>
+    <text x="150" y="173" text-anchor="middle">Tabel</text><text x="214" y="173" text-anchor="middle">Definisi</text><text x="292" y="173" text-anchor="middle">Konversi</text></g>
+    <!-- input -->
+    <text x="28" y="206" font-weight="bold">String masukan</text>
+    <rect x="28" y="212" width="324" height="36" rx="8" fill="#fff" stroke="#8b93a1"/><text x="38" y="235" font-family="monospace" font-size="14">aabb</text>
+    <g font-size="12">
+      <rect x="28" y="256" width="96" height="40" rx="8" fill="#2f5bd3"/><text x="76" y="281" text-anchor="middle" fill="#fff" font-weight="bold">Jalankan</text>
+      <rect x="132" y="256" width="52" height="40" rx="8" fill="#fff" stroke="#8b93a1"/><text x="158" y="281" text-anchor="middle" font-size="16">⏮</text>
+      <rect x="190" y="256" width="52" height="40" rx="8" fill="#fff" stroke="#8b93a1"/><text x="216" y="281" text-anchor="middle" font-size="16">◀</text>
+      <rect x="248" y="256" width="52" height="40" rx="8" fill="#fff" stroke="#8b93a1"/><text x="274" y="281" text-anchor="middle" font-size="16">▶</text>
+    </g>
+    <text x="28" y="320" fill="#5b6270">Langkah 2 dari 5</text>
+    <!-- read symbols -->
+    <text x="28" y="344" font-weight="bold">Simbol yang dibaca</text>
+    <g font-family="monospace" font-size="15"><rect x="28" y="350" width="26" height="26" fill="#eaf0fd" stroke="#2f5bd3"/><text x="41" y="368" text-anchor="middle">a</text><rect x="58" y="350" width="26" height="26" fill="#eaf0fd" stroke="#2f5bd3"/><text x="71" y="368" text-anchor="middle">a</text><rect x="88" y="350" width="26" height="26" fill="#fff" stroke="#c9ced6"/><text x="101" y="368" text-anchor="middle">b</text><rect x="118" y="350" width="26" height="26" fill="#fff" stroke="#c9ced6"/><text x="131" y="368" text-anchor="middle">b</text></g>
+    <!-- stack -->
+    <text x="28" y="404" font-weight="bold">Stack</text><text x="70" y="404" fill="#5b6270">(puncak di atas)</text>
+    <text x="260" y="404" fill="#5b6270">state: q0</text>
+    <g font-family="monospace" font-size="15">
+      <rect x="28" y="412" width="70" height="26" fill="#eaf0fd" stroke="#2f5bd3" stroke-width="2"/><text x="63" y="430" text-anchor="middle">A</text><text x="106" y="430" font-family="sans-serif" font-size="11" fill="#2f5bd3">← puncak</text>
+      <rect x="28" y="438" width="70" height="26" fill="#fff" stroke="#8b93a1"/><text x="63" y="456" text-anchor="middle">A</text>
+      <line x1="22" y1="466" x2="104" y2="466" stroke="#16181d" stroke-width="2"/>
+    </g>
+    <!-- computation -->
+    <text x="28" y="496" font-weight="bold">Komputasi</text>
+    <g font-family="monospace" font-size="11">
+      <text x="28" y="516" fill="#5b6270">0  q0            stack: ε</text>
+      <text x="28" y="534" fill="#5b6270">1  a / ε / A     q0   stack: A</text>
+      <rect x="24" y="540" width="332" height="22" fill="#eaf0fd"/><text x="28" y="555" font-weight="bold">2  a / ε / A     q0   stack: A A</text>
+      <text x="28" y="576" fill="#a0a6b2">3  b / A / ε     q1   stack: A</text>
+      <text x="28" y="594" fill="#a0a6b2">4  b / A / ε     q1   stack: ε</text>
+    </g>
+
+    <!-- ============ FRAME B ============ -->
+    <text x="390" y="24" font-size="14" font-weight="bold">B. Simulasi, result and many strings</text>
+    <rect x="390" y="34" width="340" height="580" fill="#fff" stroke="#c9ced6"/>
+    <g><rect x="398" y="42" width="84" height="32" rx="8" fill="#16181d"/><text x="440" y="63" text-anchor="middle" fill="#fff" font-weight="bold">Simulasi</text></g>
+    <rect x="398" y="86" width="324" height="36" rx="8" fill="#fff" stroke="#8b93a1"/><text x="408" y="109" font-family="monospace" font-size="14">ab</text>
+    <rect x="398" y="130" width="324" height="54" rx="8" fill="#fdecea" stroke="#c0392b"/>
+    <text x="410" y="150" font-weight="bold" fill="#8e2a1f">Ditolak</text>
+    <text x="410" y="170" fill="#8e2a1f" font-size="11">Input habis, tetapi stack belum kosong (2 simbol).</text>
+    <text x="398" y="208" font-weight="bold">Konfigurasi bersamaan terbanyak: 2</text>
+    <text x="398" y="226" fill="#5b6270" font-size="11">Banyaknya komputasi yang hidup di satu tingkat BFS.</text>
+    <text x="398" y="242" fill="#5b6270" font-size="11">DPDA selalu 1. Dijelajahi: 7 konfigurasi.</text>
+    <text x="398" y="272" font-size="11" fill="#5b6270">Yang ditunjukkan: komputasi yang paling jauh (satu jalur).</text>
+    <g font-family="monospace" font-size="11">
+      <text x="398" y="294" fill="#5b6270">0  q0            stack: ε</text>
+      <text x="398" y="312" fill="#5b6270">1  a / ε / a     q0   stack: a</text>
+      <text x="398" y="330" fill="#5b6270">2  b / ε / b     q0   stack: b a</text>
+      <text x="398" y="348" fill="#5b6270">3  ε / ε / ε     q1   stack: b a</text>
+    </g>
+    <text x="398" y="386" font-weight="bold">Uji banyak string</text>
+    <rect x="398" y="394" width="324" height="30" rx="8" fill="#fff" stroke="#8b93a1"/><text x="408" y="414" fill="#8b93a1" font-size="11">Tambah string…</text>
+    <g font-size="11">
+      <text x="398" y="446" fill="#5b6270">String</text><text x="560" y="446" fill="#5b6270">Hasil</text><text x="660" y="446" fill="#5b6270">Puncak</text>
+      <line x1="398" y1="452" x2="722" y2="452" stroke="#e1e4e9"/>
+      <text x="398" y="472" font-family="monospace">aa</text><text x="560" y="472" fill="#1f7a45">✓ Diterima</text><text x="672" y="472">2</text>
+      <text x="398" y="496" font-family="monospace">ab</text><text x="560" y="496" fill="#8e2a1f">✗ Ditolak</text><text x="672" y="496">2</text>
+      <text x="398" y="520" font-family="monospace">ε</text><text x="560" y="520" fill="#1f7a45">✓ Diterima</text><text x="672" y="520">1</text>
+    </g>
+    <text x="398" y="560" font-size="11" fill="#5b6270">A budget that is hit shows "Dihentikan: batas … tercapai"</text>
+    <text x="398" y="576" font-size="11" fill="#5b6270">with the partial computation (no hang, no blank).</text>
+
+    <!-- ============ FRAME C ============ -->
+    <text x="760" y="24" font-size="14" font-weight="bold">C. Konversi, PDA ke tata bahasa, tahap 1</text>
+    <rect x="760" y="34" width="340" height="580" fill="#fff" stroke="#c9ced6"/>
+    <rect x="760" y="34" width="340" height="120" fill="#fbfbfc" stroke="#e1e4e9"/>
+    <text x="772" y="52" font-size="11" fill="#5b6270">Kanvas menunjukkan hasil (hanya baca): bentuk normal terbatas</text>
+    <circle cx="810" cy="100" r="20" fill="#d9f2e3" stroke="#1f7a45" stroke-width="2"/><text x="810" y="105" text-anchor="middle" font-size="11">s'</text>
+    <line x1="830" y1="100" x2="880" y2="100" stroke="#3b414c" marker-end="url(#ar)"/>
+    <circle cx="905" cy="100" r="20" fill="#fff" stroke="#16181d"/><text x="905" y="105" text-anchor="middle">q0</text>
+    <line x1="925" y1="100" x2="985" y2="100" stroke="#3b414c" marker-end="url(#ar)"/>
+    <circle cx="1010" cy="100" r="20" fill="#fff" stroke="#16181d"/><text x="1010" y="105" text-anchor="middle">q1</text>
+    <line x1="1030" y1="100" x2="1065" y2="100" stroke="#3b414c" marker-end="url(#ar)"/>
+    <circle cx="1075" cy="100" r="15" fill="#d9f2e3" stroke="#1f7a45" stroke-width="2"/><text x="1075" y="104" text-anchor="middle" font-size="10">a</text>
+    <g><text x="778" y="182" fill="#5b6270">Simulasi</text><text x="850" y="182" fill="#5b6270">Tabel</text><text x="906" y="182" fill="#5b6270">Definisi</text><rect x="970" y="166" width="84" height="26" rx="8" fill="#16181d"/><text x="1012" y="184" text-anchor="middle" fill="#fff" font-weight="bold">Konversi</text></g>
+    <text x="772" y="216" font-weight="bold">PDA → tata bahasa (CFG)</text>
+    <g>
+      <rect x="772" y="226" width="150" height="30" rx="15" fill="#16181d"/><text x="847" y="246" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">1  Bentuk normal terbatas</text>
+      <rect x="928" y="226" width="150" height="30" rx="15" fill="#fff" stroke="#8b93a1"/><text x="1003" y="246" text-anchor="middle" font-size="11">2  Tata bahasa</text>
+    </g>
+    <text x="772" y="284" fill="#5b6270">Langkah 3 dari 9</text>
+    <text x="772" y="304" font-size="12">Transisi (q0, a, ε → A, q0) memop dua simbol,</text>
+    <text x="772" y="320" font-size="12">jadi dipecah menjadi dua transisi yang memop satu.</text>
+    <text x="772" y="346" font-weight="bold" font-size="11">Dihapus</text>
+    <text x="772" y="362" font-family="monospace" font-size="11" text-decoration="line-through" fill="#8e2a1f">q0, a, AB → C, q1</text>
+    <text x="772" y="386" font-weight="bold" font-size="11">Ditambah</text>
+    <rect x="768" y="392" width="324" height="20" fill="#d9f2e3"/><text x="772" y="406" font-family="monospace" font-size="11">q0, a, A → ε, q0'</text>
+    <rect x="768" y="414" width="324" height="20" fill="#d9f2e3"/><text x="772" y="428" font-family="monospace" font-size="11">q0', ε, B → C, q1</text>
+    <g font-size="12"><rect x="772" y="454" width="150" height="40" rx="8" fill="#fff" stroke="#8b93a1"/><text x="847" y="479" text-anchor="middle">◀ Sebelumnya</text>
+    <rect x="928" y="454" width="150" height="40" rx="8" fill="#2f5bd3"/><text x="1003" y="479" text-anchor="middle" fill="#fff" font-weight="bold">Berikutnya ▶</text></g>
+    <text x="772" y="524" font-size="11" fill="#5b6270">At the last step of stage 1: "Buka PDA ini sebagai mesin baru"</text>
+    <text x="772" y="540" font-size="11" fill="#5b6270">and the button to stage 2. Stage 2 lists the rules the algorithm</text>
+    <text x="772" y="556" font-size="11" fill="#5b6270">adds, then "Buka sebagai tata bahasa" (as the CNF result does).</text>
+
+    <!-- ============ FRAME D ============ -->
+    <text x="1130" y="24" font-size="14" font-weight="bold">D. Grammar mode: a third tab, "Ke PDA"</text>
+    <rect x="1130" y="34" width="340" height="580" fill="#fff" stroke="#c9ced6"/>
+    <rect x="1138" y="46" width="324" height="40" fill="#fbfbfc" stroke="#e1e4e9"/>
+    <text x="1148" y="70" font-family="monospace" font-size="12">S → a S b | ε</text>
+    <g><text x="1142" y="112" fill="#5b6270" font-size="11">Transformasi CNF</text><text x="1245" y="112" fill="#5b6270" font-size="11">Uji String</text><rect x="1318" y="96" width="76" height="24" rx="8" fill="#16181d"/><text x="1356" y="113" text-anchor="middle" fill="#fff" font-weight="bold" font-size="11">Ke PDA</text></g>
+    <text x="1142" y="148" font-weight="bold">Metode</text>
+    <circle cx="1150" cy="168" r="7" fill="#2f5bd3"/><text x="1166" y="172">Atas-bawah (CFGtoPDAtopdown)</text>
+    <circle cx="1150" cy="192" r="7" fill="#fff" stroke="#8b93a1"/><text x="1166" y="196">Bawah-atas (CFGtoPDAbottomup)</text>
+    <text x="1142" y="228" fill="#5b6270">Langkah 2 dari 5</text>
+    <text x="1142" y="248">Aturan S → a S b menjadi transisi yang</text>
+    <text x="1142" y="264">memop S dan mendorong b, S, a.</text>
+    <rect x="1138" y="276" width="324" height="20" fill="#d9f2e3"/><text x="1142" y="290" font-family="monospace" font-size="11">q, ε, S → a S b, q</text>
+    <text x="1142" y="318" font-weight="bold" font-size="11">Sudah ditambahkan</text>
+    <text x="1142" y="336" font-family="monospace" font-size="11" fill="#5b6270">p, ε, ε → S, q</text>
+    <g font-size="12"><rect x="1142" y="360" width="150" height="40" rx="8" fill="#fff" stroke="#8b93a1"/><text x="1217" y="385" text-anchor="middle">◀ Sebelumnya</text>
+    <rect x="1298" y="360" width="150" height="40" rx="8" fill="#2f5bd3"/><text x="1373" y="385" text-anchor="middle" fill="#fff" font-weight="bold">Berikutnya ▶</text></g>
+    <text x="1142" y="430" font-size="11" fill="#5b6270">At the last step:</text>
+    <rect x="1142" y="438" width="306" height="40" rx="8" fill="#fff" stroke="#2f5bd3" stroke-width="1.5"/><text x="1295" y="463" text-anchor="middle" fill="#1e3f9e" font-weight="bold">Buka sebagai PDA baru</text>
+    <text x="1142" y="506" font-size="11" fill="#5b6270">The PDA opens in the PDA mode as a new saved machine,</text>
+    <text x="1142" y="522" font-size="11" fill="#5b6270">named after the grammar; the grammar stays as it was.</text>
+  </g>
+</svg>
