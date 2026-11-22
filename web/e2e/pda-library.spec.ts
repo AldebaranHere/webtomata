@@ -596,3 +596,20 @@ test('T-084 F2: an untouched FSM is not listed in the PDA mode, and is listed on
 	await openList(page, isMobile);
 	await expect(dialog(page).getByRole('listitem').filter({ hasText: 'DFSM' })).toHaveCount(1);
 });
+
+test('T-084 F2b: the button counts the other mode without opening the list', async ({
+	page,
+	isMobile
+}) => {
+	await page.goto('/sandbox?mode=pda');
+	await page.locator('.editor[data-ready]').waitFor();
+	await expect(openButton(page)).toHaveAccessibleName('Mesin saya (1)');
+
+	// The FSM mode lists the empty FSM (the open machine) and the PDA row: two, with the list closed.
+	await switchMode(page, /^Mesin FSM/, isMobile);
+	await expect(openButton(page)).toHaveAccessibleName('Mesin saya (2)');
+
+	// Back in the PDA mode the empty FSM is hidden again.
+	await switchMode(page, /^Otomata Pushdown/, isMobile);
+	await expect(openButton(page)).toHaveAccessibleName('Mesin saya (1)');
+});
