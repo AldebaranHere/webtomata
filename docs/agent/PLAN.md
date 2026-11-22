@@ -252,7 +252,7 @@ Expected: both pass. Paste the output into `REPORT.md`.
 
 ## Task T-005 — Remove the `wrangler` and `miniflare` age-rule exclusions
 
-**Status:** todo (not before 2026-11-12; the owner decided on 2026-11-02 to keep `wrangler` 4.155.0 until then; amended 2026-11-23 after the worker's pre-flight)
+**Status:** in-progress (not before 2026-11-12; the owner decided on 2026-11-02 to keep `wrangler` 4.155.0 until then; amended 2026-11-23 after the worker's pre-flight)
 **Owner:** worker (DeepSeek)
 **Branch:** `task/T-005-remove-age-exclusions`
 
