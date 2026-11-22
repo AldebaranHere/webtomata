@@ -3308,7 +3308,7 @@ pnpm --filter web exec playwright test pda-label-sheet pda-editor pda-panel pda-
 
 ## Task T-081 — One editor bar on a phone for the FSM and the PDA mode
 
-**Status:** todo (T-077 is merged; amended 2026-11-23 after the worker's pre-flight)
+**Status:** done (2026-11-23; branch `task/T-081-editor-bar-phone`. F1–F8 hold: identical 4-button phone bar in FSM and PDA (Mesin, Bantuan, Urungkan, Ulangi), title ≥ 120 px at 360 px, floating "Pas" inside `.stage` clear of dock/handle/toast, `?` in PDA mode opens tour with Esc focus return and `(pada mode FSM)` note on steps 4–5, PDA row "Unduh" works in FSM and PDA modes with Indonesian title and autosave flush, full-width 44 px mode selector with `@media (hover: hover)` guard, desktop bar intact with `?` before `.files` in PDA, axe clean. First JS: `sandbox.html` +48 bytes, all other routes +34 to +43 bytes, `wasm` 236.9 KB unchanged. Breaks B1–B4 each fail a named line on the final code and were restored. See `docs/agent/REPORT.md` and ADR 0061.)
 **Owner:** worker (Gemini: the planner's pick; it is Svelte and layout)
 **Branch:** `task/T-081-editor-bar-phone`
 

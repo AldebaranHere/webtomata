@@ -28,10 +28,12 @@
 	// See docs/agent/PLAN.md (Task T-057, T-073, T-074).
 	let {
 		onskipped,
-		openRequest
+		openRequest,
+		onhelp
 	}: {
 		onskipped?: (skipped: SkippedPda[]) => void;
 		openRequest?: { id: string; seq: number } | null;
+		onhelp?: () => void;
 	} = $props();
 
 	let pdaEditor = $state<ReturnType<typeof PdaEditor> | undefined>();
@@ -257,6 +259,7 @@
 			doc={opened.doc}
 			{autosave}
 			{persistent}
+			{onhelp}
 			library={{ count: library.count, onopen: library.show }}
 			firstRun={{ examples, failed, onexample: (id) => void openExample(id) }}
 		/>

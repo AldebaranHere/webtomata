@@ -249,3 +249,14 @@ export async function renamePdaStored(
 	await store.put(renamed);
 	return null;
 }
+
+/** A saved PDA machine, read by id; null when it is gone, not a PDA, or cannot be read. */
+export async function readPdaDocument(
+	store: MachineStore,
+	id: string
+): Promise<PdaDocument | null> {
+	const record = await store.get(id);
+	if (!record || !isPdaRecord(record)) return null;
+	const read = readStoredPda(record.doc);
+	return read.ok ? read.doc : null;
+}

@@ -38,6 +38,7 @@
 	let PdaWorkstation = $state<Component<{
 		onskipped?: (skipped: SkippedPda[]) => void;
 		openRequest?: { id: string; seq: number } | null;
+		onhelp?: () => void;
 	}> | null>(null);
 	$effect(() => {
 		if (activeMode === 'language' && !LanguageWorkstation) {
@@ -321,7 +322,11 @@
 	{/if}
 {:else if activeMode === 'pda'}
 	{#if PdaWorkstation}
-		<PdaWorkstation openRequest={pdaOpenRequest} onskipped={(s) => (pdaSkipped = s)} />
+		<PdaWorkstation
+			openRequest={pdaOpenRequest}
+			onskipped={(s) => (pdaSkipped = s)}
+			onhelp={openTour}
+		/>
 	{:else}
 		<div class="frame" aria-busy="true"></div>
 	{/if}

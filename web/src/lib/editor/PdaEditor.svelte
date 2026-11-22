@@ -38,7 +38,8 @@
 		autosave,
 		persistent = true,
 		library,
-		firstRun
+		firstRun,
+		onhelp
 	}: {
 		doc: PdaDocument;
 		autosave?: BaseAutosave<PdaDocument>;
@@ -50,6 +51,8 @@
 			failed: boolean;
 			onexample: (id: string) => void;
 		};
+		/** The "?" button of the bar: the tour. */
+		onhelp?: () => void;
 	} = $props();
 
 	export function setTitle(title: string) {
@@ -380,6 +383,15 @@
 				</svg>
 			</button>
 		{/if}
+		{#if onhelp}
+			<button type="button" class="help" aria-label={t('help.open')} onclick={onhelp}>
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+					<circle cx="12" cy="12" r="9" />
+					<path d="M9.6 9.4a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1.1.9-1.1 1.6" stroke-linecap="round" />
+					<path d="M12 16.8h.01" stroke-linecap="round" />
+				</svg>
+			</button>
+		{/if}
 		{#if snapshot.doc.states.length > 0}
 			<button
 				type="button"
@@ -515,8 +527,8 @@
 		stroke: currentColor;
 		stroke-width: 1.8;
 	}
-	/* "Unduh" is in the bar at every width: on a laptop "Mesin saya" is in the site header, so the two
-	   are not neighbours there, and on a phone this button must be reachable like the FSM's "Bagikan". */
+	/* "Unduh" is in the bar on a laptop; on a phone it lives in the machine's row in "Mesin saya". */
+	.help,
 	.files {
 		display: flex;
 		align-items: center;
@@ -531,19 +543,27 @@
 		color: var(--color-ink);
 		cursor: pointer;
 	}
+	.help:hover,
 	.files:hover {
 		background: var(--color-neutral-tint);
 	}
+	.help svg,
 	.files svg {
 		stroke: currentColor;
 		stroke-width: 1.8;
 	}
 
 	@media (max-width: 39.99rem) {
+		.help,
+		.machines {
+			flex-shrink: 0;
+		}
+		.files {
+			display: none;
+		}
 		.machines {
 			display: flex;
 			align-items: center;
-			flex-shrink: 0;
 		}
 	}
 </style>

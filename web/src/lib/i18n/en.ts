@@ -202,6 +202,7 @@ export const en: Record<keyof typeof id, string> = {
 	'library.actions': 'Actions for {title}',
 	'library.rename': 'Rename',
 	'library.duplicate': 'Duplicate',
+	'library.download': 'Download',
 	'library.delete': 'Delete',
 	'library.rename_field': 'Machine name',
 	'library.deleted': 'The machine "{title}" was deleted.',
@@ -408,10 +409,10 @@ export const en: Record<keyof typeof id, string> = {
 		'With the Select tool, select a state and press M to make it the start state. Double-click a state to make it accepting. On a phone, press and hold a state to open its menu.',
 	'tour.s4_title': 'Run one string',
 	'tour.s4_body':
-		'Write a string in the Simulation panel, then press Run. The active states light up on the diagram. The Next step button runs one step.',
+		'Write a string in the Simulation panel, then press Run. The active states light up on the diagram. The Next step button runs one step (in FSM mode).',
 	'tour.s5_title': 'Test many strings',
 	'tour.s5_body':
-		'Write a string in the "Add a string" field, then press Add. Its result changes when the machine changes. Everything is saved on this device.',
+		'Write a string in the "Add a string" field, then press Add. Its result changes when the machine changes. Everything is saved on this device (in FSM mode).',
 	'document.limit_exceeded': 'Limit reached: {what}, at most {limit}.',
 	'soal.description': 'Practice questions on finite state machines with calm, specific feedback.',
 	'soal.intro':

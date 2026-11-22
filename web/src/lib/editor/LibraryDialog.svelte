@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import type { Component } from 'svelte';
+	import type { PdaDocument } from '#lib/editor/pda-document.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
 	import { getLocale } from '#lib/i18n/index.svelte.ts';
@@ -21,6 +23,23 @@
 	let renameProblem = $state<string | null>(null);
 	let busy = $state(false);
 	let picker: HTMLInputElement;
+	let downloadingPda = $state.raw<PdaDocument | null>(null);
+	let PdaFileDialog = $state<Component<{ doc: PdaDocument; onclose: () => void }> | null>(null);
+
+	async function downloadPda(id: string) {
+		const store = library.store;
+		if (!store) return;
+		if (library.pdaCurrentId === id) await library.flushPda();
+		const [{ readPdaDocument }, dialog] = await Promise.all([
+			import('#lib/storage/pda-work.ts'),
+			PdaFileDialog ? Promise.resolve(null) : import('#lib/share/PdaFileDialog.svelte')
+		]);
+		const doc = await readPdaDocument(store, id);
+		if (!doc) return;
+		if (dialog) PdaFileDialog = dialog.default;
+		library.hide();
+		downloadingPda = doc;
+	}
 
 	const currentId = $derived(library.currentId);
 
@@ -239,6 +258,10 @@
 										<button type="button" onclick={() => library.share(entry.id)}>
 											{t('share.open_button')}
 										</button>
+									{:else}
+										<button type="button" onclick={() => void downloadPda(entry.id)}>
+											{t('library.download')}
+										</button>
 									{/if}
 								{/if}
 								<button
@@ -272,6 +295,10 @@
 		{/if}
 	</div>
 </dialog>
+
+{#if downloadingPda && PdaFileDialog}
+	<PdaFileDialog doc={downloadingPda} onclose={() => (downloadingPda = null)} />
+{/if}
 
 <style>
 	dialog.library {

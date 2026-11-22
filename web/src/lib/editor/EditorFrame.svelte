@@ -80,7 +80,6 @@
 				<SaveStatusLine status={saveStatus} {persistent} />
 			{/if}
 			{@render actionsBeforeFit?.()}
-			<button type="button" class="fit" onclick={onfit}>{t('editor.fit')}</button>
 			{@render actions?.()}
 			<span class="phone-history">
 				<HistoryButtons {canUndo} {canRedo} {onundo} {onredo} />
@@ -96,6 +95,7 @@
 		{/if}
 		<div class="stage" hidden={covered}>
 			{@render stage()}
+			<button type="button" class="fit" onclick={onfit}>{t('editor.fit')}</button>
 		</div>
 		{#if covered && coveredContent}
 			{@render coveredContent()}
@@ -114,6 +114,7 @@
 		min-height: 0;
 	}
 	.stage {
+		position: relative;
 		display: flex;
 		flex: 1;
 		min-width: 0;
@@ -163,22 +164,26 @@
 		color: var(--color-warning-ink);
 		font-size: var(--text-sm);
 	}
-	/* A phone zooms by pinching; this button brings the whole machine back into view. */
+	/* A phone zooms by pinching; this button floats on the canvas to bring the whole machine back into view. */
 	.fit {
 		display: none;
 		min-width: var(--target-min);
 		min-height: var(--target-min);
 		padding: 0 var(--space-3);
-		border: 0;
+		border: 1px solid var(--color-border-strong);
 		border-radius: var(--radius-lg);
-		background: transparent;
+		background: var(--color-surface);
 		color: var(--color-ink);
 		font: inherit;
 		font-weight: var(--weight-strong);
+		box-shadow: var(--shadow-popover);
 		cursor: pointer;
 	}
 	.fit:hover {
 		background: var(--color-neutral-tint);
+	}
+	.fit:active {
+		background: var(--color-border);
 	}
 	/* What to do next while a transition is being made. The same words are said by the live region. */
 	.hint-line {
@@ -219,15 +224,26 @@
 			gap: var(--space-1);
 			padding: 0 var(--space-2) 0 var(--space-4);
 		}
-		.fit,
 		.phone-history,
 		.bar :global(.save) {
 			flex-shrink: 0;
 		}
-		.phone-history,
-		.fit {
+		.phone-history {
 			display: flex;
 			align-items: center;
+		}
+		.fit {
+			position: absolute;
+			right: var(--space-3);
+			bottom: var(--space-3);
+			z-index: 2;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		/* Keep the editor toast clear of the floating "Pas" button at 360 px. */
+		.work > :global(.toast) {
+			bottom: calc(var(--target-min) + var(--space-5));
 		}
 		/* The bar is full: the number of states is in the table (S5). */
 		.count {

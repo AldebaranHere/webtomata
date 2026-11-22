@@ -54,6 +54,20 @@ async function openPdaExample(page: Page): Promise<void> {
 	await expect(state(page, 'q0')).toBeVisible();
 }
 
+/** Opens the PDA download dialog: from the bar on a laptop, or from the row in "Mesin saya" on a phone (T-081). */
+async function openPdaDownload(page: Page, isMobile: boolean, title: string): Promise<void> {
+	if (!isMobile) {
+		await downloadButton(page).click();
+		return;
+	}
+	await openButton(page).click();
+	await expect(list(page)).toBeVisible();
+	await list(page)
+		.getByRole('button', { name: `Tindakan untuk ${title}` })
+		.click();
+	await list(page).getByRole('button', { name: 'Unduh', exact: true }).click();
+}
+
 /** Opens the list and gives it a file (the field is hidden: the button opens the chooser of the system). */
 async function chooseFile(
 	page: Page,
@@ -161,7 +175,8 @@ test('F5: a hostile PDA file writes nothing, keeps the list open and says why; a
 });
 
 test('F3: a PDA with a Z0 stack symbol refuses the .jff calmly and still gives the JSON', async ({
-	page
+	page,
+	isMobile
 }) => {
 	await openPdaExample(page);
 	const doc = pdaDocumentFrom({
@@ -190,7 +205,7 @@ test('F3: a PDA with a Z0 stack symbol refuses the .jff calmly and still gives t
 	await page.locator('.editor[data-ready]').waitFor();
 	await expect(state(page, 'q0')).toBeVisible();
 
-	await downloadButton(page).click();
+	await openPdaDownload(page, isMobile, 'PDA Z0');
 	await expect(filesDialog(page)).toBeVisible();
 	const nothing = page.waitForEvent('download', { timeout: 800 }).catch(() => null);
 	await filesDialog(page).getByRole('button', { name: 'Unduh .jff (JFLAP)' }).click();
@@ -211,7 +226,13 @@ test('F8: on a phone the button and the dialog are large enough, the dialog is a
 	isMobile
 }) => {
 	await openPdaExample(page);
-	const button = downloadButton(page);
+	let button = downloadButton(page);
+	if (isMobile) {
+		await openButton(page).click();
+		await list(page).waitFor();
+		await list(page).getByRole('button', { name: 'Tindakan untuk wcwᴿ' }).click();
+		button = list(page).getByRole('button', { name: 'Unduh', exact: true });
+	}
 	const buttonBox = await button.boundingBox();
 	expect(buttonBox!.height).toBeGreaterThanOrEqual(44);
 	expect(buttonBox!.width).toBeGreaterThanOrEqual(44);
@@ -275,10 +296,13 @@ test('F3: a file named .jff.xml or .txt opens by its content, in the FSM mode an
 	await expectNoAxeViolations(page);
 });
 
-test('F5: the .jff and the JSON of the PDA dialog are the octet-stream type', async ({ page }) => {
+test('F5: the .jff and the JSON of the PDA dialog are the octet-stream type', async ({
+	page,
+	isMobile
+}) => {
 	await watchBlobs(page);
 	await openPdaExample(page);
-	await downloadButton(page).click();
+	await openPdaDownload(page, isMobile, 'wcwᴿ');
 	await expect(filesDialog(page)).toBeVisible();
 	for (const name of ['Unduh .jff (JFLAP)', 'Unduh JSON']) {
 		const waiting = page.waitForEvent('download');
