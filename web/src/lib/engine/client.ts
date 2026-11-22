@@ -52,6 +52,7 @@ export type Engine = AsyncEngine & {
 export const WEB_BUDGETS = {
 	simulate: { maxSteps: 10_000 },
 	simulateMany: { maxSteps: 10_000 },
+	simulatePdaMany: { maxSteps: 10_000 },
 	determinize: { maxStates: 500 },
 	minimize: { maxSteps: 20_000 },
 	equivalent: { maxPairs: 20_000 },
@@ -75,6 +76,7 @@ export const WEB_TIMEOUTS = { callMs: 10_000, startMs: 30_000 };
 const BUDGET_ARGUMENT: Partial<Record<EngineMethod, number>> = {
 	simulate: 2,
 	simulateMany: 2,
+	simulatePdaMany: 2,
 	determinize: 1,
 	minimize: 1,
 	equivalent: 2,

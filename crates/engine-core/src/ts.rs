@@ -5,7 +5,8 @@
 //! include it.
 
 use crate::api::{
-    self, EnumerateReport, EquivalenceReport, PdaSimulationReport, RegexOutcome, SimulationReport,
+    self, EnumerateReport, EquivalenceReport, PdaSimulationReport, PdaStringOutcome, RegexOutcome,
+    SimulationReport,
 };
 use crate::cfg_pda::{CfgPdaStep, CfgToPda, StateName};
 use crate::grammar::{
@@ -172,6 +173,15 @@ fn samples() -> Vec<(&'static str, &'static str, String)> {
             ),
         ),
         (
+            "sampleSimulatePdaMany",
+            "Array<PdaStringOutcome>",
+            api::simulate_pda_many(
+                r#"{"schemaVersion":1,"kind":"dpda","inputAlphabet":["a","b"],"stackAlphabet":["a"],"states":[0,1],"start":0,"accepting":[1],"transitions":[{"from":0,"read":"a","pop":[],"push":["a"],"to":0},{"from":0,"read":"b","pop":["a"],"push":[],"to":1},{"from":1,"read":"b","pop":["a"],"push":[],"to":1}]}"#,
+                r#"["ab","a","c"]"#,
+                None,
+            ),
+        ),
+        (
             "sampleImportPdaJff",
             "PdaJff",
             api::import_pda_jff(
@@ -277,6 +287,7 @@ pub fn declarations() -> String {
         PdaStep,
         PdaSimulation,
         PdaSimulationReport,
+        PdaStringOutcome,
         PdaJff,
         StateName,
         CfgPdaStep,

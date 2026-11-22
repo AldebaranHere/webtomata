@@ -36,6 +36,11 @@ pub fn simulate_pda(pda_json: &str, input: &str, budget_json: Option<String>) ->
     api::simulate_pda(pda_json, input, budget_json.as_deref())
 }
 
+#[wasm_bindgen(js_name = simulatePdaMany)]
+pub fn simulate_pda_many(pda_json: &str, inputs_json: &str, budget_json: Option<String>) -> String {
+    api::simulate_pda_many(pda_json, inputs_json, budget_json.as_deref())
+}
+
 #[wasm_bindgen]
 pub fn validate(machine: &str) -> String {
     api::validate(machine)
@@ -183,6 +188,7 @@ mod tests {
 
     const EVEN: &str = r#"{"schemaVersion":1,"kind":"dfsm","alphabet":["a","b"],"states":[0,1],"start":0,"accepting":[0],"transitions":[{"from":0,"on":"a","to":1},{"from":0,"on":"b","to":1},{"from":1,"on":"a","to":0},{"from":1,"on":"b","to":0}]}"#;
     const A_STAR: &str = r#"{"schemaVersion":1,"kind":"dfsm","alphabet":["a","b"],"states":[0,1],"start":0,"accepting":[0],"transitions":[{"from":0,"on":"a","to":0},{"from":0,"on":"b","to":1},{"from":1,"on":"a","to":1},{"from":1,"on":"b","to":1}]}"#;
+    const ANBN: &str = r#"{"schemaVersion":1,"kind":"dpda","inputAlphabet":["a","b"],"stackAlphabet":["A"],"states":[0,1],"start":0,"accepting":[1],"transitions":[{"from":0,"read":"a","pop":[],"push":["A"],"to":0},{"from":0,"read":"b","pop":["A"],"push":[],"to":1},{"from":1,"read":"b","pop":["A"],"push":[],"to":1}]}"#;
 
     // These run in WASM (`wasm-pack test --node`) and natively (`cargo test`). The functions
     // are tested in depth in `engine-core`; here we check the layer that is added.
@@ -199,6 +205,22 @@ mod tests {
         let answer = simulate(EVEN, "ab", None);
         assert!(
             answer.starts_with(r#"{"ok":true,"value":{"input":["a","b"]"#),
+            "{answer}"
+        );
+    }
+
+    #[wasm_bindgen_test]
+    #[test]
+    fn simulate_pda_many_answers_in_the_envelope() {
+        let answer = simulate_pda_many(ANBN, r#"["aabb","c"]"#, None);
+        assert!(
+            answer.starts_with(
+                r#"{"ok":true,"value":[{"result":"accepted","input":"aabb","peak":1}"#
+            ),
+            "{answer}"
+        );
+        assert!(
+            answer.contains(r#""result":"refused","input":"c""#),
             "{answer}"
         );
     }
