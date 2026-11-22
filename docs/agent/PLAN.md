@@ -3612,12 +3612,60 @@ pnpm --filter web exec playwright test pda-library cross/library cross/storage -
 
 ## Task T-038a — The Simulasi tab of the PDA editor: the stack, the computation and the peak
 
-**Status:** proposed (full spec when a worker is free; the first of the three)
+**Status:** todo (full spec written 2026-11-23; the first of the three; T-084 is merged)
 **Owner:** worker
 
-**Goal:** Section 1 of the sheet: String masukan with the FSM's buttons, the stack drawn as a column (top at the top), the computation list, the verdict with its reason, the peak number and "Dijelajahi", stopped runs, "Uji banyak string" with a peak column, the accessible list and live region. Removes the "(pada mode FSM)" note of tour steps 4 and 5. Uses `simulate_pda` (T-031); checks the wasm API and message keys first.
+**Goal:** The PDA editor's panel gets **Simulasi as its first tab**, built as section 1 of `design/screens/pda-simulation-conversion.md` (frames A and B): String masukan with the FSM's four buttons, the stack as a column (top at the top), the computation list, the verdict with its reason, the peak ("Konfigurasi bersamaan terbanyak"), stopped runs, "Uji banyak string" with a peak column, the screen-reader list and the live region. The tour's "(pada mode FSM)" note is removed. The engine already has `simulate_pda` and the worker already has `simulatePda`; nothing else of the engine is touched except the one new many-strings call of decision 3.
 
-**Depends on:** P-005 (approved), T-081 (merged), T-031 (merged).
+**Decisions (the planner's, from reading the code on 2026-11-23; the pre-flight may find a flaw, it may not silently change one):**
+
+1. **Copy the FSM, do not generalize it.** `RunPanel.svelte`, `TestList.svelte`, `run.ts`, `run-text.ts` and `tester.ts` are written for an FSM (sets of states, `StringOutcome`). Do **not** refactor them to serve both. Write `PdaRunPanel.svelte`, `PdaStack.svelte`, `PdaTestList.svelte` and `pda-run.ts` (the view model, pure, no DOM, unit-testable) next to them, reusing the small shared parts as they are (`PlayerControls.svelte`, `EngineNotice.svelte`, `Announcer.svelte`, `SidePanel.svelte`). If a part cannot be reused without a change to an FSM file, say which in the pre-flight; a change to an FSM file is allowed only if it is a pure move or a type widening with no behavior change and the FSM tests pass unedited.
+2. **One computation is shown, from the engine's trace.** `simulatePda` returns `Finished { accepted, trace, peakConfigurations, explored }` or `Stopped { reason, partialTrace, … }`. The panel plays `trace` (or `partialTrace`) step by step. Do not rebuild a tree. The step's `transition` is an index into the engine PDA's **sorted** transition list: the pre-flight says how it is mapped back to the editor's edge (read `toEnginePda` in `pda-document.ts`); the canvas selection stroke on the used edge depends on it.
+3. **"Uji banyak string" needs a many-strings call; add it, small.** The FSM has `simulateMany` (one call for a list); the PDA has only `simulatePda`, and the engine rule is one WASM call per user action. Add `simulate_pda_many(pda_json, inputs_json, budget_json)` in `crates/engine-core/src/api.rs` (a loop over `simulate_pda`; for each string one outcome: `accepted`, `rejected`, `stopped { reason }` or `refused { error }`, each with `peak`), the wasm export `simulatePdaMany`, and the entries in `handlers.ts`, `protocol.ts` and `client.ts` (read how `simulateMany` is wired in each and copy it, including the budget and timeout lines), and the generated TypeScript type. Tests: a Rust test on a DPDA (peak 1) and an NDPDA (peak above 1), a refused string (a symbol not in Σ), a stopped string; a `wasm-bindgen-test` or the repo's equivalent. **Size:** the engine `.wasm` must stay ≤ 250 KB gzip; say the number before and after in the pre-flight. If the call does not fit the budget, the fallback is one `simulatePda` per string, sequentially in the worker, and the other parts of the spec stand.
+4. **The test list is not saved in this task.** The FSM saves its list in the document; the PDA document (`schemaVersion: 1`) has no such field, and a schema change is out of scope. The list lives in the panel for the session (it survives a tab switch and a mode switch within the page, not a reload). A later task may add the field with a migration; say so in the ADR. Strings are added, removed and re-run when the machine changes, with the FSM tester's debounce (`delayMs` 300) and sequence rule: never show an answer for an older machine. Reuse `createTester` if it can take a PDA run function without change; otherwise write a small `pda-tester.ts` of the same shape and say why. (T-071 is the later task that unifies the schedulers; do not do it here.)
+5. **Rejection reasons come from the engine's own keys.** The last step of a rejected trace carries `pda.sim.input_left { left }`, `pda.sim.not_accepting_state` or `pda.sim.stack_not_empty { depth }`; these keys already exist in `id.ts` and `en.ts` (shared dictionary). Show those sentences in the verdict box as they are, and do **not** create the draft keys `pda_sim.reject.*` of the wireframe. Stopped reasons (`max_steps`, `max_configurations`, `max_stack`) get new keys. The pre-flight checks that the existing sentences read well next to "Ditolak"; only a wrong sentence may be edited, and the change is named in the report. The new UI keys (`pda_sim.*`) go in `pda-messages.ts` (lazy), none of them in `id.ts`/`en.ts` (ADR 0050); the tab label reuses the FSM's existing label key, so first JS stays within the 102-byte rule (the panel itself is loaded lazily, like the PDA's Tabel and Definisi).
+6. **Tab order and default.** `tabs = ['simulation', 'table', 'definition']` (Konversi comes in T-038b). The saved tab falls back to the first, as the FSM's does. The PDA tests that assume the Tabel tab is open at first (`pda-*.spec.ts`) are edited by the minimal step that opens Tabel first; list them in the pre-flight with the count.
+7. **The stack column** is exactly as the wireframe says: top at the top, "← puncak" at the first cell, the heavy bottom line, "kosong" for an empty stack, at most 8 cells; a taller stack shows the top 7, a cell "… n lagi" and the bottom line. A symbol of several characters is one cell. The state name is written next to the label. It is an `<ol aria-label>` in top-first order.
+8. **The peak is always visible** under the verdict: "Konfigurasi bersamaan terbanyak: n", the grey help line, and "Dijelajahi: m konfigurasi". For a `Stopped` run the same numbers show, as "so far".
+9. **The input is tokenized as the engine does** (a multi-character symbol of Σ). The field's hint, the empty-string rule ("Kosongkan untuk string kosong (ε)") and the refusal of a symbol not in Σ (`pda.sim.unknown_symbol`, shown as the FSM shows its refusals, with `EngineNotice` for an engine problem) are copied from the FSM panel.
+10. **The live region** says each step: "Langkah 2 dari 5: state q0, stack A A, puncak A" (key `pda_sim.step_announce`), and the verdict at the end, through the existing announcer; the stack is never read twice (the `<ol>` is not `aria-live`).
+
+**Scope (files; the pre-flight confirms the list):**
+
+- `crates/engine-core/src/api.rs`, `crates/engine-wasm/src/lib.rs`, `web/src/lib/engine/{protocol,handlers,client}.ts` and the generated types: `simulatePdaMany` only.
+- `web/src/lib/editor/`: `PdaRunPanel.svelte`, `PdaStack.svelte`, `PdaTestList.svelte`, `pda-run.ts` (+ `pda-run.test.ts`, `pda-run.wasm.test.ts`), `pda-tester.ts` if needed; `PdaEditor.svelte` (the tab, the snippet, the canvas ring and selection stroke for the current step; the panel code is imported lazily).
+- `web/src/lib/i18n/pda-messages.ts` (`id` and `en`), `docs/glossary.md` ("puncak", "konfigurasi bersamaan terbanyak", both `TODO(review)`), the two tour keys (the note removed), ADR 0064 (the decisions above, the unsaved list, the many-strings call).
+- `web/e2e/pda-simulation.spec.ts` (new), and the minimal edits of decision 6.
+
+**Fixtures (use these; the pre-flight may add, not drop):**
+
+- **F-DPDA:** aⁿbⁿ as a DPDA (push `A` for each `a`, pop for each `b`), accepting by final state and empty stack. `aabb` is accepted, peak 1; `aab` is rejected with the reason the engine gives (the test states which); `abb` is rejected, `input_left`.
+- **F-NDPDA:** wwᴿ over {a, b} (guess the middle by an ε-move). `abba` is accepted; `abab` is rejected; the peak of `abba` is above 1 (state the number the engine returns and test that number).
+- **F-LOOP:** one state with an ε-transition that pushes `A` and loops. Any input is `Stopped` (test the reason the engine returns) and the panel shows the neutral box, the partial computation and the peak so far.
+
+**Acceptance criteria:**
+
+1. A PDA's panel shows the tabs Simulasi, Tabel, Definisi in that order; Simulasi is first and is open by default for a first visit.
+2. On F-DPDA, `aabb`: pressing "Langkah berikutnya" from the start walks the trace; the stack column shows `A`, `A A`, `A`, empty as the engine's steps say; the current state's ring and the used edge's stroke follow the step; the verdict at the end is Diterima, the line says it is the accepting computation, the peak is 1.
+3. On F-DPDA, `abb`: the verdict is Ditolak with the engine's reason, and the line says "komputasi yang paling jauh".
+4. On F-NDPDA, `abba`: the verdict is Diterima and the peak is the number the test states; on F-DPDA the help line "DPDA selalu 1" is shown.
+5. On F-LOOP: the verdict box is the neutral "Dihentikan: …" with the right reason's sentence, the partial computation can be stepped, nothing hangs, and the page stays responsive.
+6. A stack of 12 symbols shows 7 cells, "… 5 lagi" and the bottom line; a stack of 8 shows 8 cells and no "lagi" cell; an empty stack shows "kosong".
+7. A row of the computation list jumps to its step; more rows than the window shows "… n baris sebelumnya" as the FSM does.
+8. "Uji banyak string": adding `aabb`, `abb` and the empty string shows three rows with the verdict and the peak; a tap on a row runs it above; a symbol not in Σ gets the calm refusal, not "Ditolak"; editing the machine clears the answers and asks again after the debounce; the list survives a switch to the Tabel tab and back.
+9. An unknown symbol, a machine with no start state and an engine failure each show a calm sentence (the FSM's wording where there is one), never a blank panel.
+10. Keyboard: every control is reachable with a visible focus ring; the buttons are ≥ 44 × 44 px on the phone project; no horizontal scroll at 360 px; `axe` is clean on the panel open, with a finished run, a stopped run and the list.
+11. The tour steps 4 and 5 no longer say "(pada mode FSM)" / "(in FSM mode)"; `tour.test.ts` and `cross/first-run.spec.ts` pass (edited only as far as that text).
+12. `id` and `en` exist for every new key; no key is in both `id.ts` and `pda-messages.ts`; the PDA panel code is not in the first JS (the sandbox route's first JS grows by at most 102 bytes; the report states the number).
+13. No change to the PDA document, its commands, storage, or any FSM behavior; the FSM's tests pass unedited.
+
+**Verification:** the full gate of AGENTS.md (cargo fmt, clippy `-D warnings`, `cargo test`, the wasm test, `pnpm lint`, `pnpm check`, `pnpm test`, `pnpm build`, Playwright desktop, phone and webkit-phone for the new spec, the size budgets, axe). **Break each of these guards once on the final code and show that a test catches it** (the report lists them): B1 the stack drawn bottom-first; B2 the 8/7 cell rule off by one; B3 the peak not shown for a stopped run; B4 a rejected run shown with the accepted wording (or the reason dropped); B5 the many-strings list keeping an answer after the machine changed; B6 the default tab left on Tabel; B7 the used-edge mapping using the unsorted index. Write `docs/agent/reports/T-038a.md` (the convention of PR 238) with the numbers.
+
+**Rollback:** revert the PR; nothing stored changes (the list is not saved), and the engine addition is additive.
+
+**Pre-flight (steps 1 to 4, then stop):** read `RunPanel.svelte`, `TestList.svelte`, `run.ts`, `tester.ts`, `SidePanel.svelte`, `PdaEditor.svelte`, `client.ts` and `toEnginePda`; then restate the plan, the file list, the tests and the guards, and **list every flaw you find in this spec** (the last specs each had two to four; I want them before the code, not after). Answer in particular: (a) how the engine's sorted transition index maps to an editor edge; (b) whether `createTester` can serve the PDA without a change; (c) the `.wasm` gzip size before and the expected size after; (d) which PDA e2e tests assume Tabel is open first; (e) whether the existing `pda.sim.*` sentences read well in the verdict box; (f) how the canvas ring for the current state is drawn for the PDA today.
+
+**Depends on:** P-005 (approved), T-031 (merged), T-081 (merged), T-084 (merged). T-038b and T-038c wait for this task (they use its tabs and its message file).
 
 ---
 
@@ -3626,7 +3674,7 @@ pnpm --filter web exec playwright test pda-library cross/library cross/storage -
 **Status:** proposed (after T-038a; can run at the same time as T-038c)
 **Owner:** worker
 
-**Goal:** Section 2 of the sheet: the two stages (restricted normal form, then the grammar) as a stepper, the read-only result canvas, "Buka PDA ini sebagai mesin baru" and "Buka sebagai tata bahasa" (opens in the grammar mode as a new custom grammar). Uses `pda_to_rnf` (T-036) and `pda_to_cfg` (T-037); checks the wasm API first and adds the entry points it lacks.
+**Goal:** Section 2 of the sheet: the two stages (restricted normal form, then the grammar) as a stepper, the read-only result canvas, "Buka PDA ini sebagai mesin baru" and "Buka sebagai tata bahasa" (opens in the grammar mode as a new custom grammar). Uses `pda_to_rnf` (T-036) and `pda_to_cfg` (T-037); the wasm entry points `pdaToRnf` and `pdaToCfg` already exist (`protocol.ts`, found 2026-11-23); the pre-flight confirms the result types are enough for the stepper.
 
 **Depends on:** T-038a (the panel's tabs), T-036, T-037, T-023 (open as a new grammar).
 
@@ -3637,7 +3685,7 @@ pnpm --filter web exec playwright test pda-library cross/library cross/storage -
 **Status:** proposed (after T-038a; can run at the same time as T-038b)
 **Owner:** worker
 
-**Goal:** Section 3 of the sheet: a third tab "Ke PDA" in the grammar workstation with the two methods (top-down, bottom-up), the stepper and "Buka sebagai PDA baru". Uses `cfg_to_pda_topdown` and `cfg_to_pda_bottomup` (T-034, T-035); checks the wasm API first.
+**Goal:** Section 3 of the sheet: a third tab "Ke PDA" in the grammar workstation with the two methods (top-down, bottom-up), the stepper and "Buka sebagai PDA baru". Uses `cfg_to_pda_topdown` and `cfg_to_pda_bottomup` (T-034, T-035); the wasm entry points `cfgToPdaTopdown` and `cfgToPdaBottomup` already exist (`protocol.ts`, found 2026-11-23); the pre-flight confirms the result types are enough for the stepper.
 
 **Depends on:** P-005 (approved), T-034, T-035.
 
@@ -3735,7 +3783,7 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-035** CFG to PDA, bottom-up (slides, shift and reduce): specified in its own block above (`todo`, since 2026-11-05; T-034 is merged).
 - **T-036** PDA to restricted normal form, with a trace: specified in its own block above (`done`, PR 161).
 - **T-037** PDA in restricted normal form to CFG, with a trace: specified in its own block above (`done`, PR 163). The slides' example `wcwᴿ` is the oracle (76 rules, 15 after cleanup).
-- **T-038** Conversions and simulation panel for the PDA: draft above (`proposed`; after P-004, P-005 and T-033).
+- **T-038** Conversions and simulation panel for the PDA: split on 2026-11-23 into T-038a (`todo`, full spec above: the Simulasi tab), T-038b (`proposed`: Konversi, PDA to grammar) and T-038c (`proposed`: "Ke PDA" in the grammar mode).
 - **T-071** One scheduler for the two engine queries of the PDA panel (`proposed`, found by T-062): `checker.ts` and `pda-determinism.ts` are the same rule (a debounce, a sequence number, a dispose) on two different answers, and the panel now asks the engine twice after every change. One small `createQuery` that both use would remove the second copy, but `checker.ts` is shared with the FSM, so it needs FSM tests and a decision of its own. Not urgent: there is no third query yet, and the copy is 40 lines.
 - **P-004** Wireframe of the PDA editor: planner task above (`done`, approved on 2026-11-06).
 
