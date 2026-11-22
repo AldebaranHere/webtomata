@@ -647,3 +647,12 @@ Format:
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-005); later `pnpm-workspace.yaml`
 
+## 2026-11-23 — T-081 amended after the worker's pre-flight (text "Pas", a lower toast, an i18n import, hover not focus)
+
+- Decider: planner (the owner approves with the merge)
+- Context: Gemini measured the built app at 360 × 740. The editor toast would sit on the floating "Pas"; `PdaFileDialog` shows raw keys when opened from the FSM mode (it never loads the PDA messages); an open PDA may have an unsaved edit when "Unduh" is tapped in its row; the blue frame of the mode selector is a sticky `:hover` border colour with `transition: all`, not a focus ring; the sheet said the fit button has an icon while the approved picture shows the text; the laptop "Pas" is `ZoomControl`, not `EditorFrame`'s `.fit`.
+- Decision: the fit button keeps the text "Pas" and is the one `EditorFrame` element moved into the stage; the editor toast moves up under the breakpoint; `PdaFileDialog` imports the PDA messages; the row's "Unduh" flushes the open PDA's autosave first; the selector's `:hover` is guarded with `(hover: hover)`, its transition is narrowed, and its focus call stays; tour steps 4 and 5 get a short "(pada mode FSM)" note.
+- Alternatives considered: an icon for "Pas" (a new asset and a less clear label for students); skipping the focus call after a touch (breaks focus return for screen-reader users on a phone); leaving the tour unchanged (a PDA student is told about a panel that is not there).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-081), `design/screens/editor-bar-phone.md`; later the files in the T-081 scope
+
