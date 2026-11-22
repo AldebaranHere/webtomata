@@ -189,6 +189,7 @@
 				<div class="row-fields">
 					<input
 						type="text"
+						enterkeyhint="done"
 						autocomplete="off"
 						autocapitalize="off"
 						spellcheck="false"
@@ -205,6 +206,7 @@
 					/>
 					<input
 						type="text"
+						enterkeyhint="done"
 						autocomplete="off"
 						autocapitalize="off"
 						spellcheck="false"
@@ -221,6 +223,7 @@
 					/>
 					<input
 						type="text"
+						enterkeyhint="done"
 						autocomplete="off"
 						autocapitalize="off"
 						spellcheck="false"
@@ -259,12 +262,8 @@
 		{/each}
 	</div>
 
-	<button type="button" class="add-row-btn" onmousedown={keep} onclick={addRow}>
-		{t('pda_editor.add_row', { from: fromName, to: toName })}
-	</button>
-
-	<p class="hint">{t('pda_editor.label_hint')}</p>
-
+	<!-- The buttons come before the add-row button and the hint, so that on a phone they stay above
+	     the keyboard (T-077). The refusal line stays above them: it is what to read after Simpan. -->
 	<div aria-live="polite">
 		{#if refusalText !== null}
 			<p id={problemId} class="problem">{refusalText}</p>
@@ -284,6 +283,12 @@
 			</button>
 		</div>
 	</div>
+
+	<button type="button" class="add-row-btn" onmousedown={keep} onclick={addRow}>
+		{t('pda_editor.add_row', { from: fromName, to: toName })}
+	</button>
+
+	<p class="hint">{t('pda_editor.label_hint')}</p>
 </div>
 
 <style>

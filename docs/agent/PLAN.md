@@ -3191,7 +3191,7 @@ pnpm --filter web exec playwright test pda-editor pda-panel pda-library pda-file
 
 ## Task T-077 — The PDA label sheet fills the width of a phone and keeps its buttons above the keyboard
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker (DeepSeek: the planner's pick)
 **Branch:** `task/T-077-label-sheet`
 

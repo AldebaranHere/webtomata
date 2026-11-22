@@ -484,6 +484,16 @@
 		border-top: 1px solid var(--color-border);
 		box-shadow: var(--shadow-modal);
 	}
+	/* T-077: the form is 320 px in the popover of a laptop; in the sheet it fills the width of the
+	   screen, and its rows list shows about one and a half rows (one row of 44 px, the 8 px gap and
+	   20 px of the next) so that the buttons stay within 190 css px of the top of the sheet, the part
+	   a phone's keyboard leaves visible (design/screens/pda-editor.md, sections 8 and 9). */
+	.pda-sheet :global(.pda-label-form) {
+		width: 100%;
+	}
+	.pda-sheet :global(.pda-label-form .rows) {
+		max-height: 72px;
+	}
 	/* On a laptop the button "Mesin saya" is in the header; a phone has it here. */
 	.machines {
 		display: none;
