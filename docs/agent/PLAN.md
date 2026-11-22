@@ -2742,26 +2742,26 @@ Follow the rules of `AGENTS.md` for every shell command; the loaded runs are lon
 
 ## Task T-065 — Symbol names: refuse the ε word in the document, and the missing text of `document.duplicate_symbol`
 
-**Status:** todo (specified 2026-11-23; it was a draft since 2026-11-09)
+**Status:** todo (specified 2026-11-23; amended the same day after the worker's pre-flight; it was a draft since 2026-11-09)
 **Owner:** worker (Gemini: the planner's pick; it is the shared document code and two dictionaries)
 **Branch:** `task/T-065-symbol-names`
 
-**Goal:** Found by the worker of T-061 on 2026-11-09 with the real functions. (1) `checkSymbol` of the document (`document.ts`) refuses `ε`, an empty name and a name over 32 characters, but accepts the word `eps` as a symbol name, in an FSM and in a PDA, although `eps` means ε in the labels; a symbol named `eps` can never be typed in a label, and the machine cannot be read back from its own picture. (2) `document.duplicate_symbol` has no text in `id.ts`, `en.ts` or `pda-messages.ts`, so the FSM table shows the raw key when a symbol is added twice. This task makes the document refuse a new symbol that is an ε word, adds the missing texts, and removes the PDA table's own copy of the `eps` check.
+**Goal:** Found by the worker of T-061 on 2026-11-09 with the real functions. (1) `checkSymbol` of the document (`document.ts`) refuses `ε`, an empty name and a name over 32 characters, but accepts the word `eps` as a symbol name, in an FSM and in a PDA, although `eps` means ε in the labels; a symbol named `eps` can never be typed in a label, and the machine cannot be read back from its own picture. (2) `document.duplicate_symbol` has no text in `id.ts` or `en.ts` (the PDA dictionary `pda-messages.ts` has had it since T-061), so the FSM table shows the raw key when a symbol is added twice. This task makes the document refuse a new symbol that is an ε word, adds the missing texts, and removes the PDA table's own copy of the `eps` check.
 
 **Decisions (planner, 2026-11-23; do not reopen, ask if one looks wrong):**
 
-- **Refuse when a symbol is added or renamed, never when a document is read.** The command that adds (or renames to) a symbol refuses an ε word. Reading a stored record, a `.jff`, a JSON file or a share link that already holds a symbol `eps` keeps working exactly as before: no migration, no rejected file, no change of any old machine. State in the pre-flight where `checkSymbol` is called (commands, the readers, the engine's own validation) and whether the check can be put on the commands' side alone; if one function serves both, split the check, do not move the old files' behaviour.
-- **One list of the ε words.** `pda-label.ts` already knows which words mean ε (T-061 exported it for the table). The document uses **the same list from one place**; no second copy. Say in the report where it lives now.
-- **New refusal key `document.reserved_symbol { symbol }`**, text in `id.ts` and `en.ts` (the shared dictionary, where `document.duplicate_symbol` also belongs): id "“{symbol}” berarti ε, jadi tidak bisa dipakai sebagai nama simbol." en "“{symbol}” means ε, so it cannot be a symbol name." And the missing `document.duplicate_symbol { symbol }`: id "Simbol “{symbol}” sudah ada." en "The symbol “{symbol}” already exists." Check the real params of the existing refusal first and use its names. Both are `TODO(review)` in the glossary sense only if a new term appears; none does.
-- **The PDA table's `eps` branch goes.** `pda_editor.symbol_reserved` and its check in the Alfabet field refuse `eps`, `ε` and a name with a space or a comma. After this task the document refuses `eps` and `ε` itself, so the table's check keeps **only the whitespace and comma rule** (which is not a document rule) and shows the document's refusal for the rest. The text of `pda_editor.symbol_reserved` stays for the whitespace and comma case; say in the report if its wording must change.
+- **Refuse when a symbol is added, never when a document is read (ruled after the pre-flight).** The three commands that introduce a symbol name (`addSymbol` in `commands.ts`; `addInputSymbol` and `addStackSymbol` in `pda-commands.ts`; there is **no rename-symbol command**) refuse an ε word. `checkSymbol` stays exactly as it is: it is also the reader's rule (`parseDocument`, `parsePdaDocument`, their `...Text` forms, stored records, JSON files, FSM share links) and the engine-parity rule (`document.wasm.test.ts`), so old data that holds a symbol `eps` loads unchanged. Add a command-side helper in `document.ts` (name it `checkNewSymbol`) that calls `checkSymbol` and then refuses an ε word with the new key, and call it from the three commands only. `addTransition` of the PDA keeps its `checkSymbol` calls (a legacy machine with `eps` in its alphabet can still add transitions that use it).
+- **One list of the ε words (ruled).** Today `EPSILON_WORDS` is exported by `pda-label.ts` (lazy PDA chunk) and a second private copy is `const EPSILON_WORDS = new Set(['eps', 'ε'])` in `interaction/label.ts`. Move the list to `document.ts` (shared code; the FSM bundle must not import from the lazy PDA chunk), import it in `pda-label.ts`, `pda-table-edit.ts` and `interaction/label.ts` (a pure import swap there, no behaviour change; `label.ts` is otherwise untouched), so there is one copy. Say in the report where it lives.
+- **New refusal key `document.reserved_symbol { symbol }`**, text in `id.ts` and `en.ts` (the shared dictionary), **ASCII only, no curly quotes** (the dictionary uses straight ones and every byte of it is in the first JS): id "{symbol} berarti ε, jadi tidak bisa dipakai sebagai nama simbol." en "{symbol} means ε, so it cannot be a symbol name." **`document.duplicate_symbol { symbol }` moves** from `pda-messages.ts` (where T-061 put it, ids "Simbol {symbol} sudah ada." and "Symbol {symbol} already exists.", keep these exact texts) to `id.ts` and `en.ts`, because the FSM needs it too and no key may be in both dictionaries (ADR 0050, `pda-messages.test.ts`). The refusal's params are `{ symbol }` (verified in the pre-flight).
+- **The PDA table's `eps` branch goes (ruled).** `symbolNameRefusal` in `pda-table-edit.ts` refuses `eps`, `ε` and a name with whitespace or a comma. After this task the document refuses `eps` (`document.reserved_symbol`) and `ε` (`document.invalid_symbol`) itself, so the table's check keeps **only the whitespace and comma rule** and passes everything else to the command, whose refusal it shows. `pda_editor.symbol_reserved` is shortened to the case it now covers: id "Nama simbol tidak boleh berisi spasi atau koma." en "A symbol name cannot contain spaces or commas." A name with surrounding spaces (`' eps '`) is trimmed as the table trims today and then reaches the document: pin what it does with a test.
 - **Not in this task:** any change in `crates/`, the label parsers, the share-link or `.jff` formats, and any migration of stored machines.
 
-**Scope (files):** `web/src/lib/editor/document.ts` (and the PDA document file if it has its own `checkSymbol`), `web/src/lib/editor/pda-label.ts` (only if the list moves), `web/src/lib/editor/PdaAlphabetBlock.svelte` (or the file that holds the table's check), `web/src/lib/i18n/id.ts`, `web/src/lib/i18n/en.ts`, `web/src/lib/i18n/pda-messages.ts` (only if a PDA key changes), their unit tests, the e2e that the pre-flight names, `docs/agent/PLAN.md` (status), `docs/agent/REPORT.md`. **Existing tests that may change, and only these:** the T-061 cases that assert the table's own refusal of `eps` (they must now see the document's text); list each.
+**Scope (files):** `web/src/lib/editor/document.ts` (`EPSILON_WORDS`, `checkNewSymbol`), `commands.ts`, `pda-commands.ts` (the three calls), `pda-label.ts` and `interaction/label.ts` (import swap), `pda-table-edit.ts` (`symbolNameRefusal`), `web/src/lib/i18n/id.ts`, `en.ts`, `pda-messages.ts` (`duplicate_symbol` leaves; `symbol_reserved` shortened), new and changed unit tests, `docs/agent/PLAN.md` (status), `docs/agent/REPORT.md`. **Existing tests that may change, and only these (named by the pre-flight):** `pda-table-edit.test.ts` (the `symbolNameRefusal` cases for `eps`, `ε` and `' eps '`, and `R3`, which asserts `document.duplicate_symbol` is in the PDA dictionaries), `pda-messages.test.ts` (`PDA_KEYS` loses `document.duplicate_symbol`), and `web/e2e/pda-table-edit.spec.ts` (the sentence it expects for `eps`: now the document's text; for a space or a comma: the shortened text); list each.
 
 **Fixtures (the oracle; derive by hand and write the derivation in `REPORT.md`):**
 
-- F1 In an FSM document, adding the symbol `eps` is refused with `document.reserved_symbol { symbol: 'eps' }`; adding `ε` is refused as before; adding `a` works. The same in a PDA document for the input and the stack alphabet. Renaming a symbol to `eps` is refused.
-- F2 **Old data still loads:** a stored FSM record, a `.jff` and a share link that carry a symbol `eps` (build the fixtures from the real writers or by hand) open as before, with `eps` in the alphabet, and a simulation that reads it gives the same result as on `staging`.
+- F1 In an FSM document, `addSymbol` of `eps` is refused with `document.reserved_symbol { symbol: 'eps' }`; `ε` is refused as before; `a` works. The same for `addInputSymbol` and `addStackSymbol` in a PDA document. (There is no rename-symbol command.)
+- F2 **Old data still loads:** a stored FSM record, a JSON file and a share link that carry a symbol `eps`, and a stored PDA record and a PDA JSON file that carry `eps` in an alphabet (build them by hand: a `.jff` cannot produce one, the engine splits `eps` into three symbols), open as before with `eps` in the alphabet, and `checkSymbol('eps')` is still ok.
 - F3 The FSM table shows the Indonesian and English text of `document.duplicate_symbol` (not the key) when the same symbol is added twice; a test shows that every refusal key the two tables can show has a text in both languages (extend the existing one).
 - F4 In the PDA Alfabet field, `eps` shows the **document's** text; a name with a space or a comma still shows `pda_editor.symbol_reserved`.
 
@@ -2769,8 +2769,8 @@ Follow the rules of `AGENTS.md` for every shell command; the loaded runs are lon
 
 - AC1 F1 to F4 hold, each by a test written first and seen to fail on `staging`.
 - AC2 **Nothing else changes:** list the existing tests you ran; only the ones named in the scope may be edited.
-- AC3 **Size:** `pnpm size` before and after in bytes; no route's first JS grows by more than 102 bytes (the shared dictionary is in the first JS: keep the texts short).
-- AC4 **Break each guard once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) the add command accepts `eps` again; (B2) the reader refuses a stored `eps` (the old-data guard); (B3) the table's `eps` branch is put back (two sources); (B4) `document.duplicate_symbol` loses its `en` text. Restore each; `git diff --stat` shows only the scope.
+- AC3 **Size:** `pnpm size` before and after in bytes (the worker's baseline: `sandbox.html` 124,870, `index.html` 83,867); no route's first JS grows by more than 102 bytes. The shared dictionary is in the first JS and `duplicate_symbol` moves into it from the lazy chunk, so this is tight: ASCII texts only. **If the build is over, stop and tell the planner** (do not shorten the texts into something unclear).
+- AC4 **Break each guard once, on the final code, with the failing line pasted and the one line of `git diff` that is the break:** (B1) the add command accepts `eps` again; (B2) the reader refuses a stored `eps` (the old-data guard); (B3) the table's `eps` branch is put back (two sources) or `interaction/label.ts` gets its private list back; (B4) `document.duplicate_symbol` loses its `en` text. Restore each; `git diff --stat` shows only the scope.
 - AC5 `pnpm lint`, `pnpm check`, `pnpm test:web`, `pnpm check:strings`, `pnpm build && pnpm size`, and Playwright for the specs that the pre-flight names, on the phone and desktop projects, pass.
 
 **Verification:**
@@ -2782,7 +2782,7 @@ pnpm build && pnpm size
 
 **Rollback:** `git revert <sha>`: `eps` is accepted as a name again; nothing stored changes.
 
-**Pre-flight (with real commands):** (1) every caller of `checkSymbol` and the function itself; which are commands and which are readers; (2) where the ε words live now and who imports them; (3) the exact refusal object of `document.duplicate_symbol` (its params); (4) the T-061 tests that name `eps` or `symbol_reserved`; (5) sizes in bytes before. Anything in this spec that your reading shows to be wrong: stop and tell the planner.
+**Pre-flight:** done by the worker on 2026-11-23; its answers are the facts above. Anything else in this spec that your reading shows to be wrong: stop and tell the planner.
 
 **Depends on:** T-061 (merged).
 
@@ -3453,7 +3453,7 @@ pnpm test:tools
 
 ## Task T-082 — Dependency refresh: the seven audit findings of 2026-11-23
 
-**Status:** todo
+**Status:** todo (amended 2026-11-23 after the worker's pre-flight)
 **Owner:** worker (DeepSeek: the planner's pick; it did the Rust pin and T-005)
 **Branch:** `task/T-082-audit-deps`
 
@@ -3463,26 +3463,30 @@ pnpm test:tools
 
 - **The repo's two-week habit.** Pnpm's own check is one day (T-005); our written habit is "wait two weeks" (see the `undici` note in `pnpm-workspace.yaml`). Pick for each package **the newest version that is at least 14 days old on the day you work and not older than the patched one**, and write the dates (from the registry, with the command) in the report. At the planner's check: `@sveltejs/kit` 3.1.1 is 2026-10-29 and a newer 3.x may be 14 days old; `@sveltejs/adapter-static` 4.0.1 is 2026-10-29; `minimatch` 11.0.1 is 2026-10-27, 11.0.4 is 2026-11-02, 11.0.8 is 2026-11-11 (too young).
 - **No new exclusion and no `minimumReleaseAge` key** (T-005's rule stays).
-- **`@sveltejs/kit` and `adapter-static`:** raise the ranges in `web/package.json` to the chosen versions (keep the caret style the file uses) and update the lockfile with the frozen-lockfile-safe route you prove works (the pre-flight says which command; remember that a plain `pnpm install` appends exclusions under the non-strict default: check `git diff pnpm-workspace.yaml` is empty).
-- **`minimatch` comes through `eslint@10.13.0`.** In order: (a) a newer `eslint` or `@eslint/config-array` that is at least 14 days old and already needs `minimatch` 11 or later (check, do not guess); (b) otherwise an exact `overrides` entry for `minimatch` in `pnpm-workspace.yaml`, like the `undici` one, with a comment in the same style (date, reason, when to remove), **only if `pnpm lint` still passes and finds the same files**; (c) otherwise `GHSA-g3hv-75wg-m249` goes into `auditConfig.ignoreGhsas` with the reason (dev-only; it parses our own globs, no input of a visitor) and the date, as the `deepmerge` one is. Choose in that order and say which and why.
-- **`rustix` 1.1.5** is an allowed warning of `.cargo/audit.toml` (it is already accepted there: say what the file says). Do nothing about it unless the pre-flight shows that `cargo update -p rustix` to a 14-day-old patched version is trivial and green; if so do it in its own commit.
+- **`@sveltejs/kit` and `adapter-static` (ruled after the pre-flight):** the versions are **`@sveltejs/kit` 3.1.1 and `@sveltejs/adapter-static` 4.0.1** (the newest that are 14 days old on 2026-11-23: kit 3.2.0 is 12 days old). Use exactly `pnpm --filter web update @sveltejs/kit@3.1.1 @sveltejs/adapter-static@4.0.1 --lockfile-only` (the worker proved that it changes only the two lines of `web/package.json`, to `^3.1.1` and `^4.0.1`, and pins the lockfile; raising the ranges and running `pnpm install --lockfile-only` resolves kit to 3.4.0, which is four days old; the update at the workspace root refuses, `--filter web` is required). Never a plain `pnpm install`.
+- **`minimatch` comes through `eslint`, `@eslint/config-array` and `@typescript-eslint/typescript-estree`.** The worker proved that option (a) is unavailable (the newest 14-day-old `eslint` 10.14.0 still wants `minimatch` 10; the config-array that wants 11 is 9 days old), so **option (b), ruled: `overrides: minimatch: 11.0.5`** (11.0.5 is 17 days old, the newest eligible; 11.0.6 to 11.0.9 are younger), which the worker proved benign (`pnpm lint` and `eslint . --format json` both cover 408 files, `pnpm audit` and `--prod` are clean in the scratch copy). Option (c) is not needed. The order stays as a record: (a) a newer `eslint` or `@eslint/config-array` that is at least 14 days old and already needs `minimatch` 11 or later; (b) an exact `overrides` entry for `minimatch` in `pnpm-workspace.yaml`, like the `undici` one, with a comment in the same style (date, reason, when to remove), **only if `pnpm lint` still passes and finds the same files**; (c) otherwise `GHSA-g3hv-75wg-m249` goes into `auditConfig.ignoreGhsas` with the reason (dev-only; it parses our own globs, no input of a visitor) and the date, as the `deepmerge` one is. Choose in that order and say which and why.
+- **`rustix` 1.1.5 (ruled after the pre-flight):** `.cargo/audit.toml` ignores nothing (three lines; an `unsound` warning is simply not fatal). Patched 1.1.6 exists and is 26 days old, and `cargo update --dry-run -p rustix` is one package (through `tempfile`, not in `fuzz/Cargo.lock`): **do it, in its own commit** (`cargo update -p rustix --precise 1.1.6`), and show `cargo audit` and `cargo test` green on 1.100.0.
 - **Not in this task:** any other dependency, `pnpm` itself (12.14.0 to 12.21.0 is a separate decision), the Rust toolchain, and any source change.
 
-**Scope (files):** `web/package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` (only an override or an ignore entry, if the order above reaches it), `Cargo.lock` (only for `rustix`, if done), `docs/agent/PLAN.md` (status), `docs/agent/REPORT.md`.
+**Scope (files):** `web/package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` (the `minimatch` override, with a comment in the style of the `undici` one: date, reason, when to remove), `Cargo.lock` (`rustix` only), `docs/agent/DECISIONS.md` (one entry: the override is a decision, and the two-week habit is a snapshot, not a setting: nothing stops a later `pnpm install` or `pnpm update` from taking a newer version), `docs/agent/PLAN.md` (status), `docs/agent/REPORT.md`.
+
+**Environment (ruled):** the worker's session is the linked worktree `~/webtomata-ds`, approved; `git fetch origin staging:staging` is the way to refresh `staging` there. `git branch --unset-upstream` may print an error for a branch that has no upstream: that is fine, say so.
 
 **Fixtures (the oracle):**
 
 - F1 `pnpm audit` on the final tree reports no finding, or only the ones you added to `ignoreGhsas` with a reason; `pnpm audit --prod` still reports none. Paste both outputs.
-- F2 `pnpm install --frozen-lockfile` passes the supply-chain check with `"minimumReleaseAgeExclude":[]` (the verification line), and `git diff pnpm-workspace.yaml` contains no `minimumReleaseAgeExclude`.
+- F2 `pnpm install --frozen-lockfile` passes the supply-chain check, and `git diff pnpm-workspace.yaml` contains no `minimumReleaseAgeExclude` (the only change in that file is the `minimatch` override and its comment).
 - F3 The site is the same: `pnpm build && pnpm size` pass and the **gzip bytes of each route move by less than 102 bytes** (SvelteKit may change the first JS; report the numbers before and after; above 102 bytes stop and tell the planner).
-- F4 `pnpm lint`, `pnpm check`, `pnpm test:web`, and Playwright for the editor specs on the phone and desktop projects (the specs you run are named in the report) pass.
-- F5 If `minimatch` is overridden: `pnpm lint` lints the same number of files as on `staging` (paste the count of both).
+- F4 `pnpm lint`, `pnpm check`, `pnpm test:web`, and Playwright for `editor-bar-phone pda-editor pda-panel pda-files pda-library editor-layout switcher` on the phone and desktop projects pass (a lockfile-only change needs these, not the whole suite).
+- F5 With the `minimatch` override: `pnpm lint` passes, and `pnpm exec eslint . --format json` covers the same number of files as on `staging` (408 in the pre-flight; paste both counts: `pnpm lint` does not print one).
 
 **Acceptance criteria:**
 
 - AC1 F1 to F5 hold, each by pasted output.
 - AC2 The chosen versions are named with their registry dates and the order of the `minimatch` options is shown (which one applied).
 - AC3 No source file changes; `git diff --stat` shows only the scope.
+- AC5 **The versions are pinned, not just "audit is quiet":** `grep` of `pnpm-lock.yaml` shows `@sveltejs/kit@3.1.1`, `@sveltejs/adapter-static@4.0.1` and `minimatch@11.0.5` (and no `@sveltejs/kit@3.4.0`); paste the lines. A too-young package that is patched would pass F1 and must fail here.
+- AC6 Three commits: (1) kit and adapter-static, (2) the `minimatch` override, (3) `rustix`; each leaves the tree green.
 - AC4 CI is green on the PR, including the `audit` workflow if it starts (it runs when a lockfile changes).
 
 **Verification:**
@@ -3595,20 +3599,48 @@ pnpm --filter web exec playwright test pda-library cross/library cross/storage -
 
 ---
 
-## Task T-038 — Conversions and simulation panel for the PDA (draft)
+## Task T-038 — Conversions and simulation panel for the PDA (split on 2026-11-23)
 
-**Status:** proposed (after P-005 is approved and T-051, T-034, T-035, T-037 are merged)
+**Status:** split into T-038a, T-038b and T-038c, which follow `design/screens/pda-simulation-conversion.md` (P-005, approved by the owner on 2026-11-23, the planner's pick on all five questions). Each gets its full spec when the one before it is merged or a worker is free; the shells below say what each builds and in what order.
+
+---
+
+## Task T-038a — The Simulasi tab of the PDA editor: the stack, the computation and the peak
+
+**Status:** proposed (full spec when a worker is free; the first of the three)
 **Owner:** worker
 
-**Goal:** In the PDA editor, a panel that plays the simulation of T-031 (stack drawn, one step at a time, the peak number shown) and shows the traces of T-034 to T-037. A wireframe the owner approves comes first (planner task P-005, to be written after P-004).
+**Goal:** Section 1 of the sheet: String masukan with the FSM's buttons, the stack drawn as a column (top at the top), the computation list, the verdict with its reason, the peak number and "Dijelajahi", stopped runs, "Uji banyak string" with a peak column, the accessible list and live region. Removes the "(pada mode FSM)" note of tour steps 4 and 5. Uses `simulate_pda` (T-031); checks the wasm API and message keys first.
 
-**Depends on:** P-005, T-051, T-034, T-035, T-037.
+**Depends on:** P-005 (approved), T-081 (merged), T-031 (merged).
+
+---
+
+## Task T-038b — The Konversi tab of the PDA editor: PDA to a grammar
+
+**Status:** proposed (after T-038a; can run at the same time as T-038c)
+**Owner:** worker
+
+**Goal:** Section 2 of the sheet: the two stages (restricted normal form, then the grammar) as a stepper, the read-only result canvas, "Buka PDA ini sebagai mesin baru" and "Buka sebagai tata bahasa" (opens in the grammar mode as a new custom grammar). Uses `pda_to_rnf` (T-036) and `pda_to_cfg` (T-037); checks the wasm API first and adds the entry points it lacks.
+
+**Depends on:** T-038a (the panel's tabs), T-036, T-037, T-023 (open as a new grammar).
+
+---
+
+## Task T-038c — "Ke PDA" in the grammar mode: CFG to PDA
+
+**Status:** proposed (after T-038a; can run at the same time as T-038b)
+**Owner:** worker
+
+**Goal:** Section 3 of the sheet: a third tab "Ke PDA" in the grammar workstation with the two methods (top-down, bottom-up), the stepper and "Buka sebagai PDA baru". Uses `cfg_to_pda_topdown` and `cfg_to_pda_bottomup` (T-034, T-035); checks the wasm API first.
+
+**Depends on:** P-005 (approved), T-034, T-035.
 
 ---
 
 ## Planner task P-005 — Wireframe of the PDA simulation, the stack and the conversions
 
-**Status:** drawn on 2026-11-23 in `design/screens/pda-simulation-conversion.md` and `.svg`; waits for the owner's answers to five questions (CFG to PDA lives in the grammar mode, the stack is a column in the panel, "Uji banyak string" in the first version, the peak always visible, three build tasks). T-038 is split into T-038a (Simulasi tab), T-038b (Konversi tab, PDA to CFG) and T-038c ("Ke PDA" in the grammar mode) when it is approved.
+**Status:** done (drawn on 2026-11-23 in `design/screens/pda-simulation-conversion.md` and `.svg`; the owner accepted the planner's pick on all five questions the same day: CFG to PDA lives in the grammar mode, the stack is a column in the panel, "Uji banyak string" is in the first version, the peak is always visible, three build tasks; T-038 is split into T-038a, T-038b and T-038c below)
 **Owner:** planner
 
 The sheet gives the Simulasi tab (the FSM's blocks plus the stack drawn as a column, top at the top, and the peak number of configurations), the Konversi tab with PDA → CFG in its two stages (RNF, then the grammar) as a stepper with a read-only result canvas, and a third tab "Ke PDA" in the grammar mode for CFG → PDA (top-down and bottom-up). Four phone frames, the message keys as drafts, and what each task builds.
