@@ -8,7 +8,7 @@
 import {
 	LIMITS,
 	checkName,
-	checkSymbol,
+	checkNewSymbol,
 	checkTitle,
 	compareTransitions,
 	freezeDocument,
@@ -237,7 +237,7 @@ function apply(doc: MachineDocument, command: Command, depth: number): ApplyResu
 		}
 
 		case 'addSymbol': {
-			const bad = failed(checkSymbol(command.symbol));
+			const bad = failed(checkNewSymbol(command.symbol));
 			if (bad) return bad;
 			if (doc.alphabet.includes(command.symbol))
 				return fail('document.duplicate_symbol', { symbol: command.symbol });

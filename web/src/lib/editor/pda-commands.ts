@@ -8,6 +8,7 @@
 import {
 	LIMITS,
 	checkName,
+	checkNewSymbol,
 	checkSymbol,
 	checkTitle,
 	isCoordinate,
@@ -317,7 +318,7 @@ function apply(doc: PdaDocument, command: PdaCommand, depth: number): PdaApplyRe
 		}
 
 		case 'addInputSymbol': {
-			const bad = failed(checkSymbol(command.symbol));
+			const bad = failed(checkNewSymbol(command.symbol));
 			if (bad) return bad;
 			if (doc.inputAlphabet.includes(command.symbol)) {
 				return fail('document.duplicate_symbol', { symbol: command.symbol });
@@ -342,7 +343,7 @@ function apply(doc: PdaDocument, command: PdaCommand, depth: number): PdaApplyRe
 		}
 
 		case 'addStackSymbol': {
-			const bad = failed(checkSymbol(command.symbol));
+			const bad = failed(checkNewSymbol(command.symbol));
 			if (bad) return bad;
 			if (doc.stackAlphabet.includes(command.symbol)) {
 				return fail('document.duplicate_symbol', { symbol: command.symbol });

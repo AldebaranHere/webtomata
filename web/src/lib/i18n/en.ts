@@ -93,6 +93,8 @@ export const en: Record<keyof typeof id, string> = {
 	'editor.edge_removed': 'Transition from {from} to {to} removed.',
 	'document.invalid_symbol':
 		'The symbol "{symbol}" cannot be used: it must not be empty, too long, or contain forbidden characters.',
+	'document.reserved_symbol': '{symbol} means ε, so it cannot be a symbol name.',
+	'document.duplicate_symbol': 'Symbol {symbol} already exists.',
 	'editor.edge': 'Transition from {from} to {to}: {symbols}',
 	'editor.edge_selected': 'Transition from {from} to {to}: {symbols} selected.',
 	'editor.menu.edit': 'Change symbols',

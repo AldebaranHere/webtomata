@@ -287,16 +287,22 @@ describe('U: the commands of the editable table', () => {
 		}
 	});
 
-	it('a name that the label form would read as ε, or that cannot be typed, is refused', () => {
-		for (const name of ['eps', 'ε', 'a b', 'a,b', ' eps ', 'a\tb']) {
+	it('refuses spaces and commas, and leaves ε words to the document command', () => {
+		for (const name of ['a b', 'a,b', 'a\tb']) {
 			expect(asRefusal(symbolNameRefusal(name)), `name ${JSON.stringify(name)}`).toEqual({
 				key: 'pda_editor.symbol_reserved',
 				params: {}
 			});
 		}
-		for (const name of ['c', 'eps2', 'EPS', 'A2', '']) {
+		for (const name of ['c', 'eps2', 'EPS', 'A2', '', 'eps', 'ε', ' eps ']) {
 			expect(symbolNameRefusal(name), `name ${JSON.stringify(name)}`).toBe(null);
 		}
+		// Surrounding spaces around eps are trimmed by the Alfabet field before calling the command.
+		const doc = machineF();
+		expect(applyPdaCommand(doc, { type: 'addInputSymbol', symbol: ' eps '.trim() })).toEqual({
+			ok: false,
+			error: { key: 'document.reserved_symbol', params: { symbol: 'eps' } }
+		});
 	});
 
 	it('a row that differs from another one by its Dari or its Ke is not a duplicate', () => {
@@ -384,6 +390,7 @@ function textOf(dictionary: object, key: MessageKey): string | undefined {
 const TABLE_KEYS: readonly MessageKey[] = [
 	// refusals of the document and of the table
 	'document.invalid_symbol',
+	'document.reserved_symbol',
 	'document.duplicate_symbol',
 	'document.invalid_name',
 	'document.duplicate_name',
@@ -450,7 +457,7 @@ describe('R: every text that the table can show exists in both languages', () =>
 		}
 	});
 
-	it('R3: the new keys of this task are in the PDA module only', () => {
+	it('R3: the PDA-only keys stay in the PDA module, and shared document refusals live in the shared dictionary', () => {
 		for (const key of [
 			'pda_editor.alphabet_input',
 			'pda_editor.alphabet_stack',
@@ -461,13 +468,18 @@ describe('R: every text that the table can show exists in both languages', () =>
 			'pda_editor.row_added',
 			'pda_editor.row_changed',
 			'pda_editor.row_removed',
-			'pda_editor.symbol_reserved',
-			'document.duplicate_symbol'
+			'pda_editor.symbol_reserved'
 		] as const) {
 			expect(Object.hasOwn(pdaId, key), `pdaId: ${key}`).toBe(true);
 			expect(Object.hasOwn(pdaEn, key), `pdaEn: ${key}`).toBe(true);
 			expect(Object.hasOwn(id, key), `id: ${key}`).toBe(false);
 			expect(Object.hasOwn(en, key), `en: ${key}`).toBe(false);
+		}
+		for (const key of ['document.duplicate_symbol', 'document.reserved_symbol'] as const) {
+			expect(Object.hasOwn(id, key), `id: ${key}`).toBe(true);
+			expect(Object.hasOwn(en, key), `en: ${key}`).toBe(true);
+			expect(Object.hasOwn(pdaId, key), `pdaId: ${key}`).toBe(false);
+			expect(Object.hasOwn(pdaEn, key), `pdaEn: ${key}`).toBe(false);
 		}
 	});
 });

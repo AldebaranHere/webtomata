@@ -23,10 +23,10 @@ function randomInt(rand: () => number, min: number, max: number): number {
 	return min + Math.floor(rand() * (max - min + 1));
 }
 
+// 'eps' is refused by addInputSymbol/addStackSymbol (T-065); legacy 'eps' round-trip is covered in pda-label.test.ts.
 const ADVERSARIAL_SYMBOLS = [
 	',',
 	'a,b',
-	'eps',
 	'(',
 	')',
 	'+',

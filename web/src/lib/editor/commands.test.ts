@@ -231,6 +231,17 @@ describe('the alphabet', () => {
 		expect(refused(doc, { type: 'addSymbol', symbol: '' })).toBe('document.invalid_symbol');
 	});
 
+	it('addSymbol refuses the ε word eps with document.reserved_symbol', () => {
+		const doc = createDocument();
+		expect(applyCommand(doc, { type: 'addSymbol', symbol: 'eps' })).toEqual({
+			ok: false,
+			error: { key: 'document.reserved_symbol', params: { symbol: 'eps' } }
+		});
+		expect(refused(doc, { type: 'addSymbol', symbol: 'ε' })).toBe('document.invalid_symbol');
+		const ok = applyCommand(doc, { type: 'addSymbol', symbol: 'a' });
+		expect(ok.ok).toBe(true);
+	});
+
 	it('refuses the 257th symbol', () => {
 		let doc = createDocument();
 		for (let i = 0; i < LIMITS.symbols; i++) {
