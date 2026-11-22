@@ -711,3 +711,13 @@ Format:
 - Alternatives considered: one generic run panel for FSM and PDA (rejected: it would touch every FSM test and the shared first JS for no student-visible gain; revisit when T-071 unifies the schedulers); saving the list in the PDA document now (rejected: a schema change and a migration belong to their own task); a per-string call only (kept as the fallback).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-038a, and the T-038b/T-038c shells: their wasm entry points exist), later `crates/engine-core/src/api.rs`, `crates/engine-wasm/src/lib.rs`, `web/src/lib/engine/`, `web/src/lib/editor/Pda*`, `pda-messages.ts`, ADR 0064
+
+
+## 2026-11-23 — T-038a amended after the worker's pre-flight (fourteen flaws, eight rulings)
+
+- Decider: planner
+- Context: the pre-flight found that the transition index is the identity (so B7 could not fail), that PlayerControls and Announcer do not fit the run panel, that a stopped run would take about six minutes to reach its verdict at the FSM's pace, that the Simulasi pane without the head would hide the kind switch and break six tests, and that a list kept in the panel does not survive a mode switch.
+- Decision: the Simulasi pane renders the head; a stopped verdict shows when the engine answers; the step counter is 1-based; the used-edge stroke is the from>to group (T-085 proposed for the exact one); `simulate_pda_many` has no peak on a refused string; B7 becomes an off-by-one used-edge break; computation rows and test rows are buttons; the list survives a tab switch only.
+- Alternatives considered: editing six tests to click Tabel (rejected: the kind switch would sit off the default tab); a fake clock for the stopped e2e (rejected: no e2e uses one).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-038a amendment, T-085), `design/screens/pda-simulation-conversion.md` (the head, the 1-based counter; planner to amend)
