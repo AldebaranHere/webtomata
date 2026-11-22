@@ -252,7 +252,7 @@ Expected: both pass. Paste the output into `REPORT.md`.
 
 ## Task T-005 — Remove the `wrangler` and `miniflare` age-rule exclusions
 
-**Status:** in-progress (not before 2026-11-12; the owner decided on 2026-11-02 to keep `wrangler` 4.155.0 until then; amended 2026-11-23 after the worker's pre-flight)
+**Status:** done (2026-11-23; branch `task/T-005-remove-age-exclusions`, commits `c7dd19c`…`HEAD`. AC1: `pnpm install --frozen-lockfile` passes with 406 entries verified and `minimumReleaseAgeExclude` empty. AC2: `grep -n minimumReleaseAgeExclude pnpm-workspace.yaml` prints `gone`, `pnpm check:workflows` and `pnpm build` pass. AC4: wrangler 24.69 days and miniflare 24.70 days against the 1440-minute default; no plain `pnpm install` run. AC3 (the CI preview upload) waits for the push. See `docs/agent/REPORT.md`.)
 **Owner:** worker (DeepSeek)
 **Branch:** `task/T-005-remove-age-exclusions`
 
