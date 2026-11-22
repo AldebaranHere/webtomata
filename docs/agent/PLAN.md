@@ -3308,7 +3308,7 @@ pnpm --filter web exec playwright test pda-label-sheet pda-editor pda-panel pda-
 
 ## Task T-081 — One editor bar on a phone for the FSM and the PDA mode
 
-**Status:** todo (T-077 is merged; amended 2026-11-23 after the worker's pre-flight)
+**Status:** in-progress (T-077 is merged; amended 2026-11-23 after the worker's pre-flight)
 **Owner:** worker (Gemini: the planner's pick; it is Svelte and layout)
 **Branch:** `task/T-081-editor-bar-phone`
 
