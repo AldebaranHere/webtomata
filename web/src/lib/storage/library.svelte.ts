@@ -40,14 +40,12 @@ class Library {
 	current = $state.raw<Current | null>(null);
 	/** The machines that could not be read when the page opened. */
 	skipped = $state.raw<Skipped[]>([]);
-	entries = $state.raw<Entry[]>([]);
 	/** The dialog is open. */
 	open = $state(false);
 	/** A message of the list (a machine that is gone, or cannot be opened), already a key. */
 	problem = $state.raw<Problem | null>(null);
 	/** The machine that was just deleted, for the toast with Urungkan. */
 	deleted = $state.raw<Announcement | null>(null);
-	count = $derived(this.entries.length);
 
 	/** ID of the currently open PDA machine (set by PdaWorkstation). */
 	pdaCurrentId = $state.raw<string | null>(null);
@@ -55,6 +53,12 @@ class Library {
 	mode = $state<'fsm' | 'pda'>('fsm');
 	/** ID of the open machine for the currently active mode. */
 	currentId = $derived(this.mode === 'pda' ? this.pdaCurrentId : this.current?.opened.record.id);
+
+	/** Every row, after the pending-delete filter. `entries` applies the mode to it. */
+	private rawEntries = $state.raw<Entry[]>([]);
+	/** The rows the list shows: `rawEntries` without the current, untouched FSM in the PDA mode (T-084). */
+	entries = $derived(visibleEntries(this.rawEntries, this.mode, this.current?.opened.record.id));
+	count = $derived(this.entries.length);
 
 	private pending: PendingDeletes | null = null;
 	private sequence = 0;
@@ -129,9 +133,8 @@ class Library {
 	async refresh(): Promise<void> {
 		if (!this.store) return;
 		const all = await listEntries(this.store);
-		const shown = all.filter((entry) => !this.pending?.isPending(entry.id));
-		// The FSM record that the page made for itself is not a machine of the student (T-084).
-		this.entries = visibleEntries(shown, this.mode, this.current?.opened.record.id);
+		// Only the rows are filled here: `entries` derives the mode from them, so a mode change needs no read.
+		this.rawEntries = all.filter((entry) => !this.pending?.isPending(entry.id));
 	}
 
 	private async afterPendingChange(): Promise<void> {
