@@ -3553,7 +3553,7 @@ pnpm --filter web exec playwright test pda-label-sheet pda-editor --project=phon
 
 ## Task T-084 — An empty FSM that the student never opened is not a saved machine in "Mesin saya"
 
-**Status:** todo (amended 2026-11-23 after the worker's pre-flight; T-082 is merged)
+**Status:** in-progress (amended 2026-11-23 after the worker's pre-flight; T-082 is merged)
 **Owner:** worker (DeepSeek: the planner's pick)
 **Branch:** `task/T-084-hide-untouched-fsm`
 
