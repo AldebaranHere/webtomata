@@ -15,17 +15,6 @@ Format:
 
 ---
 
-## 2026-11-23 — Refuse ε words on symbol add only, unify EPSILON_WORDS, and move duplicate_symbol to shared i18n (T-065)
-
-- Decider: planner / owner (rulings on 2026-11-23)
-- Context: `checkSymbol` allowed `eps` as a symbol name (even though `eps` means ε in transition labels), `EPSILON_WORDS` was duplicated in `pda-label.ts` and `interaction/label.ts`, and `document.duplicate_symbol` lived only in lazy `pda-messages.ts` so the FSM table showed the raw key. Moving `document.duplicate_symbol` + adding `document.reserved_symbol` in both languages plus moving `EPSILON_WORDS`/`checkNewSymbol` to `document.ts` added +111 B to +124 B gzip per route, exceeding the initial +102 B AC3 cap.
-- Decision: Keep `checkSymbol` unchanged (preserving all readers of legacy stored records, JSON files, share links, PDA `addTransition`, and WASM engine parity); add `checkNewSymbol` in `document.ts` called only by `addSymbol`, `addInputSymbol`, and `addStackSymbol`; move `EPSILON_WORDS` to `document.ts` and import it in `pda-label.ts` and `interaction/label.ts`; remove the ε-word branch from `symbolNameRefusal` in `pda-table-edit.ts` and shorten `pda_editor.symbol_reserved`; move `document.duplicate_symbol` into `id.ts`/`en.ts` alongside ASCII-only `document.reserved_symbol`; raise T-065 AC3 cap to +130 B per route (~120 B inherent for two shared keys in two languages and the moved list).
-- Alternatives considered: Refusing `eps` inside `checkSymbol` (rejected: breaks legacy stored machines, share links, JSON files, and `document.wasm.test.ts` engine parity); shortening the shared messages into unclear text to fit +102 B (rejected by owner/planner).
-- Reversible? yes
-- Affects: `docs/decisions/0062-symbol-names-refuse-epsilon-words.md`, `web/src/lib/editor/document.ts`, `commands.ts`, `pda-commands.ts`, `pda-label.ts`, `interaction/label.ts`, `pda-table-edit.ts`, `web/src/lib/i18n/id.ts`, `en.ts`, `pda-messages.ts`.
-
----
-
 ## 2026-11-10 — FSM and PDA machines in one "Mesin saya" list with shared store and openStore decoupling (T-074)
 
 - Decider: worker (approved by owner)
@@ -684,3 +673,21 @@ Format:
 - Alternatives considered: a `minimumReleaseAge` of two weeks (the owner's separate decision); importing the ε list from `pda-label.ts` into the document (pulls PDA code into the first load); refusing `eps` in `checkSymbol` (would reject old files).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-065, T-082, T-038 family, P-005); later `pnpm-workspace.yaml`, `web/package.json`, the editor documents and dictionaries
+
+## 2026-11-23 — T-082: the `minimatch` override, and the two-week habit is a snapshot
+
+- Decider: planner (the owner approves with the merge); the order of the `minimatch` options was ruled in the T-082 block
+- Context: `pnpm audit` found seven dev-only findings. Six of them go with `@sveltejs/kit` 3.1.1 and `@sveltejs/adapter-static` 4.0.1. The seventh is `minimatch` 10.2.6 (GHSA-g3hv-75wg-m249), which reaches us through `eslint`, `@eslint/config-array@0.23.5` and `@typescript-eslint/typescript-estree@8.72.0`. Option (a) is unavailable: the newest `eslint` that is two weeks old (10.14.0) still declares `minimatch ^10.2.6`, and the first `@eslint/config-array` that wants 11 (`0.23.6`, published 2026-11-13) is nine days old. Pnpm enforces only its one-day default, non-strict, so our two-week habit is not a setting: a later `pnpm install` or `pnpm update` can take a newer version of any of these packages.
+- Decision: an exact `overrides: minimatch: 11.0.5` in `pnpm-workspace.yaml` (11.0.5, published 2026-11-05, is the newest version that is two weeks old), with a comment that gives the date, the reason and when to remove it. It was proved benign before it was written: `pnpm lint` passes and `eslint . --format json` covers the same 408 files as on `staging`. The three packages are pinned by the committed lockfile, not by the ranges in `web/package.json`; this task is a snapshot of 2026-11-23, not a policy.
+- Alternatives considered: bump `eslint` to 10.14.0 (no help: it still wants minimatch 10); bump `@eslint/config-array` to 0.23.6 (too young); add `GHSA-g3hv-75wg-m249` to `auditConfig.ignoreGhsas` (option c, not needed once the override passed lint); set `minimumReleaseAge: 20160` (the owner's separate decision, not taken here).
+- Reversible? yes (one line in `pnpm-workspace.yaml`)
+- Affects: `pnpm-workspace.yaml`, `pnpm-lock.yaml`; later, when a 14-day-old `eslint` or `@eslint/config-array` already needs `minimatch` 11, the entry goes
+
+## 2026-11-23 — Refuse ε words on symbol add only, unify EPSILON_WORDS, and move duplicate_symbol to shared i18n (T-065)
+
+- Decider: planner / owner (rulings on 2026-11-23)
+- Context: `checkSymbol` allowed `eps` as a symbol name (even though `eps` means ε in transition labels), `EPSILON_WORDS` was duplicated in `pda-label.ts` and `interaction/label.ts`, and `document.duplicate_symbol` lived only in lazy `pda-messages.ts` so the FSM table showed the raw key. Moving `document.duplicate_symbol` + adding `document.reserved_symbol` in both languages plus moving `EPSILON_WORDS`/`checkNewSymbol` to `document.ts` added +111 B to +124 B gzip per route, exceeding the initial +102 B AC3 cap.
+- Decision: Keep `checkSymbol` unchanged (preserving all readers of legacy stored records, JSON files, share links, PDA `addTransition`, and WASM engine parity); add `checkNewSymbol` in `document.ts` called only by `addSymbol`, `addInputSymbol`, and `addStackSymbol`; move `EPSILON_WORDS` to `document.ts` and import it in `pda-label.ts` and `interaction/label.ts`; remove the ε-word branch from `symbolNameRefusal` in `pda-table-edit.ts` and shorten `pda_editor.symbol_reserved`; move `document.duplicate_symbol` into `id.ts`/`en.ts` alongside ASCII-only `document.reserved_symbol`; raise T-065 AC3 cap to +130 B per route (~120 B inherent for two shared keys in two languages and the moved list).
+- Alternatives considered: Refusing `eps` inside `checkSymbol` (rejected: breaks legacy stored machines, share links, JSON files, and `document.wasm.test.ts` engine parity); shortening the shared messages into unclear text to fit +102 B (rejected by owner/planner).
+- Reversible? yes
+- Affects: `docs/decisions/0062-symbol-names-refuse-epsilon-words.md`, `web/src/lib/editor/document.ts`, `commands.ts`, `pda-commands.ts`, `pda-label.ts`, `interaction/label.ts`, `pda-table-edit.ts`, `web/src/lib/i18n/id.ts`, `en.ts`, `pda-messages.ts`.
