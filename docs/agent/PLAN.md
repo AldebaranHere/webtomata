@@ -3453,7 +3453,7 @@ pnpm test:tools
 
 ## Task T-082 — Dependency refresh: the seven audit findings of 2026-11-23
 
-**Status:** todo (amended 2026-11-23 after the worker's pre-flight)
+**Status:** in-progress (amended 2026-11-23 after the worker's pre-flight)
 **Owner:** worker (DeepSeek: the planner's pick; it did the Rust pin and T-005)
 **Branch:** `task/T-082-audit-deps`
 
