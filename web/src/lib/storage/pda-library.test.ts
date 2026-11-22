@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { endsWith01 } from '../editor/diagram/samples.ts';
-import { LIMITS } from '../editor/document.ts';
+import { LIMITS, createDocument } from '../editor/document.ts';
 import { anbnSample, wwrSample } from '../editor/pda-samples.ts';
-import { createPendingDeletes, listEntries } from './library.ts';
+import { createPdaDocument } from '../editor/pda-document.ts';
+import { createPendingDeletes, listEntries, visibleEntries } from './library.ts';
 import { createMachine } from './machines.ts';
 import { createMemoryStore } from './memory.ts';
 import {
@@ -287,5 +288,50 @@ describe('pda-library: readPdaDocument (T-081 F5)', () => {
 		expect(await readPdaDocument(store, 'missing-id')).toBeNull();
 		expect(await readPdaDocument(store, fsm.id)).toBeNull();
 		expect(await readPdaDocument(store, bad.id)).toBeNull();
+	});
+});
+
+describe('T-084: which rows the list shows in each mode', () => {
+	async function threeMachines() {
+		const store = createMemoryStore();
+		const untouched = await createMachine(store, createDocument(), () => 100);
+		const used = await createMachine(store, endsWith01(), () => 200);
+		const pda = await createPdaMachine(store, wwrSample(), () => 300);
+		const entries = await listEntries(store);
+		return { untouched, used, pda, entries };
+	}
+
+	it('F1: in the PDA mode the current, empty FSM is not listed, and the count follows it', async () => {
+		const { untouched, entries } = await threeMachines();
+		const shown = visibleEntries(entries, 'pda', untouched.id);
+		expect(shown.some((entry) => entry.id === untouched.id)).toBe(false);
+		expect(shown).toHaveLength(entries.length - 1);
+	});
+
+	it('F2: in the FSM mode nothing is hidden', async () => {
+		const { untouched, entries } = await threeMachines();
+		expect(visibleEntries(entries, 'fsm', untouched.id)).toEqual(entries);
+	});
+
+	it('F3: an empty FSM that is not the current one stays listed in the PDA mode', async () => {
+		const { untouched, used, entries } = await threeMachines();
+		const shown = visibleEntries(entries, 'pda', used.id);
+		expect(shown.some((entry) => entry.id === untouched.id)).toBe(true);
+	});
+
+	it('F2: a current FSM that has a state stays listed in the PDA mode', async () => {
+		const { used, entries } = await threeMachines();
+		const shown = visibleEntries(entries, 'pda', used.id);
+		expect(shown.some((entry) => entry.id === used.id)).toBe(true);
+	});
+
+	it('F1: the PDA rows stay listed, also an empty one', async () => {
+		const store = createMemoryStore();
+		const untouched = await createMachine(store, createDocument(), () => 100);
+		const emptyPda = await createPdaMachine(store, createPdaDocument(), () => 200);
+		const entries = await listEntries(store);
+		const shown = visibleEntries(entries, 'pda', untouched.id);
+		expect(shown.some((entry) => entry.id === emptyPda.id)).toBe(true);
+		expect(shown).toHaveLength(1);
 	});
 });

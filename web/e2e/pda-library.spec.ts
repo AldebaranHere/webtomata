@@ -38,9 +38,12 @@ test('F3: tap row of the other kind switches mode and opens that machine; reload
 	page,
 	isMobile
 }) => {
-	// Start in PDA mode and load an example (wcwR)
-	await page.goto('/sandbox?mode=pda');
-	await page.locator('.editor[data-ready]').waitFor();
+	// An FSM that the student has used: the untouched empty one is not in the list in the PDA mode (T-084).
+	await openSandbox(page);
+	await waitSaved(page);
+
+	// Switch to the PDA mode and load an example (wcwR)
+	await switchMode(page, /^Otomata Pushdown/, isMobile);
 	const wcwr = page.getByRole('button', { name: /^wcwᴿ/ });
 	await press(wcwr, isMobile);
 	await expect(page.locator('.first-run')).toHaveCount(0);
@@ -48,8 +51,8 @@ test('F3: tap row of the other kind switches mode and opens that machine; reload
 
 	// In PDA mode, open "Mesin saya"
 	await openList(page, isMobile);
-	// Both FSM and PDA should be in the list
-	const fsmRow = row(page, /Tanpa judul|Berakhiran 01/);
+	// Both the used FSM and the PDA are in the list
+	const fsmRow = row(page, 'Berakhiran 01');
 	await expect(fsmRow).toBeVisible();
 	await expect(fsmRow).toContainText('DFSM');
 
@@ -428,17 +431,20 @@ test('T-078 F3: in PDA mode, deleting the FSM current record replaces it with th
 	await openActions(page, 'FSM Cadangan', isMobile);
 	await press(dialog(page).getByRole('button', { name: 'Hapus' }), isMobile);
 
-	// Dialog stays open, a new empty FSM is created as current for FSM mode, and open PDA is untouched
+	// Dialog stays open, a new empty FSM is created as the current FSM, and the open PDA is untouched.
+	// T-084: that empty FSM is the current one, so the PDA mode does not list it.
 	await expect(dialog(page)).toBeVisible();
 	await expect(row(page, 'FSM Cadangan')).toHaveCount(0);
-	const newEmptyFsmRow = dialog(page)
-		.getByRole('listitem')
-		.filter({ hasText: 'DFSM' })
-		.filter({ hasText: 'Tanpa judul' });
-	await expect(newEmptyFsmRow).toBeVisible();
+	await expect(dialog(page).getByRole('listitem').filter({ hasText: 'DFSM' })).toHaveCount(0);
 	await expect(row(page, /wcwᴿ/)).toContainText('Sedang dibuka');
 
 	const afterLastFsmDelete = await records(page);
+	// The new empty FSM is the current FSM of the FSM mode (the deleted row waits for its six seconds).
+	const madeEmptyFsm = afterLastFsmDelete.filter((r) => {
+		const doc = JSON.parse(r.doc);
+		return r.type !== 'pda' && doc.states.length === 0 && doc.transitions.length === 0;
+	});
+	expect(madeEmptyFsm).toHaveLength(1);
 	const pdaListAfter = afterLastFsmDelete.filter((r) => r.type === 'pda');
 	expect(pdaListAfter).toHaveLength(1);
 	expect(pdaListAfter[0]!.id).toBe(pdaMid.id);
@@ -548,4 +554,62 @@ test('T-078 F4 (path ii): opening a PDA row from FSM mode, switching back to FSM
 
 	await openList(page, isMobile);
 	await expect(row(page, 'PDA Terbaru')).toBeVisible();
+});
+
+test('T-084 F1: a fresh PDA visit lists only the PDA, and the button counts it', async ({
+	page,
+	isMobile
+}) => {
+	await page.goto('/sandbox?mode=pda');
+	await page.locator('.editor[data-ready]').waitFor();
+	// The store keeps both records: the empty FSM that `library.start` made, and the PDA.
+	await expect.poll(async () => (await records(page)).length).toBe(2);
+	await expect(openButton(page)).toHaveAccessibleName('Mesin saya (1)');
+
+	await openList(page, isMobile);
+	await expect(dialog(page).getByRole('listitem')).toHaveCount(1);
+	await expect(dialog(page).getByRole('listitem')).toContainText('NDPDA');
+	await expect(dialog(page).getByRole('listitem')).toContainText('Sedang dibuka');
+});
+
+test('T-084 F2: an untouched FSM is not listed in the PDA mode, and is listed once it has a state', async ({
+	page,
+	isMobile
+}) => {
+	await page.goto('/sandbox?mode=pda');
+	await page.locator('.editor[data-ready]').waitFor();
+
+	// The FSM mode shows the empty machine; the PDA mode does not list it.
+	await switchMode(page, /^Mesin FSM/, isMobile);
+	await expect(page.locator('p.title')).toHaveText('Tanpa judul');
+	await switchMode(page, /^Otomata Pushdown/, isMobile);
+	await openList(page, isMobile);
+	await expect(dialog(page).getByRole('listitem').filter({ hasText: 'DFSM' })).toHaveCount(0);
+	await closeList(page, isMobile);
+
+	// One state makes it an ordinary machine: the PDA mode lists it too.
+	await switchMode(page, /^Mesin FSM/, isMobile);
+	await page.getByRole('application', { name: 'Kanvas mesin' }).focus();
+	await page.keyboard.press('n');
+	await waitSaved(page);
+	await switchMode(page, /^Otomata Pushdown/, isMobile);
+	await openList(page, isMobile);
+	await expect(dialog(page).getByRole('listitem').filter({ hasText: 'DFSM' })).toHaveCount(1);
+});
+
+test('T-084 F2b: the button counts the other mode without opening the list', async ({
+	page,
+	isMobile
+}) => {
+	await page.goto('/sandbox?mode=pda');
+	await page.locator('.editor[data-ready]').waitFor();
+	await expect(openButton(page)).toHaveAccessibleName('Mesin saya (1)');
+
+	// The FSM mode lists the empty FSM (the open machine) and the PDA row: two, with the list closed.
+	await switchMode(page, /^Mesin FSM/, isMobile);
+	await expect(openButton(page)).toHaveAccessibleName('Mesin saya (2)');
+
+	// Back in the PDA mode the empty FSM is hidden again.
+	await switchMode(page, /^Otomata Pushdown/, isMobile);
+	await expect(openButton(page)).toHaveAccessibleName('Mesin saya (1)');
 });

@@ -25,6 +25,11 @@ export interface Entry {
 	readable: boolean;
 	/** Why a machine cannot be opened (it is kept as it is). */
 	reason?: Unreadable;
+	/**
+	 * A readable FSM with no state and no transition: a machine that the student has not touched.
+	 * Always false for a PDA record (T-084).
+	 */
+	empty: boolean;
 }
 
 /** A message of the list, as a key with parameters. */
@@ -74,6 +79,7 @@ export async function listEntries(store: MachineStore): Promise<Entry[]> {
 					kind: record.kind,
 					updatedAt: record.updatedAt,
 					openedAt: record.openedAt,
+					empty: false,
 					readable: read.ok,
 					...(read.ok ? {} : { reason: read.reason })
 				};
@@ -86,12 +92,30 @@ export async function listEntries(store: MachineStore): Promise<Entry[]> {
 				kind: record.kind,
 				updatedAt: record.updatedAt,
 				openedAt: record.openedAt,
+				// The parse above is what makes "readable"; the counts come with it, so this costs no second read.
+				empty: read.ok && read.doc.states.length === 0 && read.doc.transitions.length === 0,
 				...(record.titles ? { titles: record.titles } : {}),
 				readable: read.ok,
 				...(read.ok ? {} : { reason: read.reason })
 			};
 		})
 		.sort((a, b) => b.openedAt - a.openedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}
+
+/**
+ * The rows the list shows. In the PDA mode it leaves out the FSM record that is the library's current
+ * one while the student has not touched it: a student who only uses the PDA never made it (T-084).
+ * The FSM mode hides nothing, and an empty FSM that is not the current one is listed as always.
+ */
+export function visibleEntries(
+	entries: readonly Entry[],
+	mode: 'fsm' | 'pda',
+	currentFsmId: string | undefined
+): Entry[] {
+	if (mode !== 'pda') return [...entries];
+	return entries.filter(
+		(entry) => !(entry.type !== 'pda' && entry.id === currentFsmId && entry.empty)
+	);
 }
 
 const SUFFIX = ' (salinan)';

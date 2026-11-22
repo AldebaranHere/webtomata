@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { applyCommand } from '../editor/commands.ts';
 import { endsWith01 } from '../editor/diagram/samples.ts';
-import { serializeDocument } from '../editor/document.ts';
+import { createDocument, serializeDocument } from '../editor/document.ts';
 import type { MachineDocument } from '../editor/document.ts';
 import {
 	createPendingDeletes,
@@ -277,5 +277,46 @@ describe('titles that come with the content', () => {
 		);
 		const copy = await duplicateMachine(store, record.id, () => 2);
 		expect(copy!.titles).toBeUndefined();
+	});
+});
+
+describe('listEntries: empty (T-084)', () => {
+	it('F2: marks a readable FSM with no state and no transition as empty', async () => {
+		const store = createMemoryStore();
+		const record = await createMachine(store, createDocument(), () => 1);
+		const [entry] = await listEntries(store);
+		expect(entry).toMatchObject({ id: record.id, type: 'fsm', readable: true, empty: true });
+	});
+
+	it('F2: marks an FSM with one state as not empty, even with no transition', async () => {
+		const { store, a } = await withMachines();
+		const entries = await listEntries(store);
+		expect(entries.find((e) => e.id === a.id)).toMatchObject({ empty: false });
+	});
+
+	it('F3: marks a record with no state but a stray transition as not empty, and keeps it as unreadable', async () => {
+		const { store, a } = await withMachines();
+		// `checkDocument` refuses a transition whose ends are not states, so this record cannot be read;
+		// the point is that `empty` is the exact "no state and no transition", never "no state".
+		const stray: SavedMachine = {
+			...a,
+			id: 'stray',
+			title: 'Miring',
+			openedAt: 9999,
+			doc: JSON.stringify({
+				schemaVersion: 1,
+				title: 'Miring',
+				kind: 'dfsm',
+				alphabet: ['a'],
+				states: [],
+				start: null,
+				accepting: [],
+				transitions: [{ from: 0, on: 'a', to: 1 }],
+				nextStateId: 2
+			})
+		};
+		await store.put(stray);
+		const entries = await listEntries(store);
+		expect(entries[0]).toMatchObject({ id: 'stray', readable: false, empty: false });
 	});
 });
