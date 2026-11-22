@@ -2742,7 +2742,7 @@ Follow the rules of `AGENTS.md` for every shell command; the loaded runs are lon
 
 ## Task T-065 — Symbol names: refuse the ε word in the document, and the missing text of `document.duplicate_symbol`
 
-**Status:** todo (specified 2026-11-23; amended the same day after the worker's pre-flight; it was a draft since 2026-11-09)
+**Status:** in-progress (specified 2026-11-23; amended the same day after the worker's pre-flight; it was a draft since 2026-11-09)
 **Owner:** worker (Gemini: the planner's pick; it is the shared document code and two dictionaries)
 **Branch:** `task/T-065-symbol-names`
 
