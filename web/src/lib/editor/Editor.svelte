@@ -361,6 +361,19 @@
 		{/if}
 	{/snippet}
 	{#snippet actions()}
+		{#if library}
+			<button
+				type="button"
+				class="machines"
+				aria-label={t('library.open_button', { count: library.count })}
+				onclick={library.onopen}
+			>
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+					<path d="M4 7l8-4 8 4-8 4z" stroke-linejoin="round" />
+					<path d="M4 12l8 4 8-4M4 16.5l8 4 8-4" stroke-linecap="round" stroke-linejoin="round" />
+				</svg>
+			</button>
+		{/if}
 		{#if onhelp}
 			<button type="button" class="help" aria-label={t('help.open')} onclick={onhelp}>
 				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -382,19 +395,6 @@
 					<circle cx="18" cy="6" r="2.4" />
 					<circle cx="18" cy="18" r="2.4" />
 					<path d="M8.1 10.9l7.8-3.8M8.1 13.1l7.8 3.8" stroke-linecap="round" />
-				</svg>
-			</button>
-		{/if}
-		{#if library}
-			<button
-				type="button"
-				class="machines"
-				aria-label={t('library.open_button', { count: library.count })}
-				onclick={library.onopen}
-			>
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-					<path d="M4 7l8-4 8 4-8 4z" stroke-linejoin="round" />
-					<path d="M4 12l8 4 8-4M4 16.5l8 4 8-4" stroke-linecap="round" stroke-linejoin="round" />
 				</svg>
 			</button>
 		{/if}

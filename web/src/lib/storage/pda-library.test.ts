@@ -9,6 +9,7 @@ import {
 	createPdaMachine,
 	duplicatePdaMachine,
 	openLatestPda,
+	readPdaDocument,
 	renamePdaStored
 } from './pda-work.ts';
 import type { SavedPdaMachine } from './store.ts';
@@ -257,5 +258,34 @@ describe('pda-library: T-078 pending PDA deletes and filtered openLatestPda (F4)
 		await vi.advanceTimersByTimeAsync(6001);
 		expect(await store.get(pdaOnly.id)).toBeUndefined();
 		expect(await store.get(opened.record.id)).toBeDefined();
+	});
+});
+
+describe('pda-library: readPdaDocument (T-081 F5)', () => {
+	it('reads a saved PDA document by id, and returns null for missing, FSM, or corrupt records', async () => {
+		const store = createMemoryStore();
+		const pda = await createPdaMachine(store, anbnSample('PDA Simpanan'), () => 100);
+		const fsm = await createMachine(store, endsWith01(), () => 200);
+		const bad: SavedPdaMachine = {
+			id: 'bad-pda-read',
+			recordVersion: 1,
+			type: 'pda',
+			kind: 'ndpda',
+			title: 'Rusak',
+			createdAt: 300,
+			updatedAt: 300,
+			openedAt: 300,
+			doc: '{"schemaVersion":1,"broken'
+		};
+		await store.put(bad);
+
+		const loaded = await readPdaDocument(store, pda.id);
+		expect(loaded).not.toBeNull();
+		expect(loaded!.title).toBe('PDA Simpanan');
+		expect(loaded!.states).toHaveLength(anbnSample().states.length);
+
+		expect(await readPdaDocument(store, 'missing-id')).toBeNull();
+		expect(await readPdaDocument(store, fsm.id)).toBeNull();
+		expect(await readPdaDocument(store, bad.id)).toBeNull();
 	});
 });

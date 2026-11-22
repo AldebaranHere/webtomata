@@ -203,6 +203,7 @@ export const id = {
 	'library.actions': 'Tindakan untuk {title}',
 	'library.rename': 'Ubah nama',
 	'library.duplicate': 'Duplikat',
+	'library.download': 'Unduh',
 	'library.delete': 'Hapus',
 	'library.rename_field': 'Nama mesin',
 	'library.deleted': 'Mesin "{title}" dihapus.',
@@ -417,10 +418,10 @@ export const id = {
 		'Dengan alat Pilih, pilih satu state lalu tekan M untuk menjadikannya start state. Klik dua kali sebuah state untuk menjadikannya accepting. Di ponsel, tekan lama sebuah state untuk membuka menu.',
 	'tour.s4_title': 'Jalankan satu string',
 	'tour.s4_body':
-		'Tulis string di panel Simulasi, lalu tekan Jalankan. State yang aktif menyala di diagram. Tombol Langkah berikutnya menjalankan satu langkah.',
+		'Tulis string di panel Simulasi, lalu tekan Jalankan. State yang aktif menyala di diagram. Tombol Langkah berikutnya menjalankan satu langkah (pada mode FSM).',
 	'tour.s5_title': 'Uji banyak string',
 	'tour.s5_body':
-		'Tulis string di kolom "Tambah string", lalu tekan Tambah. Hasilnya ikut berubah saat mesin diubah. Semuanya tersimpan di perangkat ini.',
+		'Tulis string di kolom "Tambah string", lalu tekan Tambah. Hasilnya ikut berubah saat mesin diubah. Semuanya tersimpan di perangkat ini (pada mode FSM).',
 	'document.limit_exceeded': 'Batas tercapai: {what}, paling banyak {limit}.',
 	'soal.description': 'Soal latihan mesin berhingga dengan umpan balik yang tenang dan spesifik.',
 	'soal.intro':

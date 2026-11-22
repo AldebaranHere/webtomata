@@ -204,13 +204,21 @@
 		font-size: var(--text-xs);
 		font-weight: var(--weight-strong);
 		cursor: pointer;
-		transition: all 0.15s ease;
+		transition:
+			border-color var(--duration-fast) var(--ease-standard),
+			background-color var(--duration-fast) var(--ease-standard);
 	}
 
-	.switcher-trigger:hover,
 	.switcher-trigger.active {
 		border-color: var(--color-accent);
 		background: var(--color-surface);
+	}
+
+	@media (hover: hover) {
+		.switcher-trigger:hover {
+			border-color: var(--color-accent);
+			background: var(--color-surface);
+		}
 	}
 
 	.trigger-label {
@@ -319,5 +327,31 @@
 		background: var(--color-ground);
 		color: var(--color-muted);
 		border: 1px solid var(--color-border);
+	}
+
+	@media (max-width: 39.99rem) {
+		.workstation-switcher {
+			display: flex;
+			width: 100%;
+		}
+
+		.switcher-trigger {
+			width: 100%;
+		}
+
+		.trigger-label {
+			flex-shrink: 0;
+		}
+
+		.trigger-current {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.trigger-chevron {
+			margin-left: auto;
+			flex-shrink: 0;
+		}
 	}
 </style>

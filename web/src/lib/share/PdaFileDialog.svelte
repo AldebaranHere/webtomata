@@ -1,4 +1,5 @@
 <script lang="ts">
+	import '#lib/i18n/pda-messages.ts';
 	import { onMount } from 'svelte';
 	import { engine } from '#lib/engine/client.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
