@@ -34,11 +34,12 @@ for (const viewport of [
 		await expect(tablist).toBeVisible();
 
 		const tabs = tablist.locator('[role="tab"]');
-		await expect(tabs).toHaveCount(4);
+		await expect(tabs).toHaveCount(5);
 		await expect(tabs.nth(0)).toHaveText('Pustaka');
 		await expect(tabs.nth(1)).toHaveText('Editor');
 		await expect(tabs.nth(2)).toHaveText('CNF');
 		await expect(tabs.nth(3)).toHaveText('CYK');
+		await expect(tabs.nth(4)).toHaveText('Ke PDA');
 
 		// Default active tab is Editor
 		await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
@@ -170,19 +171,23 @@ test('grammar phone layout: preset selection jumps to editor, shortcut button, a
 	await expect(tabs.nth(2)).toHaveAttribute('aria-selected', 'true');
 	await expect(page.locator('#grammar-pane-cnf')).toBeVisible();
 
-	// AC8: Arrow keys move between tabs
+	// AC8: Arrow keys move between tabs (5 tabs: Pustaka, Editor, CNF, CYK, Ke PDA)
 	await tabs.nth(2).focus();
 	await page.keyboard.press('ArrowRight');
 	await expect(tabs.nth(3)).toHaveAttribute('aria-selected', 'true');
 	await expect(tabs.nth(3)).toBeFocused();
 
+	await page.keyboard.press('ArrowRight');
+	await expect(tabs.nth(4)).toHaveAttribute('aria-selected', 'true');
+	await expect(tabs.nth(4)).toBeFocused();
+
 	await page.keyboard.press('ArrowRight'); // wraps to 0
 	await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
 	await expect(tabs.nth(0)).toBeFocused();
 
-	await page.keyboard.press('ArrowLeft'); // wraps to 3
-	await expect(tabs.nth(3)).toHaveAttribute('aria-selected', 'true');
-	await expect(tabs.nth(3)).toBeFocused();
+	await page.keyboard.press('ArrowLeft'); // wraps to 4
+	await expect(tabs.nth(4)).toHaveAttribute('aria-selected', 'true');
+	await expect(tabs.nth(4)).toBeFocused();
 
 	// Axe check on tab
 	await expectNoAxeViolations(page);

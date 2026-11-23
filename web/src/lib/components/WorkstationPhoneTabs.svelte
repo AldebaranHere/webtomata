@@ -101,7 +101,7 @@
 			justify-content: center;
 			min-height: var(--target-min);
 			min-width: var(--target-min);
-			padding: 0 var(--space-3);
+			padding: 0 var(--space-2);
 			border: 0;
 			border-radius: var(--radius-lg);
 			background: transparent;
@@ -109,6 +109,7 @@
 			font: inherit;
 			font-size: var(--text-sm);
 			font-weight: var(--weight-regular);
+			white-space: nowrap;
 			cursor: pointer;
 			transition: background 0.15s ease;
 		}

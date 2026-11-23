@@ -1,6 +1,7 @@
 // Indonesian messages. This file is the source of the keys: `en.ts` must have exactly these keys
 // (TypeScript checks it, and i18n.test.ts checks the parameters). Terms follow docs/glossary.md.
 // A parameter is written {name}.
+import type { grammarToPdaId } from './grammar-to-pda-messages.ts';
 import type { pdaId } from './pda-messages.ts';
 
 export const id = {
@@ -1052,6 +1053,6 @@ export const id = {
 		'PDA ini dibuat oleh WebTomata versi yang lebih baru (versi {version}).'
 } as const;
 
-// The keys of this dictionary, plus the PDA keys that travel with the PDA chunk (`pda-messages.ts`).
-// The second part is a type import only, so it is erased at build time.
-export type MessageKey = keyof typeof id | keyof typeof pdaId;
+// The keys of this dictionary, plus the lazy mode dictionaries (`pda-messages.ts`,
+// `grammar-to-pda-messages.ts`). Type-only imports are erased at build time.
+export type MessageKey = keyof typeof id | keyof typeof pdaId | keyof typeof grammarToPdaId;
