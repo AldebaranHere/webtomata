@@ -29,16 +29,22 @@
 	let editor = $state<Editor | undefined>();
 	let pdaOpenRequest = $state<{ id: string; seq: number } | null>(null);
 	let pdaOpenSeq = 0;
+	let grammarOpenRequest = $state<{ title: string; text: string; seq: number } | null>(null);
+	let grammarOpenSeq = 0;
 	let skipped = $state(true);
 	let activeMode = $state<WorkstationMode>('fsm');
 	let pdaSkipped = $state<SkippedPda[]>([]);
 
 	let LanguageWorkstation = $state<Component | null>(null);
-	let GrammarWorkstation = $state<Component | null>(null);
+	let GrammarWorkstation = $state<Component<{
+		openRequest?: { title: string; text: string; seq: number } | null;
+		onopenpda?: (id: string) => void;
+	}> | null>(null);
 	let PdaWorkstation = $state<Component<{
 		onskipped?: (skipped: SkippedPda[]) => void;
 		openRequest?: { id: string; seq: number } | null;
 		onhelp?: () => void;
+		onopengrammar?: (title: string, text: string) => void;
 	}> | null>(null);
 	$effect(() => {
 		if (activeMode === 'language' && !LanguageWorkstation) {
@@ -106,6 +112,9 @@
 			pdaOpenRequest = null;
 			await library.flushPda();
 		}
+		if (activeMode === 'grammar' && mode !== 'grammar') {
+			grammarOpenRequest = null;
+		}
 		activeMode = mode;
 		try {
 			localStorage.setItem('webtomata_sandbox_mode', mode);
@@ -127,6 +136,13 @@
 		}
 		pdaOpenRequest = { id, seq: ++pdaOpenSeq };
 		return null;
+	}
+
+	async function openGrammar(title: string, text: string) {
+		if (activeMode !== 'grammar') {
+			await selectMode('grammar');
+		}
+		grammarOpenRequest = { title, text, seq: ++grammarOpenSeq };
 	}
 
 	$effect(() => {
@@ -316,7 +332,7 @@
 	{/if}
 {:else if activeMode === 'grammar'}
 	{#if GrammarWorkstation}
-		<GrammarWorkstation />
+		<GrammarWorkstation openRequest={grammarOpenRequest} onopenpda={(id) => void openPdaRow(id)} />
 	{:else}
 		<div class="frame" aria-busy="true"></div>
 	{/if}
@@ -326,6 +342,7 @@
 			openRequest={pdaOpenRequest}
 			onskipped={(s) => (pdaSkipped = s)}
 			onhelp={openTour}
+			onopengrammar={(title, text) => void openGrammar(title, text)}
 		/>
 	{:else}
 		<div class="frame" aria-busy="true"></div>

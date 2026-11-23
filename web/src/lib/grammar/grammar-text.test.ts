@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Grammar, Production } from '#lib/engine/types.ts';
 import { translate } from '#lib/i18n/translate.ts';
-import { computeCnfTitle, formatRuleDisplay, grammarToText, nextCustomId } from './grammar-text.ts';
+import {
+	computeCnfTitle,
+	formatRuleDisplay,
+	grammarToText,
+	nextCustomId,
+	receiveGrammarRequest
+} from './grammar-text.ts';
 
 describe('grammar-text', () => {
 	describe('grammarToText (AC1)', () => {
@@ -200,6 +206,68 @@ describe('grammar-text', () => {
 			expect(translate('en', 'grammar.default_custom_title', { id: 'G1' })).toBe('Grammar G1');
 			expect(translate('id', 'grammar.default_custom_title', { id: 'G2' })).toBe('Tata Bahasa G2');
 			expect(translate('en', 'grammar.default_custom_title', { id: 'G2' })).toBe('Grammar G2');
+		});
+	});
+
+	describe('receiveGrammarRequest (T-038c seam)', () => {
+		it('creates a new custom grammar with nextCustomId and preserves existing entries', () => {
+			const existing = [{ id: 'G2', title: 'Existing', grammar: 'S -> a' }];
+			const res = receiveGrammarRequest(existing, {
+				title: 'wcwR (CFG)',
+				text: 'S -> a S a | c'
+			});
+
+			expect(res.created).toEqual({
+				id: 'G1',
+				title: 'wcwR (CFG)',
+				grammar: 'S -> a S a | c'
+			});
+			expect(res.updated).toHaveLength(2);
+			expect(res.updated[0]).toEqual(existing[0]);
+			expect(res.updated[1]).toEqual(res.created);
+			// Does not mutate input array
+			expect(existing).toHaveLength(1);
+		});
+
+		it('adds a uniqueness suffix matching CNF style when a parenthesized title already exists', () => {
+			const first = receiveGrammarRequest([], { title: 'wcwR (CFG)', text: 'S -> c' });
+			expect(first.created.title).toBe('wcwR (CFG)');
+
+			const second = receiveGrammarRequest(first.updated, {
+				title: 'wcwR (CFG)',
+				text: 'S -> c'
+			});
+			expect(second.created.title).toBe('wcwR (CFG 2)');
+			expect(second.created.id).toBe('G2');
+
+			const third = receiveGrammarRequest(second.updated, {
+				title: 'wcwR (CFG)',
+				text: 'S -> c'
+			});
+			expect(third.created.title).toBe('wcwR (CFG 3)');
+		});
+
+		it('adds " (2)", " (3)" when a plain title without parentheses already exists', () => {
+			const existing = [
+				{ id: 'G1', title: 'My Grammar', grammar: 'S -> a' },
+				{ id: 'G2', title: 'My Grammar (2)', grammar: 'S -> b' }
+			];
+			const res = receiveGrammarRequest(existing, {
+				title: 'My Grammar',
+				text: 'S -> c'
+			});
+			expect(res.created.title).toBe('My Grammar (3)');
+			expect(res.created.id).toBe('G3');
+		});
+
+		it('uses fallbackTitle when request title is blank', () => {
+			const res = receiveGrammarRequest(
+				[],
+				{ title: '   ', text: 'S -> a' },
+				(id) => `Tata Bahasa ${id}`
+			);
+			expect(res.created.id).toBe('G1');
+			expect(res.created.title).toBe('Tata Bahasa G1');
 		});
 	});
 });

@@ -12,7 +12,20 @@
 		type PhoneTabItem
 	} from '#lib/components/WorkstationPhoneTabs.svelte';
 	import { GRAMMAR_PRESETS, type PresetGrammar } from './presets.ts';
-	import { computeCnfTitle, grammarToText, nextCustomId } from './grammar-text.ts';
+	import {
+		computeCnfTitle,
+		grammarToText,
+		nextCustomId,
+		receiveGrammarRequest,
+		type GrammarOpenRequest
+	} from './grammar-text.ts';
+
+	let {
+		openRequest = null
+	}: {
+		openRequest?: GrammarOpenRequest | null;
+		onopenpda?: (id: string) => void;
+	} = $props();
 
 	interface MatrixRow {
 		id: string;
@@ -70,6 +83,8 @@
 	let selectedId = $state<string>('CNF_ORDER');
 	let cnfVersion = $state<'long' | 'short'>('long');
 	let pipelineCallId = 0;
+	let mounted = $state(false);
+	let lastHandledSeq = 0;
 
 	// Matrix State
 	let rows = $state<MatrixRow[]>([]);
@@ -219,6 +234,7 @@
 			rows = textToMatrixRows(GRAMMAR_PRESETS[0]?.grammar ?? 'S -> λ');
 		}
 		void runPipeline();
+		mounted = true;
 
 		const closeMenu = () => {
 			if (contextMenu.visible) {
@@ -244,6 +260,16 @@
 				mql.removeEventListener('change', onMediaChange);
 			}
 		};
+	});
+
+	$effect(() => {
+		if (!mounted || !openRequest || openRequest.seq <= lastHandledSeq) return;
+		lastHandledSeq = openRequest.seq;
+		const { updated, created } = receiveGrammarRequest(customGrammars, openRequest, (id) =>
+			t('grammar.default_custom_title', { id })
+		);
+		saveCustomGrammars(updated);
+		selectCustom(created);
 	});
 
 	function saveCustomGrammars(updated: CustomGrammar[]) {
