@@ -19,7 +19,9 @@ import type {
 import type { MessageKey } from '#lib/i18n/id.ts';
 import type { Params } from '#lib/i18n/translate.ts';
 import { formatStackSeq, stackSeparator, transitionLabel } from './diagram/pda-diagram.ts';
+import { windowRows } from './list-window.ts';
 import type { PdaDocument } from './pda-document.ts';
+import { unknownSymbolText } from './run-text.ts';
 
 /**
  * idle: no run. working: the engine is asked. ready: there is a run to show. refused: the engine
@@ -122,8 +124,7 @@ export function shownRows<T>(
 	rows: readonly T[],
 	shown = SHOWN_ROWS
 ): { shown: T[]; hidden: number } {
-	if (rows.length <= shown) return { shown: [...rows], hidden: 0 };
-	return { shown: rows.slice(-shown), hidden: rows.length - shown };
+	return windowRows(rows, shown);
 }
 
 /** The sentence for a stop reason; a reason that cannot come from a PDA run has a calm fallback. */
@@ -159,14 +160,7 @@ function rejectionText(message: Message | undefined): PdaText | undefined {
 
 /** Why a string cannot be run at all: a symbol that is not in the alphabet, or no start state. */
 export function pdaRefusalText(refusal: Message | undefined): PdaText {
-	if (refusal?.key === 'input.unknown_symbol') {
-		const { symbol, position } = refusal.params;
-		return {
-			key: 'input.unknown_symbol',
-			// The engine counts the symbols before this one; people count from 1.
-			params: { symbol: String(symbol), position: typeof position === 'number' ? position + 1 : 1 }
-		};
-	}
+	if (refusal?.key === 'input.unknown_symbol') return unknownSymbolText(refusal);
 	if (refusal?.key === 'pda.sim.no_start_state') {
 		return { key: 'pda.sim.no_start_state', params: {} };
 	}

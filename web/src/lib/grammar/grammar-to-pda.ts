@@ -3,6 +3,7 @@
 // title clamping against `LIMITS.titleChars`, and the bottom-up ε-rule warning predicate.
 import { LIMITS } from '../editor/document.ts';
 import { transitionLabel } from '../editor/diagram/pda-diagram.ts';
+import { windowRows } from '../editor/list-window.ts';
 import { applyPdaCommand } from '../editor/pda-commands.ts';
 import { fromEnginePda } from '../editor/pda-document.ts';
 import type { PdaDocument } from '../editor/pda-document.ts';
@@ -106,11 +107,7 @@ export function windowEarlierRows<T>(
 	rows: readonly T[],
 	limit = CFG_PDA_STEP_WINDOW
 ): { shown: readonly T[]; hidden: number } {
-	if (rows.length <= limit) {
-		return { shown: rows, hidden: 0 };
-	}
-	const hidden = rows.length - limit;
-	return { shown: rows.slice(hidden), hidden };
+	return windowRows(rows, limit);
 }
 
 /** Renders an engine refusal as a calm translated sentence, falling back to `detail` or the key. */
