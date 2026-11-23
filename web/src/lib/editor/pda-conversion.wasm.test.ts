@@ -160,11 +160,11 @@ describe('F-WCW: the slides machine', () => {
 		expect(parsed.ok).toBe(true);
 		if (!parsed.ok) return;
 		expect(parsed.value.rules.length).toBe(cfg.value.grammar.rules.length);
-		expect(ruleMultiset(parsed.value)).toEqual(ruleMultiset(cfg.value.grammar));
-		expect(heads(parsed.value)).toEqual(heads(cfg.value.grammar));
-		expect(bodyVariables(parsed.value)).toEqual(bodyVariables(cfg.value.grammar));
 		expect(headBodyIntersection(parsed.value)).toEqual(headBodyIntersection(cfg.value.grammar));
 		expect(headBodyIntersection(parsed.value).length).toBe(20);
+		expect(heads(parsed.value)).toEqual(heads(cfg.value.grammar));
+		expect(bodyVariables(parsed.value)).toEqual(bodyVariables(cfg.value.grammar));
+		expect(ruleMultiset(parsed.value)).toEqual(ruleMultiset(cfg.value.grammar));
 
 		// The check of AC5: the body references the same variables as the engine grammar, not
 		// the pretty names (the engine grammar itself has variables that never appear as a head).
