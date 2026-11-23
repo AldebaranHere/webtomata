@@ -3898,6 +3898,51 @@ No mode-specific variant (a second key would cost bytes in first JS for a senten
 
 ---
 
+## Task T-085 — The PDA simulation marks the transition that fired, not the whole `from>to` group
+
+**Status:** todo (full spec written 2026-11-24)
+**Owner:** worker (Gemini; DeepSeek did T-087)
+
+**Goal:** In the PDA's Simulasi tab the canvas lights the arrow and the label of the `from>to` group that the step used (T-038a). When a group holds several transitions (wwᴿ has two on q0→q0, a PDA often has three or four between a pair), **all** their lines light up, so the student cannot see which rule fired. The step already knows the exact one: `run.trace[at].transition` is the index into `doc.transitions` (read `usedAt` in `pda-run.ts`; today it throws the index away and keeps `{from, to}`). Mark **the line of that transition** in the label. The arrow stays lit when any transition of its group fired; the other lines of the label stay normal.
+
+**Why not draw one arrow per transition:** the geometry layer draws one arrow and one multi-line label per `from>to` pair (`pdaDiagram` groups them, with at most three lines and a "+ n lagi" line). Splitting a group into separate arrows would change the layout of every PDA. The fix is smaller: emphasize the right *line* inside the label.
+
+**Decisions (the planner's; the worker may find a flaw, may not silently change one):**
+
+1. **A pure mapper in `diagram/pda-diagram.ts`:** `pdaTakenLines(doc: PdaDocument, used: readonly number[]): Map<string, Set<number>>`. It takes transition indices (of `doc.transitions`) and returns, for each `from>to` key, the set of **display line indices** of that edge's label (the same lines `pdaDiagram` builds). Rules, matching `pdaDiagram`'s `MAX_EDGE_LINES = 3` and its overflow form: in a group with at most three transitions, the transition at position `p` (its order inside the group, in `doc.transitions` order) is line `p`; in a group with more than three, positions 0 and 1 are lines 0 and 1, and **any position of 2 or more maps to line 2** (the "+ n lagi" line), so a used transition that is hidden still lights something. An unknown index is ignored. The keys of the returned map are exactly the groups that have a used transition (so `taken` can be derived from it).
+2. **`DiagramDrawing.svelte` gets one optional prop** `takenLines?: ReadonlyMap<string, ReadonlySet<number>>`. For an edge whose key is in the map: the arrow is lit as today (`taken`), the label `<text>` does **not** get the accent as a whole, and each `<tspan>` whose index is in the set gets the same emphasis the whole label gets today (accent ink and strong weight, so it is not color alone). The edge element also gets `data-taken-lines="0,2"` (sorted, comma-separated) for tests. A label with a single line keeps today's behavior (the one line is the whole label). **When the prop is absent or has no entry for an edge, the markup and the look are exactly what they are today** (FSM, read-only views, the conversion canvases, the editor without a run).
+3. **Pass-through:** `EditorCanvas.svelte` gets the same optional prop and hands it to `DiagramDrawing` (as it does `taken`); nothing else in it changes. `PdaEditor.svelte` computes it from the run view; `pda-run.ts` exposes the used transition **index** in the step view (a new field next to `used`, or `used` carries `index`; the worker picks the smaller change and says which). `runTaken` is derived from the same used index so the two cannot disagree.
+4. **Only the PDA simulation uses it.** Not the FSM (its label is one line of symbols, and a per-symbol mark is a different problem), not the conversion canvases (their `taken` is a `from>to` group by T-038b's decision R3 and stays), not "Tunjukkan" on competing edges.
+5. **No change** to geometry, to the diagram's input type, to the document, to the engine, to any message key or to the tab order (no new focus stop). The screen-reader text of an edge is unchanged (the step's sentence in the panel already says which transition fired).
+
+**Scope (files):** `web/src/lib/editor/diagram/pda-diagram.ts` (+ its test), `DiagramDrawing.svelte`, `EditorCanvas.svelte` (the prop only), `PdaEditor.svelte` (the derived value and the prop), `pda-run.ts` (+ its test, the index), one e2e spec (extend `pda-simulation.spec.ts` or add `pda-taken-line.spec.ts`), `docs/agent/PLAN.md` (status). No ADR (an optional prop); put a five-line note about the prop in the PR description.
+
+**Fixtures:**
+
+- **F-WWR:** the wwᴿ PDA with two transitions on q0→q0 (the preset the PDA library has, or the one T-038a's specs use; read it). Run an input where the two fire at different steps.
+- **F-FOUR:** a PDA with four transitions between one pair (so the label shows two lines and "+ 2 lagi"), where a step uses the third or fourth.
+- **F-DPDA:** the existing one where every edge has one transition (T-038a's AC2): it must behave as before.
+
+**Acceptance criteria:**
+
+1. `pdaTakenLines` unit tests: one transition in a group → line 0; F-WWR's two → lines 0 and 1 as the used index says; a group of exactly three → lines 0, 1, 2; F-FOUR: used position 0 → line 0, position 1 → line 1, position 2 and 3 → **line 2**; an empty `used` → empty map; an out-of-range index is ignored; two used transitions in the same group → both lines; two groups → two keys; the keys equal the groups of the used transitions.
+2. `pda-run` test: the step view carries the exact transition index of the step (and none at step 0 and on a step that used no transition).
+3. e2e on F-WWR: at the step where the first transition fires, exactly its line has the emphasis and the other line does not (assert `data-taken-lines` and the computed font weight of the two tspans); at the step where the second fires, the other way round; the arrow of the group is lit in both.
+4. e2e on F-FOUR: when a hidden transition (position 2 or 3) fires, the "+ 2 lagi" line has the emphasis and lines 0 and 1 do not.
+5. **Nothing else changes:** with no run, and in the FSM mode, there is no `data-taken-lines` and no emphasized tspan; the FSM simulation specs and the T-038a specs (including F-DPDA's AC2) pass **without edits**; if a T-038a spec asserted that every line of a multi-transition group is lit, change it and say which.
+6. Not by color alone: the emphasized line is bold and in the accent ink; `axe` is clean (contrast included) on the canvas at a step with a marked line, on desktop and phone; no new tab stop.
+7. Sizes: the report states the first-JS change in bytes per route; the `.wasm` is unchanged. `check:strings` and `check:tokens` pass (no new text, no raw color).
+
+**Verification:** `pnpm lint`, `check`, `test`, `build`, `check:strings`, `check:tokens`, `size`; the PDA specs (`pda-simulation`, `pda-panel`, `pda-editor`, `pda-conversion`, the new one) and the FSM simulation and editor specs on desktop and phone; `cross/workstation-phone` on webkit-phone. **Break each guard once on the final code and show a test catches it:** B1 the line index off by one; B2 a hidden transition (position 2 or more) not mapped to the overflow line; B3 the label still accented as a whole when a per-line entry exists; B4 `takenLines` given when no run is open (a stale mark); B5 the group's arrow not lit although a transition of it fired; B6 the FSM canvas getting a `data-taken-lines`.
+
+**Stop and tell me before coding if** reading the code shows that the used index is not the index into the document's transitions (T-038a said it is, because documents are always in engine order), or that a label's line order differs from `doc.transitions` order.
+
+**Rollback:** revert the PR; nothing stored changes.
+
+**Depends on:** T-038a (merged), T-033 (merged).
+
+---
+
 ## Planner task P-005 — Wireframe of the PDA simulation, the stack and the conversions
 
 **Status:** done (drawn on 2026-11-23 in `design/screens/pda-simulation-conversion.md` and `.svg`; the owner accepted the planner's pick on all five questions the same day: CFG to PDA lives in the grammar mode, the stack is a column in the panel, "Uji banyak string" is in the first version, the peak is always visible, three build tasks; T-038 is split into T-038a, T-038b and T-038c below)
@@ -3991,7 +4036,7 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-036** PDA to restricted normal form, with a trace: specified in its own block above (`done`, PR 161).
 - **T-037** PDA in restricted normal form to CFG, with a trace: specified in its own block above (`done`, PR 163). The slides' example `wcwᴿ` is the oracle (76 rules, 15 after cleanup).
 - **T-038** Conversions and simulation panel for the PDA: split on 2026-11-23 into T-038a (`done`, PR 243: the Simulasi tab), T-038b (`todo`: Konversi, PDA to grammar; DeepSeek) and T-038c (`todo`: "Ke PDA" in the grammar mode; Gemini); b and c run at the same time and the planner reconciles their two cross-mode handoffs before "Go".
-- **T-085** The simulation strokes the used transition, not the whole `from>to` group (`proposed`, found by T-038a's pre-flight): two transitions between the same pair (wwᴿ has two on q0→q0) both light up today; needs an optional per-transition prop in `EditorCanvas` and `DiagramDrawing`.
+- **T-085** The PDA simulation marks the line of the transition that fired, not the whole `from>to` group: specified in its own task block above (`todo`).
 - **T-086** The tour's step 5 promises that the test list is saved on the device, which is false for the PDA: specified in its own task block above (`todo`).
 - **T-087** The custom-grammar card in the library has a button inside a button (axe `nested-interactive`): specified in its own task block above (`done`, commit `05bcff0`).
 - **T-071** One scheduler for the two engine queries of the PDA panel (`proposed`, found by T-062): `checker.ts` and `pda-determinism.ts` are the same rule (a debounce, a sequence number, a dispose) on two different answers, and the panel now asks the engine twice after every change. One small `createQuery` that both use would remove the second copy, but `checker.ts` is shared with the FSM, so it needs FSM tests and a decision of its own. Not urgent: there is no third query yet, and the copy is 40 lines.
