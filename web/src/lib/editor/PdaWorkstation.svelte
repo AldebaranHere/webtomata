@@ -31,7 +31,8 @@
 	let {
 		onskipped,
 		openRequest,
-		onhelp
+		onhelp,
+		onopengrammar
 	}: {
 		onskipped?: (skipped: SkippedPda[]) => void;
 		openRequest?: { id: string; seq: number } | null;
@@ -280,6 +281,7 @@
 			{persistent}
 			{onhelp}
 			onopenpda={openPdaDocument}
+			{onopengrammar}
 			library={{ count: library.count, onopen: library.show }}
 			firstRun={{ examples, failed, onexample: (id) => void openExample(id) }}
 		/>
