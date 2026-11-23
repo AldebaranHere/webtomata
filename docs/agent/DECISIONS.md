@@ -791,3 +791,13 @@ Format:
 - Alternatives considered: shell inline in the workflow (rejected: the rule decides what is deleted and needs tests); computing the current lockfile hashes to find the stale generation (rejected: it must copy the cache action's hashing and breaks silently when that changes); a shared Rust cache key for the wasm jobs (kept as a possible later task); changing CodeQL (rejected: the caches come from its own action).
 - Reversible? yes
 - Affects: `tools/prune-caches.mjs`, `.github/workflows/cleanup-caches.yml`, ADR 0068
+
+
+## 2026-11-24 — T-071 pre-flight reconciled: narrow helper edits, six query options, a PDA that can never get the FSM equality
+
+- Decider: planner
+- Context: DeepSeek found 18 flaws. The real ones: the start prompt and the block disagreed about touching `pda-run.ts`, `pda-conversion.ts` and `grammar-to-pda.ts`; the query needs `empty()` and `keepsProblem` besides the four options I named; a default `documentsEqual` on a PDA would compare the wrong fields and keep stale rows; deleting `pda-tester.ts` also changes `PdaTestList.svelte`'s type import and `PdaEditor`'s call; `grammarText` and `grammarToText` give identical text (tested) but a test calls each name.
+- Decision: the helper files change only in the named helper definitions; the query has six options; `createTester` requires `sameDocument` for any document that is not a `MachineDocument`; `grammarText` stays a one-line call to the one definition in `grammar-text.ts`, with a permanent equality test.
+- Alternatives considered: shrink the task to the scheduler and the tester (rejected: the helpers are cheap and are the same code three times); delete one of the two grammar-text names (rejected: it needs non-import test edits, and the two names cost one line).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-071)
