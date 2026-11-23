@@ -781,3 +781,13 @@ Format:
 - Alternatives considered: unify everything now (rejected: it touches every FSM test and first JS, and a shape drawn from two machines is the wrong shape more often than one drawn from three); leave all copies (rejected: a scheduler bug would have to be fixed in two files, and the stale-answer rule is the one we cannot get wrong).
 - Reversible? yes
 - Affects: `checker.ts`, `pda-determinism.ts`, `tester.ts`, `pda-tester.ts` (deleted), `PdaEditor.svelte` (an import), the window helpers, ADR 0067
+
+
+## 2026-11-24 — T-088: prune the caches that a newer one has replaced, in a tested script, once a day
+
+- Decider: planner
+- Context: 34 caches, 4.0 GB of the 10 GB limit, all owned by `staging`. About 2.5 GB is never used again: older lockfile generations of the five Rust caches, 9 of the 11 CodeQL overlay caches (one per push to `staging`, only the newest is a useful base), and the old pnpm and Playwright caches. `cleanup-caches.yml` deletes only the caches of a closed pull request and the pull requests save none.
+- Decision: a daily job in `cleanup-caches.yml` runs `tools/prune-caches.mjs`: per ref and per key family (trailing hash segments removed) it keeps the newest cache (two for CodeQL) and deletes the rest, touches only four known key prefixes, never a pull-request ref, and at most 50 per run. The logic is a tested pure function; the workflow has a dry-run switch that defaults to on for a manual run.
+- Alternatives considered: shell inline in the workflow (rejected: the rule decides what is deleted and needs tests); computing the current lockfile hashes to find the stale generation (rejected: it must copy the cache action's hashing and breaks silently when that changes); a shared Rust cache key for the wasm jobs (kept as a possible later task); changing CodeQL (rejected: the caches come from its own action).
+- Reversible? yes
+- Affects: `tools/prune-caches.mjs`, `.github/workflows/cleanup-caches.yml`, ADR 0068
