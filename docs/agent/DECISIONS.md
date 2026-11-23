@@ -731,3 +731,13 @@ Format:
 - Alternatives considered: one after the other (rejected: they touch different workstations, and both pre-flights are cheap); one shared layout module (rejected: it would be a third file both tasks must wait for).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-038b, T-038c; T-038a marked done), later `PdaEditor.svelte`, `GrammarWorkstation.svelte`, `sandbox/+page.svelte`, `pda-messages.ts`, ADR 0065 and 0066
+
+
+## 2026-11-23 — T-038b and T-038c pre-flights reconciled: one handoff contract, seam commit first
+
+- Decider: planner
+- Context: both workers listed flaws (25 and 9). The shared ones: the two cross-mode handoffs both need `sandbox/+page.svelte`; the grammar parser drops `<…>` in a rule body, so a `<q,A,r>` grammar parses but is disconnected; the drawing layer cannot mark one transition of a `from>to` group; the 410-unit layout rule contradicts the sandbox's own spacing; the FSM does not block edits during a conversion (it closes the conversion).
+- Decision: T-038c's first commit is a seam commit (page state and `openGrammar`, the receiver in `GrammarWorkstation`, the optional prop on `PdaWorkstation`), pushed by the planner as its own PR; T-038b rebases on it and edits neither file. The grammar opened from a PDA uses the engine's `V_…` names and `<q,A,r>` stays in the panel. The canvas highlights states and `from>to` groups only (exact stroke is T-085). The stage is called RNF (no invented Indonesian term). Edits close a conversion, as in the FSM. The phone strip keeps five items with smaller padding. Both tasks' text is amended in `PLAN.md`.
+- Alternatives considered: T-038b writes the grammar storage keys itself (rejected: it duplicates the grammar's storage schema and collides with T-038c in one file); change the parser to keep `<…>` (rejected: outside the task and risks T-026/T-027); a new drawing layer for per-transition strokes (rejected: T-085).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-038b, T-038c), later `sandbox/+page.svelte`, `GrammarWorkstation.svelte`, `PdaWorkstation.svelte`, `WorkstationPhoneTabs.svelte`
