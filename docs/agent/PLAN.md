@@ -3687,7 +3687,7 @@ pnpm --filter web exec playwright test pda-library cross/library cross/storage -
 
 ## Task T-038b — The Konversi tab of the PDA editor: PDA to a grammar
 
-**Status:** todo (full spec written 2026-11-23; T-038a is merged; can run at the same time as T-038c, see "Shared ground")
+**Status:** in-progress (2026-11-23; branch `task/T-038b-pda-conversion-tab`, cut from staging at PR 245)
 **Owner:** worker (DeepSeek)
 
 **Goal:** The PDA panel gets a fourth and last tab, **Konversi**, built as section 2 of `design/screens/pda-simulation-conversion.md` (frame C): the two stages of the slides (Slide13) as a stepper, **1 Bentuk normal terbatas** (restricted normal form, RNF, `pdaToRnf`, T-036) and **2 Tata bahasa** (`pdaToCfg`, T-037); a read-only result on the canvas while a conversion is open; and the two ways out, **Buka PDA ini sebagai mesin baru** and **Buka sebagai tata bahasa** (a new custom grammar in the grammar mode). The engine and the worker already have everything (`pdaToRnf`, `pdaToCfg` are in `protocol.ts`, found 2026-11-23): **no change in `crates/`** unless the pre-flight proves a result type is not enough (then say what and why; do not add it silently).
