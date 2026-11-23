@@ -3900,7 +3900,7 @@ No mode-specific variant (a second key would cost bytes in first JS for a senten
 
 ## Task T-085 — The PDA simulation marks the transition that fired, not the whole `from>to` group
 
-**Status:** todo (full spec written 2026-11-24)
+**Status:** done (2026-11-24; branch `task/T-085-pda-taken-lines`. Added `pdaTakenLines` in `pda-diagram.ts`, `usedIndex` on `PdaRunView` in `pda-run.ts`, optional `takenLines` prop on `DiagramDrawing.svelte` and `EditorCanvas.svelte`, and derived `runTakenLines`/`runTaken` in `PdaEditor.svelte`. All 6 break guards B1–B6 caught and restored; no T-038a spec edited; no report file needed.)
 **Owner:** worker (Gemini; DeepSeek did T-087)
 
 **Goal:** In the PDA's Simulasi tab the canvas lights the arrow and the label of the `from>to` group that the step used (T-038a). When a group holds several transitions (wwᴿ has two on q0→q0, a PDA often has three or four between a pair), **all** their lines light up, so the student cannot see which rule fired. The step already knows the exact one: `run.trace[at].transition` is the index into `doc.transitions` (read `usedAt` in `pda-run.ts`; today it throws the index away and keeps `{from, to}`). Mark **the line of that transition** in the label. The arrow stays lit when any transition of its group fired; the other lines of the label stay normal.

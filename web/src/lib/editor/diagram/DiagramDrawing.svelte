@@ -20,6 +20,7 @@
 		flags = new Map(),
 		active = new Set<number>(),
 		taken = new Set<string>(),
+		takenLines,
 		interactive = false
 	}: {
 		shapes: DiagramShapes;
@@ -34,11 +35,18 @@
 		active?: ReadonlySet<number>;
 		/** The edges ("from>to") that led to the active states at this step of a run. */
 		taken?: ReadonlySet<string>;
+		/** Per-edge display line indices to emphasize in multi-line labels (PDA simulation). */
+		takenLines?: ReadonlyMap<string, ReadonlySet<number>>;
 		interactive?: boolean;
 	} = $props();
 
 	const chosen = (edge: { from: number; to: number }) =>
 		selectedEdge !== null && selectedEdge.from === edge.from && selectedEdge.to === edge.to;
+	const takenLinesAttr = (key: string): string | undefined => {
+		const lines = takenLines?.get(key);
+		if (!lines || lines.size === 0) return undefined;
+		return [...lines].sort((a, b) => a - b).join(',');
+	};
 	const nameOfId = (id: number) => shapes.states.find((s) => s.id === id)?.name ?? '';
 
 	/** "State q1, start state, accepting state". */
@@ -77,6 +85,7 @@
 				class:taken={taken.has(`${edge.from}>${edge.to}`)}
 				data-edge="{edge.from}>{edge.to}"
 				data-taken={taken.has(`${edge.from}>${edge.to}`) || undefined}
+				data-taken-lines={takenLinesAttr(`${edge.from}>${edge.to}`)}
 			>
 				<path class="hit" d={edge.path} />
 				<rect
@@ -188,10 +197,13 @@
 				{edge.label.text}
 			</text>
 		{:else}
+			{@const edgeKey = `${edge.from}>${edge.to}`}
+			{@const edgeTakenLines = takenLines?.get(edgeKey)}
+			{@const hasTakenLines = edgeTakenLines !== undefined && edgeTakenLines.size > 0}
 			<text
 				class="label"
 				class:chosen={chosen(edge)}
-				class:taken={taken.has(`${edge.from}>${edge.to}`)}
+				class:taken={taken.has(edgeKey) && !hasTakenLines}
 				x={edge.label.center.x}
 				y={edge.label.center.y}
 			>
@@ -200,7 +212,7 @@
 						x={edge.label.center.x}
 						y={labelLineY(edge.label.box, i)}
 						class:overflow-line={edge.label.overflow && i === edge.label.lines.length - 1}
-						>{line}</tspan
+						class:taken={hasTakenLines && edgeTakenLines.has(i)}>{line}</tspan
 					>
 				{/each}
 			</text>
@@ -338,7 +350,8 @@
 		stroke-width: 3;
 	}
 	.label.chosen,
-	.label.taken {
+	.label.taken,
+	.label tspan.taken {
 		fill: var(--color-accent-ink);
 		font-weight: var(--weight-strong);
 	}

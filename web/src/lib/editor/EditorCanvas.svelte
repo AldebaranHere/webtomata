@@ -50,6 +50,7 @@
 		flags?: ReadonlyMap<number, 'error' | 'warning'>;
 		active?: ReadonlySet<number>;
 		taken?: ReadonlySet<string>;
+		takenLines?: ReadonlyMap<string, ReadonlySet<number>>;
 		onlayout?: () => void;
 		revealLabeling?: boolean;
 	}
@@ -68,6 +69,7 @@
 		flags = new Map(),
 		active = new Set<number>(),
 		taken = new Set<string>(),
+		takenLines,
 		onlayout,
 		revealLabeling = false
 	}: EditorCanvasProps<D, C> = $props();
@@ -868,6 +870,7 @@
 				{flags}
 				{active}
 				{taken}
+				{takenLines}
 				interactive
 			/>
 			{#if preview}

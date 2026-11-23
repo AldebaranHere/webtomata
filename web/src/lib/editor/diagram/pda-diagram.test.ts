@@ -9,7 +9,7 @@ import { anbnSample, pdaDocumentFrom, wcwrSample, wwrSample } from '../pda-sampl
 import { random } from '../testing.ts';
 import { RADIUS, diagramGeometry } from './geometry.ts';
 import type { Box, Point } from './geometry.ts';
-import { pdaDiagram, transitionLabel } from './pda-diagram.ts';
+import { pdaDiagram, pdaTakenLines, transitionLabel } from './pda-diagram.ts';
 
 const more = (n: number) => `+ ${n} lagi`;
 
@@ -358,5 +358,96 @@ describe('PDA diagram adapter (T-039)', () => {
 		expect(edge70.overflow).toBe(true);
 		const shapes70 = diagramGeometry(diag70);
 		expect(shapes70.edges[0]!.label.overflow).toBe(true);
+	});
+});
+
+describe('pdaTakenLines (T-085 AC1)', () => {
+	const buildFourDoc = () =>
+		pdaDocumentFrom({
+			inputAlphabet: ['a', 'b', 'c', 'd'],
+			stackAlphabet: ['A'],
+			states: [
+				[0, 0],
+				[300, 0]
+			],
+			start: 0,
+			accepting: [1],
+			transitions: [
+				[0, 'a', [], ['A'], 1],
+				[0, 'b', [], ['A'], 1],
+				[0, 'c', [], ['A'], 1],
+				[0, 'd', [], ['A'], 1]
+			]
+		});
+
+	const buildThreeDoc = () =>
+		pdaDocumentFrom({
+			inputAlphabet: ['a', 'b', 'c'],
+			stackAlphabet: ['A'],
+			states: [
+				[0, 0],
+				[300, 0]
+			],
+			start: 0,
+			accepting: [1],
+			transitions: [
+				[0, 'a', [], ['A'], 1],
+				[0, 'b', [], ['A'], 1],
+				[0, 'c', [], ['A'], 1]
+			]
+		});
+
+	it('maps a single transition in a group to line 0', () => {
+		const doc = anbnSample();
+		expect(pdaTakenLines(doc, [0])).toEqual(new Map([['0>0', new Set([0])]]));
+		expect(pdaTakenLines(doc, [1])).toEqual(new Map([['0>1', new Set([0])]]));
+		expect(pdaTakenLines(doc, [2])).toEqual(new Map([['1>1', new Set([0])]]));
+	});
+
+	it('maps F-WWR transitions on 0>0 to lines 0 and 1 according to the used index', () => {
+		const doc = wwrSample();
+		// In wwrSample (sorted in engine order):
+		// index 0: 0 -> 1 (ε / ε / ε)
+		// index 1: 0 -> 0 (a / ε / A) -> group 0>0 position 0
+		// index 2: 0 -> 0 (b / ε / B) -> group 0>0 position 1
+		// index 3: 1 -> 1 (a / A / ε) -> group 1>1 position 0
+		// index 4: 1 -> 1 (b / B / ε) -> group 1>1 position 1
+		expect(pdaTakenLines(doc, [1])).toEqual(new Map([['0>0', new Set([0])]]));
+		expect(pdaTakenLines(doc, [2])).toEqual(new Map([['0>0', new Set([1])]]));
+		expect(pdaTakenLines(doc, [3])).toEqual(new Map([['1>1', new Set([0])]]));
+		expect(pdaTakenLines(doc, [4])).toEqual(new Map([['1>1', new Set([1])]]));
+	});
+
+	it('maps a group of exactly three transitions to lines 0, 1, and 2', () => {
+		const doc = buildThreeDoc();
+		expect(pdaTakenLines(doc, [0])).toEqual(new Map([['0>1', new Set([0])]]));
+		expect(pdaTakenLines(doc, [1])).toEqual(new Map([['0>1', new Set([1])]]));
+		expect(pdaTakenLines(doc, [2])).toEqual(new Map([['0>1', new Set([2])]]));
+	});
+
+	it('maps F-FOUR positions 0 and 1 to lines 0 and 1, and positions 2 and 3 to overflow line 2', () => {
+		const doc = buildFourDoc();
+		expect(pdaTakenLines(doc, [0])).toEqual(new Map([['0>1', new Set([0])]]));
+		expect(pdaTakenLines(doc, [1])).toEqual(new Map([['0>1', new Set([1])]]));
+		expect(pdaTakenLines(doc, [2])).toEqual(new Map([['0>1', new Set([2])]]));
+		expect(pdaTakenLines(doc, [3])).toEqual(new Map([['0>1', new Set([2])]]));
+	});
+
+	it('returns an empty map for empty used and ignores out-of-range indices', () => {
+		const doc = wwrSample();
+		expect(pdaTakenLines(doc, [])).toEqual(new Map());
+		expect(pdaTakenLines(doc, [-1, 5, 99])).toEqual(new Map());
+		expect(pdaTakenLines(doc, [-1, 2, 100])).toEqual(new Map([['0>0', new Set([1])]]));
+	});
+
+	it('supports multiple used transitions in the same group and across two groups', () => {
+		const doc = wwrSample();
+		expect(pdaTakenLines(doc, [1, 2])).toEqual(new Map([['0>0', new Set([0, 1])]]));
+		expect(pdaTakenLines(doc, [1, 4])).toEqual(
+			new Map([
+				['0>0', new Set([0])],
+				['1>1', new Set([1])]
+			])
+		);
 	});
 });

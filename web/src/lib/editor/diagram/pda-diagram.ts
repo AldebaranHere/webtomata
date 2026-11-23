@@ -76,3 +76,40 @@ export function pdaDiagram(doc: PdaDocument, more: (count: number) => string): D
 		edges
 	};
 }
+
+/**
+ * Maps used transition indices (in `doc.transitions`) to the display line indices of each
+ * `from>to` edge label. In a group with at most `MAX_EDGE_LINES` transitions, position `p`
+ * (in `doc.transitions` order) is line `p`. In a group with more than `MAX_EDGE_LINES`,
+ * positions 0 and 1 are lines 0 and 1, and any position >= 2 maps to line 2 ("+ n lagi").
+ * Out-of-range indices are ignored; keys are exactly the groups with a used transition.
+ */
+export function pdaTakenLines(doc: PdaDocument, used: readonly number[]): Map<string, Set<number>> {
+	const result = new Map<string, Set<number>>();
+	if (used.length === 0) return result;
+
+	const wanted = new Set<number>();
+	for (const idx of used) {
+		if (Number.isInteger(idx) && idx >= 0 && idx < doc.transitions.length) {
+			wanted.add(idx);
+		}
+	}
+	if (wanted.size === 0) return result;
+
+	const groupPos = new Map<string, number>();
+	for (let i = 0; i < doc.transitions.length; i++) {
+		const t = doc.transitions[i]!;
+		const key = `${t.from}>${t.to}`;
+		const pos = groupPos.get(key) ?? 0;
+		groupPos.set(key, pos + 1);
+		if (!wanted.has(i)) continue;
+		const line = Math.min(pos, MAX_EDGE_LINES - 1);
+		let lines = result.get(key);
+		if (!lines) {
+			lines = new Set<number>();
+			result.set(key, lines);
+		}
+		lines.add(line);
+	}
+	return result;
+}

@@ -374,4 +374,46 @@ describe('a run of one string', () => {
 		expect(runner.status()).toBe('idle');
 		expect(runner.view()).toBeUndefined();
 	});
+
+	it('exposes the exact transition index on each step, and undefined at step 0 or when no transition fired (T-085 AC2)', async () => {
+		const runner = createPdaRunner({ simulate: fake() });
+		await runner.start(doc, 'aabb');
+
+		expect(runner.view()!.usedIndex).toBeUndefined();
+		expect(runner.view()!.used).toBeUndefined();
+
+		runner.step();
+		expect(runner.view()!.usedIndex).toBe(0);
+		expect(runner.view()!.used).toEqual({ from: 0, to: 0 });
+
+		runner.step();
+		expect(runner.view()!.usedIndex).toBe(0);
+
+		runner.step();
+		expect(runner.view()!.usedIndex).toBe(1);
+		expect(runner.view()!.used).toEqual({ from: 0, to: 1 });
+
+		runner.step();
+		expect(runner.view()!.usedIndex).toBe(2);
+		expect(runner.view()!.used).toEqual({ from: 1, to: 1 });
+
+		// A step with transition === null (other than step 0) also yields undefined.
+		const noTransitionRunner = createPdaRunner({
+			simulate: async () =>
+				report(
+					{
+						trace: [
+							step(0, null, null, 0, [], 'pda.sim.start'),
+							step(0, null, null, 0, [], 'pda.sim.move')
+						]
+					},
+					[],
+					{ kind: 'finished', accepted: false }
+				)
+		});
+		await noTransitionRunner.start(doc, '');
+		noTransitionRunner.step();
+		expect(noTransitionRunner.view()!.usedIndex).toBeUndefined();
+		expect(noTransitionRunner.view()!.used).toBeUndefined();
+	});
 });
