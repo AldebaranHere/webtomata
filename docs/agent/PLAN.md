@@ -3865,7 +3865,7 @@ No mode-specific variant (a second key would cost bytes in first JS for a senten
 
 ## Task T-087 — The custom-grammar card in the library has a button inside a button
 
-**Status:** todo (full spec written 2026-11-23)
+**Status:** done (2026-11-23; branch `task/T-087-custom-card-buttons`, commit `05bcff0`. The card is a `.preset-card.custom-card` container with a `.card-select` button and the existing `.btn-delete` button; the axe guard `web/e2e/grammar-custom-card.spec.ts` AC1 fails with `nested-interactive: … .custom-card` on desktop and phone when the old nested markup is put back. No report file, as the task asks; the guard output and the check results are in the worker's reply.)
 **Owner:** worker (either; it is small)
 
 **Goal:** In `GrammarWorkstation.svelte` (about line 788) a custom grammar's card is `<div class="preset-card custom-card" role="button" tabindex="0">` and the delete control `<button class="btn-delete">` sits **inside** it. A control inside a control is invalid for assistive technology (axe rule `nested-interactive`): a screen reader announces one button that contains another, and the inner one may not be reachable. It shows up on desktop whenever a custom grammar exists (T-038c found it; it was there since T-023). Make the card a plain container with **two sibling buttons**: one that selects the grammar and one that deletes it. The look, the sizes, the class names that tests use and the behavior stay as they are.
@@ -3993,7 +3993,7 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-038** Conversions and simulation panel for the PDA: split on 2026-11-23 into T-038a (`done`, PR 243: the Simulasi tab), T-038b (`todo`: Konversi, PDA to grammar; DeepSeek) and T-038c (`todo`: "Ke PDA" in the grammar mode; Gemini); b and c run at the same time and the planner reconciles their two cross-mode handoffs before "Go".
 - **T-085** The simulation strokes the used transition, not the whole `from>to` group (`proposed`, found by T-038a's pre-flight): two transitions between the same pair (wwᴿ has two on q0→q0) both light up today; needs an optional per-transition prop in `EditorCanvas` and `DiagramDrawing`.
 - **T-086** The tour's step 5 promises that the test list is saved on the device, which is false for the PDA: specified in its own task block above (`todo`).
-- **T-087** The custom-grammar card in the library has a button inside a button (axe `nested-interactive`): specified in its own task block above (`todo`).
+- **T-087** The custom-grammar card in the library has a button inside a button (axe `nested-interactive`): specified in its own task block above (`done`, commit `05bcff0`).
 - **T-071** One scheduler for the two engine queries of the PDA panel (`proposed`, found by T-062): `checker.ts` and `pda-determinism.ts` are the same rule (a debounce, a sequence number, a dispose) on two different answers, and the panel now asks the engine twice after every change. One small `createQuery` that both use would remove the second copy, but `checker.ts` is shared with the FSM, so it needs FSM tests and a decision of its own. Not urgent: there is no third query yet, and the copy is 40 lines.
 - **P-004** Wireframe of the PDA editor: planner task above (`done`, approved on 2026-11-06).
 
