@@ -3986,6 +3986,52 @@ No mode-specific variant (a second key would cost bytes in first JS for a senten
 
 ---
 
+## Task T-088 — Prune the caches that a newer one has replaced
+
+**Status:** todo (full spec written 2026-11-24)
+**Owner:** worker (Gemini)
+
+**Goal:** The caches of the repository share 10 GB, and past that GitHub deletes the least recently used ones, which can be the ones that every run needs (ADR 0027). On 2026-11-24 there were 34 caches using 4.0 GB, all owned by `staging`, and about 2.5 GB of that is never used again: (1) the Rust caches of **older lockfile generations** (5 jobs × 2 old generations, about 1.5 GB: nothing deletes them, they leave only after 7 days unused); (2) **9 of the 11 CodeQL overlay caches** (about 75 MB each; CodeQL saves a new one on every push to `staging`, and only the newest is a useful base for later pull requests); (3) the **old pnpm cache and the old Playwright browser caches** after a lockfile change. `cleanup-caches.yml` deletes only the caches of a closed pull request, and the pull requests save none (`save-if` is staging or main), so it finds nothing. Add a daily job that deletes the caches that a newer cache of the same family has replaced.
+
+**Decisions (the planner's; the worker may find a flaw, may not silently change one):**
+
+1. **The logic is a script with a test, not shell in the workflow.** `tools/prune-caches.mjs` exports a pure function `pickCachesToDelete(caches, options)` and has a small CLI that lists the caches with `gh cache list --limit 1000 --json id,key,ref,sizeInBytes,createdAt,lastAccessedAt`, calls the function, prints a table, and deletes with `gh cache delete <id>` (unless dry run). The tools tests (`pnpm test:tools`) cover the function. The workflow only checks out the repository, sets up Node as the other jobs do (pinned actions), and runs the script.
+2. **A family** is a key with every trailing hash segment removed, where a hash segment is `-` followed by 8 or more hex digits at the end of the key, removed repeatedly. Examples from the real list: `v0-rust-checks-Linux-x64-622e96a1-b8cbf015` and `…-3ef20095` and `…-3fcf3014` are one family (`v0-rust-checks-Linux-x64`); `node-cache-Linux-x64-pnpm-<64 hex>` is one family; `playwright-Linux-firefox-<64 hex>` and `playwright-Linux-webkit-<64 hex>` are two; `codeql-overlay-base-database-1-673738e94a8102ad-javascript-2.27.5-<sha>` is one family. Families are taken **per ref**: a cache of `refs/heads/main` is never judged against one of `refs/heads/staging`.
+3. **The rule:** in each (ref, family), keep the newest by `createdAt` and delete the others; for the CodeQL overlay family keep the newest **two** (a pull request may be restoring the one before a new push saves another). Only these key prefixes are touched: `v0-rust-`, `node-cache-`, `playwright-`, `codeql-overlay-base-database-`. A key with any other prefix, and every cache of a `refs/pull/…` ref, is left alone (the existing job owns the pull-request caches) and is listed in the output as "left alone".
+4. **A cap:** at most 50 deletions per run (a bug in the rule must not empty the repository's caches in one run); if more would go, delete the oldest 50 and say so.
+5. **Triggers:** `schedule` daily (pick an off-peak minute, not :00) and `workflow_dispatch` with a boolean input `dry_run` (default **true**); the schedule always runs for real. The existing `pull_request: closed` job stays as it is, with an `if` so it runs only for that event, and the new job runs only for `schedule` and `workflow_dispatch`. The file keeps its single top-level `permissions: actions: write` (the only workflow that may have it; `tools/check-workflows.mjs` enforces that) and gets no other permission. Keep the pinned-by-SHA style of the other workflows. If `check-workflows.mjs` forbids a `schedule` trigger here, change the check minimally and explain it in the PR.
+6. **Output:** a table in the job summary (`$GITHUB_STEP_SUMMARY`): per family what was kept, what was deleted (or would be, in a dry run), the megabytes freed, the total before and after.
+7. **No behavior of the CI changes:** no cache key, `save-if` or restore is touched. A deleted old generation is only rebuilt if someone rolls the lockfile back, once.
+8. **Not here:** a shared `shared-key` for the three wasm-building jobs (step 2 of the proposal; a separate task if the numbers justify it after this one), any change to CodeQL, and any change to the cache keys.
+
+**Scope (files):** `tools/prune-caches.mjs` and its test (in the place the other tools tests live), `.github/workflows/cleanup-caches.yml`, `tools/check-workflows.mjs` (only if decision 5 says), `docs/decisions/0068-prune-superseded-caches.md`, a note in `docs/decisions/0027-ci-time-limits-and-faster-ci.md` pointing to it, `docs/agent/PLAN.md` (status). No report file; put the fixture numbers and the guard output in the PR description.
+
+**Fixture (the real list of 2026-11-24, 34 caches, all `refs/heads/staging`):** build it from the table below (key shape and size in MB are enough; give each a distinct `createdAt` in the order shown, newest first). Expected result: **22 deleted, 12 kept, about 2.5 GB freed**:
+
+- 11 CodeQL overlay (about 72 to 77 MB): keep 2, delete 9.
+- 15 Rust in 5 families (`rust` 202/186/185, `checks` 194/185/185, `e2e` 130/121/121, `cross-browser` 130/121/121, `lighthouse` 130/121/121; newest first): keep 5, delete 10.
+- 2 `node-cache` (145 each): keep 1, delete 1.
+- 2 `playwright-…-firefox` (109 each) and 2 `playwright-…-webkit` (98 each): keep 1 of each, delete 2.
+- 1 `v0-rust-fuzz-…` (56) and 1 `v0-rust-cargo-audit-…` (32): one per family, kept.
+- Add to the fixture: a `refs/heads/main` cache with a key of an existing family (never deleted because of staging's newer one), a `refs/pull/9/merge` cache (left alone), and a cache with a key of another prefix such as `other-1234abcd-9f8e7d6c` (left alone).
+
+**Acceptance criteria:**
+
+1. `pickCachesToDelete` on the fixture returns exactly the 22 ids above (a test names them by key), with the 12 kept and the three "left alone" listed; the megabytes freed are within 1% of 2.5 GB.
+2. Unit tests of the rules: the family parser on every real key shape; per-ref grouping; keep-newest-1 and keep-newest-2 (codeql); the unknown prefix and the pull-request ref left alone; the cap of 50 (feed 60 deletable caches: 50 are chosen, the oldest first, and the result says "capped"); an empty list; one cache per family keeps it; two caches with the same `createdAt` keep one, deterministically (higher id wins).
+3. The CLI in dry-run mode prints the table and **calls `gh cache delete` zero times** (test it with a fake `gh` on the path); in live mode it calls it once per chosen id and stops with a non-zero exit if a deletion fails after the others were tried.
+4. `cleanup-caches.yml`: the old job runs only for `pull_request` (`if`), the new job only for `schedule` and `workflow_dispatch`, `dry_run` defaults to true, the schedule runs live, no permission beyond `actions: write`, actions pinned by SHA; `pnpm check:workflows` passes.
+5. The existing tests and checks pass: `pnpm test:tools`, `check:workflows`, lint, format. No cache key or `save-if` in any other workflow changed (show with `git diff --stat`).
+6. The PR description says how to try it: merge, run **Clean caches** by hand from the Actions tab with `dry_run` on, read the summary, then leave the daily schedule to run.
+
+**Verification:** `pnpm test:tools`, `pnpm check:workflows`, `pnpm lint`, `pnpm format:check`; the worker cannot run the real workflow (no push, and `gh` is not installed in WSL), so test the CLI with a fake `gh`. **Break each guard once on the final code and show a test catches it:** B1 keep-count off by one (the newest is deleted); B2 grouping ignores the ref (main's cache is deleted because of staging's); B3 an unknown prefix is deleted; B4 dry run still deletes; B5 the CodeQL family keeps 1 instead of 2; B6 the cap is not applied.
+
+**Rollback:** revert the PR; deleted caches rebuild on the next run on `staging` (one slower run).
+
+**Depends on:** ADR 0027 (merged).
+
+---
+
 ## Planner task P-005 — Wireframe of the PDA simulation, the stack and the conversions
 
 **Status:** done (drawn on 2026-11-23 in `design/screens/pda-simulation-conversion.md` and `.svg`; the owner accepted the planner's pick on all five questions the same day: CFG to PDA lives in the grammar mode, the stack is a column in the panel, "Uji banyak string" is in the first version, the peak is always visible, three build tasks; T-038 is split into T-038a, T-038b and T-038c below)
