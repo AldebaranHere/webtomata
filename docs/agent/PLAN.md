@@ -3687,23 +3687,106 @@ pnpm --filter web exec playwright test pda-library cross/library cross/storage -
 
 ## Task T-038b — The Konversi tab of the PDA editor: PDA to a grammar
 
-**Status:** proposed (after T-038a; can run at the same time as T-038c)
-**Owner:** worker
+**Status:** todo (full spec written 2026-11-23; T-038a is merged; can run at the same time as T-038c, see "Shared ground")
+**Owner:** worker (DeepSeek)
 
-**Goal:** Section 2 of the sheet: the two stages (restricted normal form, then the grammar) as a stepper, the read-only result canvas, "Buka PDA ini sebagai mesin baru" and "Buka sebagai tata bahasa" (opens in the grammar mode as a new custom grammar). Uses `pda_to_rnf` (T-036) and `pda_to_cfg` (T-037); the wasm entry points `pdaToRnf` and `pdaToCfg` already exist (`protocol.ts`, found 2026-11-23); the pre-flight confirms the result types are enough for the stepper.
+**Goal:** The PDA panel gets a fourth and last tab, **Konversi**, built as section 2 of `design/screens/pda-simulation-conversion.md` (frame C): the two stages of the slides (Slide13) as a stepper, **1 Bentuk normal terbatas** (restricted normal form, RNF, `pdaToRnf`, T-036) and **2 Tata bahasa** (`pdaToCfg`, T-037); a read-only result on the canvas while a conversion is open; and the two ways out, **Buka PDA ini sebagai mesin baru** and **Buka sebagai tata bahasa** (a new custom grammar in the grammar mode). The engine and the worker already have everything (`pdaToRnf`, `pdaToCfg` are in `protocol.ts`, found 2026-11-23): **no change in `crates/`** unless the pre-flight proves a result type is not enough (then say what and why; do not add it silently).
 
-**Depends on:** T-038a (the panel's tabs), T-036, T-037, T-023 (open as a new grammar).
+**Decisions (the planner's; the pre-flight may find a flaw, it may not silently change one):**
+
+1. **Copy, do not generalize** (the rule of T-038a, ADR 0064). The FSM's `ConversionPanel.svelte`, `ConversionCanvas.svelte`, `conversion.ts` and the CNF stepper are not changed. New files `PdaConversionPanel.svelte`, `PdaConversionCanvas.svelte` (or the same job inside one component if it is small) and `pda-conversion.ts` (a pure model: stage, step index, what the step shows). `PlayerControls.svelte` is the FSM's conversion stepper; use it if its keys and buttons fit, otherwise copy and say why. Log the duplication for T-071 in the report.
+2. **Tabs:** `['simulation', 'table', 'definition', 'conversion']`. The tab's label reuses the FSM's existing label key (as T-038a did for Simulasi), so first JS stays within the 102-byte rule; the panel code lives in the lazy PDA chunk, imported statically in `PdaEditor` as T-038a did.
+3. **One engine call per user action.** "Mulai" (or the stage chip) calls `pdaToRnf` once; the stepper is local after that. Stage 2 calls `pdaToCfg` once, on **stage 1's result PDA** (the engine's `RnfResult.pda`), not on the student's PDA. The student's PDA is never changed by looking (as the FSM's conversion).
+4. **The canvas shows the result, read only.** Stage 1 draws `RnfResult.pda` (through `fromEnginePda`, T-033) with the current step's `removed` (struck through) and `added` (green) transitions marked; the caption "Hasil (hanya baca): bentuk normal terbatas". Stage 2 keeps the RNF machine (a grammar is not drawn). **The engine returns no positions**, and the new states (`newStates`) have none: the **source states keep their positions**, and the new ones are placed by a small pure function `rnfLayout` (new start and new accepting state left and right of the source; the states that split a transition on a row below, spaced at least 410 units apart because a PDA label needs that, see the note in T-033). Say in the pre-flight whether that is enough to read `wcwᴿ`'s RNF, and what you measured. **Opening the result as a new machine uses the same positions.**
+5. **Stage 2 shows rules in the grammar's own notation.** A step adds productions; the variable `<q,A,r>` is named from `PdaToCfg.variables` and the state names (T-037 left this to the UI). The panel shows **Ditambah** (this step's rules, highlighted) and the rules so far in a list windowed like the computation list (the last 50 and "… n baris sebelumnya"; `wcwᴿ` has 76 rules before cleanup, say how many steps there are). A rule's text is one string built by one pure function that the unit tests check against T-037's own oracle (`wcwᴿ`).
+6. **While a conversion is open the editor does not change the document.** Read how the FSM does it (`ConversionPanel` and `Editor.svelte`: what is disabled, what "Tutup konversi" restores) and do the same; if the FSM lets the student edit and drops the conversion, copy that instead. Say which in the pre-flight.
+7. **The ends.** At the last step of stage 1: **Buka PDA ini sebagai mesin baru** (a new saved PDA, titled "<source title> (RNF)", through the PDA workstation's existing way of creating a record, as `newPdaMachine` does; the student's PDA stays in "Mesin saya") and the button to stage 2. At the last step of stage 2: **Buka sebagai tata bahasa**: the grammar becomes a new custom grammar and the mode switches to grammar (the T-023 way for the CNF result; read it). **Pre-flight must test whether the grammar parser reads back `<q,A,r>` names and the terminals of the PDA's alphabet** (T-026/T-027 had the same problem with CNF helper names). If it does not, say exactly what fails and propose the smallest fix; do not invent a naming rule silently.
+8. **The handoff to another mode is the risky part.** The grammar workstation and the PDA workstation are separate components under `sandbox/+page.svelte` and unmount each other. Describe in the pre-flight how the new grammar reaches the grammar mode (the page's state, a store, a query), and how T-038c's PDA will reach the PDA mode in the other direction; **the planner reconciles the two designs before "Go"**, because T-038b and T-038c both touch the page.
+9. **Refusals are calm.** A PDA with no start state, or one that the engine refuses, shows the engine's message as a sentence in the tab and no stepper. The step sentences are the engine's message keys (T-036, T-037); check they are in the dictionary in `id` and `en` and that each reads well; new UI keys (`pda_convert.*`) go in `pda-messages.ts`, none of them in `id.ts`/`en.ts` (ADR 0050).
+10. **Not here:** NDPDA to DPDA (it does not exist), the stack drawing, a layout algorithm for any other purpose, saving the conversion.
+
+**Shared ground with T-038c (seams, so the two can run at the same time):** T-038b owns `PdaEditor.svelte`, `Pda*Conversion*`, `pda-conversion.ts`, `pda-messages.ts` keys `pda_convert.*` and the glossary lines for it. T-038c owns `GrammarWorkstation.svelte`, `web/src/lib/grammar/`, the keys `grammar.to_pda_*`. `+page.svelte`, `WorkstationSwitcher` and the library are shared: whoever needs a change there describes it in the pre-flight, and the planner rules before code. Each task has its own layout function; the duplication goes to the report.
+
+**Scope (files; the pre-flight confirms):** the new files above and their tests (`pda-conversion.test.ts`, `pda-conversion.wasm.test.ts`), `PdaEditor.svelte` (tab, snippet, the read-only canvas), the handoff lines of decision 8, `pda-messages.ts` (`id` and `en`), `docs/glossary.md` (new terms `TODO(review)`: "bentuk normal terbatas" is already there if T-036 added it, check), ADR 0065, `web/e2e/pda-conversion.spec.ts`, `docs/agent/reports/T-038b.md`.
+
+**Fixtures:**
+
+- **F-WCW:** the slides' `wcwᴿ` PDA (T-036 and T-037's oracle). Stage 1 ends in an RNF machine; stage 2 ends in the grammar with the rule count T-037 documents (76 before cleanup).
+- **F-ONE:** a PDA with one transition `p → q` reading `a`, popping nothing and pushing `A B C` (the expansion path of T-036).
+- **F-NOSTART:** a PDA with no start state.
+
+**Acceptance criteria:**
+
+1. The PDA panel's tabs are Simulasi, Tabel, Definisi, Konversi, in that order; the other three behave as before.
+2. F-WCW stage 1: the stepper walks every step of `RnfResult.steps`; each step shows its sentence, **Dihapus** (the split transition, struck through) and **Ditambah**; the canvas shows the RNF machine with the step's changes marked and the caption "(hanya baca)"; the student's document is unchanged (compare it before and after).
+3. F-WCW stage 2: the stepper walks every step of `PdaToCfg.steps`; the rules of a step appear as `<q,A,r> → …`; the list of rules so far reaches the oracle's count at the last step; the 50-row window and "… n baris sebelumnya" work.
+4. **Buka PDA ini sebagai mesin baru** creates a saved PDA titled "<source title> (RNF)", opens it, and the source PDA is still in "Mesin saya" untouched; its states and transitions equal `RnfResult.pda`.
+5. **Buka sebagai tata bahasa** opens a new custom grammar with the stage-2 rules and switches to the grammar mode; the grammar parses (no parse error) and its rule count equals the stage-2 count; the PDA mode's saved PDA is unchanged.
+6. F-ONE shows the expansion step with the removed transition and the added ones; F-NOSTART shows the calm refusal and no stepper; an engine failure shows the `EngineNotice`, never a blank tab.
+7. **Tutup konversi** returns to the editor with the same document, the same selection and the same history as before opening.
+8. Keyboard: every control is reachable with a visible focus ring; targets ≥ 44 px on the phone project; no sideways scroll at 360 px; `axe` clean on stage 1, stage 2 and the refusal.
+9. `id` and `en` exist for every new key; no key is in both dictionaries; first JS grows by at most 102 bytes per route (the report states the number); the `.wasm` is unchanged (no `crates/` change).
+10. No change to the PDA document, commands or storage format; no FSM file or test is edited.
+
+**Verification:** the full gate of AGENTS.md (cargo fmt/clippy/test only if `crates/` changed, wasm test, `pnpm lint`, `check`, `test`, `build`, Playwright desktop, phone and webkit-phone for the new spec, size budgets, axe). **Break each guard once on the final code and show a test catches it:** B1 stage 2 run on the student's PDA instead of the RNF result; B2 the opened machine not equal to `RnfResult.pda`; B3 the source document changed by looking (a mutation in the conversion path); B4 the 50-row window off by one; B5 `Buka sebagai tata bahasa` giving a grammar with a different rule count; B6 "Tutup konversi" leaving the history changed; B7 a new state with no position (the `rnfLayout` guard). Write `docs/agent/reports/T-038b.md`.
+
+**Rollback:** revert the PR; nothing stored changes except machines the student chose to save with "Buka … baru".
+
+**Pre-flight (steps 1 to 4, then stop):** read `ConversionPanel.svelte`, `ConversionCanvas.svelte`, `conversion.ts`, `PlayerControls.svelte`, `SidePanel.svelte`, `PdaEditor.svelte`, `PdaWorkstation.svelte`, `GrammarCnfStepper.svelte`, the T-023 way of opening a custom grammar, `sandbox/+page.svelte`, `fromEnginePda`, and the result types `RnfResult`, `PdaToCfg`. Then restate the plan, the files, the tests and the guards, and **list every flaw in this spec** (T-038a's pre-flight found fourteen; I want them before code). Answer in particular: (a) the handoff design of decision 8, in both directions; (b) whether the grammar parser reads `<q,A,r>` and the PDA's terminals back; (c) what `rnfLayout` does for F-WCW and whether the result is readable at 360 px; (d) how the FSM treats edits while a conversion is open; (e) the number of steps in each stage for F-WCW; (f) whether `PlayerControls` fits; (g) whether every engine step key of T-036 and T-037 is in the dictionary in both languages.
+
+**Depends on:** T-038a (merged), T-036, T-037, T-023 (merged).
 
 ---
 
 ## Task T-038c — "Ke PDA" in the grammar mode: CFG to PDA
 
-**Status:** proposed (after T-038a; can run at the same time as T-038b)
-**Owner:** worker
+**Status:** todo (full spec written 2026-11-23; T-038a is merged; can run at the same time as T-038b, see its "Shared ground")
+**Owner:** worker (Gemini)
 
-**Goal:** Section 3 of the sheet: a third tab "Ke PDA" in the grammar workstation with the two methods (top-down, bottom-up), the stepper and "Buka sebagai PDA baru". Uses `cfg_to_pda_topdown` and `cfg_to_pda_bottomup` (T-034, T-035); the wasm entry points `cfgToPdaTopdown` and `cfgToPdaBottomup` already exist (`protocol.ts`, found 2026-11-23); the pre-flight confirms the result types are enough for the stepper.
+**Goal:** The grammar workstation's third column gets a third tab, **Ke PDA**, next to "Transformasi CNF (6 Fase)" and "Uji String (CYK)", built as section 3 of `design/screens/pda-simulation-conversion.md` (frame D): two methods as radio buttons (**Atas-bawah**, `CFGtoPDAtopdown`, and **Bawah-atas**, `CFGtoPDAbottomup`, the names of the slides), a stepper with the sentence of each step and the transition that it adds, and **Buka sebagai PDA baru**, which opens the PDA in the PDA mode as a new saved PDA. The engine and the worker already have `cfgToPdaTopdown(grammar: string)` and `cfgToPdaBottomup(grammar: string)` (`protocol.ts`, found 2026-11-23): **no change in `crates/`** unless the pre-flight proves a result type is not enough.
 
-**Depends on:** P-005 (approved), T-034, T-035.
+**Decisions (the planner's; the pre-flight may find a flaw, it may not silently change one):**
+
+1. **Same shape as the CNF tab, not the same component.** Read `GrammarCnfStepper.svelte` (544 lines) and copy its stepper pattern into a new `GrammarToPdaTab.svelte` (and a pure model `grammar-to-pda.ts`); do not change the CNF or CYK code. `GrammarWorkstation.svelte` (2152 lines) gets only the tab: `activeTab` becomes `'cnf' | 'cyk' | 'topda'`, the phone tab list gets a fourth item, and the tab body renders the new component. Keep the change in that file as small as the tab needs; say in the pre-flight how many lines.
+2. **The grammar is the text the grammar mode already holds.** `cfgToPda*` take the grammar as text; use the text of the current grammar as the CNF tab and the CYK tab do (read how they get it). The conversion does **not** normalize the grammar first (T-034/T-035 non-goal); a grammar the engine refuses shows the engine's message as one calm sentence and no stepper.
+3. **No canvas in the grammar mode.** The result is shown as rows: each step shows its sentence (the engine's message key with parameters, already in the dictionary from T-034/T-035; check both languages), **Ditambah** (the transition this step adds, in the label form `a, A → BC` that the PDA diagram uses, with its states, highlighted) and **Sudah ditambahkan** (the earlier ones, windowed: the last 50 and "… n baris sebelumnya"). Use the PDA's own label formatter from `diagram/pda-diagram.ts` (`transitionLabel`) so the text is the same as on the PDA canvas. The states keep the slides' names (`p`, `q`; for the bottom-up machine the names the engine gives in `CfgToPda.states`).
+4. **One engine call per user action.** Choosing a method (or changing the grammar text) calls the engine once; the stepper is local after that. A change of the grammar clears the result (the FSM and CNF tabs do the same; copy their rule).
+5. **The end: Buka sebagai PDA baru.** It opens in the PDA mode as a **new saved PDA**, titled after the grammar and the method ("<grammar name> (PDA atas-bawah)" / "(PDA bawah-atas)"), and switches the mode to PDA. The grammar stays as it was. The engine returns no positions: the states are placed by a small pure function `cfgPdaLayout` of this task (for the top-down machine `p` and `q` at least 410 units apart; for the bottom-up machine the states in index order on one row at the same spacing; a PDA label needs that, see T-033). The converted document goes through `fromEnginePda` (T-033). Say in the pre-flight what the layout gives for the slides' `aⁿbⁿ` grammar in both methods and whether the loops' labels are readable.
+6. **The handoff to the PDA mode is the risky part.** The grammar workstation and the PDA workstation are separate components under `sandbox/+page.svelte` and unmount each other. Describe in the pre-flight how the new PDA reaches the PDA mode (the page's state, a store, a query) and how it becomes a saved record (the PDA workstation's existing creation path, as `newPdaMachine` does); **the planner reconciles this with T-038b's design (the other direction) before "Go"**.
+7. **The bottom-up warning is not hidden.** With an ε-rule, a bottom-up machine can loop (T-035 ADR): when the grammar has an ε-rule and the method is Bawah-atas, show one grey sentence under the result: it can run without end on strings that are not in the language, and the simulation will stop at its budget. New key in `grammar.*`.
+8. **Phone:** the tab is a fourth item in the phone tab strip (`workstation.tab_*`); its label must fit at 360 px without wrapping to a second line (say in the pre-flight what you measured; if four items do not fit, the smallest fix, not a new layout, and tell me).
+9. **Messages:** new keys `grammar.to_pda_*` in the grammar's dictionary (find where the grammar keys live and follow the ADR 0050 rule: no key in two dictionaries); every key in `id` and `en`. New terms in `docs/glossary.md` with `TODO(review)` if any ("atas-bawah", "bawah-atas" are the slides' words: check the glossary first).
+10. **Not here:** a picker for a saved grammar in the PDA mode, a drawing of the PDA in the grammar mode, normalizing the grammar, running the PDA from this tab.
+
+**Shared ground with T-038b (seams):** T-038c owns `GrammarWorkstation.svelte`, `web/src/lib/grammar/`, the keys `grammar.to_pda_*`, `cfgPdaLayout`. T-038b owns `PdaEditor.svelte` and the `pda_convert.*` keys. `+page.svelte`, `WorkstationSwitcher` and the library are shared: describe any change you need there in the pre-flight, and wait for the planner's ruling before code.
+
+**Scope (files; the pre-flight confirms):** `GrammarWorkstation.svelte` (the tab only), `GrammarToPdaTab.svelte`, `grammar-to-pda.ts` (+ `grammar-to-pda.test.ts`, `grammar-to-pda.wasm.test.ts`), the handoff lines of decision 6, the dictionaries, `docs/glossary.md`, ADR 0066, `web/e2e/grammar-to-pda.spec.ts` (and the phone tab strip's existing e2e only as far as the fourth item requires), `docs/agent/reports/T-038c.md`.
+
+**Fixtures:**
+
+- **F-ANBN:** the grammar `S → aSb | ε` (the slides' example). Top-down: `p`, `q`, the transitions that the engine returns (state the count). Bottom-up: its machine (state the count).
+- **F-EXPR:** a small expression grammar with a multi-character terminal or an operator (so that the label formatter and the layout are tried on a harder case).
+- **F-BAD:** a grammar that `cfgToPda*` refuses (read T-034 for what it refuses).
+
+**Acceptance criteria:**
+
+1. The grammar workstation's column 3 shows three tabs: Transformasi CNF (6 Fase), Uji String (CYK), Ke PDA; the first two behave as before; on a phone the strip has four items and the Ke PDA item fits on one line at 360 px.
+2. F-ANBN top-down: the stepper walks every step of `CfgToPda.steps`; each step shows its sentence and **Ditambah** with the transition in the PDA's own label form; at the last step the rows equal the engine's transitions in number and text.
+3. F-ANBN bottom-up: the same for `cfgToPdaBottomup`; the radio buttons switch the method and restart the stepper from step 1.
+4. Editing the grammar text clears the result; no answer for an older grammar is ever shown.
+5. **Buka sebagai PDA baru** (either method): the mode switches to PDA; a new saved PDA exists with the right title; its states, start, accepting state and transitions equal `CfgToPda.pda`; every state has a position and no two states overlap; the grammar mode's grammar is unchanged (compare the text before and after).
+6. F-BAD shows the engine's calm sentence and no stepper; an engine failure shows `EngineNotice`; the bottom-up note of decision 7 shows for a grammar with an ε-rule and only then.
+7. Keyboard: every control is reachable with a visible focus ring; the radios are a real radio group (arrow keys); targets ≥ 44 px on the phone project; no sideways scroll at 360 px; `axe` clean on both methods and the refusal.
+8. `id` and `en` exist for every new key; no key is in two dictionaries; first JS grows by at most 102 bytes per route if the grammar dictionary is shared (the report states the number; if it is lazy, say so and give the measured number).
+9. No change to the CNF or CYK behavior, to the grammar parser, to the engine or to the PDA document format; no FSM or PDA test is edited except as AC1 requires.
+
+**Verification:** the full gate of AGENTS.md (cargo only if `crates/` changed; `pnpm lint`, `check`, `test`, `build`, Playwright desktop, phone and webkit-phone for the new spec and the existing grammar and switcher specs, size budgets, axe). **Break each guard once on the final code and show a test catches it:** B1 the method radios not restarting the stepper; B2 a stale result shown after a grammar edit; B3 the opened PDA missing a transition (compare with `CfgToPda.pda`); B4 two states at the same position (`cfgPdaLayout`); B5 the grammar text changed by converting; B6 the bottom-up note shown for a grammar without an ε-rule; B7 the phone strip item wrapping to two lines. Write `docs/agent/reports/T-038c.md`.
+
+**Rollback:** revert the PR; nothing stored changes except PDAs the student chose to save with "Buka … baru".
+
+**Pre-flight (steps 1 to 4, then stop):** read `GrammarWorkstation.svelte` (the tab bar, `activeTab`, the phone tabs, how the grammar text reaches the CNF and CYK tabs), `GrammarCnfStepper.svelte`, `WorkstationPhoneTabs.svelte`, `sandbox/+page.svelte`, `PdaWorkstation.svelte`, `fromEnginePda`, `diagram/pda-diagram.ts` (`transitionLabel`) and the `CfgToPda` type. Then restate the plan, the files, the tests and the guards, and **list every flaw in this spec**. Answer in particular: (a) the handoff design of decision 6; (b) how many lines change in `GrammarWorkstation.svelte`; (c) the transition counts and the layout result for F-ANBN in both methods; (d) whether four phone tabs fit at 360 px; (e) where the grammar dictionary lives and whether it is shared; (f) the engine's refusals for F-BAD; (g) whether every engine step key of T-034 and T-035 is in the dictionary in both languages.
+
+**Depends on:** T-038a (merged), T-034, T-035 (merged).
 
 ---
 
@@ -3799,7 +3882,7 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-035** CFG to PDA, bottom-up (slides, shift and reduce): specified in its own block above (`todo`, since 2026-11-05; T-034 is merged).
 - **T-036** PDA to restricted normal form, with a trace: specified in its own block above (`done`, PR 161).
 - **T-037** PDA in restricted normal form to CFG, with a trace: specified in its own block above (`done`, PR 163). The slides' example `wcwᴿ` is the oracle (76 rules, 15 after cleanup).
-- **T-038** Conversions and simulation panel for the PDA: split on 2026-11-23 into T-038a (`todo`, full spec above: the Simulasi tab), T-038b (`proposed`: Konversi, PDA to grammar) and T-038c (`proposed`: "Ke PDA" in the grammar mode).
+- **T-038** Conversions and simulation panel for the PDA: split on 2026-11-23 into T-038a (`done`, PR 243: the Simulasi tab), T-038b (`todo`: Konversi, PDA to grammar; DeepSeek) and T-038c (`todo`: "Ke PDA" in the grammar mode; Gemini); b and c run at the same time and the planner reconciles their two cross-mode handoffs before "Go".
 - **T-085** The simulation strokes the used transition, not the whole `from>to` group (`proposed`, found by T-038a's pre-flight): two transitions between the same pair (wwᴿ has two on q0→q0) both light up today; needs an optional per-transition prop in `EditorCanvas` and `DiagramDrawing`.
 - **T-086** The tour's step 5 says "Semuanya tersimpan di perangkat ini", which is false for the PDA's test list (T-038a's decision 7: it lives for the session only). Reword the shared step for both modes, or add a mode-specific sentence; the planner owns the tour's text. (`proposed`, found in T-038a.)
 - **T-071** One scheduler for the two engine queries of the PDA panel (`proposed`, found by T-062): `checker.ts` and `pda-determinism.ts` are the same rule (a debounce, a sequence number, a dispose) on two different answers, and the panel now asks the engine twice after every change. One small `createQuery` that both use would remove the second copy, but `checker.ts` is shared with the FSM, so it needs FSM tests and a decision of its own. Not urgent: there is no third query yet, and the copy is 40 lines.

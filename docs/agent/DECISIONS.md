@@ -721,3 +721,13 @@ Format:
 - Alternatives considered: editing six tests to click Tabel (rejected: the kind switch would sit off the default tab); a fake clock for the stopped e2e (rejected: no e2e uses one).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-038a amendment, T-085), `design/screens/pda-simulation-conversion.md` (the head, the 1-based counter; planner to amend)
+
+
+## 2026-11-23 — T-038b and T-038c written; they run at the same time with named seams
+
+- Decider: planner
+- Context: after T-038a, the two remaining tasks of P-005 use engine entry points that already exist in the worker (`pdaToRnf`, `pdaToCfg`, `cfgToPdaTopdown`, `cfgToPdaBottomup`), so no `crates/` change is planned. Both tasks need the engine's result as a saved machine in another mode, and the engine returns no positions.
+- Decision: T-038b (DeepSeek, the PDA's Konversi tab) and T-038c (Gemini, "Ke PDA" in the grammar mode) run in parallel. Each owns its component files and message keys; `+page.svelte`, the switcher and the library are shared, so each pre-flight must describe its handoff to the other mode and the planner reconciles the two designs before "Go". Each task has its own small layout function for engine-made PDAs (the duplication goes to T-071's list). T-038b must test whether the grammar parser reads back `<q,A,r>` names before it opens a PDA's grammar.
+- Alternatives considered: one after the other (rejected: they touch different workstations, and both pre-flights are cheap); one shared layout module (rejected: it would be a third file both tasks must wait for).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-038b, T-038c; T-038a marked done), later `PdaEditor.svelte`, `GrammarWorkstation.svelte`, `sandbox/+page.svelte`, `pda-messages.ts`, ADR 0065 and 0066
