@@ -771,3 +771,13 @@ Format:
 - Alternatives considered: one arrow per transition (rejected: it changes the layout of every PDA and the geometry layer); a per-symbol mark in the FSM label (rejected: a different problem, one line of symbols); marking the removed and added lines of the conversion canvas (rejected: the removed transition is not in the result document).
 - Reversible? yes
 - Affects: `pda-diagram.ts`, `DiagramDrawing.svelte`, `EditorCanvas.svelte` (the prop), `PdaEditor.svelte`, `pda-run.ts`
+
+
+## 2026-11-24 — T-071 is split: unify the identical copies now, the similar ones after Turing machines
+
+- Decider: planner
+- Context: the PDA work copied FSM code on purpose (ADR 0064, 0065). Measured on 2026-11-24: `tester.ts` and `pda-tester.ts` are the same 122 lines with other types; `checker.ts` is already generic and `pda-determinism.ts` repeats its debounce, sequence number and dispose; the 50-row window exists three times and `grammarText` may be a fourth copy of `grammarToText`. The run models (338 and 467 lines), the run panels (372 and 427), the test lists (253 and 308) and the conversions (685 and 615 plus 1046 and 414) are similar but not the same.
+- Decision: T-071 removes only the copies that are the same code with another type (one scheduled query, one tester, one window helper, a refusal helper, and `grammarText` if it is the same text), behind a pre-flight and a race test file. The similar copies become T-071b and are decided after the Turing-machine task.
+- Alternatives considered: unify everything now (rejected: it touches every FSM test and first JS, and a shape drawn from two machines is the wrong shape more often than one drawn from three); leave all copies (rejected: a scheduler bug would have to be fixed in two files, and the stale-answer rule is the one we cannot get wrong).
+- Reversible? yes
+- Affects: `checker.ts`, `pda-determinism.ts`, `tester.ts`, `pda-tester.ts` (deleted), `PdaEditor.svelte` (an import), the window helpers, ADR 0067

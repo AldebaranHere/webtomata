@@ -3943,6 +3943,49 @@ No mode-specific variant (a second key would cost bytes in first JS for a senten
 
 ---
 
+## Task T-071 — One scheduled query, one tester, and the small copies of the PDA work
+
+**Status:** todo (full spec written 2026-11-24; the first half of the cleanup, see "Not here")
+**Owner:** worker (DeepSeek; it wrote most of the copies and knows them)
+
+**Goal:** The PDA work (T-033 to T-038) copied several FSM pieces on purpose, because "copy, do not generalize" kept the FSM's tests out of those tasks (ADR 0064, 0065). The copies now cost more than they save, and Turing machines would make a third one. This task removes the **safe** copies, the ones that are the same code with another type, and nothing else:
+
+1. **Two schedulers that are one rule.** `checker.ts` (`createChecker`, already generic over the document) and `pda-determinism.ts` (`createDeterminism`) both do: keep the newest document, count a sequence number, wait 200 ms, ask the engine, drop an answer that is not for the newest document, never run after `dispose`. The determinism copy differs in what it keeps and when it empties it: it empties the pairs the moment a new document is scheduled (a badge must not show an old answer) while the checker keeps the old items until the new answer comes. Make **one generic scheduled query** that both use, with that difference as an option, and keep `createChecker` and `createDeterminism` as the thin public functions that the editors already call.
+2. **Two testers that are one file.** `tester.ts` and `pda-tester.ts` are 122 lines each and differ only in the document type, the equality function and the outcome type (the diff is about ten lines). Make **one generic `createTester`** (document type, outcome type, equality) in `tester.ts`; delete `pda-tester.ts`; `PdaEditor` calls the generic one with the PDA's types. Its two test files keep every case; they test the one function, with the PDA's types as a second instantiation.
+3. **Small helpers that exist two or three times.** (a) The window of the last 50 rows with the count of hidden ones: `shownRows` in `pda-run.ts`, `windowEarlierRows` in `grammar-to-pda.ts`, `listWindow` and `rulesWindow` in `pda-conversion.ts` (and a copy in the FSM's run model if there is one: look): **one definition**, the others call it or are deleted. (b) `grammarText` in `pda-conversion.ts` and `grammarToText` in `grammar-text.ts`: if both give the same text for every grammar the engine can return (test it on the T-037 fixtures and the grammar presets), keep one; if they differ, keep both and write in the report exactly how they differ. (c) The `input.unknown_symbol` mapping in `pdaRefusalText` and `refusalText`: a pure move into one helper.
+
+**Decisions (the planner's; the pre-flight may find a flaw, it may not silently change one):**
+
+1. **No behavior change anywhere.** Every existing test passes **without an edit**, except imports and the two moved test files. The PDA's determinism badge, the checks list and the test list behave exactly as today (timing, order of events, what is shown while an answer is on its way). The FSM editor's checks and test list likewise.
+2. **The generic query is small and has no new feature.** Its options are: how to ask (`ask(doc) → Promise<EngineResult<R>>`), how to turn the answer into what the caller shows, the delay (default 200 ms), and whether the shown value is emptied at `schedule`. It exposes what the two callers need today (`status`, the value, `problem`, `subscribe`, `schedule`, `retry`, `dispose`) and nothing more; `createDeterminism` simply does not expose `retry` and `problem` if it does not today. Do not add a cancel, a cache or a third status.
+3. **The races are the whole risk.** A scheduler bug shows an answer for an older machine, which is exactly what these files exist to prevent. So: the shared function gets **its own test file that covers the race rules once** (an older answer is dropped; a new `schedule` while an answer is on its way drops that answer; `dispose` stops everything, including a timer and an answer on its way; `retry` asks again for the newest document; a thrown error and a refused answer set `failed`; the cancel case of `engineProblem` goes back to `idle`; the emptying option works both ways). The two old test files stay and still pass.
+4. **Keep the public names and files that other code imports.** `createChecker`, `createDeterminism`, `badgeModel`, `competitionReason` and their types keep their exports. `pda-tester.ts` is removed (its one importer changes). No other file moves.
+5. **Net size is a result to report, not a goal to hit:** state lines added and removed per file and the net. If the net is not negative, say why and stop to ask before finishing.
+
+**Not here (and why):** the run models `run.ts` and `pda-run.ts` (338 and 467 lines), `RunPanel` and `PdaRunPanel`, `TestList` and `PdaTestList`, the conversion models and panels, and the two layout functions (`rnfLayout`, `cfgPdaLayout` do different jobs). They are similar, not the same, and a generic version would touch every FSM test and the first-JS budget. They become **T-071b (proposed)**, decided after the Turing-machine task shows what a third machine needs; a shared shape drawn from two cases is the wrong shape more often than from three.
+
+**Scope (files; the pre-flight confirms):** `web/src/lib/editor/checker.ts` and `pda-determinism.ts` (and the one new generic file, name by the worker, with its test), `tester.ts`, `pda-tester.ts` (deleted) and their tests, `PdaEditor.svelte` (the import of the tester only), `pda-run.ts`, `grammar-to-pda.ts`, `pda-conversion.ts` (the window), the place that holds the single window helper (the worker's choice, one small file, with a test), `pda-run.ts`/`run.ts` refusal helper if (c) applies, `docs/decisions/0067-shared-query-and-tester.md`, `docs/agent/reports/T-071.md`, `docs/agent/PLAN.md` (status, T-071b entry).
+
+**Acceptance criteria:**
+
+1. `createChecker` and `createDeterminism` are built on one generic query; the two copies of the debounce, the sequence number and the dispose are gone (show by `grep`: one place).
+2. `createTester` is one generic function in `tester.ts`; `pda-tester.ts` does not exist; the FSM editor and the PDA editor both use it.
+3. One window helper; the three other definitions are gone or are one-line calls; the 49/50/51-row boundary tests still pass.
+4. The new race test file passes and covers every rule of decision 3.
+5. **No existing test, e2e spec or unit test, is edited** except for imports (list every one that changed and why), and all of them pass: unit and wasm tests, and on desktop and phone the specs that use the checks, the determinism badge and the test list (`editor*`, `pda-editor`, `pda-simulation`, `pda-determinism`, `pda-panel`, `pda-conversion`, `tester`/test-list specs; the worker lists the files it ran).
+6. The first JS size does not grow on any route (it should shrink); the `.wasm` is unchanged. `check:strings`, `check:tokens`, lint, `check`, `build`, `size` pass.
+7. The report lists the lines added and removed per file and the net, what stayed a copy and why (the "Not here" list, plus anything found), and how the `grammarText` question (3b) was answered.
+
+**Verification:** the full gate of AGENTS.md without `cargo` (no `crates/` change); the specs of AC5 on desktop and phone and `cross/workstation-phone` on webkit-phone. **Break each guard once on the final code and show a test catches it:** B1 the sequence check removed (an older answer shown); B2 `dispose` not stopping an answer on its way; B3 the determinism copy no longer emptied at `schedule` (an old badge shown); B4 the checker emptied at `schedule` when it must keep the old items; B5 the tester treating an unchanged machine as changed (it must keep the old rows while the strings change; read the original to see the exact rule); B6 the window off by one.
+
+**Pre-flight (steps 1 to 4, then stop):** this changes code that both editors depend on and that decides whether an old answer can show, so read first: `checker.ts`, `pda-determinism.ts`, `tester.ts`, `pda-tester.ts`, their tests, the two editors' use of them, and every definition named in item 3. Then restate the plan, the files, the tests and the guards, and **list every flaw in this spec**. Answer in particular: (a) the exact differences between the two testers (types, equality, outcome kinds such as `refused`); (b) the exact differences between the two schedulers, line by line, and the smallest option set that covers them; (c) what else matches the window helper (search `shownRows`, `hidden`, "baris sebelumnya", `slice(-`); (d) whether `grammarText` and `grammarToText` give the same text on the fixtures; (e) where the single window helper should live.
+
+**Rollback:** revert the PR; nothing stored changes.
+
+**Depends on:** T-038a, T-038b, T-038c (merged), T-062 (merged).
+
+---
+
 ## Planner task P-005 — Wireframe of the PDA simulation, the stack and the conversions
 
 **Status:** done (drawn on 2026-11-23 in `design/screens/pda-simulation-conversion.md` and `.svg`; the owner accepted the planner's pick on all five questions the same day: CFG to PDA lives in the grammar mode, the stack is a column in the panel, "Uji banyak string" is in the first version, the peak is always visible, three build tasks; T-038 is split into T-038a, T-038b and T-038c below)
@@ -4039,7 +4082,8 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-085** The PDA simulation marks the line of the transition that fired, not the whole `from>to` group: specified in its own task block above (`todo`).
 - **T-086** The tour's step 5 promises that the test list is saved on the device, which is false for the PDA: specified in its own task block above (`todo`).
 - **T-087** The custom-grammar card in the library has a button inside a button (axe `nested-interactive`): specified in its own task block above (`done`, commit `05bcff0`).
-- **T-071** One scheduler for the two engine queries of the PDA panel (`proposed`, found by T-062): `checker.ts` and `pda-determinism.ts` are the same rule (a debounce, a sequence number, a dispose) on two different answers, and the panel now asks the engine twice after every change. One small `createQuery` that both use would remove the second copy, but `checker.ts` is shared with the FSM, so it needs FSM tests and a decision of its own. Not urgent: there is no third query yet, and the copy is 40 lines.
+- **T-071** One scheduled query, one tester and the small copies of the PDA work: specified in its own task block above (`todo`).
+- **T-071b** The big copies of the PDA work (`proposed`, split from T-071 on 2026-11-24): the run models `run.ts` / `pda-run.ts`, `RunPanel` / `PdaRunPanel`, `TestList` / `PdaTestList`, the conversion models and panels. They are similar, not the same; decide the shared shape after the Turing-machine task shows what a third machine needs, and write the spec then.
 - **P-004** Wireframe of the PDA editor: planner task above (`done`, approved on 2026-11-06).
 
 **E. Turing machines** (after C; the owner names each step; each has an ADR, differential tests on the owner's `.jff` files, and an approved wireframe before any editor)
