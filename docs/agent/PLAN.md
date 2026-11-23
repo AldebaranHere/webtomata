@@ -3832,6 +3832,37 @@ Gemini's pre-flight found 9 flaws. Where this block and the text above differ, *
 
 ---
 
+## Task T-086 — The tour's step 5 must not promise what the PDA does not do
+
+**Status:** todo (full spec written 2026-11-23)
+**Owner:** worker (either; it is small)
+
+**Goal:** Step 5 of the one-minute tour ("Uji banyak string") ends with "Semuanya tersimpan di perangkat ini." / "Everything is saved on this device." The tour is shared by the FSM and the PDA mode (the "?" button opens it in both). In the PDA mode the test list lives for the session only (T-038a, decision 7), so the sentence is false there, and a student who trusts it loses the list on reload. Remove the claim from the shared step; the real, true promise stays where it already is (the "Tersimpan di perangkat ini" status of the machine and the first-run privacy line).
+
+**Decision (the planner's):** drop the last sentence from `tour.s5_body` in both languages, and change nothing else. The new texts:
+
+- `id`: `Tulis string di kolom "Tambah string", lalu tekan Tambah. Hasilnya ikut berubah saat mesin diubah.`
+- `en`: `Write a string in the "Add a string" field, then press Add. Its result changes when the machine changes.`
+
+No mode-specific variant (a second key would cost bytes in first JS for a sentence that says less). The FSM loses a true sentence; its machine status and `first.privacy` still say it. Do not touch `tour.ts`, the other tour steps, `storage.saved` or `first.privacy`.
+
+**Scope (files):** `web/src/lib/i18n/id.ts`, `web/src/lib/i18n/en.ts`, one test, `docs/agent/PLAN.md` (status). No ADR (it is a copy fix; the decision is in `DECISIONS.md`).
+
+**Acceptance criteria:**
+
+1. `tour.s5_body` has the two texts above, character for character.
+2. A unit test (new, or in the tour's existing test file if there is one) reads both dictionaries and asserts that `tour.s5_body` does not contain a saving claim (`tersimpan`, `saved`, `disimpan`, `stored`). It fails on the old text.
+3. No other string changes (`git diff` shows two changed lines in the dictionaries). The first JS size does not grow (it shrinks by a few bytes; say the number).
+4. `pnpm check:strings` and the existing first-run e2e (`web/e2e/cross/first-run.spec.ts`) stay green; if that spec asserts the old sentence, change that assertion and say so.
+
+**Verification:** `pnpm lint`, `check`, `test`, `build`, `check:strings`, `size`; the first-run spec on desktop and phone. **Break the guard once:** put the old sentence back and show the unit test of AC2 fails. No report file is needed; put the guard output and the size number in the PR description.
+
+**Rollback:** revert the PR.
+
+**Depends on:** none.
+
+---
+
 ## Planner task P-005 — Wireframe of the PDA simulation, the stack and the conversions
 
 **Status:** done (drawn on 2026-11-23 in `design/screens/pda-simulation-conversion.md` and `.svg`; the owner accepted the planner's pick on all five questions the same day: CFG to PDA lives in the grammar mode, the stack is a column in the panel, "Uji banyak string" is in the first version, the peak is always visible, three build tasks; T-038 is split into T-038a, T-038b and T-038c below)
@@ -3926,7 +3957,7 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-037** PDA in restricted normal form to CFG, with a trace: specified in its own block above (`done`, PR 163). The slides' example `wcwᴿ` is the oracle (76 rules, 15 after cleanup).
 - **T-038** Conversions and simulation panel for the PDA: split on 2026-11-23 into T-038a (`done`, PR 243: the Simulasi tab), T-038b (`todo`: Konversi, PDA to grammar; DeepSeek) and T-038c (`todo`: "Ke PDA" in the grammar mode; Gemini); b and c run at the same time and the planner reconciles their two cross-mode handoffs before "Go".
 - **T-085** The simulation strokes the used transition, not the whole `from>to` group (`proposed`, found by T-038a's pre-flight): two transitions between the same pair (wwᴿ has two on q0→q0) both light up today; needs an optional per-transition prop in `EditorCanvas` and `DiagramDrawing`.
-- **T-086** The tour's step 5 says "Semuanya tersimpan di perangkat ini", which is false for the PDA's test list (T-038a's decision 7: it lives for the session only). Reword the shared step for both modes, or add a mode-specific sentence; the planner owns the tour's text. (`proposed`, found in T-038a.)
+- **T-086** The tour's step 5 promises that the test list is saved on the device, which is false for the PDA: specified in its own task block above (`todo`).
 - **T-087** In `GrammarWorkstation.svelte`, `.custom-card` is a `<div role="button">` containing `<button class="btn-delete">`, which triggers axe `nested-interactive` on desktop whenever a custom grammar exists in the library (`proposed`, found in T-038c).
 - **T-071** One scheduler for the two engine queries of the PDA panel (`proposed`, found by T-062): `checker.ts` and `pda-determinism.ts` are the same rule (a debounce, a sequence number, a dispose) on two different answers, and the panel now asks the engine twice after every change. One small `createQuery` that both use would remove the second copy, but `checker.ts` is shared with the FSM, so it needs FSM tests and a decision of its own. Not urgent: there is no third query yet, and the copy is 40 lines.
 - **P-004** Wireframe of the PDA editor: planner task above (`done`, approved on 2026-11-06).

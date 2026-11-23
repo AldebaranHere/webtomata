@@ -741,3 +741,13 @@ Format:
 - Alternatives considered: T-038b writes the grammar storage keys itself (rejected: it duplicates the grammar's storage schema and collides with T-038c in one file); change the parser to keep `<…>` (rejected: outside the task and risks T-026/T-027); a new drawing layer for per-transition strokes (rejected: T-085).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-038b, T-038c), later `sandbox/+page.svelte`, `GrammarWorkstation.svelte`, `PdaWorkstation.svelte`, `WorkstationPhoneTabs.svelte`
+
+
+## 2026-11-23 — T-086: drop the saving claim from the shared tour step instead of adding a PDA variant
+
+- Decider: planner
+- Context: tour step 5 ends "Semuanya tersimpan di perangkat ini". The tour is shared by the FSM and the PDA mode; the PDA's test list lives for the session only (T-038a, decision 7).
+- Decision: remove the last sentence in both languages. The true promise stays in the machine's "Tersimpan di perangkat ini" status and in `first.privacy`.
+- Alternatives considered: a PDA-specific step text (rejected: a second key costs first-JS bytes for a sentence that says less); saving the PDA's test list (rejected in T-038a: it needs a document-format change).
+- Reversible? yes
+- Affects: `tour.s5_body` in `id.ts` and `en.ts`
