@@ -3945,7 +3945,7 @@ No mode-specific variant (a second key would cost bytes in first JS for a senten
 
 ## Task T-071 — One scheduled query, one tester, and the small copies of the PDA work
 
-**Status:** todo (full spec written 2026-11-24; the first half of the cleanup, see "Not here")
+**Status:** in-progress (branch `task/T-071-shared-query-tester`; full spec written 2026-11-24, amended after the pre-flight; the first half of the cleanup, see "Not here")
 **Owner:** worker (DeepSeek; it wrote most of the copies and knows them)
 
 **Goal:** The PDA work (T-033 to T-038) copied several FSM pieces on purpose, because "copy, do not generalize" kept the FSM's tests out of those tasks (ADR 0064, 0065). The copies now cost more than they save, and Turing machines would make a third one. This task removes the **safe** copies, the ones that are the same code with another type, and nothing else:
