@@ -1,15 +1,18 @@
 // Checking the machine in the engine after each change, a little later, and never showing an answer
 // for an older machine. No DOM and no framework: the editor calls `schedule` with each new document
 // and shows `items`, `status` and `problem`. The engine runs in a worker, so this never blocks a tap.
-import { engineProblem } from '../engine/problem.ts';
+// The query itself (debounce, sequence number, dispose) is `createQuery` in `query.ts`, shared with
+// the PDA's determinism badge (T-071).
 import type { EngineProblem } from '../engine/problem.ts';
 import type { EngineResult, Issue } from '../engine/types.ts';
 import { checkItems } from './checks.ts';
 import type { CheckItem } from './checks.ts';
 import type { MachineDocument } from './document.ts';
+import { createQuery } from './query.ts';
+import type { QueryStatus } from './query.ts';
 
 /** idle: nothing was asked yet. checking: a change is waiting or the engine is working. ready: `items` are for the newest document. failed: the engine did not answer. */
-export type CheckStatus = 'idle' | 'checking' | 'ready' | 'failed';
+export type CheckStatus = QueryStatus;
 
 export interface Checker<D = MachineDocument> {
 	status(): CheckStatus;
@@ -31,79 +34,21 @@ export function createChecker<D = MachineDocument>(options: {
 	const {
 		validate,
 		toItems = checkItems as unknown as (issues: readonly Issue[], doc: D) => CheckItem[],
-		delayMs = 200
+		delayMs
 	} = options;
-	let status: CheckStatus = 'idle';
-	let items: CheckItem[] = [];
-	let problem: EngineProblem | undefined;
-	let newest: D | null = null;
-	let sequence = 0;
-	let timer: ReturnType<typeof setTimeout> | undefined;
-	let disposed = false;
-	const listeners = new Set<() => void>();
-
-	const emit = () => {
-		for (const listener of [...listeners]) listener();
-	};
-
-	async function run() {
-		const doc = newest;
-		if (!doc || disposed) return;
-		const mine = ++sequence;
-		try {
-			const answer = await validate(doc);
-			// A newer document was asked about meanwhile: this answer is old.
-			if (mine !== sequence || disposed) return;
-			if (answer.ok) {
-				items = toItems(answer.value, doc);
-				problem = undefined;
-				status = 'ready';
-			} else {
-				items = [];
-				problem = engineProblem(new Error(answer.error.key));
-				status = 'failed';
-			}
-		} catch (error) {
-			if (mine !== sequence || disposed) return;
-			items = [];
-			problem = engineProblem(error);
-			// A call that the app canceled itself has no problem to show: go back to waiting.
-			status = problem ? 'failed' : 'idle';
-		}
-		emit();
-	}
-
+	const query = createQuery<D, Issue[], CheckItem[]>({
+		ask: validate,
+		toValue: (issues, doc) => toItems(issues, doc),
+		empty: () => [],
+		delayMs
+	});
 	return {
-		status: () => status,
-		items: () => items,
-		problem: () => problem,
-		subscribe(listener) {
-			listeners.add(listener);
-			return () => {
-				listeners.delete(listener);
-			};
-		},
-		schedule(doc) {
-			if (disposed) return;
-			newest = doc;
-			// Older answers are no use any more, also one that is on its way.
-			sequence++;
-			status = 'checking';
-			clearTimeout(timer);
-			timer = setTimeout(() => void run(), delayMs);
-			emit();
-		},
-		retry() {
-			if (disposed || !newest) return;
-			status = 'checking';
-			clearTimeout(timer);
-			emit();
-			void run();
-		},
-		dispose() {
-			disposed = true;
-			clearTimeout(timer);
-			listeners.clear();
-		}
+		status: () => query.status(),
+		items: () => query.value(),
+		problem: () => query.problem(),
+		subscribe: (listener) => query.subscribe(listener),
+		schedule: (doc) => query.schedule(doc),
+		retry: () => query.retry(),
+		dispose: () => query.dispose()
 	};
 }

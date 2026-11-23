@@ -1,17 +1,19 @@
 // The determinism badge of the PDA editor: the engine's competing pairs, asked again a moment after
 // each change, and the sentence that says why two transitions compete (Task T-062).
 //
-// The query follows the rules of `checker.ts` (the debounce, the sequence number and `dispose`) and
-// does not change it: `checker.ts` is shared with the FSM and is typed for `Issue[]`. A badge never
-// shows the answer for an older document: the pairs are emptied when a new document is scheduled.
+// The query is `createQuery` (query.ts), the same one the checks of both editors use (T-071). A
+// badge never shows the answer for an older document: the pairs are emptied when a new document is
+// scheduled.
 import type { MessageKey } from '#lib/i18n/id.ts';
 import type { Params } from '#lib/i18n/translate.ts';
 import type { Competition, EngineResult } from '../engine/types.ts';
 import { formatStackSeq, stackSeparator } from './diagram/pda-diagram.ts';
 import type { PdaDocument, PdaKind } from './pda-document.ts';
+import { createQuery } from './query.ts';
+import type { QueryStatus } from './query.ts';
 
 /** idle: nothing was asked yet. checking: a change is waiting or the engine is working. ready: `pairs` are for the newest document. failed: the engine did not answer. */
-export type DeterminismStatus = 'idle' | 'checking' | 'ready' | 'failed';
+export type DeterminismStatus = QueryStatus;
 
 export interface Determinism {
 	status(): DeterminismStatus;
@@ -26,64 +28,21 @@ export function createDeterminism(options: {
 	query: (doc: PdaDocument) => Promise<EngineResult<Competition[]>>;
 	delayMs?: number;
 }): Determinism {
-	const { query, delayMs = 200 } = options;
-	let status: DeterminismStatus = 'idle';
-	let pairs: Competition[] = [];
-	let newest: PdaDocument | null = null;
-	let sequence = 0;
-	let timer: ReturnType<typeof setTimeout> | undefined;
-	let disposed = false;
-	const listeners = new Set<() => void>();
-
-	const emit = () => {
-		for (const listener of [...listeners]) listener();
-	};
-
-	async function run() {
-		const doc = newest;
-		if (!doc || disposed) return;
-		const mine = ++sequence;
-		try {
-			const answer = await query(doc);
-			// A newer document was asked about meanwhile: this answer is old.
-			if (mine !== sequence || disposed) return;
-			pairs = answer.ok ? answer.value : [];
-			status = answer.ok ? 'ready' : 'failed';
-		} catch {
-			if (mine !== sequence || disposed) return;
-			pairs = [];
-			status = 'failed';
-		}
-		emit();
-	}
-
+	const { query: ask, delayMs } = options;
+	const scheduled = createQuery<PdaDocument, Competition[], Competition[]>({
+		ask,
+		toValue: (pairs) => pairs,
+		empty: () => [],
+		emptyAtSchedule: true,
+		keepsProblem: false,
+		delayMs
+	});
 	return {
-		status: () => status,
-		pairs: () => pairs,
-		subscribe(listener) {
-			listeners.add(listener);
-			return () => {
-				listeners.delete(listener);
-			};
-		},
-		schedule(doc) {
-			if (disposed) return;
-			newest = doc;
-			// Older answers are no use any more, also one that is on its way.
-			sequence++;
-			// A badge never shows the answer for an older document: while the new answer is on its
-			// way there is no badge, not an old one.
-			pairs = [];
-			status = 'checking';
-			clearTimeout(timer);
-			timer = setTimeout(() => void run(), delayMs);
-			emit();
-		},
-		dispose() {
-			disposed = true;
-			clearTimeout(timer);
-			listeners.clear();
-		}
+		status: () => scheduled.status(),
+		pairs: () => scheduled.value(),
+		subscribe: (listener) => scheduled.subscribe(listener),
+		schedule: (doc) => scheduled.schedule(doc),
+		dispose: () => scheduled.dispose()
 	};
 }
 
