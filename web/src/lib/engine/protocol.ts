@@ -31,6 +31,7 @@ import type {
 	Competition,
 	PdaBudget,
 	PdaSimulationReport,
+	PdaStringOutcome,
 	CfgToPda,
 	RnfResult,
 	PdaToCfg,
@@ -123,6 +124,15 @@ export interface EngineApi {
 		input: string,
 		budget?: Partial<PdaBudget>
 	): EngineResult<PdaSimulationReport>;
+	/**
+	 * Runs many strings on one PDA, in one call: the verdict of each, in the order given. The
+	 * budget is for each string, and the PDA is read once.
+	 */
+	simulatePdaMany(
+		pda: Pda,
+		inputs: string[],
+		budget?: Partial<PdaBudget>
+	): EngineResult<PdaStringOutcome[]>;
 	importPdaJff(xml: string): EngineResult<PdaJff>;
 	exportPdaJff(pda: Pda, layout: JffState[]): EngineResult<string>;
 	cfgToPdaTopdown(grammar: string): EngineResult<CfgToPda>;
@@ -163,6 +173,7 @@ export const METHODS = [
 	'validatePda',
 	'pdaDeterminism',
 	'simulatePda',
+	'simulatePdaMany',
 	'importPdaJff',
 	'exportPdaJff',
 	'cfgToPdaTopdown',

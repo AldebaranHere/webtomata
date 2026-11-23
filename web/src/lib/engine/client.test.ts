@@ -10,7 +10,7 @@ import {
 import type { WorkerLike } from './client.ts';
 import { METHODS } from './protocol.ts';
 import type { CallMessage, ReplyMessage } from './protocol.ts';
-import type { Machine } from './types.ts';
+import type { Machine, Pda } from './types.ts';
 
 /** A worker that does nothing until the test makes it answer. */
 class FakeWorker implements WorkerLike {
@@ -170,6 +170,24 @@ describe('the web budgets', () => {
 		workers[0]!.reply({ id: 3, result: worked(null) });
 		workers[0]!.reply({ id: 4, result: worked(null) });
 		await Promise.all([sim, det, eq, sm]);
+	});
+
+	it('give simulatePdaMany its budget and pass the strings as a list', async () => {
+		const { engine, workers } = setup();
+		const pda: Pda = {
+			schemaVersion: 1,
+			kind: 'dpda',
+			inputAlphabet: ['a'],
+			stackAlphabet: ['A'],
+			states: [0],
+			start: 0,
+			accepting: [0],
+			transitions: []
+		};
+		const call = engine.simulatePdaMany(pda, ['', 'a']);
+		expect(workers[0]!.posted[0]!.args).toEqual([pda, ['', 'a'], WEB_BUDGETS.simulatePdaMany]);
+		workers[0]!.reply({ id: 1, result: worked(null) });
+		await call;
 	});
 
 	it('give way to the fields of the call, field by field', async () => {

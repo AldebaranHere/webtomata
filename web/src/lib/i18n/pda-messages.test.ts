@@ -68,7 +68,28 @@ const PDA_KEYS: readonly MessageKey[] = [
 	'pda_files.note',
 	'pda_files.download_jff',
 	'pda_files.download_json',
-	'pda_files.saved'
+	'pda_files.saved',
+	// The Simulasi tab (T-038a).
+	'pda_sim.stack',
+	'pda_sim.stack_top',
+	'pda_sim.stack_empty',
+	'pda_sim.stack_more',
+	'pda_sim.state',
+	'pda_sim.stack_row',
+	'pda_sim.peak',
+	'pda_sim.peak_help',
+	'pda_sim.explored',
+	'pda_sim.shown_accepted',
+	'pda_sim.shown_furthest',
+	'pda_sim.stopped_max_steps',
+	'pda_sim.stopped_max_configurations',
+	'pda_sim.stopped_max_stack',
+	'pda_sim.stopped_other',
+	'pda_sim.step_announce',
+	'pda_sim.column_string',
+	'pda_sim.column_result',
+	'pda_sim.column_peak',
+	'pda_sim.run_row'
 ];
 
 const parameters = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();

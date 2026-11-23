@@ -24,11 +24,17 @@
 	import PdaLabelForm from './PdaLabelForm.svelte';
 	import PdaLabelPopover from './PdaLabelPopover.svelte';
 	import { pdaMenuLabels } from './pda-label.ts';
+	import PdaRunPanel from './PdaRunPanel.svelte';
+	import { createPdaRunner } from './pda-run.ts';
+	import type { PdaText } from './pda-run.ts';
+	import PdaTestList from './PdaTestList.svelte';
+	import { createPdaTester } from './pda-tester.ts';
 	import type { PdaRowFocus } from './pda-table-props.ts';
 	import type { PdaTableProps } from './pda-table-props.ts';
 	import { readTab, saveTab } from './panel-tab.ts';
 	import type { PanelTab } from './panel-tab.ts';
 	import SidePanel from './SidePanel.svelte';
+	import { addTest, removeTest } from './test-list.ts';
 
 	// The editor of a pushdown automaton: the tools, the canvas, the title bar and the side panel.
 	// Starts from `doc`. Changes are debounced-saved to storage with `autosave`.
@@ -193,6 +199,88 @@
 			: null
 	);
 
+	// The Simulasi tab: one run of one string, played step by step from the engine's trace. Any
+	// change of the document makes the run old, so it is cleared (a run is not part of the history).
+	const runner = createPdaRunner({
+		simulate: (d, input) => engine.simulatePda(toEnginePda(d), input)
+	});
+	const readRun = () => ({
+		status: runner.status(),
+		view: runner.view(),
+		refusal: runner.refusal(),
+		problem: runner.problem(),
+		said: runner.announcement()
+	});
+	let run = $state.raw(readRun());
+	$effect(() => {
+		const stop = runner.subscribe(() => (run = readRun()));
+		let last = untrack(() => editor.getState().doc);
+		const stopEditor = editor.subscribe(() => {
+			const next = editor.getState().doc;
+			if (next === last) return;
+			last = next;
+			runner.clear();
+		});
+		return () => {
+			stop();
+			stopEditor();
+			runner.dispose();
+		};
+	});
+
+	// The test strings: not saved in this version (the document has no field for them), kept for the
+	// session, and run again after each change of the machine.
+	const tester = createPdaTester({
+		run: (d, inputs) => engine.simulatePdaMany(toEnginePda(d), inputs)
+	});
+	let testList = $state.raw<string[]>([]);
+	const readTesting = () => ({
+		status: tester.status(),
+		problem: tester.problem(),
+		rows: testList.map((text) => ({ text, outcome: tester.outcome(text) }))
+	});
+	let testing = $state.raw(readTesting());
+	$effect(() => {
+		const stop = tester.subscribe(() => (testing = readTesting()));
+		let last = untrack(() => editor.getState().doc);
+		const stopEditor = editor.subscribe(() => {
+			const next = editor.getState().doc;
+			if (next === last) return;
+			last = next;
+			tester.schedule(next, testList);
+		});
+		// Not tracked: a change of the list must not end this effect (that would end the tester).
+		untrack(() => tester.schedule(last, testList));
+		return () => {
+			stop();
+			stopEditor();
+			tester.dispose();
+		};
+	});
+	function changeTests(list: string[]) {
+		testList = list;
+		tester.schedule(editor.getState().doc, list);
+	}
+	function addString(text: string): PdaText | null {
+		const added = addTest(testList, text);
+		if (!added.ok) return added.error;
+		changeTests(added.list);
+		return null;
+	}
+	/** The string in the field: the editor owns it, so that a row of the list runs in it too. */
+	let inputText = $state('');
+	async function startRun(input: string, play: boolean) {
+		inputText = input;
+		await runner.start(editor.getState().doc, input);
+		if (play) runner.play();
+		else runner.step();
+	}
+	// The step on the canvas: the current state's ring, and the edge that led to it.
+	const runActive = $derived(new Set(run.view ? [run.view.state] : []));
+	const runTaken = $derived(
+		new Set(run.view?.used ? [`${run.view.used.from}>${run.view.used.to}`] : [])
+	);
+
 	/**
 	 * "Tunjukkan" on a pair: the first edge is selected and both of its rows are marked, and a second
 	 * press on the same pair clears it. The focus goes to the first row of the table when the Tabel
@@ -221,8 +309,8 @@
 		}
 	}
 
-	// The panel tabs: Tabel then Definisi.
-	const tabs: readonly PanelTab[] = ['table', 'definition'];
+	// The panel tabs: Simulasi first, then Tabel and Definisi (Konversi comes in T-038b).
+	const tabs: readonly PanelTab[] = ['simulation', 'table', 'definition'];
 	let tab = $state<PanelTab>(untrack(() => readTab(undefined, tabs)));
 	function chooseTab(next: PanelTab) {
 		tab = next;
@@ -415,6 +503,8 @@
 			menuLabels={pdaMenuLabels}
 			{flags}
 			onmore={handleMore}
+			active={runActive}
+			taken={runTaken}
 			revealLabeling={formDisplayMode === 'sheet'}
 		>
 			{#snippet label(slot)}
@@ -454,6 +544,37 @@
 			</aside>
 		{:else if !showFirstRun}
 			<SidePanel bind:this={sidePanel} {tab} {tabs} ontab={chooseTab}>
+				{#snippet simulation()}
+					<!-- The head lives here while Simulasi is open, and in the open tab's own pane otherwise:
+					     one copy in the page at a time, so its live region and its controls are never doubled. -->
+					{#if tab === 'simulation'}{@render head()}{/if}
+					<PdaRunPanel
+						status={run.status}
+						view={run.view}
+						refusal={run.refusal}
+						problem={run.problem}
+						said={run.said}
+						text={inputText}
+						ontext={(value) => (inputText = value)}
+						onstart={(input, play) => void startRun(input, play)}
+						onplay={() => runner.play()}
+						onpause={() => runner.pause()}
+						onstep={() => runner.step()}
+						onback={() => runner.back()}
+						onreset={() => runner.toStart()}
+						onjump={(index) => runner.goTo(index)}
+						onedit={() => runner.clear()}
+					/>
+					<PdaTestList
+						rows={testing.rows}
+						status={testing.status}
+						problem={testing.problem}
+						onadd={addString}
+						onremove={(text) => changeTests(removeTest(testList, text))}
+						onrun={(text) => void startRun(text, false)}
+						onretry={() => tester.retry()}
+					/>
+				{/snippet}
 				{#snippet table()}
 					{@render head()}
 					{#if Table}

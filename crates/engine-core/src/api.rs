@@ -51,6 +51,38 @@ pub struct PdaSimulationReport {
     pub simulation: PdaSimulation,
 }
 
+/// The most strings that one `simulate_pda_many` call takes. The web app's list is shorter.
+const MAX_PDA_MANY: usize = 100;
+
+/// What one string of `simulate_pda_many` did. A refused string never ran, so it has no peak.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(
+    tag = "result",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(rename = "PdaStringOutcome"))]
+pub enum PdaStringOutcome {
+    Accepted {
+        input: String,
+        peak: usize,
+    },
+    Rejected {
+        input: String,
+        peak: usize,
+    },
+    Stopped {
+        input: String,
+        reason: StopReason,
+        peak: usize,
+    },
+    Refused {
+        input: String,
+        error: Message,
+    },
+}
+
 /// What `equivalent` returns. The symbols of the strings are names in the alphabet of the
 /// candidate, so a string can be shown and run on both machines without any lookup.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -178,6 +210,68 @@ pub fn simulate_pda(pda_json: &str, input: &str, budget_json: Option<&str>) -> S
             input: names(&pda.input, &symbols),
             simulation,
         })
+    };
+    finish(run())
+}
+
+/// Runs many strings on one PDA, in one call: the verdict of each, in the order given. The PDA
+/// and the budget are read once, and the budget is for each string.
+pub fn simulate_pda_many(pda_json: &str, inputs_json: &str, budget_json: Option<&str>) -> String {
+    let run = || -> Result<Vec<PdaStringOutcome>, Message> {
+        let pda = pda_model(pda_json)?;
+        let budget = budget::<PdaBudget>(budget_json)?;
+        too_long(inputs_json, "inputs bytes", MAX_JSON_BYTES)?;
+        let inputs: Vec<String> =
+            serde_json::from_str(inputs_json).map_err(|_| Message::new("api.invalid_inputs"))?;
+        if inputs.len() > MAX_PDA_MANY {
+            return Err(limit_exceeded("inputs", MAX_PDA_MANY));
+        }
+        let mut outcomes = Vec::with_capacity(inputs.len());
+        for input in inputs {
+            if input.len() > MAX_INPUT_BYTES {
+                outcomes.push(PdaStringOutcome::Refused {
+                    input,
+                    error: limit_exceeded("input bytes", MAX_INPUT_BYTES),
+                });
+                continue;
+            }
+            let symbols = match pda.input.tokenize(&input) {
+                Ok(symbols) => symbols,
+                Err(error) => {
+                    // A symbol that is not in the alphabet is this string's problem, not the call's.
+                    outcomes.push(PdaStringOutcome::Refused { input, error });
+                    continue;
+                }
+            };
+            match crate::pda_simulate::simulate_pda(&pda, &symbols, budget) {
+                Ok(PdaSimulation::Finished {
+                    accepted,
+                    peak_configurations,
+                    ..
+                }) => outcomes.push(if accepted {
+                    PdaStringOutcome::Accepted {
+                        input,
+                        peak: peak_configurations,
+                    }
+                } else {
+                    PdaStringOutcome::Rejected {
+                        input,
+                        peak: peak_configurations,
+                    }
+                }),
+                Ok(PdaSimulation::Stopped {
+                    reason,
+                    peak_configurations,
+                    ..
+                }) => outcomes.push(PdaStringOutcome::Stopped {
+                    input,
+                    reason,
+                    peak: peak_configurations,
+                }),
+                Err(error) => outcomes.push(PdaStringOutcome::Refused { input, error }),
+            }
+        }
+        Ok(outcomes)
     };
     finish(run())
 }

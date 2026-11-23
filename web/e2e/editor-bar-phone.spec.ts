@@ -291,12 +291,14 @@ test.describe('PDA help tour and library row Unduh (F4, F5)', () => {
 		const tour = page.getByRole('dialog', { name: 'Tur 1 menit' });
 		await expect(tour).toBeVisible();
 
-		// Steps 4 and 5 mention "(pada mode FSM)"
+		// Steps 4 and 5 are about the Simulasi tab, which the PDA has too now (T-038a): no note.
 		for (let i = 0; i < 3; i++)
 			await press(tour.getByRole('button', { name: 'Berikutnya' }), isMobile);
-		await expect(tour).toContainText('(pada mode FSM)');
+		await expect(tour).toContainText('panel Simulasi');
+		await expect(tour).not.toContainText('(pada mode FSM)');
 		await press(tour.getByRole('button', { name: 'Berikutnya' }), isMobile);
-		await expect(tour).toContainText('(pada mode FSM)');
+		await expect(tour).toContainText('Tambah string');
+		await expect(tour).not.toContainText('(pada mode FSM)');
 
 		await page.keyboard.press('Escape');
 		await expect(tour).toHaveCount(0);

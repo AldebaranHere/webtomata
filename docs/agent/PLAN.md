@@ -3612,7 +3612,7 @@ pnpm --filter web exec playwright test pda-library cross/library cross/storage -
 
 ## Task T-038a — The Simulasi tab of the PDA editor: the stack, the computation and the peak
 
-**Status:** todo (full spec written 2026-11-23; the first of the three; T-084 is merged)
+**Status:** done (2026-11-23; branch `task/T-038a-pda-simulation-tab`, commits `07bfb20`, `dc440ab`, `2b42ce1` and the report's commit; report `docs/agent/reports/T-038a.md`)
 **Owner:** worker
 
 **Goal:** The PDA editor's panel gets **Simulasi as its first tab**, built as section 1 of `design/screens/pda-simulation-conversion.md` (frames A and B): String masukan with the FSM's four buttons, the stack as a column (top at the top), the computation list, the verdict with its reason, the peak ("Konfigurasi bersamaan terbanyak"), stopped runs, "Uji banyak string" with a peak column, the screen-reader list and the live region. The tour's "(pada mode FSM)" note is removed. The engine already has `simulate_pda` and the worker already has `simulatePda`; nothing else of the engine is touched except the one new many-strings call of decision 3.
@@ -3801,6 +3801,7 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-037** PDA in restricted normal form to CFG, with a trace: specified in its own block above (`done`, PR 163). The slides' example `wcwᴿ` is the oracle (76 rules, 15 after cleanup).
 - **T-038** Conversions and simulation panel for the PDA: split on 2026-11-23 into T-038a (`todo`, full spec above: the Simulasi tab), T-038b (`proposed`: Konversi, PDA to grammar) and T-038c (`proposed`: "Ke PDA" in the grammar mode).
 - **T-085** The simulation strokes the used transition, not the whole `from>to` group (`proposed`, found by T-038a's pre-flight): two transitions between the same pair (wwᴿ has two on q0→q0) both light up today; needs an optional per-transition prop in `EditorCanvas` and `DiagramDrawing`.
+- **T-086** The tour's step 5 says "Semuanya tersimpan di perangkat ini", which is false for the PDA's test list (T-038a's decision 7: it lives for the session only). Reword the shared step for both modes, or add a mode-specific sentence; the planner owns the tour's text. (`proposed`, found in T-038a.)
 - **T-071** One scheduler for the two engine queries of the PDA panel (`proposed`, found by T-062): `checker.ts` and `pda-determinism.ts` are the same rule (a debounce, a sequence number, a dispose) on two different answers, and the panel now asks the engine twice after every change. One small `createQuery` that both use would remove the second copy, but `checker.ts` is shared with the FSM, so it needs FSM tests and a decision of its own. Not urgent: there is no third query yet, and the copy is 40 lines.
 - **P-004** Wireframe of the PDA editor: planner task above (`done`, approved on 2026-11-06).
 

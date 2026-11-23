@@ -6,6 +6,7 @@ import { expect, openPda, test } from './fixtures.ts';
 import type { Page } from '@playwright/test';
 
 const panel = (page: Page) => page.getByRole('complementary', { name: 'Panel' });
+const tab = (page: Page, name: string) => panel(page).getByRole('tab', { name });
 
 /** Every `.js` response body that the page receives, read when the collector is called. */
 function collectScriptBodies(page: Page) {
@@ -60,6 +61,8 @@ test.describe('the PDA messages are lazy', () => {
 		await openPda(page);
 		const side = panel(page);
 		await expect(side).toBeVisible();
+		// The Simulasi tab is open first (T-038a); the table is one tab away.
+		await tab(page, 'Tabel').click();
 
 		// The empty machine: the title and the calm empty line.
 		await expect(side.getByRole('heading', { name: 'Transisi (0)' })).toBeVisible();
@@ -84,6 +87,7 @@ test.describe('the PDA messages are lazy', () => {
 		await page.addInitScript(() => localStorage.setItem('webtomata.lang', 'en'));
 		await openPda(page);
 		const side = panel(page);
+		await tab(page, 'Table').click();
 		await expect(side.getByRole('heading', { name: 'Transitions (0)' })).toBeVisible();
 		await expect(side.getByText('No transitions yet.')).toBeVisible();
 		await expect(page.getByRole('radio', { name: 'DPDA', exact: true })).toBeVisible();

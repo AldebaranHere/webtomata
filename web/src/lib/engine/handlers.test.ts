@@ -242,6 +242,38 @@ describe('every method reaches the engine', () => {
 		});
 	});
 
+	it('runs many strings of one PDA in one call, one outcome for each', () => {
+		const anbn: Pda = {
+			schemaVersion: 1,
+			kind: 'dpda',
+			inputAlphabet: ['a', 'b'],
+			stackAlphabet: ['A'],
+			states: [0, 1],
+			start: 0,
+			accepting: [1],
+			transitions: [
+				{ from: 0, read: 'a', pop: [], push: ['A'], to: 0 },
+				{ from: 0, read: 'b', pop: ['A'], push: [], to: 1 },
+				{ from: 1, read: 'b', pop: ['A'], push: [], to: 1 }
+			]
+		};
+
+		expect(call('simulatePdaMany', anbn, ['aabb', 'aab', 'c'])).toEqual({
+			ok: true,
+			value: [
+				{ result: 'accepted', input: 'aabb', peak: 1 },
+				{ result: 'rejected', input: 'aab', peak: 1 },
+				{
+					result: 'refused',
+					input: 'c',
+					error: { key: 'input.unknown_symbol', params: { symbol: 'c', position: 0 } }
+				}
+			]
+		});
+		expect(call('simulatePdaMany', anbn, [])).toEqual({ ok: true, value: [] });
+		expect(call('simulatePdaMany', anbn, ['a'], { nonsense: 1 })).toMatchObject({ ok: false });
+	});
+
 	it('imports and exports a PDA in JFF format', () => {
 		const m1: Pda = {
 			schemaVersion: 1,

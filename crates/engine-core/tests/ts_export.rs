@@ -62,6 +62,7 @@ fn the_types_match_the_json() {
         "StateName",
         "CfgPdaStep",
         "CfgToPda",
+        "PdaStringOutcome",
     ] {
         assert!(
             text.contains(&format!("export type {name} =")),
