@@ -761,3 +761,13 @@ Format:
 - Alternatives considered: `role="presentation"` on the inner button or `aria-hidden` (rejected: hides the delete control from assistive technology); a context menu for delete (rejected: a new interaction for a markup fix).
 - Reversible? yes
 - Affects: `GrammarWorkstation.svelte` (custom card markup and CSS), one e2e spec
+
+
+## 2026-11-24 — T-085: emphasize the label line of the fired transition, keep one arrow per pair
+
+- Decider: planner
+- Context: the PDA simulation lights the whole `from>to` group, so two or more transitions between the same pair look the same. The run step already carries the exact transition index (`run.trace[at].transition`); `usedAt` drops it.
+- Decision: a pure mapper `pdaTakenLines` turns used transition indices into label line indices (a hidden transition maps to the "+ n lagi" line), and one optional prop `takenLines` on `DiagramDrawing` and `EditorCanvas` emphasizes those lines; the arrow stays lit for the group. Only the PDA simulation uses it. Without the prop everything is as before.
+- Alternatives considered: one arrow per transition (rejected: it changes the layout of every PDA and the geometry layer); a per-symbol mark in the FSM label (rejected: a different problem, one line of symbols); marking the removed and added lines of the conversion canvas (rejected: the removed transition is not in the result document).
+- Reversible? yes
+- Affects: `pda-diagram.ts`, `DiagramDrawing.svelte`, `EditorCanvas.svelte` (the prop), `PdaEditor.svelte`, `pda-run.ts`
