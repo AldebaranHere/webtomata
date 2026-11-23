@@ -34,6 +34,7 @@
 		onskipped?: (skipped: SkippedPda[]) => void;
 		openRequest?: { id: string; seq: number } | null;
 		onhelp?: () => void;
+		onopengrammar?: (title: string, text: string) => void;
 	} = $props();
 
 	let pdaEditor = $state<ReturnType<typeof PdaEditor> | undefined>();

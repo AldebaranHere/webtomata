@@ -80,3 +80,53 @@ export function computeCnfTitle(
 	}
 	return `${baseTitle} (CNF ${counter})`;
 }
+
+export interface CustomGrammarItem {
+	id: string;
+	title: string;
+	grammar: string;
+}
+
+export interface GrammarOpenRequest {
+	title: string;
+	text: string;
+	seq: number;
+}
+
+function uniqueTitle(baseTitle: string, existingTitles: ReadonlySet<string>): string {
+	if (!existingTitles.has(baseTitle)) return baseTitle;
+	const parens = /^(.*) \(([^()]+)\)$/.exec(baseTitle);
+	let counter = 2;
+	while (true) {
+		const candidate = parens
+			? `${parens[1]} (${parens[2]} ${counter})`
+			: `${baseTitle} (${counter})`;
+		if (!existingTitles.has(candidate)) return candidate;
+		counter++;
+	}
+}
+
+/**
+ * Turns a cross-mode grammar open request into a new custom grammar entry (the T-023 way):
+ * picks the next unused custom id, makes the title unique among existing custom grammars,
+ * and returns the created item along with the new list without mutating `existing`.
+ */
+export function receiveGrammarRequest(
+	existing: readonly CustomGrammarItem[],
+	request: Pick<GrammarOpenRequest, 'title' | 'text'>,
+	fallbackTitle: (id: string) => string = (id) => id
+): { updated: CustomGrammarItem[]; created: CustomGrammarItem } {
+	const id = nextCustomId([...existing]);
+	const rawTitle = request.title.trim() || fallbackTitle(id);
+	const existingTitles = new Set(existing.map((c) => c.title));
+	const title = uniqueTitle(rawTitle, existingTitles);
+	const created: CustomGrammarItem = {
+		id,
+		title,
+		grammar: request.text
+	};
+	return {
+		updated: [...existing, created],
+		created
+	};
+}
