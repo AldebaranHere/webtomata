@@ -38,17 +38,11 @@ export function createChecker<D = MachineDocument>(options: {
 	} = options;
 	const query = createQuery<D, Issue[], CheckItem[]>({
 		ask: validate,
-		toValue: (issues, doc) => toItems(issues, doc),
+		toValue: toItems,
 		empty: () => [],
 		delayMs
 	});
-	return {
-		status: () => query.status(),
-		items: () => query.value(),
-		problem: () => query.problem(),
-		subscribe: (listener) => query.subscribe(listener),
-		schedule: (doc) => query.schedule(doc),
-		retry: () => query.retry(),
-		dispose: () => query.dispose()
-	};
+	// The checks' name for the query's value. The spread keeps the FSM's first load at its old size
+	// (T-071: the schedule, the sequence number and dispose moved into query.ts, not out of it).
+	return { ...query, items: query.value };
 }

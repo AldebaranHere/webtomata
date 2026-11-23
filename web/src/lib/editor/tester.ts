@@ -62,7 +62,9 @@ export function createTester<D, O extends { input: string }>(
 	options: TesterOptions<D, O>
 ): Tester<D, O> {
 	const { run, delayMs = 300 } = options;
-	const sameDocument = options.sameDocument ?? fsmSameDocument<D>;
+	// The FSM's equality, cast once. The overloads above allow a call without `sameDocument` only
+	// when the document is a `MachineDocument`, so the cast cannot receive a PDA at run time (B7).
+	const sameDocument = options.sameDocument ?? (documentsEqual as (a: D, b: D) => boolean);
 	let status: TestStatus = 'idle';
 	let problem: EngineProblem | undefined;
 	/** The machine that the answers are for. */
@@ -150,12 +152,4 @@ export function createTester<D, O extends { input: string }>(
 			listeners.clear();
 		}
 	};
-}
-
-/**
- * The FSM's equality, for a call that does not pass one. The overloads above allow that only when
- * the document is a `MachineDocument`, so the cast cannot receive a PDA at run time (B7).
- */
-function fsmSameDocument<D>(a: D, b: D): boolean {
-	return documentsEqual(a as MachineDocument, b as MachineDocument);
 }
