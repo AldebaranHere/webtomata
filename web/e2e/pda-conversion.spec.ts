@@ -254,3 +254,58 @@ test.describe('E3: phone and axe', () => {
 		await expectNoAxeViolations(page);
 	});
 });
+
+test.describe('E4: AC5, the grammar handoff', () => {
+	test('desktop: opens the grammar with the engine names, 76 rules and the source PDA unchanged', async ({
+		page,
+		isMobile
+	}) => {
+		test.skip(isMobile, 'desktop layout');
+		const doc = wcwrSample('wcwR');
+		await openSeeded(page, doc, 'wcwR');
+		const before = (await records(page)).find((row) => row.id === 'pda-conv')!;
+		await openConversion(page);
+		await start(page);
+		await last(page);
+		await convert(page).getByRole('button', { name: 'Ke tata bahasa' }).click();
+		await expect(convert(page).getByText('Langkah 1 dari 14')).toBeVisible();
+		await last(page);
+		await convert(page).getByRole('button', { name: 'Buka sebagai tata bahasa' }).click();
+
+		await expect(page).toHaveURL(/\?mode=grammar/);
+		await expect(page.getByRole('button', { name: /Tata Bahasa/ }).first()).toBeVisible();
+		await expect(page.locator('.active-item-title')).toHaveText('wcwR (CFG)');
+		await expect(page.locator('.custom-card.selected .card-title')).toHaveText('wcwR (CFG)');
+
+		const saved = await page.evaluate(() => {
+			const list = JSON.parse(localStorage.getItem('webtomata.grammar.custom') ?? '[]') as Array<{
+				id: string;
+				title: string;
+				grammar: string;
+			}>;
+			const item = list.find((entry) => entry.title === 'wcwR (CFG)');
+			let rules = 0;
+			if (item) {
+				for (const line of item.grammar.split('\n')) {
+					const arrow = line.indexOf(' -> ');
+					rules += line.slice(arrow + 4).split(' | ').length;
+				}
+			}
+			return {
+				id: item?.id ?? '',
+				title: item?.title ?? '',
+				text: item?.grammar ?? '',
+				rules,
+				selected: localStorage.getItem('webtomata.grammar.selected_id')
+			};
+		});
+		expect(saved.title).toBe('wcwR (CFG)');
+		expect(saved.selected).toBe(saved.id);
+		expect(saved.rules).toBe(76);
+		expect(saved.text).toContain('V_');
+		expect(saved.text).not.toContain('<q');
+
+		const after = (await records(page)).find((row) => row.id === 'pda-conv')!;
+		expect(after.doc).toBe(before.doc);
+	});
+});

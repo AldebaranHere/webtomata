@@ -93,6 +93,10 @@ const bodyVariables = (grammar: Grammar): string[] =>
 	].sort();
 const heads = (grammar: Grammar): string[] =>
 	[...new Set(grammar.rules.map((rule) => rule.head))].sort();
+const headBodyIntersection = (grammar: Grammar): string[] => {
+	const headSet = new Set(heads(grammar));
+	return bodyVariables(grammar).filter((name) => headSet.has(name));
+};
 
 describe('F-WCW: the slides machine', () => {
 	it('stage 1 has five steps, and its result is the opened machine', async () => {
@@ -159,6 +163,8 @@ describe('F-WCW: the slides machine', () => {
 		expect(ruleMultiset(parsed.value)).toEqual(ruleMultiset(cfg.value.grammar));
 		expect(heads(parsed.value)).toEqual(heads(cfg.value.grammar));
 		expect(bodyVariables(parsed.value)).toEqual(bodyVariables(cfg.value.grammar));
+		expect(headBodyIntersection(parsed.value)).toEqual(headBodyIntersection(cfg.value.grammar));
+		expect(headBodyIntersection(parsed.value).length).toBe(20);
 
 		// The check of AC5: the body references the same variables as the engine grammar, not
 		// the pretty names (the engine grammar itself has variables that never appear as a head).
