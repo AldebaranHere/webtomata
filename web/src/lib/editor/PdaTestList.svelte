@@ -5,7 +5,7 @@
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { pdaRefusalText, pdaStoppedText } from './pda-run.ts';
 	import type { PdaText } from './pda-run.ts';
-	import type { PdaTestStatus } from './pda-tester.ts';
+	import type { TestStatus as PdaTestStatus } from './tester.ts';
 
 	// "Uji banyak string" for a PDA: the strings the student tests the machine with, each with its
 	// verdict and the peak of its own run. A tap on a string runs it in the panel above. A string

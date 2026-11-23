@@ -1,10 +1,15 @@
 // Running the test strings of a machine in the engine, a little after each change, and never
-// showing an answer for an older machine. No DOM and no framework, like checker.ts: the editor
+// showing an answer for an older machine. No DOM and no framework, like query.ts: the editor
 // calls `schedule` with the document and the list, and shows `outcome(string)` for each row.
 //
 // One call asks for all the strings that have no answer yet. A change of the machine forgets every
 // answer at once (a badge for an older machine would be wrong), and waits a moment before it asks,
 // so that a burst of edits is one call. A new string is asked at once, and only that string.
+//
+// The FSM and the PDA share this function (T-071). The document and the outcome are the caller's
+// types; so is the equality that says whether two documents are the same machine, because the FSM's
+// `documentsEqual` reads fields that a PDA does not have and would keep an answer for a machine that
+// changed (see `fsmSameDocument`).
 import { engineProblem } from '../engine/problem.ts';
 import type { EngineProblem } from '../engine/problem.ts';
 import type { StringOutcome } from '../engine/protocol.ts';
@@ -15,29 +20,55 @@ import type { MachineDocument } from './document.ts';
 /** idle: nothing was asked yet. checking: a change is waiting or the engine is working. ready: every string has its answer. failed: the engine did not answer. */
 export type TestStatus = 'idle' | 'checking' | 'ready' | 'failed';
 
-export interface Tester {
+export interface Tester<D = MachineDocument, O = StringOutcome> {
 	status(): TestStatus;
 	/** The answer for a string, or `undefined` while it is not known (or the machine changed). */
-	outcome(input: string): StringOutcome | undefined;
+	outcome(input: string): O | undefined;
 	problem(): EngineProblem | undefined;
 	subscribe(listener: () => void): () => void;
-	schedule(doc: MachineDocument, tests: readonly string[]): void;
+	schedule(doc: D, tests: readonly string[]): void;
 	/** Asks again (the button of the notice). */
 	retry(): void;
 	dispose(): void;
 }
 
-export function createTester(options: {
-	run: (doc: MachineDocument, inputs: string[]) => Promise<EngineResult<StringOutcome[]>>;
+export interface TesterOptions<D, O> {
+	run: (doc: D, inputs: string[]) => Promise<EngineResult<O[]>>;
+	/**
+	 * When two documents are the same machine. Required unless the document is a `MachineDocument`,
+	 * whose own equality is the default: another document needs its own, or the FSM's fields are
+	 * read and its answers survive a real change.
+	 */
+	sameDocument?: (a: D, b: D) => boolean;
 	delayMs?: number;
-}): Tester {
+}
+
+/**
+ * The FSM's tester: the machine's own equality is the default, so its callers pass only `run` (and
+ * sometimes `delayMs`).
+ */
+export function createTester(
+	options: TesterOptions<MachineDocument, StringOutcome> & { sameDocument?: undefined }
+): Tester<MachineDocument, StringOutcome>;
+/**
+ * Any other document (the PDA today): the caller must say when two documents are the same machine.
+ * A PDA cannot reach the FSM's equality here, by omission or by passing it (it is not a
+ * `MachineDocument`), because that equality reads `on` and ignores `pop` and `push` (guard B7).
+ */
+export function createTester<D, O extends { input: string }>(
+	options: TesterOptions<D, O> & { sameDocument: (a: D, b: D) => boolean }
+): Tester<D, O>;
+export function createTester<D, O extends { input: string }>(
+	options: TesterOptions<D, O>
+): Tester<D, O> {
 	const { run, delayMs = 300 } = options;
+	const sameDocument = options.sameDocument ?? fsmSameDocument<D>;
 	let status: TestStatus = 'idle';
 	let problem: EngineProblem | undefined;
 	/** The machine that the answers are for. */
-	let forDoc: MachineDocument | null = null;
-	let answers = new Map<string, StringOutcome>();
-	let newest: { doc: MachineDocument; tests: readonly string[] } | null = null;
+	let forDoc: D | null = null;
+	let answers = new Map<string, O>();
+	let newest: { doc: D; tests: readonly string[] } | null = null;
 	let sequence = 0;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let disposed = false;
@@ -90,7 +121,7 @@ export function createTester(options: {
 		},
 		schedule(doc, tests) {
 			if (disposed) return;
-			const sameMachine = forDoc !== null && documentsEqual(forDoc, doc);
+			const sameMachine = forDoc !== null && sameDocument(forDoc, doc);
 			if (!sameMachine) answers = new Map();
 			forDoc = doc;
 			newest = { doc, tests };
@@ -119,4 +150,12 @@ export function createTester(options: {
 			listeners.clear();
 		}
 	};
+}
+
+/**
+ * The FSM's equality, for a call that does not pass one. The overloads above allow that only when
+ * the document is a `MachineDocument`, so the cast cannot receive a PDA at run time (B7).
+ */
+function fsmSameDocument<D>(a: D, b: D): boolean {
+	return documentsEqual(a as MachineDocument, b as MachineDocument);
 }

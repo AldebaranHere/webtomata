@@ -1,12 +1,13 @@
 // The test strings of a PDA: run in the engine, a little after each change of the machine, and
-// never with an answer for an older machine. The FSM's tester is `tester.ts`; this is the PDA's
-// copy, because the machine and the outcome are different types (T-038a, decision 4).
+// never with an answer for an older machine. The FSM and the PDA share `createTester` in
+// `tester.ts` (T-071); this file is the PDA's instantiation, with its document and outcome types.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EngineCrashed } from '../engine/client.ts';
 import type { EngineResult, PdaStringOutcome } from '../engine/types.ts';
+import { pdaDocumentsEqual } from './pda-document.ts';
 import { anbnSample } from './pda-samples.ts';
 import type { PdaDocument } from './pda-document.ts';
-import { createPdaTester } from './pda-tester.ts';
+import { createTester } from './tester.ts';
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -36,7 +37,7 @@ function fake() {
 describe('the PDA tester', () => {
 	it('waits for the delay, asks once for a burst of changes, and shows the answers', async () => {
 		const { run, calls } = fake();
-		const tester = createPdaTester({ run, delayMs: 300 });
+		const tester = createTester({ run, sameDocument: pdaDocumentsEqual, delayMs: 300 });
 		expect(tester.status()).toBe('idle');
 		tester.schedule(doc, ['aabb', 'ab']);
 		await vi.advanceTimersByTimeAsync(100);
@@ -54,7 +55,7 @@ describe('the PDA tester', () => {
 
 	it('asks at once for a new string of the same machine', async () => {
 		const { run, calls } = fake();
-		const tester = createPdaTester({ run, delayMs: 300 });
+		const tester = createTester({ run, sameDocument: pdaDocumentsEqual, delayMs: 300 });
 		tester.schedule(doc, ['aabb']);
 		await vi.advanceTimersByTimeAsync(300);
 		expect(calls).toEqual([['aabb']]);
@@ -66,7 +67,7 @@ describe('the PDA tester', () => {
 
 	it('asks nothing more for the same document', async () => {
 		const { run, calls } = fake();
-		const tester = createPdaTester({ run, delayMs: 300 });
+		const tester = createTester({ run, sameDocument: pdaDocumentsEqual, delayMs: 300 });
 		tester.schedule(doc, ['aabb']);
 		await vi.advanceTimersByTimeAsync(300);
 		expect(calls).toHaveLength(1);
@@ -78,7 +79,7 @@ describe('the PDA tester', () => {
 
 	it('forgets every answer when the machine changed, and asks again after the delay', async () => {
 		const { run, calls } = fake();
-		const tester = createPdaTester({ run, delayMs: 300 });
+		const tester = createTester({ run, sameDocument: pdaDocumentsEqual, delayMs: 300 });
 		tester.schedule(doc, ['aabb', 'ab']);
 		await vi.advanceTimersByTimeAsync(300);
 		expect(tester.outcome('aabb')).toBeDefined();
@@ -103,7 +104,7 @@ describe('the PDA tester', () => {
 							value: inputs.map((input) => ({ result: 'accepted', input, peak: 2 }))
 						})
 		);
-		const tester = createPdaTester({ run, delayMs: 300 });
+		const tester = createTester({ run, sameDocument: pdaDocumentsEqual, delayMs: 300 });
 		tester.schedule(doc, ['first']);
 		await vi.advanceTimersByTimeAsync(300);
 		tester.schedule(retitled('Lain'), ['second']);
@@ -122,7 +123,7 @@ describe('the PDA tester', () => {
 				value: inputs.map((input) => ({ result: 'refused' as const, input, error }))
 			})
 		);
-		const tester = createPdaTester({ run: refused, delayMs: 0 });
+		const tester = createTester({ run: refused, sameDocument: pdaDocumentsEqual, delayMs: 0 });
 		tester.schedule(doc, ['c']);
 		await vi.advanceTimersByTimeAsync(0);
 		expect(tester.outcome('c')).toEqual({ result: 'refused', input: 'c', error });
@@ -136,7 +137,7 @@ describe('the PDA tester', () => {
 				ok: true,
 				value: [{ result: 'accepted', input: 'aabb', peak: 1 }]
 			});
-		const tester = createPdaTester({ run, delayMs: 0 });
+		const tester = createTester({ run, sameDocument: pdaDocumentsEqual, delayMs: 0 });
 		tester.schedule(doc, ['aabb']);
 		await vi.advanceTimersByTimeAsync(0);
 		expect(tester.status()).toBe('failed');
@@ -150,7 +151,7 @@ describe('the PDA tester', () => {
 
 	it('stops asking after dispose', async () => {
 		const { run, calls } = fake();
-		const tester = createPdaTester({ run, delayMs: 0 });
+		const tester = createTester({ run, sameDocument: pdaDocumentsEqual, delayMs: 0 });
 		tester.schedule(doc, ['aabb']);
 		tester.dispose();
 		await vi.advanceTimersByTimeAsync(0);
