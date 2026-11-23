@@ -414,7 +414,7 @@ export const en: Record<keyof typeof id, string> = {
 		'Write a string in the Simulation panel, then press Run. The active states light up on the diagram. The Next step button runs one step.',
 	'tour.s5_title': 'Test many strings',
 	'tour.s5_body':
-		'Write a string in the "Add a string" field, then press Add. Its result changes when the machine changes. Everything is saved on this device.',
+		'Write a string in the "Add a string" field, then press Add. Its result changes when the machine changes.',
 	'document.limit_exceeded': 'Limit reached: {what}, at most {limit}.',
 	'soal.description': 'Practice questions on finite state machines with calm, specific feedback.',
 	'soal.intro':

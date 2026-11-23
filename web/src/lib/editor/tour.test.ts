@@ -100,4 +100,11 @@ describe('the steps of the tour', () => {
 			expect(Object.hasOwn(MESSAGES.en, key)).toBe(true);
 		}
 	});
+
+	it('step 5 does not promise that the test list is saved', () => {
+		for (const locale of ['id', 'en'] as const) {
+			const body = textOf(locale, 'tour.s5_body');
+			expect(body, `${locale} tour.s5_body`).not.toMatch(/\b(tersimpan|saved|disimpan|stored)\b/i);
+		}
+	});
 });

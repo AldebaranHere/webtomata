@@ -424,7 +424,7 @@ export const id = {
 		'Tulis string di panel Simulasi, lalu tekan Jalankan. State yang aktif menyala di diagram. Tombol Langkah berikutnya menjalankan satu langkah.',
 	'tour.s5_title': 'Uji banyak string',
 	'tour.s5_body':
-		'Tulis string di kolom "Tambah string", lalu tekan Tambah. Hasilnya ikut berubah saat mesin diubah. Semuanya tersimpan di perangkat ini.',
+		'Tulis string di kolom "Tambah string", lalu tekan Tambah. Hasilnya ikut berubah saat mesin diubah.',
 	'document.limit_exceeded': 'Batas tercapai: {what}, paling banyak {limit}.',
 	'soal.description': 'Soal latihan mesin berhingga dengan umpan balik yang tenang dan spesifik.',
 	'soal.intro':
