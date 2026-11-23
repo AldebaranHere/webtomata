@@ -38,12 +38,25 @@ function buildRealFixture() {
 	const expectedDeletedKeys = [];
 	const expectedKeptStagingKeys = [];
 
-	// 11 CodeQL overlay caches (73 to 77 MB, newest first): keep 2, delete 9.
-	const codeqlSizes = [77, 77, 77, 76, 76, 76, 75, 75, 75, 74, 73];
+	// 12 real CodeQL overlay caches (72 to 77 MB, newest first in order given): keep 2 (119557, 313f), delete 10.
+	const codeqlSuffixes = [
+		'119557cf5ff98dab5c1549607ba4542acf0322d9-45179344356-1',
+		'313f703a75be8dcb1aaff4954bee0268217b1c60-45208759975-1',
+		'540d009c208e431d0865fc915cab0f69e7085286-45039265733-1',
+		'6bc6c64b20644a8a1f08114b4019f463cfd0d53a-45160655487-1',
+		'b56b51ebd7b5d233339c2735a5eb49ceed050f2f-45044025445-1',
+		'bd9e47ae5aa37ff7e9c83fc2bb498e8100af389f-45037256549-1',
+		'be8fbd4b4ee490a8f5456d46e4228c7e9c2c92e3-45190839134-1',
+		'c1d3ca36e8f07ba05006c7db2131fd2851904ccc-45130250448-1',
+		'c8d9172f8183d9d8f88072ac8023f2ada7b1628b-45145064545-1',
+		'd3372c747795a786f98303f1f546ca8806d1b721-45076256533-1',
+		'e67095009e471d240960796f165aabdb9cfea54a-45099205955-1',
+		'ed00b276593c159452e9c3d7bda1aedfdb600257-45151347064-1',
+	];
+	const codeqlSizes = [77, 77, 77, 76, 76, 76, 75, 75, 75, 74, 73, 72];
 	const codeqlPrefix = 'codeql-overlay-base-database-1-673738e94a8102ad-javascript-2.27.5';
-	for (let i = 0; i < codeqlSizes.length; i++) {
-		const sha = `${(i + 1).toString(16).padStart(8, '0')}a1b2c3d4e5f60718293a4b5c6d7e8f90`;
-		const key = `${codeqlPrefix}-${sha}`;
+	for (let i = 0; i < codeqlSuffixes.length; i++) {
+		const key = `${codeqlPrefix}-${codeqlSuffixes[i]}`;
 		caches.push(make(key, codeqlSizes[i], 'refs/heads/staging', i * 10));
 		if (i < 2) expectedKeptStagingKeys.push(key);
 		else expectedDeletedKeys.push(key);
@@ -160,13 +173,13 @@ process.exit(2);
 	return { dir, logFile, summaryFile };
 }
 
-test('AC1: real 2026-11-24 fixture deletes 22, keeps 12 staging + 1 main, leaves 2 alone, frees ~2.5 GB', () => {
+test('AC1: real 2026-11-24 fixture deletes 23 (10 CodeQL + 13 others), keeps 12 staging + 1 main, leaves 2 alone, frees ~2.57 GB', () => {
 	const { caches, expectedDeletedKeys, expectedKeptStagingKeys, mainKey, prKey, otherKey } =
 		buildRealFixture();
 
 	const result = pickCachesToDelete(caches);
 
-	assert.equal(result.toDelete.length, 22);
+	assert.equal(result.toDelete.length, 23);
 	assert.deepEqual(
 		result.toDelete.map((c) => c.key).sort(),
 		[...expectedDeletedKeys].sort()
@@ -192,12 +205,9 @@ test('AC1: real 2026-11-24 fixture deletes 22, keeps 12 staging + 1 main, leaves
 		[prKey, otherKey].sort()
 	);
 
-	// Megabytes freed within 1% of 2.5 GB (2500 MB)
+	// Megabytes freed: 749 (10 CodeQL) + 1467 (10 Rust) + 145 (pnpm) + 207 (Playwright) = 2568 MB
 	const freedMb = result.freedBytes / MB;
-	assert.ok(
-		Math.abs(freedMb - 2500) / 2500 <= 0.01,
-		`expected freed MB (${freedMb}) to be within 1% of 2500 MB`
-	);
+	assert.equal(freedMb, 2568);
 	assert.equal(result.capped, false);
 });
 
@@ -228,7 +238,7 @@ test('AC2: cacheFamily parses every real key shape', () => {
 	);
 	assert.equal(
 		cacheFamily(
-			'codeql-overlay-base-database-1-673738e94a8102ad-javascript-2.27.5-a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4'
+			'codeql-overlay-base-database-1-673738e94a8102ad-javascript-2.27.5-119557cf5ff98dab5c1549607ba4542acf0322d9-45179344356-1'
 		),
 		'codeql-overlay-base-database-1-673738e94a8102ad-javascript-2.27.5'
 	);
@@ -283,7 +293,7 @@ test('AC2: keep-newest-1 for normal families and keep-newest-2 for CodeQL overla
 
 	const codeql = [1, 2, 3, 4].map((n) => ({
 		id: 10 + n,
-		key: `codeql-overlay-base-database-1-673738e94a8102ad-javascript-2.27.5-${n.toString(16).padStart(40, '0')}`,
+		key: `codeql-overlay-base-database-1-673738e94a8102ad-javascript-2.27.5-${n.toString(16).padStart(40, '0')}-4517934435${n}-1`,
 		ref: 'refs/heads/staging',
 		sizeInBytes: 100,
 		createdAt: `2026-11-2${n}T00:00:00Z`,

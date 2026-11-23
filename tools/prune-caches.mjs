@@ -16,10 +16,14 @@ const DEFAULT_MAX_DELETIONS = 50;
 const MB = 1_000_000;
 
 /**
- * Strips every trailing hash segment (`-` followed by 8 or more hex digits) repeatedly
- * to derive a cache's family name.
+ * Derives a cache's family name.
+ * For CodeQL overlay keys, removes everything from the first `-` followed by exactly 40 hex digits.
+ * For all other keys, strips trailing hash segments (`-` followed by 8 or more hex digits) repeatedly.
  */
 export function cacheFamily(key) {
+	if (key.startsWith(CODEQL_PREFIX)) {
+		return key.replace(/-[0-9a-fA-F]{40}(?:-.*)?$/, '');
+	}
 	return key.replace(/(?:-[0-9a-fA-F]{8,})+$/, '');
 }
 
