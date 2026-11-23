@@ -3865,7 +3865,7 @@ No mode-specific variant (a second key would cost bytes in first JS for a senten
 
 ## Task T-087 — The custom-grammar card in the library has a button inside a button
 
-**Status:** todo (full spec written 2026-11-23)
+**Status:** in-progress (started 2026-11-23 on branch `task/T-087-custom-card-buttons`)
 **Owner:** worker (either; it is small)
 
 **Goal:** In `GrammarWorkstation.svelte` (about line 788) a custom grammar's card is `<div class="preset-card custom-card" role="button" tabindex="0">` and the delete control `<button class="btn-delete">` sits **inside** it. A control inside a control is invalid for assistive technology (axe rule `nested-interactive`): a screen reader announces one button that contains another, and the inner one may not be reachable. It shows up on desktop whenever a custom grammar exists (T-038c found it; it was there since T-023). Make the card a plain container with **two sibling buttons**: one that selects the grammar and one that deletes it. The look, the sizes, the class names that tests use and the behavior stay as they are.

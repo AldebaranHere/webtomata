@@ -786,31 +786,19 @@
 				<div class="section-label custom-label">{t('grammar.custom_section')}</div>
 				<div class="preset-list">
 					{#each customGrammars as custom (custom.id)}
-						<div
-							class="preset-card custom-card"
-							class:selected={selectedId === custom.id}
-							role="button"
-							tabindex="0"
-							onclick={() => selectCustom(custom)}
-							onkeydown={(e) => {
-								if (e.key === 'Enter' || e.key === ' ') {
-									e.preventDefault();
-									selectCustom(custom);
-								}
-							}}
-						>
-							<div class="card-top">
+						<div class="preset-card custom-card" class:selected={selectedId === custom.id}>
+							<button type="button" class="card-select" onclick={() => selectCustom(custom)}>
 								<span class="preset-id-badge custom-badge">{custom.id}</span>
 								<span class="card-title">{custom.title}</span>
-								<button
-									type="button"
-									class="btn-delete"
-									aria-label={t('grammar.delete_custom')}
-									onclick={(e) => deleteCustomGrammar(custom.id, e)}
-								>
-									×
-								</button>
-							</div>
+							</button>
+							<button
+								type="button"
+								class="btn-delete"
+								aria-label={t('grammar.delete_custom')}
+								onclick={(e) => deleteCustomGrammar(custom.id, e)}
+							>
+								×
+							</button>
 						</div>
 					{/each}
 				</div>
@@ -1336,6 +1324,35 @@
 
 	.custom-badge {
 		color: var(--color-ink);
+	}
+
+	/* The custom card is one row: a select button that fills it, and the × at the right edge. */
+	.custom-card {
+		flex-direction: row;
+		align-items: stretch;
+		gap: var(--space-2);
+	}
+
+	.card-select {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		flex: 1;
+		min-width: 0;
+		padding: 0;
+		border: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	/* A long title is cut off, so that it cannot push the × out of the card. */
+	.custom-card .card-title {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.card-title {
