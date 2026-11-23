@@ -9,7 +9,7 @@
 	import { createChecker } from './checker.ts';
 	import { flagsOf } from './checks.ts';
 	import ChecksList from './ChecksList.svelte';
-	import { pdaDiagram } from './diagram/pda-diagram.ts';
+	import { pdaDiagram, pdaTakenLines } from './diagram/pda-diagram.ts';
 	import EditorCanvas, { type LabelSlot } from './EditorCanvas.svelte';
 	import EditorFrame from './EditorFrame.svelte';
 	import FirstRun from './FirstRun.svelte';
@@ -284,11 +284,14 @@
 		if (play) runner.play();
 		else runner.step();
 	}
-	// The step on the canvas: the current state's ring, and the edge that led to it.
+	// The step on the canvas: the current state's ring, and the edge and label line that led to it.
 	const runActive = $derived(new Set(run.view ? [run.view.state] : []));
-	const runTaken = $derived(
-		new Set(run.view?.used ? [`${run.view.used.from}>${run.view.used.to}`] : [])
+	const runTakenLines = $derived(
+		run.view?.usedIndex !== undefined
+			? pdaTakenLines(snapshot.doc, [run.view.usedIndex])
+			: undefined
 	);
+	const runTaken = $derived(new Set(runTakenLines ? runTakenLines.keys() : []));
 
 	/**
 	 * "Tunjukkan" on a pair: the first edge is selected and both of its rows are marked, and a second
@@ -519,6 +522,7 @@
 			onmore={handleMore}
 			active={runActive}
 			taken={runTaken}
+			takenLines={runTakenLines}
 			revealLabeling={formDisplayMode === 'sheet'}
 		>
 			{#snippet label(slot)}

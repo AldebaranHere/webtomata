@@ -65,6 +65,8 @@ export interface PdaRunView {
 	top: string;
 	/** The edge of the document that this step used. */
 	used: { from: number; to: number } | undefined;
+	/** The index in `doc.transitions` of the transition that this step used, if any. */
+	usedIndex: number | undefined;
 	/** The lines of the computation up to this step. */
 	rows: PdaRunRow[];
 	/** Only at the last step, except for a stopped run: its box shows at once. */
@@ -300,13 +302,12 @@ export function createPdaRunner(options: {
 		while (rows.length < count) rows.push(rowAt(rows.length));
 		return rows.slice(0, count);
 	}
-	/** The edge of the document that the step `at` used, if any. */
-	function usedAt(at: number): { from: number; to: number } | undefined {
+	/** The index in `doc.transitions` of the transition that the step `at` used, if any. */
+	function usedIndexAt(at: number): number | undefined {
 		if (!run || at === 0) return undefined;
 		const transition = run.trace[at]!.transition;
 		if (transition === null || transition === undefined) return undefined;
-		const t = run.doc.transitions[transition];
-		return t === undefined ? undefined : { from: t.from, to: t.to };
+		return run.doc.transitions[transition] === undefined ? undefined : transition;
 	}
 	/** A stopped run's box is the answer itself; the other verdicts wait for the last step. */
 	const verdictAt = (at: number): PdaVerdict | undefined => {
@@ -319,6 +320,8 @@ export function createPdaRunner(options: {
 		if (status !== 'ready' || !run) return undefined;
 		const st = run.trace[index]!;
 		const stack = stackNames(run.doc, st.stack);
+		const usedIndex = usedIndexAt(index);
+		const usedTransition = usedIndex === undefined ? undefined : run.doc.transitions[usedIndex];
 		return {
 			input: run.input,
 			index,
@@ -329,7 +332,11 @@ export function createPdaRunner(options: {
 			stack,
 			stackText: stackTextOf(run.doc, stack),
 			top: stack[0] ?? 'ε',
-			used: usedAt(index),
+			used:
+				usedTransition === undefined
+					? undefined
+					: { from: usedTransition.from, to: usedTransition.to },
+			usedIndex,
 			rows: rowsUpTo(index + 1),
 			verdict: verdictAt(index),
 			message: st.message,
