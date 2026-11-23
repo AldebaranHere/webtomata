@@ -3834,7 +3834,7 @@ Gemini's pre-flight found 9 flaws. Where this block and the text above differ, *
 
 ## Task T-086 — The tour's step 5 must not promise what the PDA does not do
 
-**Status:** todo (full spec written 2026-11-23)
+**Status:** in-progress (branch `task/T-086-tour-step5-no-save-claim`)
 **Owner:** worker (either; it is small)
 
 **Goal:** Step 5 of the one-minute tour ("Uji banyak string") ends with "Semuanya tersimpan di perangkat ini." / "Everything is saved on this device." The tour is shared by the FSM and the PDA mode (the "?" button opens it in both). In the PDA mode the test list lives for the session only (T-038a, decision 7), so the sentence is false there, and a student who trusts it loses the list on reload. Remove the claim from the shared step; the real, true promise stays where it already is (the "Tersimpan di perangkat ini" status of the machine and the first-run privacy line).
