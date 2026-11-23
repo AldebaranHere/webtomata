@@ -4001,7 +4001,7 @@ DeepSeek's pre-flight found 18 flaws. Where this block and the text above differ
 
 ## Task T-088 — Prune the caches that a newer one has replaced
 
-**Status:** todo (full spec written 2026-11-24)
+**Status:** done (branch `task/T-088-prune-superseded-caches`)
 **Owner:** worker (Gemini)
 
 **Goal:** The caches of the repository share 10 GB, and past that GitHub deletes the least recently used ones, which can be the ones that every run needs (ADR 0027). On 2026-11-24 there were 34 caches using 4.0 GB, all owned by `staging`, and about 2.5 GB of that is never used again: (1) the Rust caches of **older lockfile generations** (5 jobs × 2 old generations, about 1.5 GB: nothing deletes them, they leave only after 7 days unused); (2) **9 of the 11 CodeQL overlay caches** (about 75 MB each; CodeQL saves a new one on every push to `staging`, and only the newest is a useful base for later pull requests); (3) the **old pnpm cache and the old Playwright browser caches** after a lockfile change. `cleanup-caches.yml` deletes only the caches of a closed pull request, and the pull requests save none (`save-if` is staging or main), so it finds nothing. Add a daily job that deletes the caches that a newer cache of the same family has replaced.
