@@ -3945,7 +3945,7 @@ No mode-specific variant (a second key would cost bytes in first JS for a senten
 
 ## Task T-071 — One scheduled query, one tester, and the small copies of the PDA work
 
-**Status:** in-progress (branch `task/T-071-shared-query-tester`; full spec written 2026-11-24, amended after the pre-flight; the first half of the cleanup, see "Not here")
+**Status:** done (branch `task/T-071-shared-query-tester`, commits `1c95e06` the query, `d22d433` the tester, `f6c9b13` the small helpers, `a69a4fd` the last bytes; report `docs/agent/reports/T-071.md`; full spec written 2026-11-24, amended after the pre-flight; the first half of the cleanup, see "Not here"). One acceptance criterion is not met literally: the four editor routes grow by 181–183 bytes gzip (the generic query's options and wrapper), while every other route shrinks, the PDA chunk loses 1,577 bytes raw and the whole build loses 199 bytes gzip; the budgets pass. The owner/planner decides.
 **Owner:** worker (DeepSeek; it wrote most of the copies and knows them)
 
 **Goal:** The PDA work (T-033 to T-038) copied several FSM pieces on purpose, because "copy, do not generalize" kept the FSM's tests out of those tasks (ADR 0064, 0065). The copies now cost more than they save, and Turing machines would make a third one. This task removes the **safe** copies, the ones that are the same code with another type, and nothing else:
@@ -4141,8 +4141,8 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-085** The PDA simulation marks the line of the transition that fired, not the whole `from>to` group: specified in its own task block above (`todo`).
 - **T-086** The tour's step 5 promises that the test list is saved on the device, which is false for the PDA: specified in its own task block above (`todo`).
 - **T-087** The custom-grammar card in the library has a button inside a button (axe `nested-interactive`): specified in its own task block above (`done`, commit `05bcff0`).
-- **T-071** One scheduled query, one tester and the small copies of the PDA work: specified in its own task block above (`todo`).
-- **T-071b** The big copies of the PDA work (`proposed`, split from T-071 on 2026-11-24): the run models `run.ts` / `pda-run.ts`, `RunPanel` / `PdaRunPanel`, `TestList` / `PdaTestList`, the conversion models and panels. They are similar, not the same; decide the shared shape after the Turing-machine task shows what a third machine needs, and write the spec then.
+- **T-071** One scheduled query, one tester and the small copies of the PDA work: specified in its own task block above (`done`, branch `task/T-071-shared-query-tester`; the first-JS growth on the four editor routes is recorded there and in the report).
+- **T-071b** The big copies of the PDA work (`proposed`, split from T-071 on 2026-11-24): the run models `run.ts` / `pda-run.ts`, `RunPanel` / `PdaRunPanel`, `TestList` / `PdaTestList`, the conversion models and panels, and the two FSM panels' inline 50-row windows (`RunPanel.svelte`, `ComparePlayer.svelte`). They are similar, not the same; decide the shared shape after the Turing-machine task shows what a third machine needs, and write the spec then.
 - **P-004** Wireframe of the PDA editor: planner task above (`done`, approved on 2026-11-06).
 
 **E. Turing machines** (after C; the owner names each step; each has an ADR, differential tests on the owner's `.jff` files, and an approved wireframe before any editor)
