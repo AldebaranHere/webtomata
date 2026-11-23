@@ -3863,6 +3863,41 @@ No mode-specific variant (a second key would cost bytes in first JS for a senten
 
 ---
 
+## Task T-087 — The custom-grammar card in the library has a button inside a button
+
+**Status:** todo (full spec written 2026-11-23)
+**Owner:** worker (either; it is small)
+
+**Goal:** In `GrammarWorkstation.svelte` (about line 788) a custom grammar's card is `<div class="preset-card custom-card" role="button" tabindex="0">` and the delete control `<button class="btn-delete">` sits **inside** it. A control inside a control is invalid for assistive technology (axe rule `nested-interactive`): a screen reader announces one button that contains another, and the inner one may not be reachable. It shows up on desktop whenever a custom grammar exists (T-038c found it; it was there since T-023). Make the card a plain container with **two sibling buttons**: one that selects the grammar and one that deletes it. The look, the sizes, the class names that tests use and the behavior stay as they are.
+
+**Decision (the planner's):**
+
+1. The card `<div class="preset-card custom-card" class:selected>` has **no role and no tabindex and no key handler**. Inside it, in this order: a `<button type="button" class="card-select">` that holds the badge and the title (the `.card-top` content without the delete control) and calls `selectCustom(custom)` on click; then the existing `<button type="button" class="btn-delete" aria-label=…>`. Enter and Space work because they are real buttons: delete the hand-written `onkeydown`.
+2. The two buttons sit side by side in one row exactly where the badge, the title and the × sit now (the select button takes the remaining width, the × stays at the right edge). The card's hover, selected and focus looks stay; the focus ring is visible on each button (`:focus-visible`, the existing token style), and a ring on the select button must not be clipped by the card.
+3. **Keep** the class names `.preset-card`, `.custom-card`, `.selected`, `.card-title`, `.preset-id-badge`, `.custom-badge`, `.btn-delete`, because the e2e specs use them (`grammar-open-cnf`, `pda-conversion`, `grammar-to-pda`). A click on the card's middle must still select (the select button fills it). Touch targets stay at least 44 px high on the phone project; the delete button keeps its size.
+4. The built-in preset cards (`role="button"` div with no control inside) are **not** changed: they are valid. Do not touch them.
+5. No new message key (the delete button keeps `grammar.delete_custom`). The select button's accessible name is its visible text (badge and title).
+6. No change to `selectCustom`, `deleteCustomGrammar`, the storage or any other file than `GrammarWorkstation.svelte`, its tests, and `docs/agent/PLAN.md`. Do not "improve" the file further (it is 2000+ lines; the change is about 20 lines).
+
+**Scope (files):** `web/src/lib/grammar/GrammarWorkstation.svelte` (the markup and its CSS), one e2e spec, `docs/agent/PLAN.md` (status). No ADR.
+
+**Acceptance criteria:**
+
+1. With one custom grammar in the library, axe reports no `nested-interactive` (and no other new violation) on the grammar mode on the desktop and the phone project. The test creates the custom grammar the way an existing spec does (for example `grammar-open-cnf.spec.ts` or `grammar-to-pda.spec.ts`; reuse its helper) and runs axe on the library pane. It fails on the old markup (shown by putting the old markup back).
+2. Selecting: a click on the title, a click on the card's middle, Tab to the select button then Enter, and Tab then Space each select the grammar (the card gets `.selected`, the editor shows its rules).
+3. Deleting: Tab from the select button reaches the × (it is the next stop); Enter on it deletes that grammar and does **not** select it first.
+4. The existing specs that use `.custom-card` stay green without edits (`grammar-open-cnf`, `pda-conversion`'s handoff test, `grammar-to-pda`); if one needs an edit, say why.
+5. Visible focus ring on both buttons, on desktop and on the phone project; no sideways scroll at 360 px; the title still truncates with an ellipsis (it does today) instead of pushing the × out.
+6. `check:strings`, `check:tokens` and the size budget are unchanged (the change adds no string and no raw color).
+
+**Verification:** `pnpm lint`, `check`, `test`, `build`, `check:strings`, `check:tokens`, `size`; the grammar specs (`grammar-flow`, `grammar-phone`, `grammar-open-cnf`, `grammar-to-pda`, `grammar-rule-rows-touch`) and `pda-conversion` on desktop and phone, and `cross/workstation-phone` on webkit-phone. **Break the guard once:** restore the old nested markup and show the new axe test fails. Put the guard output in the PR description; no report file.
+
+**Rollback:** revert the PR.
+
+**Depends on:** none.
+
+---
+
 ## Planner task P-005 — Wireframe of the PDA simulation, the stack and the conversions
 
 **Status:** done (drawn on 2026-11-23 in `design/screens/pda-simulation-conversion.md` and `.svg`; the owner accepted the planner's pick on all five questions the same day: CFG to PDA lives in the grammar mode, the stack is a column in the panel, "Uji banyak string" is in the first version, the peak is always visible, three build tasks; T-038 is split into T-038a, T-038b and T-038c below)
@@ -3958,7 +3993,7 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-038** Conversions and simulation panel for the PDA: split on 2026-11-23 into T-038a (`done`, PR 243: the Simulasi tab), T-038b (`todo`: Konversi, PDA to grammar; DeepSeek) and T-038c (`todo`: "Ke PDA" in the grammar mode; Gemini); b and c run at the same time and the planner reconciles their two cross-mode handoffs before "Go".
 - **T-085** The simulation strokes the used transition, not the whole `from>to` group (`proposed`, found by T-038a's pre-flight): two transitions between the same pair (wwᴿ has two on q0→q0) both light up today; needs an optional per-transition prop in `EditorCanvas` and `DiagramDrawing`.
 - **T-086** The tour's step 5 promises that the test list is saved on the device, which is false for the PDA: specified in its own task block above (`todo`).
-- **T-087** In `GrammarWorkstation.svelte`, `.custom-card` is a `<div role="button">` containing `<button class="btn-delete">`, which triggers axe `nested-interactive` on desktop whenever a custom grammar exists in the library (`proposed`, found in T-038c).
+- **T-087** The custom-grammar card in the library has a button inside a button (axe `nested-interactive`): specified in its own task block above (`todo`).
 - **T-071** One scheduler for the two engine queries of the PDA panel (`proposed`, found by T-062): `checker.ts` and `pda-determinism.ts` are the same rule (a debounce, a sequence number, a dispose) on two different answers, and the panel now asks the engine twice after every change. One small `createQuery` that both use would remove the second copy, but `checker.ts` is shared with the FSM, so it needs FSM tests and a decision of its own. Not urgent: there is no third query yet, and the copy is 40 lines.
 - **P-004** Wireframe of the PDA editor: planner task above (`done`, approved on 2026-11-06).
 

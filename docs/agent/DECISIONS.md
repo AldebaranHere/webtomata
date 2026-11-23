@@ -751,3 +751,13 @@ Format:
 - Alternatives considered: a PDA-specific step text (rejected: a second key costs first-JS bytes for a sentence that says less); saving the PDA's test list (rejected in T-038a: it needs a document-format change).
 - Reversible? yes
 - Affects: `tour.s5_body` in `id.ts` and `en.ts`
+
+
+## 2026-11-23 — T-087: two sibling buttons in the custom-grammar card, nothing else changes
+
+- Decider: planner
+- Context: the card of a custom grammar is a `div role="button"` with a delete `<button>` inside it (axe `nested-interactive`, there since T-023, found by T-038c).
+- Decision: the card becomes a plain container with a select button and a delete button side by side; the look, the sizes and the class names that e2e specs use stay. The built-in preset cards, which have no control inside, are not touched.
+- Alternatives considered: `role="presentation"` on the inner button or `aria-hidden` (rejected: hides the delete control from assistive technology); a context menu for delete (rejected: a new interaction for a markup fix).
+- Reversible? yes
+- Affects: `GrammarWorkstation.svelte` (custom card markup and CSS), one e2e spec
