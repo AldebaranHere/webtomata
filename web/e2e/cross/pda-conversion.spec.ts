@@ -8,6 +8,10 @@ import { wcwrSample } from '../../src/lib/editor/pda-samples.ts';
 import type { PdaDocument } from '../../src/lib/editor/pda-document.ts';
 import { serializePdaDocument } from '../../src/lib/editor/pda-document.ts';
 
+// The seeding step navigates once while the engine worker may still be starting; the cancelled
+// WASM request is the fixture's documented case, not a failure of the tab.
+test.use({ allowedProblem: /engine_wasm_bg.*Load request cancelled/ });
+
 const panel = (page: Page) => page.getByRole('complementary', { name: 'Panel' });
 const convert = (page: Page) => panel(page).locator('.convert');
 
