@@ -4,7 +4,11 @@
 // must be caught.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EngineCancelled, EngineCrashed } from '../engine/client.ts';
-import type { EngineResult } from '../engine/types.ts';
+import type { Competition, EngineResult, Issue } from '../engine/types.ts';
+import { createChecker } from './checker.ts';
+import { documentFrom } from './diagram/samples.ts';
+import { createDeterminism } from './pda-determinism.ts';
+import { anbnSample } from './pda-samples.ts';
 import { createQuery } from './query.ts';
 
 beforeEach(() => vi.useFakeTimers());
@@ -17,16 +21,28 @@ type Answer = number[];
 
 const ok = (value: Answer): EngineResult<Answer> => ({ ok: true, value });
 
-function deferred(): {
-	promise: Promise<EngineResult<Answer>>;
-	resolve: (answer: EngineResult<Answer>) => void;
+function deferred<T = Answer>(): {
+	promise: Promise<EngineResult<T>>;
+	resolve: (answer: EngineResult<T>) => void;
 } {
-	let resolve: (answer: EngineResult<Answer>) => void = () => undefined;
-	const promise = new Promise<EngineResult<Answer>>((done) => {
+	let resolve: (answer: EngineResult<T>) => void = () => undefined;
+	const promise = new Promise<EngineResult<T>>((done) => {
 		resolve = done;
 	});
 	return { promise, resolve };
 }
+
+/** A two-state machine document, for the checks. */
+const machine = (title: string) =>
+	documentFrom({
+		title,
+		alphabet: ['a'],
+		states: [
+			[100, 100, 'q0'],
+			[300, 100, 'q1']
+		],
+		start: 0
+	});
 
 /** Lets the promises of an answer settle (each `await` of the ask is one microtask turn). */
 async function settle(): Promise<void> {
@@ -368,5 +384,60 @@ describe('retry and dispose', () => {
 		await settle();
 		expect(query.value()).toEqual([]);
 		expect(query.status()).toBe('checking');
+	});
+});
+
+describe('the two callers configure the query as each of them needs it (B3, B4)', () => {
+	it('B4: the checker keeps its old items while the new answer is on its way', async () => {
+		const second = deferred<Issue[]>();
+		const issue: Issue = {
+			severity: 'error',
+			message: { key: 'dfsm.missing_transition', params: { state: 1, symbol: 'a' } }
+		};
+		const validate = vi
+			.fn()
+			.mockResolvedValueOnce({ ok: true, value: [issue] })
+			.mockImplementationOnce(() => second.promise);
+		const checker = createChecker({ validate, delayMs: 200 });
+
+		checker.schedule(machine('A'));
+		await vi.advanceTimersByTimeAsync(200);
+		await settle();
+		expect(checker.items()).toHaveLength(1);
+
+		checker.schedule(machine('B'));
+		// B4: an emptying checker would show nothing here, and the list would blink on every edit.
+		expect(checker.items()).toHaveLength(1);
+		expect(checker.status()).toBe('checking');
+		// The question is asked after the debounce, and its answer is resolved by hand.
+		await vi.advanceTimersByTimeAsync(200);
+		second.resolve({ ok: true, value: [] });
+		await settle();
+		expect(checker.items()).toHaveLength(0);
+	});
+
+	it('B3: the determinism badge empties its pairs the moment a new document is scheduled', async () => {
+		const second = deferred<Competition[]>();
+		const pair: Competition = { from: 0, first: 0, second: 1 };
+		const query = vi
+			.fn()
+			.mockResolvedValueOnce({ ok: true, value: [pair] })
+			.mockImplementationOnce(() => second.promise);
+		const determinism = createDeterminism({ query, delayMs: 200 });
+
+		determinism.schedule(anbnSample());
+		await vi.advanceTimersByTimeAsync(200);
+		await settle();
+		expect(determinism.pairs()).toEqual([pair]);
+
+		determinism.schedule(anbnSample());
+		// B3: a badge must never show the pairs of the document before this one.
+		expect(determinism.pairs()).toEqual([]);
+		expect(determinism.status()).toBe('checking');
+		await vi.advanceTimersByTimeAsync(200);
+		second.resolve({ ok: true, value: [] });
+		await settle();
+		expect(determinism.pairs()).toEqual([]);
+		expect(determinism.status()).toBe('ready');
 	});
 });
