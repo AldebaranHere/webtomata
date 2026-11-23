@@ -102,7 +102,32 @@ export const pdaId = {
 	'pda_sim.column_string': 'String',
 	'pda_sim.column_result': 'Hasil',
 	'pda_sim.column_peak': 'Puncak',
-	'pda_sim.run_row': 'Jalankan {string}'
+	'pda_sim.run_row': 'Jalankan {string}',
+	// The Konversi tab (T-038b).
+	'pda_convert.intro':
+		'Ubah PDA ini menjadi tata bahasa dalam dua tahap: RNF, lalu aturan tata bahasanya.',
+	'pda_convert.stage_rnf': 'RNF',
+	'pda_convert.stage_rnf_long': 'restricted normal form (RNF)',
+	'pda_convert.stage_cfg': 'Tata bahasa',
+	'pda_convert.stage_cfg_long': 'tata bahasa bebas konteks (CFG)',
+	'pda_convert.stage2_need_rnf': 'Selesaikan RNF dulu.',
+	'pda_convert.removed': 'Dihapus',
+	'pda_convert.added': 'Ditambah',
+	'pda_convert.rules_so_far': 'Aturan sejauh ini',
+	'pda_convert.rules_count': '{count} aturan',
+	'pda_convert.start_rule': 'Tambahkan aturan awal {rule}.',
+	'pda_convert.empty_rules': 'Tambahkan {count} aturan ε untuk setiap state selain {start}.',
+	'pda_convert.play': 'Putar langkah',
+	'pda_convert.open_pda': 'Buka PDA ini sebagai mesin baru',
+	'pda_convert.open_grammar': 'Buka sebagai tata bahasa',
+	'pda_convert.to_cfg': 'Ke tata bahasa',
+	'pda_convert.close': 'Tutup konversi',
+	'pda_convert.result_caption': 'Hasil (hanya baca): RNF',
+	'pda_convert.canvas': 'PDA hasil konversi: {states} state, {transitions} transisi.',
+	'pda_convert.no_canvas':
+		'Hasilnya terlalu besar untuk digambar di sini ({states} state, {transitions} transisi). Panel dan tombol buka tetap bekerja.',
+	'pda_convert.names_note': 'Di mode tata bahasa, variabelnya bernama V_… (bukan <q,A,r>).',
+	'pda_convert.save_failed': 'PDA baru tidak bisa disimpan di perangkat ini.'
 } as const;
 
 export const pdaEn: Record<keyof typeof pdaId, string> = {
@@ -193,7 +218,31 @@ export const pdaEn: Record<keyof typeof pdaId, string> = {
 	'pda_sim.column_string': 'String',
 	'pda_sim.column_result': 'Result',
 	'pda_sim.column_peak': 'Peak',
-	'pda_sim.run_row': 'Run {string}'
+	'pda_sim.run_row': 'Run {string}',
+	// The Konversi tab (T-038b).
+	'pda_convert.intro': 'Turn this PDA into a grammar in two stages: RNF, then its grammar rules.',
+	'pda_convert.stage_rnf': 'RNF',
+	'pda_convert.stage_rnf_long': 'restricted normal form (RNF)',
+	'pda_convert.stage_cfg': 'Grammar',
+	'pda_convert.stage_cfg_long': 'context-free grammar (CFG)',
+	'pda_convert.stage2_need_rnf': 'Finish RNF first.',
+	'pda_convert.removed': 'Removed',
+	'pda_convert.added': 'Added',
+	'pda_convert.rules_so_far': 'Rules so far',
+	'pda_convert.rules_count': '{count} rules',
+	'pda_convert.start_rule': 'Add the start rule {rule}.',
+	'pda_convert.empty_rules': 'Add {count} ε-rules, one for every state except {start}.',
+	'pda_convert.play': 'Play the steps',
+	'pda_convert.open_pda': 'Open this PDA as a new machine',
+	'pda_convert.open_grammar': 'Open as a grammar',
+	'pda_convert.to_cfg': 'To the grammar',
+	'pda_convert.close': 'Close the conversion',
+	'pda_convert.result_caption': 'Result (read-only): RNF',
+	'pda_convert.canvas': 'The converted PDA: {states} states, {transitions} transitions.',
+	'pda_convert.no_canvas':
+		'The result is too big to draw here ({states} states, {transitions} transitions). The panel and the open buttons still work.',
+	'pda_convert.names_note': 'In the grammar mode the variables are named V_… (not <q,A,r>).',
+	'pda_convert.save_failed': 'The new PDA cannot be saved on this device.'
 };
 
 addMessages('id', pdaId);
