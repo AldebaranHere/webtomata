@@ -49,7 +49,8 @@
 		library,
 		firstRun,
 		onhelp,
-		onopenpda
+		onopenpda,
+		onopengrammar
 	}: {
 		doc: PdaDocument;
 		autosave?: BaseAutosave<PdaDocument>;
@@ -65,6 +66,8 @@
 		onhelp?: () => void;
 		/** Opens the RNF result as a new saved PDA (T-038b AC4). False means the save failed. */
 		onopenpda?: (doc: PdaDocument, title: string) => Promise<boolean>;
+		/** Sends the grammar text to the grammar mode (T-038b AC5, through the page's seam). */
+		onopengrammar?: (title: string, text: string) => void;
 	} = $props();
 
 	export function setTitle(title: string) {
@@ -627,6 +630,7 @@
 						doc={snapshot.doc}
 						onshow={(shown) => (conversionView = shown)}
 						{onopenpda}
+						{onopengrammar}
 					/>
 				{/snippet}
 			</SidePanel>
