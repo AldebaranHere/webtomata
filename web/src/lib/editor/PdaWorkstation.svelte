@@ -8,7 +8,9 @@
 	import { createAutosave } from '#lib/storage/autosave.ts';
 	import type { PdaAutosave } from '#lib/storage/autosave.ts';
 	import { createPdaDocument, serializePdaDocument } from '#lib/editor/pda-document.ts';
+	import type { PdaDocument } from '#lib/editor/pda-document.ts';
 	import {
+		createPdaMachine,
 		openLatestPda,
 		pdaDocumentCodec,
 		placePdaExample,
@@ -176,6 +178,19 @@
 		return null;
 	}
 
+	// Opens a new saved PDA made from `doc` (T-038b AC4). The source record is not touched: the
+	// document is written as a new record, and the workstation's own open path opens it.
+	async function openPdaDocument(doc: PdaDocument, title: string): Promise<boolean> {
+		if (!machineStore) return false;
+		try {
+			await autosave?.flush();
+			const record = await createPdaMachine(machineStore, { ...doc, title }, () => Date.now());
+			return (await openPdaById(record.id)) === null;
+		} catch {
+			return false;
+		}
+	}
+
 	// Register hooks on library
 	$effect(() => {
 		if (active) {
@@ -264,6 +279,7 @@
 			{autosave}
 			{persistent}
 			{onhelp}
+			onopenpda={openPdaDocument}
 			library={{ count: library.count, onopen: library.show }}
 			firstRun={{ examples, failed, onexample: (id) => void openExample(id) }}
 		/>

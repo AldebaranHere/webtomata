@@ -25,6 +25,9 @@
 	import PdaLabelPopover from './PdaLabelPopover.svelte';
 	import { pdaMenuLabels } from './pda-label.ts';
 	import PdaRunPanel from './PdaRunPanel.svelte';
+	import PdaConversionCanvas from './PdaConversionCanvas.svelte';
+	import PdaConversionPanel from './PdaConversionPanel.svelte';
+	import type { PdaConversionShown } from './pda-conversion.ts';
 	import { createPdaRunner } from './pda-run.ts';
 	import type { PdaText } from './pda-run.ts';
 	import PdaTestList from './PdaTestList.svelte';
@@ -45,7 +48,8 @@
 		persistent = true,
 		library,
 		firstRun,
-		onhelp
+		onhelp,
+		onopenpda
 	}: {
 		doc: PdaDocument;
 		autosave?: BaseAutosave<PdaDocument>;
@@ -59,6 +63,8 @@
 		};
 		/** The "?" button of the bar: the tour. */
 		onhelp?: () => void;
+		/** Opens the RNF result as a new saved PDA (T-038b AC4). False means the save failed. */
+		onopenpda?: (doc: PdaDocument, title: string) => Promise<boolean>;
 	} = $props();
 
 	export function setTitle(title: string) {
@@ -309,9 +315,13 @@
 		}
 	}
 
-	// The panel tabs: Simulasi first, then Tabel and Definisi (Konversi comes in T-038b).
-	const tabs: readonly PanelTab[] = ['simulation', 'table', 'definition'];
+	// The panel tabs: Simulasi first, then Tabel, Definisi and Konversi (T-038b).
+	const tabs: readonly PanelTab[] = ['simulation', 'table', 'definition', 'conversion'];
 	let tab = $state<PanelTab>(untrack(() => readTab(undefined, tabs)));
+	// The conversion result covers the canvas only while its tab is open; the editor stays under
+	// it with its camera and selection, as in the FSM.
+	let conversionView = $state.raw<PdaConversionShown | null>(null);
+	const covered = $derived(conversionView !== null && tab === 'conversion');
 	function chooseTab(next: PanelTab) {
 		tab = next;
 		saveTab(next);
@@ -447,6 +457,7 @@
 	hasAutosave={autosave !== undefined}
 	{saveStatus}
 	{persistent}
+	{covered}
 	onfit={() => canvas.zoom('fit')}
 	{problem}
 	hintLine={snapshot.tool === 'transition' && snapshot.labeling === null
@@ -521,6 +532,24 @@
 			{/snippet}
 		</EditorCanvas>
 	{/snippet}
+	{#snippet coveredContent()}
+		{#if conversionView}
+			{#if conversionView.doc}
+				<PdaConversionCanvas
+					doc={conversionView.doc}
+					active={conversionView.active}
+					taken={conversionView.taken}
+				/>
+			{:else}
+				<p class="canvas-note" role="status">
+					{t('pda_convert.no_canvas', {
+						states: conversionView.states,
+						transitions: conversionView.transitions
+					})}
+				</p>
+			{/if}
+		{/if}
+	{/snippet}
 	{#snippet overlay()}
 		{#if showFirstRun && firstRun}
 			<div class="first-run">
@@ -592,6 +621,14 @@
 						<Definition doc={snapshot.doc} />
 					{/if}
 				{/snippet}
+				{#snippet conversion()}
+					{@render head()}
+					<PdaConversionPanel
+						doc={snapshot.doc}
+						onshow={(shown) => (conversionView = shown)}
+						{onopenpda}
+					/>
+				{/snippet}
 			</SidePanel>
 		{/if}
 	{/snippet}
@@ -607,6 +644,13 @@
 		position: absolute;
 		inset: var(--target-min) 0 0 0;
 		pointer-events: none;
+	}
+	.canvas-note {
+		margin: 0;
+		padding: var(--space-4);
+		color: var(--color-muted);
+		background: var(--color-ground);
+		font-size: var(--text-sm);
 	}
 	.pda-sheet {
 		display: flex;

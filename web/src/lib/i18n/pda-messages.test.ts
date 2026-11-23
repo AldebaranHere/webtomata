@@ -89,7 +89,30 @@ const PDA_KEYS: readonly MessageKey[] = [
 	'pda_sim.column_string',
 	'pda_sim.column_result',
 	'pda_sim.column_peak',
-	'pda_sim.run_row'
+	'pda_sim.run_row',
+	// The Konversi tab (T-038b).
+	'pda_convert.intro',
+	'pda_convert.stage_rnf',
+	'pda_convert.stage_rnf_long',
+	'pda_convert.stage_cfg',
+	'pda_convert.stage_cfg_long',
+	'pda_convert.stage2_need_rnf',
+	'pda_convert.removed',
+	'pda_convert.added',
+	'pda_convert.rules_so_far',
+	'pda_convert.rules_count',
+	'pda_convert.start_rule',
+	'pda_convert.empty_rules',
+	'pda_convert.play',
+	'pda_convert.open_pda',
+	'pda_convert.open_grammar',
+	'pda_convert.to_cfg',
+	'pda_convert.close',
+	'pda_convert.result_caption',
+	'pda_convert.canvas',
+	'pda_convert.no_canvas',
+	'pda_convert.names_note',
+	'pda_convert.save_failed'
 ];
 
 const parameters = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
