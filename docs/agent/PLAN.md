@@ -3762,7 +3762,7 @@ DeepSeek's pre-flight found 25 flaws. Where this block and the text above differ
 
 ## Task T-038c — "Ke PDA" in the grammar mode: CFG to PDA
 
-**Status:** todo (full spec written 2026-11-23; T-038a is merged; can run at the same time as T-038b, see its "Shared ground")
+**Status:** done (2026-11-23; branch `task/T-038c-grammar-to-pda`; seam commit `9538b21` pushed as PR 246; feature commit on top; see `docs/agent/reports/T-038c.md`)
 **Owner:** worker (Gemini)
 
 **Goal:** The grammar workstation's third column gets a third tab, **Ke PDA**, next to "Transformasi CNF (6 Fase)" and "Uji String (CYK)", built as section 3 of `design/screens/pda-simulation-conversion.md` (frame D): two methods as radio buttons (**Atas-bawah**, `CFGtoPDAtopdown`, and **Bawah-atas**, `CFGtoPDAbottomup`, the names of the slides), a stepper with the sentence of each step and the transition that it adds, and **Buka sebagai PDA baru**, which opens the PDA in the PDA mode as a new saved PDA. The engine and the worker already have `cfgToPdaTopdown(grammar: string)` and `cfgToPdaBottomup(grammar: string)` (`protocol.ts`, found 2026-11-23): **no change in `crates/`** unless the pre-flight proves a result type is not enough.
@@ -3927,6 +3927,7 @@ Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's 
 - **T-038** Conversions and simulation panel for the PDA: split on 2026-11-23 into T-038a (`done`, PR 243: the Simulasi tab), T-038b (`todo`: Konversi, PDA to grammar; DeepSeek) and T-038c (`todo`: "Ke PDA" in the grammar mode; Gemini); b and c run at the same time and the planner reconciles their two cross-mode handoffs before "Go".
 - **T-085** The simulation strokes the used transition, not the whole `from>to` group (`proposed`, found by T-038a's pre-flight): two transitions between the same pair (wwᴿ has two on q0→q0) both light up today; needs an optional per-transition prop in `EditorCanvas` and `DiagramDrawing`.
 - **T-086** The tour's step 5 says "Semuanya tersimpan di perangkat ini", which is false for the PDA's test list (T-038a's decision 7: it lives for the session only). Reword the shared step for both modes, or add a mode-specific sentence; the planner owns the tour's text. (`proposed`, found in T-038a.)
+- **T-087** In `GrammarWorkstation.svelte`, `.custom-card` is a `<div role="button">` containing `<button class="btn-delete">`, which triggers axe `nested-interactive` on desktop whenever a custom grammar exists in the library (`proposed`, found in T-038c).
 - **T-071** One scheduler for the two engine queries of the PDA panel (`proposed`, found by T-062): `checker.ts` and `pda-determinism.ts` are the same rule (a debounce, a sequence number, a dispose) on two different answers, and the panel now asks the engine twice after every change. One small `createQuery` that both use would remove the second copy, but `checker.ts` is shared with the FSM, so it needs FSM tests and a decision of its own. Not urgent: there is no third query yet, and the copy is 40 lines.
 - **P-004** Wireframe of the PDA editor: planner task above (`done`, approved on 2026-11-06).
 

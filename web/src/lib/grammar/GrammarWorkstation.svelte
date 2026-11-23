@@ -1,4 +1,5 @@
 <script lang="ts">
+	import '#lib/i18n/grammar-to-pda-messages.ts';
 	import { onMount } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { engine } from '#lib/engine/client.ts';
@@ -8,6 +9,7 @@
 	import GrammarMathDisplay from './GrammarMathDisplay.svelte';
 	import GrammarCnfStepper from './GrammarCnfStepper.svelte';
 	import GrammarCykTester from './GrammarCykTester.svelte';
+	import GrammarToPdaTab from './GrammarToPdaTab.svelte';
 	import WorkstationPhoneTabs, {
 		type PhoneTabItem
 	} from '#lib/components/WorkstationPhoneTabs.svelte';
@@ -21,7 +23,8 @@
 	} from './grammar-text.ts';
 
 	let {
-		openRequest = null
+		openRequest = null,
+		onopenpda
 	}: {
 		openRequest?: GrammarOpenRequest | null;
 		onopenpda?: (id: string) => void;
@@ -107,8 +110,8 @@
 	let outputWidth = $state<number>(420);
 	let workstationRef = $state<HTMLDivElement | null>(null);
 
-	let activeTab = $state<'cnf' | 'cyk'>('cnf');
-	let phoneTab = $state<'pustaka' | 'editor' | 'cnf' | 'cyk'>('editor');
+	let activeTab = $state<'cnf' | 'cyk' | 'topda'>('cnf');
+	let phoneTab = $state<'pustaka' | 'editor' | 'cnf' | 'cyk' | 'topda'>('editor');
 	let isTransforming = $state<boolean>(false);
 	let errorMessage = $state<string | null>(null);
 
@@ -129,11 +132,14 @@
 			''
 	);
 
+	const grammarText = $derived(matrixRowsToGrammarText(rows));
+
 	const GRAMMAR_PHONE_TABS: PhoneTabItem[] = [
 		{ id: 'pustaka', labelKey: 'workstation.tab_library' },
 		{ id: 'editor', labelKey: 'workstation.tab_editor' },
 		{ id: 'cnf', labelKey: 'workstation.tab_cnf' },
-		{ id: 'cyk', labelKey: 'workstation.tab_cyk' }
+		{ id: 'cyk', labelKey: 'workstation.tab_cyk' },
+		{ id: 'topda', labelKey: 'workstation.tab_topda' }
 	];
 
 	function textToMatrixRows(text: string): MatrixRow[] {
@@ -721,9 +727,10 @@
 		tabs={GRAMMAR_PHONE_TABS}
 		activeTab={phoneTab}
 		onselect={(tab) => {
-			phoneTab = tab as 'pustaka' | 'editor' | 'cnf' | 'cyk';
+			phoneTab = tab as 'pustaka' | 'editor' | 'cnf' | 'cyk' | 'topda';
 			if (tab === 'cnf') activeTab = 'cnf';
 			if (tab === 'cyk') activeTab = 'cyk';
+			if (tab === 'topda') activeTab = 'topda';
 		}}
 		ariaLabelKey="workstation.tabs_grammar_aria"
 		idPrefix="grammar"
@@ -1086,12 +1093,12 @@
 		<div class="splitter-line"></div>
 	</div>
 
-	<!-- Column 3: Processing & Transformation Tabs (CNF / CYK) -->
+	<!-- Column 3: Processing & Transformation Tabs (CNF / CYK / Ke PDA) -->
 	<div
 		class="col output-col"
 		role={isPhone ? undefined : 'region'}
 		aria-label={t('grammar.output_aria')}
-		hidden={phoneTab !== 'cnf' && phoneTab !== 'cyk'}
+		hidden={phoneTab !== 'cnf' && phoneTab !== 'cyk' && phoneTab !== 'topda'}
 	>
 		<div class="tabs-header">
 			<button
@@ -1115,6 +1122,17 @@
 				}}
 			>
 				{t('grammar.tab_cyk')}
+			</button>
+			<button
+				type="button"
+				class="tab-btn"
+				class:active={activeTab === 'topda'}
+				onclick={() => {
+					activeTab = 'topda';
+					phoneTab = 'topda';
+				}}
+			>
+				{t('grammar.to_pda_tab')}
 			</button>
 		</div>
 
@@ -1161,6 +1179,22 @@
 						<p>{t('grammar.empty_cyk')}</p>
 					</div>
 				{/if}
+			</div>
+
+			<div
+				role="tabpanel"
+				id="grammar-pane-topda"
+				aria-labelledby="grammar-tab-topda"
+				class="pane-topda"
+				hidden={phoneTab !== 'topda' && activeTab !== 'topda'}
+			>
+				<GrammarToPdaTab
+					{grammarText}
+					grammarTitle={activeTitle}
+					{parsedGrammar}
+					active={isPhone ? phoneTab === 'topda' : activeTab === 'topda'}
+					{onopenpda}
+				/>
 			</div>
 		</div>
 	</div>
@@ -1949,7 +1983,8 @@
 		}
 
 		.pane-cnf[hidden],
-		.pane-cyk[hidden] {
+		.pane-cyk[hidden],
+		.pane-topda[hidden] {
 			display: none !important;
 		}
 

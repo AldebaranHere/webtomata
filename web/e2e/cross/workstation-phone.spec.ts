@@ -38,7 +38,7 @@ test('grammar phone layout on WebKit phone: tab navigation, shortcut, and axe', 
 	await expect(tablist).toBeVisible();
 
 	const tabs = tablist.locator('[role="tab"]');
-	await expect(tabs).toHaveCount(4);
+	await expect(tabs).toHaveCount(5);
 
 	// Editor tab is default
 	await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
@@ -74,6 +74,18 @@ test('grammar phone layout on WebKit phone: tab navigation, shortcut, and axe', 
 	await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
 	await expect(editorPane).toBeVisible();
 	await expect(editorPane.locator('.col-header')).toContainText('(CNF)');
+
+	// 5th tab "Ke PDA" fits on one row with the other 4 tabs and builds a PDA
+	const ys = await tabs.evaluateAll((els) =>
+		els.map((e) => Math.round(e.getBoundingClientRect().y))
+	);
+	expect(new Set(ys).size).toBe(1);
+	await tabs.nth(4).click();
+	const toPdaPane = page.locator('#grammar-pane-topda');
+	await expect(toPdaPane).toBeVisible();
+	await toPdaPane.getByRole('button', { name: 'Buat PDA' }).click();
+	await expect(toPdaPane.locator('.step-counter')).toBeVisible();
+	await expectNoAxeViolations(page);
 });
 
 test('language phone layout on WebKit phone: tab navigation and axe', async ({ page }) => {
