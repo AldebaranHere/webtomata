@@ -841,3 +841,13 @@ Format:
 - Alternatives considered: run the block verbatim (rejected: B2 could not be shown failing, and the e2e list would test the canvas tool); add the bound assertion to the PDA test (rejected: decision 4 allows only the import and the two calls).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-066), `web/src/lib/editor/interaction/placement.test.ts`, `web/src/lib/editor/pda-table-edit.ts`
+
+
+## 2026-11-24 — T-028: engine errors are keys with parameters; the grammar module first, the language module after
+
+- Decider: planner (the owner asked for the spec; this decision follows principle 6 of `CLAUDE.md`)
+- Context: `GrammarError` carries Indonesian sentences and `api.rs` ships them as a `detail` parameter, so the UI shows Indonesian in English and shows a raw key when there is no `detail`. Three UI places copy that fallback.
+- Decision: `GrammarError` becomes typed data (six variants at most; dead ones removed), one `From<GrammarError> for Message`, new `grammar.error.*` keys with the old Indonesian wording, one UI helper with a generic fallback that never shows a key, a `detail` or an exception text. The language module has the same problem at about 20 sites and is a separate task (T-028b), so each diff stays reviewable in one sitting.
+- Alternatives considered: do grammar and language together (rejected: two engines, two UI files, about 30 sites, one diff nobody reads); keep `api.invalid_grammar` as a wrapper key with the specific key as a parameter (rejected: the UI would translate two levels for no gain).
+- Reversible? yes
+- Affects: `crates/engine-core/src/grammar/`, `api.rs`, `web/src/lib/grammar/`, `web/src/lib/i18n/`
