@@ -821,3 +821,13 @@ Format:
 - Alternatives considered: join `checks` too (rejected: the light jobs would restore 388 MB for a 253 MB need); a workflow check that equal steps share a key (rejected: more code than the three lines it guards).
 - Reversible? yes
 - Affects: `.github/workflows/ci.yml`, `docs/agent/PLAN.md` (T-088b)
+
+
+## 2026-11-24 — T-066: the shared "new state" command lives in `placement.ts`, with a re-export in `table.ts`
+
+- Decider: planner (the owner chose to clear the small backlog first)
+- Context: `newStateCommand` (FSM table) and `addStateCommand` (PDA table) are the same nine lines. The FSM one is typed for `MachineDocument`; `freeSpot`, which it calls, already takes a `StatesDocument`.
+- Decision: one definition in `interaction/placement.ts`, next to `freeSpot`, typed for `StatesDocument` and returning the plain `addState` command (so it needs no cast for either document). `table.ts` keeps the old name with a one-line re-export, so the FSM callers and tests are untouched. The PDA copy is deleted, and its one test keeps proving the function on a `PdaDocument` with a changed import.
+- Alternatives considered: widen it in place in `table.ts` and import it from the PDA files (rejected: the PDA chunk would import a file named for the FSM table); keep `addStateCommand` as an alias (rejected: a trampoline that costs a name and saves one import edit).
+- Reversible? yes
+- Affects: `web/src/lib/editor/` (placement, table, PDA table edit)

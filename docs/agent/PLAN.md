@@ -4073,6 +4073,38 @@ DeepSeek's pre-flight found 18 flaws. Where this block and the text above differ
 
 **Depends on:** T-088 (merged).
 
+## Task T-066 — One "new state" command for the FSM and the PDA table
+
+**Status:** todo
+**Owner:** worker (DeepSeek: it measures bytes and writes the guards)
+
+**Goal:** `newStateCommand` in `web/src/lib/editor/table.ts` and `addStateCommand` in `web/src/lib/editor/pda-table-edit.ts` are the same nine lines: find the state furthest to the right, take the spot 130 to its right in the same row, ask `freeSpot` for the nearest free place, and return `{ type: 'addState', x, y }` (the first state of an empty document goes to 200, 200). The FSM version is typed for `MachineDocument` only because nobody widened it; `freeSpot` already takes a `StatesDocument`. Keep one copy. The PDA task (T-061) found this and could not touch `table.ts`.
+
+**Decisions (the planner's; the worker may find a flaw, may not silently change one):**
+
+1. **One definition, in `web/src/lib/editor/interaction/placement.ts`**, next to `freeSpot` (which it calls, and which already takes a `StatesDocument`): `export function newStateCommand(doc: StatesDocument): Extract<StateCommand, { type: 'addState' }>` (both types are in `interaction/document-view.ts`; that return type is a plain `addState` object, so it is a `Command` for the FSM and a `PdaCommand` for the PDA without a cast). The `STEP` constant (130) and the doc comment move with it. No cast; if one turns out to be needed, say so in the report.
+2. **`table.ts`** deletes its definition and its `STEP`, and keeps the name for its callers with one line: `export { newStateCommand } from './interaction/placement.ts';`, so `TableView.svelte` and `table.test.ts` do not change. If `freeSpot` or `Command` become unused imports in `table.ts`, remove them.
+3. **`pda-table-edit.ts`** deletes `addStateCommand` and its `STEP`. `PdaStatesBlock.svelte` imports `newStateCommand` from `./interaction/placement.ts` instead (one import line and one call). Nothing else in those two files changes.
+4. **One existing test is edited, and only that:** `pda-table-edit.test.ts` keeps its test "a new state never lands on another one, and the empty document starts at 200, 200" (it proves the shared function on a `PdaDocument`), with its import changed to `newStateCommand` from `./interaction/placement.ts` and the two calls renamed. No other test changes. `table.test.ts`'s three tests keep proving the FSM side through the re-export.
+5. **The placement test file** (`interaction/placement.test.ts` if it exists, else a new `new-state.test.ts` next to it) gets one test that runs the same function on an FSM document and on a PDA document with the same states and gets the same `x` and `y`, and a type assertion in the style of `document-view.test.ts` that the result is accepted as a `Command` and as a `PdaCommand` (a `satisfies`).
+6. **Not here:** `T-067`, any change to `freeSpot`, the 130 or the 200, 200 start, or the other copies in T-071b.
+
+**Scope (files):** `interaction/placement.ts`, `table.ts`, `pda-table-edit.ts`, `PdaStatesBlock.svelte`, `pda-table-edit.test.ts` (the import and the two calls), one new or existing placement test, `docs/agent/PLAN.md` (status), `docs/agent/DECISIONS.md` only if the worker finds a reason to deviate. No ADR, no report file; the guard output and the byte numbers go in the PR description.
+
+**Acceptance criteria:**
+
+1. `grep -rn "addStateCommand" web/src` finds nothing, and `newStateCommand` is defined once.
+2. The production lines are net negative (about 12 fewer); paste `git diff --stat` split into production and test lines.
+3. Every existing test passes unedited except the one in decision 4.
+4. The PDA lazy chunk and `sandbox.html` do not grow in gzip bytes (measure the first-JS chunks as T-071 did: bytes before and after, not the one-decimal KB of `pnpm size`). If one grows, say by how much and why.
+5. The new test of decision 5 passes for both documents, and `pnpm check` (svelte-check) passes, which is what proves the types.
+
+**Verification:** `pnpm lint`, `pnpm check`, `pnpm format:check`, `pnpm test:web`, `pnpm check:strings`, `pnpm build`, `pnpm size`, and the e2e specs that click "Tambah state" in the table of each mode (find them with `grep -ln "Tambah state\|add state" web/e2e`; run them on the desktop project). Say that `build` and `format:check` call cargo and wasm-pack. **Break each guard once on the final code and show a test catches it:** B1 `STEP` changed from 130 to 100 (the FSM tests of `table.test.ts` fail on x); B2 the function ignores `freeSpot` and returns `last.x + STEP` as it is (the PDA test of decision 4 fails on the distance from another state, because the machine has a state there); B3 the empty document starts at 0, 0 (both the FSM and the PDA test fail).
+
+**Rollback:** revert the PR.
+
+**Depends on:** T-061 and T-071 (merged).
+
 ---
 
 ## Planner task P-005 — Wireframe of the PDA simulation, the stack and the conversions
@@ -4146,7 +4178,7 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-017** The two local-reference tests keep only finite automata: specified in its own task block above (`todo`).
 - **T-028** The grammar engine's errors carry Indonesian sentences. `GrammarError` has `Display` with Indonesian text, and `api.invalid_grammar` and `api.cyk_failed` pass it as `detail`, which the grammar UI shows as it is, also in English; for a key without `detail` it shows the raw key. This breaks principle 6 of `CLAUDE.md`. Make the parser, the CNF transformer and CYK return typed errors with a message key and parameters, and translate them in the UI. Larger than T-019 (found while specifying T-019); needs its own spec and a test for every error.
 - **T-029** The CYK tester joins rule symbols with no space, so every CNF result with a helper variable fails in CYK: specified in its own block above (`todo`; found by the worker in T-010 and reproduced by the planner).
-- **T-066** `newStateCommand` in `web/src/lib/editor/table.ts` is typed for `MachineDocument` although it only reads `states`, so the PDA table repeats its six lines in `pda-table-edit.ts` (`addStateCommand`). Widen the parameter to `StatesDocument` and let the PDA call it (found by the worker in T-061; the task's non-goals forbade touching `table.ts`).
+- **T-066** One "new state" command for the FSM and the PDA table: specified in its own task block above (`todo`; found by the worker in T-061, which could not touch `table.ts`). The shared function goes to `interaction/placement.ts` and `table.ts` re-exports it.
 - **T-067** Two e2e locators pick the delete tool with `{ name: /^Hapus/ }` unscoped: `web/e2e/pda-editor.spec.ts:324` and `web/e2e/pda-panel.spec.ts:450`. The first one broke in T-061 as soon as the panel had buttons named "Hapus simbol/state/baris"; the second passes only because the panel is not in the DOM at that point. Make both `{ name: 'Hapus', exact: true }`, as `editor-edges.spec.ts:163` already does.
 - **T-068 (specified 2026-11-10 as "Task T-068" above; `done`)** `web/src/lib/editor/history.ts` holds both `createHistory` and `createPdaHistory`, so the routes that mount the editor (`sandbox.html` and the three `soal/*.html`) download `pda-commands.ts` and `pda-document.ts` in their first load. Split the PDA history into its own module and import it only with the PDA mode; it shrinks those four routes (the other five never fetched the PDA chunks), and it would remove the 0.2 KB that T-061 pays when its lazy table chunk starts importing the PDA commands (found by the worker in T-061, section 8 of its report).
 
