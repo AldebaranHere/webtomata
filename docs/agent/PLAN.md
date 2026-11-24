@@ -4138,7 +4138,7 @@ DeepSeek's pre-flight found 18 flaws. Where this block and the text above differ
 
 ## Task T-067b — Tighten the e2e locators that T-067's search found
 
-**Status:** in-progress
+**Status:** done (2026-11-24; branch `task/T-067b-tighter-e2e-locators`; see `docs/agent/reports/T-067b.md`)
 **Owner:** worker (DeepSeek: it runs many specs and counts them)
 
 **Goal:** T-067 fixed one locator that matched too many buttons and reported the others it found (`docs/agent/reports/T-067.md`). None of them fails today; each passes because of what is on the screen at that moment, and each would fail on Playwright's strict mode, or click the wrong button, after an unrelated change (the way the delete tool broke in T-061 when the panel got "Hapus …" buttons). Make them say what they mean. **This is a behavior-preserving change to test code only:** the same tests pass, in the same number, before and after.
@@ -4247,7 +4247,7 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-029** The CYK tester joins rule symbols with no space, so every CNF result with a helper variable fails in CYK: specified in its own block above (`todo`; found by the worker in T-010 and reproduced by the planner).
 - **T-066** One "new state" command for the FSM and the PDA table: specified in its own task block above (`done`, PR 264; found by the worker in T-061, which could not touch `table.ts`). The shared function goes to `interaction/placement.ts` and `table.ts` re-exports it.
 - **T-067** Pick the delete tool by its exact name in the PDA panel e2e: specified in its own task block above (`done`). Only one of the two locators is left: the `pda-editor.spec.ts` one was fixed in T-061.
-- **T-067b** Tighten the e2e locators that T-067's search found (unanchored `State q…`, two `Hapus`, four whole-page `Urungkan`): specified in its own task block above (`todo`). Test code only; the same tests pass in the same number.
+- **T-067b** Tighten the e2e locators that T-067's search found (unanchored `State q…`, two `Hapus`, four whole-page `Urungkan`): specified in its own task block above (`done`; three of the four `Urungkan` sites, per the owner's ruling of 2026-11-24: `pda-panel.spec.ts:182` stays whole-page because it runs on the phone, where the rail's undo is hidden). Test code only; the same tests pass in the same number.
 - **T-068 (specified 2026-11-10 as "Task T-068" above; `done`)** `web/src/lib/editor/history.ts` holds both `createHistory` and `createPdaHistory`, so the routes that mount the editor (`sandbox.html` and the three `soal/*.html`) download `pda-commands.ts` and `pda-document.ts` in their first load. Split the PDA history into its own module and import it only with the PDA mode; it shrinks those four routes (the other five never fetched the PDA chunks), and it would remove the 0.2 KB that T-061 pays when its lazy table chunk starts importing the PDA commands (found by the worker in T-061, section 8 of its report).
 
 **B. Grammar additions** (a wireframe the owner approves comes first for T-020)
