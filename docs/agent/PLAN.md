@@ -4075,7 +4075,7 @@ DeepSeek's pre-flight found 18 flaws. Where this block and the text above differ
 
 ## Task T-066 — One "new state" command for the FSM and the PDA table
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker (DeepSeek: it measures bytes and writes the guards)
 
 **Goal:** `newStateCommand` in `web/src/lib/editor/table.ts` and `addStateCommand` in `web/src/lib/editor/pda-table-edit.ts` are the same nine lines: find the state furthest to the right, take the spot 130 to its right in the same row, ask `freeSpot` for the nearest free place, and return `{ type: 'addState', x, y }` (the first state of an empty document goes to 200, 200). The FSM version is typed for `MachineDocument` only because nobody widened it; `freeSpot` already takes a `StatesDocument`. Keep one copy. The PDA task (T-061) found this and could not touch `table.ts`.
