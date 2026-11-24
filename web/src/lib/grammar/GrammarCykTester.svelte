@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { engine } from '#lib/engine/client.ts';
-	import type { CykResult, Grammar } from '#lib/engine/types.ts';
-	import { grammarToText } from './grammar-text.ts';
-	import { id as messages, type MessageKey } from '#lib/i18n/id.ts';
+	import type { CykResult, Grammar, Message } from '#lib/engine/types.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
-	import type { Params } from '#lib/i18n/translate.ts';
+	import { formatGrammarError } from './grammar-error-text.ts';
+	import { grammarToText } from './grammar-text.ts';
 
 	let {
 		grammar,
@@ -14,20 +13,12 @@
 		presetStrings?: string[];
 	} = $props();
 
-	type CykError = { key: MessageKey; params: Params } | { raw: string };
-
 	let testInput = $state<string>('');
 	let isRunning = $state<boolean>(false);
 	let cykResult = $state<CykResult | null>(null);
-	let cykError = $state<CykError | null>(null);
+	let cykError = $state<Message | null>(null);
 
-	const cykErrorMessage = $derived.by(() => {
-		if (!cykError) return null;
-		if ('key' in cykError) {
-			return t(cykError.key, cykError.params);
-		}
-		return cykError.raw;
-	});
+	const cykErrorMessage = $derived(cykError ? formatGrammarError(cykError, t) : null);
 
 	// Convert grammar object to canonical text format with spaced symbols for the engine call
 	const grammarText = $derived(grammarToText(grammar));
@@ -42,22 +33,11 @@
 			if (res.ok) {
 				cykResult = res.value;
 			} else {
-				if (Object.hasOwn(messages, res.error.key)) {
-					cykError = {
-						key: res.error.key as MessageKey,
-						params: (res.error.params ?? {}) as Params
-					};
-				} else {
-					cykError = {
-						raw: res.error.params?.detail ? String(res.error.params.detail) : res.error.key
-					};
-				}
+				cykError = res.error;
 				cykResult = null;
 			}
-		} catch (err) {
-			cykError = {
-				raw: err instanceof Error ? err.message : String(err)
-			};
+		} catch {
+			cykError = { key: 'grammar.error.generic', params: {} };
 			cykResult = null;
 		} finally {
 			isRunning = false;

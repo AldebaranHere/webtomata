@@ -7,16 +7,7 @@ import { windowRows } from '../editor/list-window.ts';
 import { applyPdaCommand } from '../editor/pda-commands.ts';
 import { fromEnginePda } from '../editor/pda-document.ts';
 import type { PdaDocument } from '../editor/pda-document.ts';
-import type {
-	CfgToPda,
-	Grammar,
-	JffState,
-	Message,
-	PdaTransition,
-	StateName
-} from '../engine/types.ts';
-import type { MessageKey } from '../i18n/id.ts';
-import type { Params } from '../i18n/translate.ts';
+import type { CfgToPda, Grammar, JffState, PdaTransition, StateName } from '../engine/types.ts';
 
 export type CfgToPdaMethod = 'topdown' | 'bottomup';
 
@@ -108,19 +99,4 @@ export function windowEarlierRows<T>(
 	limit = CFG_PDA_STEP_WINDOW
 ): { shown: readonly T[]; hidden: number } {
 	return windowRows(rows, limit);
-}
-
-/** Renders an engine refusal as a calm translated sentence, falling back to `detail` or the key. */
-export function formatCfgPdaRefusal(
-	error: Message,
-	translateFn: (key: MessageKey, params?: Params) => string,
-	hasKey: (key: string) => boolean
-): string {
-	if (hasKey(error.key)) {
-		return translateFn(error.key as MessageKey, error.params);
-	}
-	if (error.params?.detail !== undefined) {
-		return String(error.params.detail);
-	}
-	return error.key;
 }

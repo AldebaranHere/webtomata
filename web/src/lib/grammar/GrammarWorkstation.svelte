@@ -3,13 +3,14 @@
 	import { onMount } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { engine } from '#lib/engine/client.ts';
-	import type { CnfTransformationTrace, Grammar } from '#lib/engine/types.ts';
+	import type { CnfTransformationTrace, Grammar, Message } from '#lib/engine/types.ts';
 	import { t, getLocale } from '#lib/i18n/index.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
 	import GrammarMathDisplay from './GrammarMathDisplay.svelte';
 	import GrammarCnfStepper from './GrammarCnfStepper.svelte';
 	import GrammarCykTester from './GrammarCykTester.svelte';
 	import GrammarToPdaTab from './GrammarToPdaTab.svelte';
+	import { formatGrammarError } from './grammar-error-text.ts';
 	import WorkstationPhoneTabs, {
 		type PhoneTabItem
 	} from '#lib/components/WorkstationPhoneTabs.svelte';
@@ -113,7 +114,8 @@
 	let activeTab = $state<'cnf' | 'cyk' | 'topda'>('cnf');
 	let phoneTab = $state<'pustaka' | 'editor' | 'cnf' | 'cyk' | 'topda'>('editor');
 	let isTransforming = $state<boolean>(false);
-	let errorMessage = $state<string | null>(null);
+	let pipelineError = $state<Message | null>(null);
+	const errorMessage = $derived(pipelineError ? formatGrammarError(pipelineError, t) : null);
 
 	let isPhone = $state(false);
 
@@ -673,21 +675,19 @@
 		if (!grammarText.trim()) {
 			parsedGrammar = null;
 			cnfTrace = null;
-			errorMessage = null;
+			pipelineError = null;
 			return;
 		}
 
 		const callId = ++pipelineCallId;
 		isTransforming = true;
-		errorMessage = null;
+		pipelineError = null;
 
 		try {
 			const parseRes = await engine.parseGrammar(grammarText);
 			if (callId !== pipelineCallId) return;
 			if (!parseRes.ok) {
-				errorMessage = parseRes.error.params?.detail
-					? String(parseRes.error.params.detail)
-					: parseRes.error.key;
+				pipelineError = parseRes.error;
 				parsedGrammar = null;
 				cnfTrace = null;
 				return;
@@ -697,16 +697,14 @@
 			const cnfRes = await engine.transformToCnf(grammarText, cnfVersion === 'short');
 			if (callId !== pipelineCallId) return;
 			if (!cnfRes.ok) {
-				errorMessage = cnfRes.error.params?.detail
-					? String(cnfRes.error.params.detail)
-					: cnfRes.error.key;
+				pipelineError = cnfRes.error;
 				cnfTrace = null;
 				return;
 			}
 			cnfTrace = cnfRes.value;
-		} catch (e) {
+		} catch {
 			if (callId !== pipelineCallId) return;
-			errorMessage = e instanceof Error ? e.message : 'Unknown grammar transformation error';
+			pipelineError = { key: 'grammar.error.generic', params: {} };
 			parsedGrammar = null;
 			cnfTrace = null;
 		} finally {
