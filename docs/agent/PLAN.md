@@ -4401,7 +4401,7 @@ Cause 4, 5 and part of 6 are one defect: the module mixes **byte** lengths and *
 
 ## Task T-092 — A deleted custom grammar can be undone
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker (DeepSeek; one component, a toast that already exists, and storage edge cases)
 
 **Goal:** In the library of the grammar workstation the × on a custom grammar's card deletes it **at once, with no confirmation and no way back** (the owner's phone check of 2026-11-25, after T-087). A tap that slips next to the card's title loses the student's own grammar for good. After this task the deletion shows the toast that the editors already use, "Tata bahasa '…' dihapus." with **Urungkan**, for 6 seconds, and Urungkan brings the grammar back where it was. No modal: a confirmation on every delete is a tax on the many to save the few, and a toast also covers a slip that a modal would not stop.
