@@ -923,3 +923,13 @@ Format:
 - Alternatives considered: a confirmation modal (rejected: a tax on every delete, and it does not help a student who confirms by reflex); deferring the real delete until the toast ends (rejected: a reload or a closed tab inside 6 s would lose or keep the wrong state); fixing the ring per control (rejected: the cause is the box).
 - Reversible? yes
 - Affects: `web/src/lib/editor/SidePanel.svelte`, `PdaEditor.svelte` and other scroll boxes (T-091); `web/src/lib/grammar/GrammarWorkstation.svelte`, `web/src/lib/i18n/` (T-092)
+
+
+## 2026-11-25 — T-091 pre-flight rulings: fix every clipping box the audit finds, except the file T-092 owns
+
+- Decider: planner (Gemini's pre-flight, reviewed with the code)
+- Context: the block named `.pda-sheet` and missed three other clippers; Gemini measured the real boxes on a 360 px phone and a 1440 px desktop. The phone project is 412 px wide, not 360.
+- Decision: the audit's "fix" rows are all in scope (decision 2 of the block): `.panes`, `.rows`, the desktop `.cyk-container`, and three inset rings (`LanguageSwitch`, `.seg`, the language splitter). `GrammarWorkstation.svelte` is reported, not edited, and becomes T-093 after T-092 merges. The spec adds a 60-stop Tab sweep over the FSM and PDA sandboxes. The helper also fails on an element with no visible outline, and handles a transformed ancestor.
+- Review note: the negative top margin of `.panes` lies in the 12 px gap above it (`.content` has `gap: var(--space-3)`), so it does not overlap the tab buttons; every one of 27 controls has a 0.00 px bounding-box delta; five guards were caught; `sandbox.html` first JS is 126,701 gzip bytes (CSS-only change).
+- Reversible? yes
+- Affects: `web/src/lib/editor/SidePanel.svelte`, `PdaLabelForm.svelte`, `ConversionPanel.svelte`, `web/src/lib/components/LanguageSwitch.svelte`, `web/src/lib/grammar/GrammarCykTester.svelte`, `web/src/lib/language/LanguageWorkstation.svelte`, `web/e2e/focus-ring.spec.ts`
