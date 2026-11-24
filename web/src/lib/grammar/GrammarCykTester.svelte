@@ -190,8 +190,13 @@
 		flex-direction: column;
 		gap: var(--space-3);
 		overflow-y: auto;
-		height: 100%;
-		padding-right: var(--space-1);
+		height: calc(100% + 2 * (var(--focus-ring-width) + var(--focus-ring-offset)));
+		padding: calc(var(--focus-ring-width) + var(--focus-ring-offset));
+		/* Right already had 4px padding for the scrollbar; only negate top, bottom, and left. */
+		margin-top: calc((var(--focus-ring-width) + var(--focus-ring-offset)) * -1);
+		margin-bottom: calc((var(--focus-ring-width) + var(--focus-ring-offset)) * -1);
+		margin-left: calc((var(--focus-ring-width) + var(--focus-ring-offset)) * -1);
+		scroll-padding-block: calc(var(--focus-ring-width) + var(--focus-ring-offset));
 	}
 
 	.cyk-input-section {
@@ -430,6 +435,8 @@
 		.cyk-container {
 			overflow-y: visible;
 			height: auto;
+			padding: 0;
+			margin: 0;
 		}
 
 		.input-row {

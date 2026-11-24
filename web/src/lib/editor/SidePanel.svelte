@@ -408,11 +408,15 @@
 		outline: var(--focus-ring-width) solid var(--focus-ring-color);
 		outline-offset: var(--focus-ring-offset);
 	}
-	/* What is under the tabs scrolls, and the tabs stay. */
+	/* What is under the tabs scrolls, and the tabs stay. The padding keeps focus rings inside the
+	   scrollport; the equal negative margin keeps the inner layout in the same place. */
 	.panes {
 		flex: 1;
 		min-height: 0;
 		overflow-y: auto;
+		padding: calc(var(--focus-ring-width) + var(--focus-ring-offset));
+		margin: calc((var(--focus-ring-width) + var(--focus-ring-offset)) * -1);
+		scroll-padding-block: calc(var(--focus-ring-width) + var(--focus-ring-offset));
 	}
 	.pane {
 		display: flex;

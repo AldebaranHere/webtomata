@@ -39,4 +39,8 @@
 		color: var(--color-on-ink);
 		font-weight: var(--weight-strong);
 	}
+	button:focus-visible {
+		outline: var(--focus-ring-width) solid var(--focus-ring-color);
+		outline-offset: calc(var(--focus-ring-width) * -1);
+	}
 </style>

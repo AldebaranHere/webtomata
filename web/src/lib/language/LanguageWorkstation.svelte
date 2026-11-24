@@ -862,6 +862,11 @@
 		background: var(--color-accent-tint);
 	}
 
+	.splitter:focus-visible {
+		outline: var(--focus-ring-width) solid var(--focus-ring-color);
+		outline-offset: calc(var(--focus-ring-width) * -1);
+	}
+
 	.splitter-line {
 		width: 2px;
 		height: 100%;

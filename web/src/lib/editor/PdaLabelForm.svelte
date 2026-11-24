@@ -333,6 +333,9 @@
 		gap: var(--space-2);
 		max-height: 240px;
 		overflow-y: auto;
+		padding: calc(var(--focus-ring-width) + var(--focus-ring-offset));
+		margin: calc((var(--focus-ring-width) + var(--focus-ring-offset)) * -1);
+		scroll-padding-block: calc(var(--focus-ring-width) + var(--focus-ring-offset));
 	}
 
 	.row {
