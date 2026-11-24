@@ -4136,6 +4136,42 @@ DeepSeek's pre-flight found 18 flaws. Where this block and the text above differ
 
 **Depends on:** T-061 (merged).
 
+## Task T-067b — Tighten the e2e locators that T-067's search found
+
+**Status:** todo
+**Owner:** worker (DeepSeek: it runs many specs and counts them)
+
+**Goal:** T-067 fixed one locator that matched too many buttons and reported the others it found (`docs/agent/reports/T-067.md`). None of them fails today; each passes because of what is on the screen at that moment, and each would fail on Playwright's strict mode, or click the wrong button, after an unrelated change (the way the delete tool broke in T-061 when the panel got "Hapus …" buttons). Make them say what they mean. **This is a behavior-preserving change to test code only:** the same tests pass, in the same number, before and after.
+
+**The sites (all checked on 2026-11-24; line numbers will drift, so search by the pattern):**
+
+- **A. The state buttons: `/^State q0/`, `/^State q1/`** with no end anchor, 21 lines: `pda-table-edit.spec.ts` (65, 68, 81, 84, 103, 106), `pda-editor.spec.ts` (93, 94, 150, 151, 183, 184, 280, 371, 372, 523, 545, 603, 604) and `cross/pda-storage.spec.ts` (70, 190). They would also match `q10`, `q11`, … and a name that starts with `q1`. Fourteen other specs already use the anchored form `/^State q1(,|$)/` (for example `cross/table.spec.ts:174`, `panduan.spec.ts:181`): use the same form (`(,|$)` after the name; the accessible name of a state is `State q1, awal, penerima`: read `PdaDiagram` or `diagram` first to be sure of the separator).
+- **B. Two `Hapus` locators:** `editor.spec.ts:130` `page.getByRole('button', { name: 'Hapus' })` (a substring match; make it `{ name: 'Hapus', exact: true }`, as T-067 did), and `fixtures.ts` `clearTests` (`page.getByRole('button', { name: /^(Hapus|Remove) / })` on the whole page): scope it to the list of test strings (the `.tests` element that the next line already counts) so that it cannot reach a button of the panel's Tabel tab, and keep `.first()`.
+- **C. Four whole-page `Urungkan` locators that expect exactly one button** and have no scope, no `.first()` and no visibility filter: `pda-editor.spec.ts:258` (`/^Urungkan/`), `pda-panel.spec.ts:182` (`/Urungkan/i`), `pda-conversion.spec.ts:136` and `:216` (`/Urungkan/`, asserting `toBeDisabled`). They match both the toolbar button and the toast's button whenever a toast is up. Scope each to the toolbar (the tool rail: `editor-tooltips.spec.ts:82` already does it with a `rail(page)` locator; find what that helper is, and whether the PDA specs can use the same selector inline without a new helper). If the right scope is not obvious for one of them, leave it and say why.
+
+**Decisions (the planner's; the worker may find a flaw, may not silently change one):**
+
+1. **Test files only.** `web/e2e/**` and `docs/agent/PLAN.md` and the report. No change to `web/src/`, to accessible names, to the ESLint config, or to the Playwright config. A new helper is not allowed; an inline locator is.
+2. **Do not touch** the locators that are already scoped (to a panel, a grid, a toast, a form or a row), the ones that use `.first()` on purpose, or the plain `{ name: 'Urungkan' }` locators that are scoped by `toast(page)`, `toast.` or `rail(page)`. Do not run a sweep: the sites above are the task. If the worker finds another whole-page locator of the same shape, it lists it in the PR description and leaves it.
+3. **Count, don't guess:** before the first edit, run the specs of the changed files on `desktop` and on `phone` and record `passed / skipped / failed` per file. After the last edit, run them again: the numbers must be equal. Say which cross-browser specs (`cross/pda-storage.spec.ts`) could not run locally; CI runs them on Firefox and WebKit before the merge.
+4. **One guard per group, to show the new locator is strict:** (A) in a scratch copy of one test (not committed), make the machine have a state named `q10` and show that `/^State q1/` finds two buttons and `/^State q1(,|$)/` finds one; (B) with the Tabel tab open, show that the old `clearTests` locator reaches a panel button and the scoped one does not (a scratch test, not committed); (C) open a toast (delete a state) and show that the old locator for one of the four sites resolves to two elements and the scoped one to one. Paste the output of each, delete the scratch files, and say so.
+
+**Scope (files):** the spec files named above, `web/e2e/fixtures.ts`, `docs/agent/PLAN.md` (status and the backlog line), `docs/agent/reports/T-067b.md` (short: the before and after counts, the guards, the leftovers).
+
+**Acceptance criteria:**
+
+1. `git diff --stat` shows only the files above; the diff has no change other than the locator expressions (and `clearTests`'s scope).
+2. The per-file `passed / skipped / failed` counts are equal before and after, on `desktop` and `phone`, and zero tests fail.
+3. `grep -rn "name: /\^State q[0-9]/" web/e2e` finds nothing (every state locator names its end), and the four `Urungkan` sites and the two `Hapus` sites are as above.
+4. The three guards of decision 4 are pasted, and the scratch files are not in the diff.
+5. `pnpm lint` and `pnpm format:check` pass (say that `format:check` calls cargo). The PR description lists the other unscoped locators the worker found and left.
+
+**Verification:** the runs in criterion 2, the guards, lint and format. No unit tests or build are needed (nothing in `web/src/` changes).
+
+**Rollback:** revert the PR.
+
+**Depends on:** T-067 (merged).
+
 ---
 
 ## Planner task P-005 — Wireframe of the PDA simulation, the stack and the conversions
@@ -4209,8 +4245,9 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-017** The two local-reference tests keep only finite automata: specified in its own task block above (`todo`).
 - **T-028** The grammar engine's errors carry Indonesian sentences. `GrammarError` has `Display` with Indonesian text, and `api.invalid_grammar` and `api.cyk_failed` pass it as `detail`, which the grammar UI shows as it is, also in English; for a key without `detail` it shows the raw key. This breaks principle 6 of `CLAUDE.md`. Make the parser, the CNF transformer and CYK return typed errors with a message key and parameters, and translate them in the UI. Larger than T-019 (found while specifying T-019); needs its own spec and a test for every error.
 - **T-029** The CYK tester joins rule symbols with no space, so every CNF result with a helper variable fails in CYK: specified in its own block above (`todo`; found by the worker in T-010 and reproduced by the planner).
-- **T-066** One "new state" command for the FSM and the PDA table: specified in its own task block above (`todo`; found by the worker in T-061, which could not touch `table.ts`). The shared function goes to `interaction/placement.ts` and `table.ts` re-exports it.
+- **T-066** One "new state" command for the FSM and the PDA table: specified in its own task block above (`done`, PR 264; found by the worker in T-061, which could not touch `table.ts`). The shared function goes to `interaction/placement.ts` and `table.ts` re-exports it.
 - **T-067** Pick the delete tool by its exact name in the PDA panel e2e: specified in its own task block above (`done`). Only one of the two locators is left: the `pda-editor.spec.ts` one was fixed in T-061.
+- **T-067b** Tighten the e2e locators that T-067's search found (unanchored `State q…`, two `Hapus`, four whole-page `Urungkan`): specified in its own task block above (`todo`). Test code only; the same tests pass in the same number.
 - **T-068 (specified 2026-11-10 as "Task T-068" above; `done`)** `web/src/lib/editor/history.ts` holds both `createHistory` and `createPdaHistory`, so the routes that mount the editor (`sandbox.html` and the three `soal/*.html`) download `pda-commands.ts` and `pda-document.ts` in their first load. Split the PDA history into its own module and import it only with the PDA mode; it shrinks those four routes (the other five never fetched the PDA chunks), and it would remove the 0.2 KB that T-061 pays when its lazy table chunk starts importing the PDA commands (found by the worker in T-061, section 8 of its report).
 
 **B. Grammar additions** (a wireframe the owner approves comes first for T-020)
