@@ -467,7 +467,7 @@ test.describe('E5: + n lagi interaction', () => {
 		await expect(tab(page, 'Definisi')).toHaveAttribute('aria-selected', 'true');
 
 		// Switch to Hapus tool
-		const deleteBtn = page.getByRole('button', { name: /^Hapus/ });
+		const deleteBtn = page.getByRole('button', { name: 'Hapus', exact: true });
 		await deleteBtn.click();
 
 		// Click + 2 lagi deletes the edge (doc change) without opening panel / Tabel
