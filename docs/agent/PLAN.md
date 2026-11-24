@@ -4174,7 +4174,7 @@ DeepSeek's pre-flight found 18 flaws. Where this block and the text above differ
 
 ## Task T-028 — The grammar engine's errors are keys with parameters, not Indonesian sentences
 
-**Status:** todo
+**Status:** in-progress (branch `task/T-028-grammar-errors-as-keys`)
 **Owner:** worker (Gemini)
 
 **Goal:** `CLAUDE.md` principle 6: the engine never produces sentences; it returns data and message keys with parameters, and the UI turns them into text. The grammar part of the engine breaks that rule. `GrammarError` (`crates/engine-core/src/grammar/error.rs`) carries Indonesian sentences in its `Display` and in the `String` payloads of its variants (`"Baris '…' tidak memiliki pemisah panah (-> atau →)"`, `"aturan '…' memiliki terlalu banyak variabel nullable (> 10)"`, …), and `api.rs` wraps them as `Message::new("api.invalid_grammar").with("detail", e.to_string())` (also `api.cyk_failed` and `api.cnf_transformation_failed`). The UI cannot translate a `detail`, so it shows the Indonesian sentence as it is, also in English, and for a key without `detail` it shows the raw key. Three places copy that fallback: `GrammarWorkstation.svelte` (twice), `GrammarCykTester.svelte` and `formatCfgPdaRefusal` in `grammar-to-pda.ts`. After this task a grammar error reaches the screen only through a message key that exists in `id` and `en`, with the same Indonesian wording as today.
