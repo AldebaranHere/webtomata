@@ -4354,6 +4354,86 @@ Cause 4, 5 and part of 6 are one defect: the module mixes **byte** lengths and *
 
 **Depends on:** T-028b (merged, PR 272: `LanguageError`, `From<LanguageError> for Message`, the wasm test), ADR 0069 and ADR 0070.
 
+## Task T-091 — The focus ring is not cut off at the sides of the panel's scroll area
+
+**Status:** todo
+**Owner:** worker (Gemini; CSS and a generic e2e guard)
+
+**Goal:** On a phone, with the cursor in the PDA's "String masukan" field, the blue focus ring shows at the top and bottom of the field but is **cut off at the left and right edges** (the owner's phone check of 2026-11-25). The cause is the pattern `overflow-y: auto` on an ancestor: when one axis is not `visible`, the other computes to `auto` too, so everything that draws outside the box on the left and the right (the 2 px ring plus its 2 px offset, `--focus-ring-width` and `--focus-ring-offset`) is clipped, and a control that sits flush with the edge of the scroll box (a full-width input, a button in a row) loses its ring there. WCAG 2.4.7 needs the ring to be visible. After this task a focused control's ring is fully visible on all four sides in the scroll areas of the editors.
+
+**Facts checked on 2026-11-25 (the planner read the code; the worker verifies and finds the real culprit):**
+
+- `web/src/lib/editor/SidePanel.svelte:415`: `.panes { flex: 1; min-height: 0; overflow-y: auto; }` has no horizontal padding; the PDA run panel's `input:focus-visible` (`PdaRunPanel.svelte:333`) draws `outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset)` outside the input box.
+- `web/src/lib/editor/PdaEditor.svelte:683`: `.pda-sheet { max-height: 60%; overflow-y: auto; }` (the phone sheet of the label form) has the same shape. Other `overflow-y: auto` or `overflow-x: auto` boxes that hold controls: `FirstRun.svelte:93`, `PdaLabelForm.svelte:335`, `LibraryDialog.svelte:356`, `ConversionPanel.svelte:942`, `PdaTransitionsBlock.svelte:446`, `RegexPlayer.svelte:140`.
+- The tokens are `--focus-ring-width: 2px` and `--focus-ring-offset: 2px` (`styles/tokens.css:99-100`).
+- `GrammarWorkstation.svelte` is being edited by T-092 at the same time: **do not edit it here**; if the audit finds a clipped ring there, name it in the report.
+
+**Decisions (the planner's; the worker may find a flaw, may not silently change one):**
+
+1. **Fix it where the clipping box is, once per box, not per control.** The preferred shape: the scroll box gets inline padding of at least `calc(var(--focus-ring-width) + var(--focus-ring-offset))` (4 px; use the tokens, not the number) and an equal negative inline margin so that **the layout does not move** (the padding is inside the box, the margin gives the width back); or the controls' own container takes the padding. The worker picks the smaller change per box and says why, and checks the top and the bottom of the first and last control in the box the same way (the block of a vertical scroll box starts at its first control).
+2. **An audit, not a guess.** The worker lists every `overflow` rule other than `visible` and `clip`, in `web/src/lib` (grep), says for each whether a focusable control can sit within 4 px of its edge, and fixes those that can. A box that is `overflow: hidden` on purpose to cut a label (`text-overflow`) holds no control and stays. `EditorCanvas.svelte:950` (`overflow: clip`) is the canvas: its states and edges have their own rings inside the picture; it is **not** changed.
+3. **No visual change except the ring.** Sizes, gaps, scroll behaviour, the 44 px targets and the phone panel height rules (`editor-panel-height.spec.ts`) stay as they are. No new token, no new dependency, no string.
+4. **A generic guard, not one screenshot.** One Playwright helper `expectRingNotClipped(page, locator)`: focus the control (by keyboard Tab or `focus()` with `:focus-visible` forced by a key press), compute its ring box as the control's border box expanded by `outline-offset + outline-width` on every side, then for **every ancestor** whose computed `overflow-x` or `overflow-y` is not `visible`, assert that the ring box lies inside that ancestor's **padding box** (`clientLeft/Top`, `clientWidth/Height` of the ancestor, in the same coordinates). It runs on `desktop` and `phone` (360 px wide) for: the PDA "String masukan" field, the PDA "Tambah" string field and its button, the first and last control of the Tabel tab, the FSM "String masukan" field and its first and last button, and the label form in the phone sheet. The worker adds the controls that the audit finds.
+
+**Scope (files):** the `.svelte` files whose CSS the audit changes (expected: `SidePanel.svelte`, `PdaEditor.svelte`, and any of the others listed above that the audit shows to clip), `web/e2e/focus-ring.spec.ts` (new, holds the helper and its cases), `docs/agent/PLAN.md` (status), `docs/agent/reports/T-091.md`. **Not** `GrammarWorkstation.svelte`, `tokens.css`, `EditorCanvas.svelte`, the engine.
+
+**Acceptance criteria:**
+
+1. **Red first.** The new spec fails on the current staging for the PDA "String masukan" field on `phone` (and on `desktop` if the box clips there too): paste the failing output with the numbers (ring box and ancestor padding box).
+2. After the change it passes on `desktop` and `phone`, and the existing `editor-panel`, `editor-panel-tabs`, `editor-panel-height`, `pda-panel`, `pda-determinism` and FSM editor specs pass **unedited**; no control moved by a pixel (the worker compares the bounding boxes of the controls that the new spec focuses, before and after, and pastes both).
+3. The audit table is in the report: every non-`visible` overflow rule, the verdict, and what was done.
+4. Budgets: initial JS unchanged (CSS only); report `sandbox.html` first JS in bytes before and after.
+5. `PLAN.md` says `done`.
+
+**Verification:** `pnpm lint && pnpm check && pnpm format:check && pnpm test:web && pnpm check:strings && pnpm check:tokens && pnpm build && pnpm size`; e2e `focus-ring`, `editor-panel*`, `pda-panel`, `pda-determinism`, and one FSM editor spec, on `desktop` and `phone`. No `crates/` change. **Break each guard once on the final code and show a test catches it:** B1 remove the padding from the fixed box (the new spec fails on the String masukan field); B2 give the padding but not the negative margin (the bounding-box comparison or `editor-panel-height` fails); B3 shrink the padding below the ring size (the new spec fails by 1 px or 2 px: say which); B4 make the helper test only the control's own box, not its ancestors (a deliberately clipped fixture, written in the spec as a tiny page with `overflow-y: auto`, passes wrongly: prove that the guard is real by showing the helper fails on that fixture when it is correct).
+
+**Rollback:** revert the PR.
+
+**Depends on:** nothing. Runs in parallel with T-092 (disjoint files).
+
+---
+
+## Task T-092 — A deleted custom grammar can be undone
+
+**Status:** todo
+**Owner:** worker (DeepSeek; one component, a toast that already exists, and storage edge cases)
+
+**Goal:** In the library of the grammar workstation the × on a custom grammar's card deletes it **at once, with no confirmation and no way back** (the owner's phone check of 2026-11-25, after T-087). A tap that slips next to the card's title loses the student's own grammar for good. After this task the deletion shows the toast that the editors already use, "Tata bahasa '…' dihapus." with **Urungkan**, for 6 seconds, and Urungkan brings the grammar back where it was. No modal: a confirmation on every delete is a tax on the many to save the few, and a toast also covers a slip that a modal would not stop.
+
+**Facts checked on 2026-11-25 (the planner read the code; the worker verifies):**
+
+- `GrammarWorkstation.svelte:427` `deleteCustomGrammar(id, event)`: `event.stopPropagation()`, filters the list, `saveCustomGrammars(updated)`, and if the deleted grammar was selected falls back to `GRAMMAR_PRESETS[0]` through `selectPreset`. The custom grammars live in `localStorage` under `CUSTOM_STORAGE_KEY` (`onMount` reads it; `saveCustomGrammars` writes it). `nextCustomId(customGrammars)` makes the id of a new one and may reuse a freed id.
+- `web/src/lib/editor/Toast.svelte` takes `toast: Announcement | null`, `onundo`, `ondismiss`; it shows `t(toast.key, toast.params)` and the button `t('editor.undo')` ("Urungkan"), goes away after 6 s, but not while the pointer or focus is on it, is `position: absolute` (it needs a positioned parent), and is **not a live region** (the editors' own announcer says the words). `GrammarWorkstation.svelte` has no live region today.
+- T-087 made the card two sibling buttons (`.card-select`, `.btn-delete`) and left `deleteCustomGrammar`, `selectCustom` and the storage alone. Its spec is `web/e2e/grammar-custom-card.spec.ts`.
+
+**Decisions (the planner's; the worker may find a flaw, may not silently change one):**
+
+1. **The deletion stays immediate** (the list and `localStorage` are updated at once, as today), so a reload after a delete shows it deleted. **Urungkan** puts the grammar back: **at its old position** in the list, saved to `localStorage` again, and, **if it was the selected grammar, selected again** with its text in the editor. The state to undo is `{ grammar, index, wasSelected }`, one value, in the component.
+2. **One undo, the last one.** A second delete replaces the first toast (the first deletion becomes final). Any other change of the custom list (creating a grammar with "+ Tata Bahasa Baru", "open CNF as a new grammar", editing the title) **dismisses the toast** and drops the undo, so that an id that `nextCustomId` frees and reuses can never collide with a restored one. Leaving the workstation (the switcher, another mode) drops it too. The 6 seconds and the hold-while-hovering come from `Toast.svelte` unchanged.
+3. **Reuse `Toast.svelte` as it is.** Import it from `../editor/Toast.svelte`; give it a positioned parent in the library pane (the library column on a laptop; the Pustaka tab on a phone) so that it sits at the bottom of what the student looks at and does not cover the card row they just used. No change to `Toast.svelte`; if the worker finds it must change, **stop and tell the planner**.
+4. **Words.** One new key in both languages, in the main `id.ts` and `en.ts` next to `grammar.delete_custom`: `grammar.deleted_custom { title }`: id "Tata bahasa '{title}' dihapus.", en "Grammar '{title}' deleted." The `Announcement` that the toast takes carries that key and the params. No other string; the button is `editor.undo`. Add nothing to the glossary unless a new term appears (then `TODO(review)`).
+5. **A live region.** The toast is not one, so the workstation gets one visually hidden `role="status"` paragraph (the pattern of the editors' announcer; one element, in the page all the time) that says the same sentence when a delete happens and "Urungkan" has worked (reuse `editor.undone` if the editors have such a key, else the same key with no new text: the worker looks and says).
+6. **Focus.** After a delete the focus must not be lost to `<body>`: it goes to the select button of the next card, or the previous one if it was last, or the "+ Tata Bahasa Baru" button if the list is now empty. After Urungkan it goes to the restored card's select button. (A keyboard user who pressed the × must keep their place.)
+7. **Not here:** a confirmation modal, undo of more than one deletion, a trash or "recently deleted" list, the built-in preset cards (they cannot be deleted), the storage format, any other grammar behaviour, any change to the editors' toast.
+
+**Scope (files):** `web/src/lib/grammar/GrammarWorkstation.svelte` (the undo value, the toast, the live region, the focus, the dismissals; about 40 lines), a small pure helper if it keeps the component simpler (for example `grammar-undo.ts` with `restoreGrammar(list, grammar, index)` and its unit test: the worker decides), `web/src/lib/i18n/{id,en}.ts` (one key), `web/e2e/grammar-custom-card.spec.ts` (new cases appended; no existing case edited), `docs/agent/PLAN.md` (status), `docs/agent/reports/T-092.md`. **Not** `Toast.svelte`, `tokens.css`, the engine, the preset cards. `GrammarWorkstation.svelte`'s CSS belongs to this task for the toast's parent only; T-091 does not touch this file.
+
+**Acceptance criteria (each case red first):**
+
+1. Delete a custom grammar (not selected): the card is gone, the toast says "Tata bahasa '<title>' dihapus." with Urungkan, the live region says it, and `localStorage` no longer holds it. Urungkan: the card is back **at the same position** (test with three grammars, delete the middle one), `localStorage` holds it again in that order, the toast is gone, the focus is on the restored card's select button.
+2. Delete the **selected** custom grammar: the editor falls back to the first preset as today; Urungkan selects the grammar again and its rules are in the editor (compare the text before and after).
+3. The toast goes after 6 s (use Playwright's clock, not a real wait) and the deletion then stays after a reload; Urungkan before 6 s then a reload shows the grammar back. While the pointer or focus is on the toast it stays (this is `Toast.svelte`'s own rule: one case proves the wiring, not the component).
+4. A second delete replaces the toast: Urungkan restores only the second one. "+ Tata Bahasa Baru" while the toast shows dismisses it. Deleting the last custom grammar leaves the focus on "+ Tata Bahasa Baru".
+5. Keyboard: Tab to the ×, Enter deletes, the focus is on the next card's select button, Tab to the toast's button, Enter restores. `desktop` and `phone` (360 px); axe passes with the toast open (`expectNoAxeViolations`); the existing `grammar-custom-card`, `grammar-open-cnf`, `pda-conversion`, `grammar-to-pda` specs pass **unedited**.
+6. `check:strings` passes with the new key in both languages; the first JS of the editor routes grows by at most 150 gzip bytes (report the exact bytes before and after; the grammar workstation is in the sandbox bundle).
+7. The report has the by-hand steps next to what the browser showed, and notes how the focus behaved on the phone; `PLAN.md` says `done`.
+
+**Verification:** `pnpm lint && pnpm check && pnpm format:check && pnpm test:web && pnpm check:strings && pnpm check:tokens && pnpm build && pnpm size`; e2e `grammar-custom-card`, `grammar-open-cnf`, `pda-conversion`, `grammar-to-pda` on `desktop` and `phone`. No `crates/` change. **Break each guard once on the final code and show a test catches it:** B1 restore at the end of the list instead of the old index (criterion 1 fails); B2 do not save to `localStorage` on undo (the reload case fails); B3 do not re-select a selected grammar (criterion 2 fails); B4 keep the undo after "+ Tata Bahasa Baru" (criterion 4 fails); B5 drop the focus move after a delete (criterion 4 or 5 fails); B6 delete the key from `en.ts` (`check:strings` or the case fails).
+
+**Rollback:** revert the PR (one key and one component).
+
+**Depends on:** T-087 (merged). Runs in parallel with T-091 (disjoint files).
+
 ---
 
 ## Planner task P-005 — Wireframe of the PDA simulation, the stack and the conversions
@@ -4429,6 +4509,8 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-028b** The language engine's errors are keys with parameters, not Indonesian sentences: specified in its own task block above (`done`, PR 272). `LanguageError` becomes data (one variant per meaning), one conversion to `Message`, one shared UI helper (`formatEngineError`, moved from the grammar folder), and the language workstation stops showing `detail`, `err.message` and two hard-coded sentences.
 - **T-089** (proposed) The error banners of the grammar, CYK and language workstations have no `overflow-wrap`, so a long unbroken rule, line or expression overflows sideways. An old problem (the old `detail` had it too), found in T-028. Needs a look at the three banners on a phone first; written when the owner asks.
 - **T-090** The language engine never panics, overflows or aborts on user input: specified in its own task block above (`done`, Gemini; eight crashes, see its report). Six reproducing inputs found in T-028b (`usize` overflow in the parser and in the count predicates, byte slicing and byte lengths on non-ASCII strings, an unbounded `with_capacity` and recursion on a huge `|w| >= N`); length means characters; exact `u128` counts; a typed `LengthTooLarge`; the 4,096-character check gets a language message. Left out: naming an environment language that fails to parse.
+- **T-091** The focus ring is not cut off at the sides of the panel's scroll area (found in the owner's phone check of 2026-11-25: the "String masukan" ring is clipped left and right because of `overflow-y: auto`): specified in its own task block above (`todo`, Gemini). Padding in the scroll boxes, an audit of every non-visible overflow, a generic e2e guard on the ring box.
+- **T-092** A deleted custom grammar can be undone (the × deleted at once with no way back): specified in its own task block above (`todo`, DeepSeek). The existing toast with Urungkan, one undo, focus kept; no modal.
 - **T-070** Competing edges drawn dashed in a DPDA, and the second edge of a pair selected by Tunjukkan: specified in its own task block above (`todo`, DeepSeek). Two optional sets of edge keys on the shared drawing; the FSM diagram must not change.
 - **T-029** The CYK tester joins rule symbols with no space, so every CNF result with a helper variable fails in CYK: specified in its own block above (`done`; found by the worker in T-010 and reproduced by the planner).
 - **T-066** One "new state" command for the FSM and the PDA table: specified in its own task block above (`done`, PR 264; found by the worker in T-061, which could not touch `table.ts`). The shared function goes to `interaction/placement.ts` and `table.ts` re-exports it.

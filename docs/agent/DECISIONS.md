@@ -913,3 +913,13 @@ Format:
 - Review note: DeepSeek's F3 reads computed styles in the browser (dash `6px, 4px`, warning `#b86e00`; after Tunjukkan both edges accent `#2f5bd3`, 3 px, dash kept; the second edge `aria-pressed="false"`), the FSM class lists were captured on staging before the edit, and `sandbox.html` first JS grew 129 gzip bytes with the wasm byte-identical.
 - Reversible? yes
 - Affects: `web/src/lib/editor/diagram/DiagramDrawing.svelte`, `EditorCanvas.svelte`, `PdaEditor.svelte`, `pda-determinism.ts`
+
+
+## 2026-11-25 — T-091 and T-092: two findings from the owner's phone check, written as parallel small tasks
+
+- Decider: planner (the owner asked for both)
+- Context: the phone check of T-070, T-085 and T-087 found (1) the focus ring of the PDA string field cut off at the left and right (the scroll area's `overflow-y: auto` makes the horizontal axis clip too), and (2) the × of a custom grammar deletes at once with no confirmation and no way back.
+- Decision: T-091 fixes the clipping per scroll box (inline padding with a negative margin so nothing moves), after an audit of every non-visible overflow, and guards it with one generic helper that tests the ring box against every scrolling ancestor. T-092 reuses the editors' toast with Urungkan instead of a modal: the delete stays immediate, one undo restores the grammar at its old position and selection, and any other change of the list drops the undo (a freed id could otherwise collide). The two tasks touch disjoint files (`GrammarWorkstation.svelte` is T-092's alone) and run in parallel: T-091 Gemini, T-092 DeepSeek.
+- Alternatives considered: a confirmation modal (rejected: a tax on every delete, and it does not help a student who confirms by reflex); deferring the real delete until the toast ends (rejected: a reload or a closed tab inside 6 s would lose or keep the wrong state); fixing the ring per control (rejected: the cause is the box).
+- Reversible? yes
+- Affects: `web/src/lib/editor/SidePanel.svelte`, `PdaEditor.svelte` and other scroll boxes (T-091); `web/src/lib/grammar/GrammarWorkstation.svelte`, `web/src/lib/i18n/` (T-092)
