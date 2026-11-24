@@ -4260,7 +4260,7 @@ DeepSeek's pre-flight found 18 flaws. Where this block and the text above differ
 
 ## Task T-090 — The language engine never panics, overflows or aborts on user input
 
-**Status:** in-progress
+**Status:** done (branch `task/T-090-language-engine-no-crash`; report `docs/agent/reports/T-090.md`)
 **Owner:** worker (Gemini: engine correctness, six reproducing inputs, a sweep of the module)
 
 **Goal:** Six inputs that anyone can type into the language workstation crash the engine today (found by DeepSeek while writing T-028b; the planner re-pinned every line on 2026-11-25 against `origin/staging` at `1975906`). Rule 5 of the engine says "never panic on user input"; in the browser a panic is a wasm trap and the worker dies. After this task each input returns a result or a typed error, in debug **and** in release, and the module is swept for the same family of defect.
