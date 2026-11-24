@@ -4105,6 +4105,37 @@ DeepSeek's pre-flight found 18 flaws. Where this block and the text above differ
 
 **Depends on:** T-061 and T-071 (merged).
 
+## Task T-067 — Pick the delete tool by its exact name in the PDA panel e2e
+
+**Status:** todo
+**Owner:** worker (Gemini)
+
+**Goal:** One e2e locator picks the delete tool with `page.getByRole('button', { name: /^Hapus/ })`, which matches every button whose name starts with "Hapus" (the tool, and the panel's "Hapus simbol …", "Hapus state …" and "Hapus baris …"). It is `web/e2e/pda-panel.spec.ts:470`, in the test that marks rows with "+ 2 lagi" and then switches to the delete tool. It passes today only because the Definisi tab is open at that point and has no such button; open any other tab and the locator matches several buttons and Playwright's strict mode fails. Make it exact, as the other specs already do (`editor-edges.spec.ts:163`: `{ name: 'Hapus', exact: true }`).
+
+**What the backlog line got wrong (checked on 2026-11-24):** it named two locators. The first, `pda-editor.spec.ts`, was already made exact in T-061 (commit `5a0c6e0`, now at line 326, with a comment saying why). Only `pda-panel.spec.ts:470` is left. The other `/^Hapus…/` locators in the specs (`editor-table.spec.ts:28`, `editor-tests.spec.ts:27`, `cross/table.spec.ts:227`) are scoped to the grid or the panel and name the buttons they mean; leave them.
+
+**Decisions (the planner's; the worker may find a flaw, may not silently change one):**
+
+1. **One line changes:** `name: /^Hapus/` becomes `name: 'Hapus', exact: true` at `pda-panel.spec.ts:470`. Nothing else in that file or in any other file of `web/` changes. A comment is not needed: the line above says "Switch to Hapus tool", and the T-061 comment in `pda-editor.spec.ts` already explains the rule.
+2. **Look for others, change none without saying so:** run `grep -rn "name: /\^\?Hapus" web/e2e` and `grep -rn "getByRole('button', { name: /" web/e2e | grep -v "panel(\|grid(\|form\.\|row\."` and report in the PR description, for each unscoped regex locator on the whole page that could match more than one button, the file and line. Fix none of them in this task except the one above (each would be its own decision); if one is a real risk, say so and I will write a task.
+3. **Not here:** any change to a spec's behavior, to the tool's accessible name, to the panel's button names, to helpers, or to the ESLint config. No ADR, no report file (a one-line change; the output of the run goes in the PR description).
+
+**Scope (files):** `web/e2e/pda-panel.spec.ts` (one line), `docs/agent/PLAN.md` (status).
+
+**Acceptance criteria:**
+
+1. `git diff --stat` shows `pda-panel.spec.ts` with one line changed, and `PLAN.md`.
+2. The test that contains the line passes before and after, on the desktop project (paste both outputs). It must also pass on the phone project if that test runs there (say which projects ran it).
+3. The whole `pda-panel.spec.ts` passes on the desktop project, and `pda-editor.spec.ts` too (it has the sibling locator).
+4. `pnpm lint` and `pnpm format:check` pass (say that `format:check` calls cargo).
+5. The PR description lists the result of the search in decision 2 (or says "none found").
+
+**Verification:** the runs in criteria 2 and 3 only. **One guard:** to show the exact name matters, temporarily open the **Tabel** tab instead of **Definisi** before that click (the panel then has "Hapus baris …" buttons): with the old regex the test must fail on strict mode ("resolved to N elements"), and with the new line it must pass. Paste both, then restore the test's own steps.
+
+**Rollback:** revert the PR.
+
+**Depends on:** T-061 (merged).
+
 ---
 
 ## Planner task P-005 — Wireframe of the PDA simulation, the stack and the conversions
@@ -4179,7 +4210,7 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-028** The grammar engine's errors carry Indonesian sentences. `GrammarError` has `Display` with Indonesian text, and `api.invalid_grammar` and `api.cyk_failed` pass it as `detail`, which the grammar UI shows as it is, also in English; for a key without `detail` it shows the raw key. This breaks principle 6 of `CLAUDE.md`. Make the parser, the CNF transformer and CYK return typed errors with a message key and parameters, and translate them in the UI. Larger than T-019 (found while specifying T-019); needs its own spec and a test for every error.
 - **T-029** The CYK tester joins rule symbols with no space, so every CNF result with a helper variable fails in CYK: specified in its own block above (`todo`; found by the worker in T-010 and reproduced by the planner).
 - **T-066** One "new state" command for the FSM and the PDA table: specified in its own task block above (`todo`; found by the worker in T-061, which could not touch `table.ts`). The shared function goes to `interaction/placement.ts` and `table.ts` re-exports it.
-- **T-067** Two e2e locators pick the delete tool with `{ name: /^Hapus/ }` unscoped: `web/e2e/pda-editor.spec.ts:324` and `web/e2e/pda-panel.spec.ts:450`. The first one broke in T-061 as soon as the panel had buttons named "Hapus simbol/state/baris"; the second passes only because the panel is not in the DOM at that point. Make both `{ name: 'Hapus', exact: true }`, as `editor-edges.spec.ts:163` already does.
+- **T-067** Pick the delete tool by its exact name in the PDA panel e2e: specified in its own task block above (`todo`). Only one of the two locators is left: the `pda-editor.spec.ts` one was fixed in T-061.
 - **T-068 (specified 2026-11-10 as "Task T-068" above; `done`)** `web/src/lib/editor/history.ts` holds both `createHistory` and `createPdaHistory`, so the routes that mount the editor (`sandbox.html` and the three `soal/*.html`) download `pda-commands.ts` and `pda-document.ts` in their first load. Split the PDA history into its own module and import it only with the PDA mode; it shrinks those four routes (the other five never fetched the PDA chunks), and it would remove the 0.2 KB that T-061 pays when its lazy table chunk starts importing the PDA commands (found by the worker in T-061, section 8 of its report).
 
 **B. Grammar additions** (a wireframe the owner approves comes first for T-020)
