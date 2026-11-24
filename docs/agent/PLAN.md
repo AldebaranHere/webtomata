@@ -4045,7 +4045,7 @@ DeepSeek's pre-flight found 18 flaws. Where this block and the text above differ
 
 ## Task T-088b — One Rust cache for the three jobs that build the same WASM
 
-**Status:** todo
+**Status:** done (branch `task/T-088b-shared-rust-cache`)
 **Owner:** worker (Gemini)
 
 **Goal:** `e2e`, `cross-browser` and `lighthouse` in `ci.yml` run the same steps up to the last one (`cargo install wasm-pack --locked`, `pnpm build:wasm`, `pnpm --filter web build`), but each saves its own Rust cache of about 253 MB per lockfile generation (the dry run of 2026-11-24 lists three families of `253.0` MB each). `Swatinem/rust-cache` builds its key from the job name, so three jobs mean three caches of the same dependencies. Give the three jobs one key so that only one such cache exists per generation: about 500 MB less of the 10 GB, and one cold build instead of three when the lockfile changes. This is step 2 of the proposal in T-088; step 1 is merged.
