@@ -831,3 +831,13 @@ Format:
 - Alternatives considered: widen it in place in `table.ts` and import it from the PDA files (rejected: the PDA chunk would import a file named for the FSM table); keep `addStateCommand` as an alias (rejected: a trampoline that costs a name and saves one import edit).
 - Reversible? yes
 - Affects: `web/src/lib/editor/` (placement, table, PDA table edit)
+
+
+## 2026-11-24 — T-066 pre-flight: the owner's five rulings replace the task block where they differ
+
+- Decider: owner (the worker found the flaws; the planner wrote the block)
+- Context: guard B2 could not fail as written (the wanted spot is always at least 130 from every state because `last` is the furthest right; only the canvas limit can move it); the block's e2e grep selects the canvas tool "Tambah state", not the table button "+ State"; the PDA copy's `freeSpot` import and a stale module-header sentence also change; decision 5's `satisfies` repeats the proof in `document-view.test.ts`; and "no report file" contradicts `AGENTS.md`.
+- Decision: (a) the table specs are the area: editor-table, cross/table, pda-table-edit, editor-compare, editor-convert, soal-question, soal-progress, soal-feedback, cross/soal-question, on the desktop project; (b) the unused `freeSpot` import and the stale header sentence in `pda-table-edit.ts` are removed; (c) the new test lives in `interaction/placement.test.ts`, with a state at `LIMIT - 40` and a `|x| <= LIMIT` assertion, so B2 fails on the bound; (d) no `satisfies` (the existing type test and `pnpm check` already prove it); (e) a short `docs/agent/reports/T-066.md`, with the byte numbers and the guard output also in the PR description.
+- Alternatives considered: run the block verbatim (rejected: B2 could not be shown failing, and the e2e list would test the canvas tool); add the bound assertion to the PDA test (rejected: decision 4 allows only the import and the two calls).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-066), `web/src/lib/editor/interaction/placement.test.ts`, `web/src/lib/editor/pda-table-edit.ts`

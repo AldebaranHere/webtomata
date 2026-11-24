@@ -7,13 +7,13 @@ import { id } from '../i18n/id.ts';
 import type { MessageKey } from '../i18n/id.ts';
 import { pdaEn, pdaId } from '../i18n/pda-messages.ts';
 import type { Refusal } from './interaction/editor.ts';
+import { newStateCommand } from './interaction/placement.ts';
 import { applyPdaCommand } from './pda-commands.ts';
 import type { PdaCommand } from './pda-commands.ts';
 import { comparePdaTransitions } from './pda-document.ts';
 import type { PdaDocument } from './pda-document.ts';
 import { pdaDocumentFrom } from './pda-samples.ts';
 import {
-	addStateCommand,
 	draftCommand,
 	editRowCommand,
 	stateUseCount,
@@ -270,14 +270,14 @@ describe('U: the commands of the editable table', () => {
 	});
 
 	it('a new state never lands on another one, and the empty document starts at 200, 200', () => {
-		expect(addStateCommand(pdaDocumentFrom({ states: [] }))).toEqual({
+		expect(newStateCommand(pdaDocumentFrom({ states: [] }))).toEqual({
 			type: 'addState',
 			x: 200,
 			y: 200
 		});
 
 		const doc = machineF();
-		const command = addStateCommand(doc);
+		const command = newStateCommand(doc);
 		expect(command.type).toBe('addState');
 		const after = applied(doc, command);
 		expect(after.states).toHaveLength(3);

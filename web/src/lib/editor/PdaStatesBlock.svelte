@@ -3,8 +3,9 @@
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
 	import type { Params } from '#lib/i18n/translate.ts';
+	import { newStateCommand } from './interaction/placement.ts';
 	import type { PdaDocument } from './pda-document.ts';
-	import { addStateCommand, stateUseCount } from './pda-table-edit.ts';
+	import { stateUseCount } from './pda-table-edit.ts';
 	import type { PdaTableApply } from './pda-table-props.ts';
 
 	// The State block of the Tabel tab: the name (press to rename), the start radio, the accepting
@@ -73,7 +74,7 @@
 	}
 
 	function add() {
-		const refused = onapply(addStateCommand(doc), { say: { key: 'table.state_added' } });
+		const refused = onapply(newStateCommand(doc), { say: { key: 'table.state_added' } });
 		refusal = refused === null ? null : { key: refused.key, params: refused.params };
 	}
 </script>

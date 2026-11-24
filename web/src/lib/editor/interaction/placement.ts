@@ -1,8 +1,9 @@
-// Where a new state goes when it is added with the keyboard (the key N): at the center of the
-// visible area, or, if a state is already there, at the nearest free spot on a grid of 80.
+// Where a new state goes: from the keyboard (the key N) at the center of the visible area, from the
+// FSM and PDA tables one step to the right of the furthest state, and in both cases at the nearest
+// free spot on a grid of 80 when the wanted place is taken.
 import { LIMIT } from './canvas.ts';
 import type { Point } from './canvas.ts';
-import type { StatesDocument } from './document-view.ts';
+import type { StateCommand, StatesDocument } from './document-view.ts';
 
 /** A new state is this far (center to center) from every other state, at least. */
 const MIN_DISTANCE = 72;
@@ -40,4 +41,17 @@ export function freeSpot(doc: StatesDocument, wanted: Point): Point {
 		x: Math.min(Math.max(spot.x, -LIMIT), LIMIT),
 		y: Math.min(Math.max(spot.y, -LIMIT), LIMIT)
 	};
+}
+
+/** The distance between a new state and the one that is the furthest to the right. */
+const STEP = 130;
+
+/** A new state, to the right of the others and in the row of the last one (or at the free spot nearest to it). */
+export function newStateCommand(doc: StatesDocument): Extract<StateCommand, { type: 'addState' }> {
+	const last = doc.states.reduce<{ x: number; y: number } | null>(
+		(far, s) => (far === null || s.x > far.x ? { x: s.x, y: s.y } : far),
+		null
+	);
+	const spot = last === null ? { x: 200, y: 200 } : freeSpot(doc, { x: last.x + STEP, y: last.y });
+	return { type: 'addState', x: spot.x, y: spot.y };
 }
