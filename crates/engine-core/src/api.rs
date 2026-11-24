@@ -536,15 +536,12 @@ pub fn enumerate_language(
             let raw_map: std::collections::HashMap<String, String> =
                 serde_json::from_str(json).map_err(|_| Message::new("api.invalid_environment"))?;
             for (k, v) in raw_map {
-                let parsed = crate::language::LanguageParser::parse(&v).map_err(|e| {
-                    Message::new("api.invalid_language").with("detail", e.to_string())
-                })?;
+                let parsed = crate::language::LanguageParser::parse(&v).map_err(Message::from)?;
                 env.insert(k, parsed);
             }
         }
 
-        let expr = crate::language::LanguageParser::parse(expr_text)
-            .map_err(|e| Message::new("api.invalid_language").with("detail", e.to_string()))?;
+        let expr = crate::language::LanguageParser::parse(expr_text).map_err(Message::from)?;
 
         let evaluator = crate::language::LanguageEvaluator::new(&env);
         let alphabet_set = evaluator.infer_alphabet(&expr);
@@ -556,9 +553,7 @@ pub fn enumerate_language(
             max_depth: 30.max(min_length + 20),
         };
 
-        let strings = evaluator
-            .enumerate(&expr, options)
-            .map_err(|e| Message::new("api.enumeration_failed").with("detail", e.to_string()))?;
+        let strings = evaluator.enumerate(&expr, options).map_err(Message::from)?;
 
         Ok(EnumerateReport { strings, alphabet })
     };

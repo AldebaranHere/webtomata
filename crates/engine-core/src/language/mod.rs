@@ -1,6 +1,8 @@
 //! AST and evaluator for formal languages and proper-order string enumeration.
 
+mod error;
 pub mod parser;
+pub use error::LanguageError;
 pub use parser::LanguageParser;
 
 use std::cmp::Ordering;
@@ -122,28 +124,6 @@ impl Default for EnumerateOptions {
     }
 }
 
-/// Errors that can occur during language parsing or evaluation.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LanguageError {
-    UndefinedReference(String),
-    CyclicReference(String),
-    InvalidSyntax(String),
-    DepthExceeded,
-}
-
-impl std::fmt::Display for LanguageError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::UndefinedReference(name) => write!(f, "Bahasa '{name}' belum didefinisikan"),
-            Self::CyclicReference(name) => write!(f, "Referensi siklik terdeteksi pada '{name}'"),
-            Self::InvalidSyntax(msg) => write!(f, "Sintaks tidak valid: {msg}"),
-            Self::DepthExceeded => write!(f, "Batas pencarian tercapai"),
-        }
-    }
-}
-
-impl std::error::Error for LanguageError {}
-
 /// Evaluates language membership and enumerates strings in proper order.
 pub struct LanguageEvaluator<'a> {
     env: &'a HashMap<String, LanguageExpr>,
@@ -169,12 +149,12 @@ impl<'a> LanguageEvaluator<'a> {
             LanguageExpr::FiniteSet(words) => Ok(words.iter().any(|item| item == w)),
             LanguageExpr::Ref(name) => {
                 if visited.contains(name) {
-                    return Err(LanguageError::CyclicReference(name.clone()));
+                    return Err(LanguageError::CyclicReference { name: name.clone() });
                 }
                 let target = self
                     .env
                     .get(name)
-                    .ok_or_else(|| LanguageError::UndefinedReference(name.clone()))?;
+                    .ok_or_else(|| LanguageError::UndefinedReference { name: name.clone() })?;
                 visited.push(name.clone());
                 let res = self.contains_internal(target, w, visited);
                 visited.pop();
@@ -587,12 +567,12 @@ impl<'a> LanguageEvaluator<'a> {
             }
             LanguageExpr::Ref(name) => {
                 if visited.contains(name) {
-                    return Err(LanguageError::CyclicReference(name.clone()));
+                    return Err(LanguageError::CyclicReference { name: name.clone() });
                 }
                 let target = self
                     .env
                     .get(name)
-                    .ok_or_else(|| LanguageError::UndefinedReference(name.clone()))?;
+                    .ok_or_else(|| LanguageError::UndefinedReference { name: name.clone() })?;
                 visited.push(name.clone());
                 let res = self.generate_words_internal(target, target_len, visited);
                 visited.pop();
