@@ -4,7 +4,13 @@
 //
 // E8 of the task is T-051's own E8 ("the engine is not requested before the first draw"), which
 // must pass unedited; it runs as part of pda-panel and is not repeated here.
-import { expect, expectNoAxeViolations, openPda as openPdaSandbox, test } from './fixtures.ts';
+import {
+	expect,
+	expectNoAxeViolations,
+	openPda as openPdaSandbox,
+	openSandbox,
+	test
+} from './fixtures.ts';
 import type { Page } from '@playwright/test';
 
 const panel = (page: Page) => page.getByRole('complementary', { name: 'Panel' });
@@ -457,5 +463,166 @@ test.describe('E7: the phone and axe', () => {
 		await panel(page).getByRole('radio', { name: 'DPDA', exact: true }).click();
 		await expect(toggle(page)).toHaveClass(/tone-warning/);
 		await expectNoAxeViolations(page);
+	});
+});
+
+// ---- T-070: the dashed competing edges, the second edge of a pair, and the FSM guard ----
+
+/** The drawn group of an edge, or of the edge's line. */
+const edgeGroup = (page: Page, from: number, to: number) =>
+	page.locator(`svg.world g.edge[data-edge="${from}>${to}"]`);
+
+/** What the browser resolves for the stroke of an edge line, from the component's CSS. */
+async function lineStyle(page: Page, from: number, to: number) {
+	return edgeGroup(page, from, to)
+		.locator('path.line')
+		.evaluate((element) => {
+			const style = getComputedStyle(element);
+			return { dash: style.strokeDasharray, width: style.strokeWidth, stroke: style.stroke };
+		});
+}
+
+/** The exact class of a drawn edge; `classList.contains` keeps "chosen" apart from "also-chosen". */
+const hasClass = (page: Page, from: number, to: number, name: string) =>
+	edgeGroup(page, from, to).evaluate(
+		(element, className) => element.classList.contains(className),
+		name
+	);
+
+test.describe('T-070 F3: dashes and the second edge of a pair', () => {
+	test('G is dashed as a DPDA, solid as an NDPDA, and Tunjukkan marks the second edge', async ({
+		page
+	}) => {
+		await buildG(page);
+		const dpda = panel(page).getByRole('radio', { name: 'DPDA', exact: true });
+		const ndpda = panel(page).getByRole('radio', { name: 'NDPDA', exact: true });
+		await dpda.click();
+		await expect(toggle(page)).toHaveClass(/tone-warning/);
+
+		// The two edges that hold a competing transition are dashed; q1>q1 holds none.
+		const first = await lineStyle(page, 0, 1);
+		const second = await lineStyle(page, 0, 0);
+		expect(first.dash).not.toBe('none');
+		expect(second.dash).not.toBe('none');
+		expect(first.dash).toBe(second.dash);
+		expect((await lineStyle(page, 1, 1)).dash).toBe('none');
+
+		// An NDPDA draws every edge solid, although the engine's two pairs are the same.
+		await ndpda.click();
+		await expect(toggle(page)).toHaveClass(/tone-neutral/);
+		for (const [from, to] of [
+			[0, 1],
+			[0, 0],
+			[1, 1]
+		] as const) {
+			expect((await lineStyle(page, from, to)).dash, `edge ${from}>${to}`).toBe('none');
+		}
+
+		// Back to a DPDA: the two again.
+		await dpda.click();
+		await expect(toggle(page)).toHaveClass(/tone-warning/);
+		expect((await lineStyle(page, 0, 1)).dash).not.toBe('none');
+		expect((await lineStyle(page, 0, 0)).dash).not.toBe('none');
+
+		// Tunjukkan on pair 1: the first edge is chosen, the second is marked, and neither loses its
+		// dash (a selected competing edge never looks like an ordinary solid edge).
+		await openList(page);
+		const show = cards(page).first().getByRole('button', { name: 'Tunjukkan' });
+		await show.click();
+		expect(await hasClass(page, 0, 1, 'chosen')).toBe(true);
+		expect(await hasClass(page, 0, 0, 'also-chosen')).toBe(true);
+		expect(await hasClass(page, 0, 0, 'chosen')).toBe(false);
+		await expect(edgeGroup(page, 0, 0)).toHaveAttribute('data-also-chosen', 'true');
+		await expect(page.locator('svg.world text.label.also-chosen')).toHaveCount(1);
+
+		const chosenLine = await lineStyle(page, 0, 1);
+		const markedLine = await lineStyle(page, 0, 0);
+		expect(markedLine.width).toBe(chosenLine.width);
+		expect(chosenLine.dash).not.toBe('none');
+		expect(markedLine.dash).not.toBe('none');
+
+		// The selection is one edge: only the first edge node is pressed.
+		await expect(edgeNode(page, 0, 1)).toHaveAttribute('aria-pressed', 'true');
+		await expect(edgeNode(page, 0, 0)).toHaveAttribute('aria-pressed', 'false');
+		await expect(edgeNode(page, 1, 1)).toHaveAttribute('aria-pressed', 'false');
+
+		// A second press clears both marks; the dashes stay, because the machine is still a DPDA.
+		await show.click();
+		expect(await hasClass(page, 0, 1, 'chosen')).toBe(false);
+		expect(await hasClass(page, 0, 0, 'also-chosen')).toBe(false);
+		expect((await lineStyle(page, 0, 1)).dash).not.toBe('none');
+		expect((await lineStyle(page, 0, 0)).dash).not.toBe('none');
+
+		// Pair 2 lies on one edge: nothing extra to mark.
+		await cards(page).nth(1).getByRole('button', { name: 'Tunjukkan' }).click();
+		await expect(page.locator('svg.world [data-also-chosen]')).toHaveCount(0);
+
+		// The ε row goes: no pair, no dash. A new competing row: one pair, and only its edge dashes.
+		await transitions(page)
+			.locator('tbody tr')
+			.nth(0)
+			.getByRole('button', { name: 'Hapus baris 1' })
+			.click();
+		await expect(plain(page)).toHaveText('Deterministik');
+		await expect(page.locator('svg.world g.edge.dashed')).toHaveCount(0);
+		await addCompetingRow(page);
+		await expect(toggle(page)).toHaveAttribute('aria-label', 'Bukan DPDA · 1 pasangan bersaing');
+		expect((await lineStyle(page, 0, 0)).dash).not.toBe('none');
+		expect((await lineStyle(page, 0, 1)).dash).toBe('none');
+	});
+
+	test('phone at 360 px: the dashes and the second edge of the pair are there', async ({
+		page,
+		isMobile
+	}) => {
+		test.skip(!isMobile, 'the phone rule');
+		await buildG(page);
+		await page.setViewportSize({ width: 360, height: 740 });
+		await panel(page).getByRole('radio', { name: 'DPDA', exact: true }).click();
+		await expect(toggle(page)).toHaveClass(/tone-warning/);
+		expect((await lineStyle(page, 0, 1)).dash).not.toBe('none');
+		expect((await lineStyle(page, 0, 0)).dash).not.toBe('none');
+		expect((await lineStyle(page, 1, 1)).dash).toBe('none');
+		await openList(page);
+		await cards(page).first().getByRole('button', { name: 'Tunjukkan' }).click();
+		expect(await hasClass(page, 0, 0, 'also-chosen')).toBe(true);
+		await expect(edgeNode(page, 0, 0)).toHaveAttribute('aria-pressed', 'false');
+	});
+});
+
+test.describe('T-070 AC1: the FSM drawing with the default props', () => {
+	test('every edge and label of the FSM diagram keeps the pre-change class, and no attribute is added', async ({
+		page
+	}) => {
+		await openSandbox(page);
+		const edges = await page
+			.locator('svg.world g.edge')
+			.evaluateAll((elements) => elements.map((element) => element.getAttribute('class')));
+		const labels = await page
+			.locator('svg.world text.label')
+			.evaluateAll((elements) => elements.map((element) => element.getAttribute('class')));
+		const pressed = await page
+			.locator('svg.world g.edge-node')
+			.evaluateAll((elements) => elements.map((element) => element.getAttribute('aria-pressed')));
+
+		// The values of origin/staging (c79da5f), captured before the component changed: six
+		// edges, six labels and six edge buttons, all with the plain class. Svelte appends its
+		// scope token (`svelte-1df1flw` then) to every element that a scoped rule matches; that
+		// token changes with the component's CSS, so the check compares the names without it.
+		const semantic = (classes: Array<string | null>) =>
+			classes.map((value) =>
+				(value ?? '')
+					.split(/\s+/)
+					.filter((name) => !name.startsWith('svelte-'))
+					.join(' ')
+			);
+		expect(semantic(edges)).toEqual(['edge', 'edge', 'edge', 'edge', 'edge', 'edge']);
+		expect(semantic(labels)).toEqual(['label', 'label', 'label', 'label', 'label', 'label']);
+		expect(pressed).toEqual(['false', 'false', 'false', 'false', 'false', 'false']);
+
+		// The new drawing must not appear with the default props.
+		await expect(page.locator('svg.world g.edge.dashed')).toHaveCount(0);
+		await expect(page.locator('svg.world g.edge.also-chosen')).toHaveCount(0);
+		await expect(page.locator('svg.world [data-also-chosen]')).toHaveCount(0);
 	});
 });

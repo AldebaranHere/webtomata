@@ -1,5 +1,6 @@
 // The determinism badge of the PDA editor: the engine's competing pairs, asked again a moment after
-// each change, and the sentence that says why two transitions compete (Task T-062).
+// each change, and the sentence that says why two transitions compete (Task T-062). The drawing
+// sets of T-070 (the dashed edges of a DPDA and the second edge of a shown pair) are at the end.
 //
 // The query is `createQuery` (query.ts), the same one the checks of both editors use (T-071). A
 // badge never shows the answer for an older document: the pairs are emptied when a new document is
@@ -121,4 +122,49 @@ export function badgeModel(kind: PdaKind, transitions: number, pairs: number): B
 		shortKey: 'pda_editor.badge_nondeterministic_short',
 		opens: true
 	};
+}
+
+/**
+ * The edges ("from>to") that hold a transition of a competing pair, as the diagram dashes them
+ * (design section 2). Empty unless the machine is a DPDA — a pair is a fault only there — and
+ * unless the answer is for the newest document, the badge's rule of T-062. An index that names no
+ * transition is ignored, so an answer that outlived its document can only lose a dash.
+ */
+export function dashedEdges(
+	kind: PdaKind,
+	status: DeterminismStatus,
+	doc: PdaDocument,
+	pairs: readonly Competition[]
+): Set<string> {
+	const edges = new Set<string>();
+	if (kind !== 'dpda' || status !== 'ready') return edges;
+	const add = (index: number) => {
+		const transition = doc.transitions[index];
+		if (transition !== undefined) edges.add(`${transition.from}>${transition.to}`);
+	};
+	for (const pair of pairs) {
+		add(pair.first);
+		add(pair.second);
+	}
+	return edges;
+}
+
+/**
+ * The edges of the transitions marked in the table, except the edge that the selection shows: the
+ * second edge of a pair, which "Tunjukkan" of T-062 marks without selecting it. The rows of the
+ * "+ n lagi" button all lie on one edge, so they add none. Indices that name no transition are
+ * ignored.
+ */
+export function extraMarkedEdges(
+	doc: PdaDocument,
+	marked: ReadonlySet<number>,
+	markedEdge: { from: number; to: number } | null
+): Set<string> {
+	const edges = new Set<string>();
+	for (const index of marked) {
+		const transition = doc.transitions[index];
+		if (transition !== undefined) edges.add(`${transition.from}>${transition.to}`);
+	}
+	if (markedEdge !== null) edges.delete(`${markedEdge.from}>${markedEdge.to}`);
+	return edges;
 }

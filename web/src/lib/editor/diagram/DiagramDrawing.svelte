@@ -21,6 +21,8 @@
 		active = new Set<number>(),
 		taken = new Set<string>(),
 		takenLines,
+		dashed = new Set<string>(),
+		alsoChosen = new Set<string>(),
 		interactive = false
 	}: {
 		shapes: DiagramShapes;
@@ -37,11 +39,18 @@
 		taken?: ReadonlySet<string>;
 		/** Per-edge display line indices to emphasize in multi-line labels (PDA simulation). */
 		takenLines?: ReadonlyMap<string, ReadonlySet<number>>;
+		/** The edges ("from>to") that hold a competing transition: a DPDA's dashed edges (T-070). */
+		dashed?: ReadonlySet<string>;
+		/** The edges ("from>to") of the shown pair other than the selected one (T-070). */
+		alsoChosen?: ReadonlySet<string>;
 		interactive?: boolean;
 	} = $props();
 
 	const chosen = (edge: { from: number; to: number }) =>
 		selectedEdge !== null && selectedEdge.from === edge.from && selectedEdge.to === edge.to;
+	/** The same stroke as the selected edge, but never the selected state (T-070). */
+	const alsoChosenEdge = (edge: { from: number; to: number }) =>
+		alsoChosen.has(`${edge.from}>${edge.to}`);
 	const takenLinesAttr = (key: string): string | undefined => {
 		const lines = takenLines?.get(key);
 		if (!lines || lines.size === 0) return undefined;
@@ -83,9 +92,12 @@
 				class="edge"
 				class:chosen={chosen(edge)}
 				class:taken={taken.has(`${edge.from}>${edge.to}`)}
+				class:dashed={dashed.has(`${edge.from}>${edge.to}`)}
+				class:also-chosen={alsoChosenEdge(edge)}
 				data-edge="{edge.from}>{edge.to}"
 				data-taken={taken.has(`${edge.from}>${edge.to}`) || undefined}
 				data-taken-lines={takenLinesAttr(`${edge.from}>${edge.to}`)}
+				data-also-chosen={alsoChosenEdge(edge) || undefined}
 			>
 				<path class="hit" d={edge.path} />
 				<rect
@@ -190,6 +202,7 @@
 			<text
 				class="label"
 				class:chosen={chosen(edge)}
+				class:also-chosen={alsoChosenEdge(edge)}
 				class:taken={taken.has(`${edge.from}>${edge.to}`)}
 				x={edge.label.center.x}
 				y={edge.label.center.y}
@@ -203,6 +216,7 @@
 			<text
 				class="label"
 				class:chosen={chosen(edge)}
+				class:also-chosen={alsoChosenEdge(edge)}
 				class:taken={taken.has(edgeKey) && !hasTakenLines}
 				x={edge.label.center.x}
 				y={edge.label.center.y}
@@ -344,13 +358,27 @@
 		pointer-events: all;
 		cursor: pointer;
 	}
+	/* A DPDA's competing edges are dashed in the warning colour (T-070): the dash is the sign
+	   that is not a colour, the colour is the second. */
+	.edge.dashed .line {
+		stroke: var(--color-warning);
+		stroke-dasharray: 6 4;
+	}
 	.edge.chosen .line,
-	.edge.taken .line {
+	.edge.taken .line,
+	.edge.also-chosen .line {
 		stroke: var(--color-accent);
 		stroke-width: 3;
 	}
+	/* A competing edge that is selected, or the second edge of the shown pair, keeps its dash and
+	   takes the accent stroke: the selection must not hide the fault. */
+	.edge.dashed.chosen .line,
+	.edge.dashed.also-chosen .line {
+		stroke-dasharray: 6 4;
+	}
 	.label.chosen,
 	.label.taken,
+	.label.also-chosen,
 	.label tspan.taken {
 		fill: var(--color-accent-ink);
 		font-weight: var(--weight-strong);

@@ -18,7 +18,12 @@
 	import KindSwitch from './KindSwitch.svelte';
 	import { pdaCheckItems } from './pda-checks.ts';
 	import PdaDeterminismBadge from './PdaDeterminismBadge.svelte';
-	import { badgeModel, createDeterminism } from './pda-determinism.ts';
+	import {
+		badgeModel,
+		createDeterminism,
+		dashedEdges,
+		extraMarkedEdges
+	} from './pda-determinism.ts';
 	import { pdaDocumentsEqual, toEnginePda } from './pda-document.ts';
 	import type { PdaDocument, PdaKind } from './pda-document.ts';
 	import PdaLabelForm from './PdaLabelForm.svelte';
@@ -95,7 +100,9 @@
 	// Marked rows in the table: row indices with accent bar and aria-current="true".
 	// Cleared when the document changes or when another edge or state is selected.
 	let marked = $state<ReadonlySet<number>>(new Set());
-	let markedEdge: { from: number; to: number } | null = null;
+	// Reactive like `marked`, which it always changes with: the drawing of T-070 derives the second
+	// edge of the shown pair from both, so an implicit dependency would be a trap.
+	let markedEdge = $state.raw<{ from: number; to: number } | null>(null);
 	let lastDoc = untrack(() => editor.getState().doc);
 
 	// "Tunjukkan" of the determinism badge: the pair that is shown, the sentence the badge says to a
@@ -207,6 +214,11 @@
 			? badgeModel(snapshot.doc.kind, snapshot.doc.transitions.length, pairs.pairs.length)
 			: null
 	);
+
+	// The drawing of T-070: a DPDA's competing edges are dashed, and the second edge of the shown
+	// pair takes the same stroke as the selected one. Both are empty sets in every other case.
+	const dashed = $derived(dashedEdges(snapshot.doc.kind, pairs.status, snapshot.doc, pairs.pairs));
+	const alsoChosen = $derived(extraMarkedEdges(snapshot.doc, marked, markedEdge));
 
 	// The Simulasi tab: one run of one string, played step by step from the engine's trace. Any
 	// change of the document makes the run old, so it is cleared (a run is not part of the history).
@@ -525,6 +537,8 @@
 			active={runActive}
 			taken={runTaken}
 			takenLines={runTakenLines}
+			{dashed}
+			{alsoChosen}
 			revealLabeling={formDisplayMode === 'sheet'}
 		>
 			{#snippet label(slot)}

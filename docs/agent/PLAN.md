@@ -2873,7 +2873,7 @@ Follow the rules of `AGENTS.md` for every shell command (the Playwright runs are
 
 ## Task T-070 — Competing edges drawn dashed and the second edge of a pair selected
 
-**Status:** todo
+**Status:** in-progress (2026-11-25; branch `task/T-070-competing-edges-dashed`)
 **Owner:** worker (DeepSeek: a small change to the shared drawing, with guards that the FSM diagram does not change)
 
 **Goal:** Two things that `design/screens/pda-editor.md` section 2 promises and T-062 left out. (1) In a **DPDA**, every edge that holds a transition of a competing pair is drawn **dashed** in `--color-warning`; in an NDPDA the same pairs are normal and every edge stays solid. (2) **Tunjukkan** of T-062 selects the first edge of a pair and marks both rows; after this task the **second** edge of the pair gets the same selection stroke when it is a different edge. A student who builds a DPDA sees from the picture alone which edges break it, and, after pressing Tunjukkan, both edges of the pair.
