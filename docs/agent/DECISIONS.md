@@ -801,3 +801,13 @@ Format:
 - Alternatives considered: shrink the task to the scheduler and the tester (rejected: the helpers are cheap and are the same code three times); delete one of the two grammar-text names (rejected: it needs non-import test edits, and the two names cost one line).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-071)
+
+
+## 2026-11-24 — T-071 AC6 accepted with a measured exception: four editor routes grow by about 182 bytes gzip
+
+- Decider: planner
+- Context: the spec said the first JS size does not grow on any route. DeepSeek measured it: the four routes that mount the editor (`sandbox`, each `soal/*`) grow by 181-183 bytes gzip (about 0.15 percent of 125 KB), because the FSM route now carries the generic query and its six options. Every other route is 2 bytes smaller, the PDA's lazy chunk is 1,577 bytes raw smaller, the whole build's JS is 199 bytes gzip smaller, production lines are net -61, and the 170 KB budget is untouched. DeepSeek shaved 67 bytes and stopped before degrading the interface.
+- Decision: accept. The literal criterion was wrong for a change that replaces three dedicated copies with one generic function: the FSM route cannot also keep its old, smaller, dedicated checker. The rule that matters (the budget) holds, and the total shrinks.
+- Alternatives considered: send it back to shave more (rejected: the remaining bytes need a worse interface); keep the FSM checker as a copy (rejected: that is the duplication the task removes).
+- Reversible? yes
+- Affects: `docs/agent/PLAN.md` (T-071, AC6)
