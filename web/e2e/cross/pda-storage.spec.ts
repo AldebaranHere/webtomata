@@ -67,7 +67,7 @@ test('S2: PDA change is saved on device and is there after reload', async ({ pag
 	// Reload
 	await page.reload();
 	await page.locator('.editor[data-ready]').waitFor();
-	await expect(page.getByRole('button', { name: /^State q0/ })).toBeVisible();
+	await expect(page.getByRole('button', { name: /^State q0(,|$)/ })).toBeVisible();
 });
 
 test('S3: unreadable PDA records are skipped, notice says so, and records are preserved', async ({
@@ -187,7 +187,7 @@ test('S5: browser with no storage allows editor to work with warning', async ({
 	if (isMobile) await stage.tap({ position: { x: 180, y: 100 } });
 	else await stage.click({ position: { x: 180, y: 180 } });
 
-	await expect(page.getByRole('button', { name: /^State q0/ })).toBeVisible();
+	await expect(page.getByRole('button', { name: /^State q0(,|$)/ })).toBeVisible();
 });
 
 test('S6: in FSM mode, Mesin saya lists the PDA record with NDPDA chip, and FSM openLatest is not PDA', async ({

@@ -62,10 +62,10 @@ async function makeEdge(
 async function buildF(page: Page) {
 	await openPdaSandbox(page);
 	await addRailState(page, 120, 200);
-	await page.getByRole('button', { name: /^State q0/ }).click();
+	await page.getByRole('button', { name: /^State q0(,|$)/ }).click();
 	await page.keyboard.press('m');
 	await addRailState(page, 300, 200);
-	await page.getByRole('button', { name: /^State q1/ }).click();
+	await page.getByRole('button', { name: /^State q1(,|$)/ }).click();
 	await page.keyboard.press('a');
 	await makeEdge(page, 'q0', 'q0', [{ read: 'a', pop: '', push: 'A' }]);
 	await makeEdge(page, 'q0', 'q1', [{ read: 'b', pop: 'A', push: '' }]);
@@ -78,10 +78,10 @@ async function buildF(page: Page) {
 async function buildH(page: Page) {
 	await openPdaSandbox(page);
 	await addRailState(page, 120, 200);
-	await page.getByRole('button', { name: /^State q0/ }).click();
+	await page.getByRole('button', { name: /^State q0(,|$)/ }).click();
 	await page.keyboard.press('m');
 	await addRailState(page, 300, 200);
-	await page.getByRole('button', { name: /^State q1/ }).click();
+	await page.getByRole('button', { name: /^State q1(,|$)/ }).click();
 	await page.keyboard.press('a');
 	await makeEdge(page, 'q0', 'q0', [{ read: 'a', pop: '', push: 'A' }]);
 	await makeEdge(page, 'q0', 'q1', [{ read: 'b', pop: 'A', push: '' }]);
@@ -100,10 +100,10 @@ async function buildH(page: Page) {
 async function buildK(page: Page) {
 	await openPdaSandbox(page);
 	await addRailState(page, 200, 200);
-	await page.getByRole('button', { name: /^State q0/ }).click();
+	await page.getByRole('button', { name: /^State q0(,|$)/ }).click();
 	await page.keyboard.press('m');
 	await addRailState(page, 380, 200);
-	await page.getByRole('button', { name: /^State q1/ }).click();
+	await page.getByRole('button', { name: /^State q1(,|$)/ }).click();
 	await page.keyboard.press('a');
 	await makeEdge(page, 'q0', 'q0', [
 		{ read: 'a', pop: '', push: '' },

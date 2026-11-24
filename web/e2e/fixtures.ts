@@ -102,7 +102,7 @@ export async function openPda(page: Page): Promise<void> {
 
 /** Removes every test string of the open machine (an example opens with some). */
 export async function clearTests(page: Page): Promise<void> {
-	const remove = page.getByRole('button', { name: /^(Hapus|Remove) / });
+	const remove = page.locator('.tests').getByRole('button', { name: /^(Hapus|Remove) / });
 	while ((await remove.count()) > 0) {
 		await remove.first().click();
 	}
