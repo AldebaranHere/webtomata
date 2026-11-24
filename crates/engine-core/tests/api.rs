@@ -664,3 +664,47 @@ fn language_api_errors_use_typed_keys_without_detail() {
     let cyclic = err(api::enumerate_language("L1", 0, 5, Some(r#"{"L1":"L1"}"#)));
     assert_eq!(cyclic["params"]["name"], "L1");
 }
+
+#[test]
+fn crash_6_enumerate_language_refuses_huge_start_length() {
+    for input in [
+        "{ w in {a}* : |w| >= 18446744073709551615 }",
+        "{ w in {a}* : |w| >= 100000000000 }",
+    ] {
+        let error = err(api::enumerate_language(input, 0, 5, None));
+        assert_eq!(error["key"], "language.error.length_too_large");
+        assert!(error["params"]["limit"].as_u64().is_some_and(|l| l > 0));
+        assert!(error["params"].get("detail").is_none());
+    }
+}
+
+#[test]
+fn crash_8_enumerate_language_clamps_usize_max_min_length() {
+    let val = ok(api::enumerate_language("{a}*", usize::MAX, 5, None));
+    let strings = val["strings"].as_array().expect("strings array");
+    assert_eq!(strings.len(), 5);
+    assert_eq!(strings[0].as_str().unwrap().len(), 100);
+}
+
+#[test]
+fn language_expression_length_limit_counts_characters() {
+    // 4,096 characters (including multi-byte) fits; 4,097 is refused with expression_too_long.
+    let at_limit = format!("{{a}}{}", " ".repeat(4093));
+    assert_eq!(at_limit.chars().count(), 4096);
+    let _ = ok(api::enumerate_language(&at_limit, 0, 5, None));
+
+    let multibyte_at_limit = format!(
+        "{{{} }}",
+        std::iter::repeat_n("é", 2047).collect::<Vec<_>>().join(",")
+    );
+    assert_eq!(multibyte_at_limit.chars().count(), 4096);
+    assert!(multibyte_at_limit.len() > 4096);
+    let _ = ok(api::enumerate_language(&multibyte_at_limit, 0, 5, None));
+
+    let over_limit = format!("{{a}}{}", " ".repeat(4094));
+    assert_eq!(over_limit.chars().count(), 4097);
+    let error = err(api::enumerate_language(&over_limit, 0, 5, None));
+    assert_eq!(error["key"], "language.error.expression_too_long");
+    assert_eq!(error["params"]["limit"], 4096);
+    assert!(error["params"].get("detail").is_none());
+}

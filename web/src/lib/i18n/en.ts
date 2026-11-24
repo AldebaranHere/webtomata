@@ -950,6 +950,8 @@ export const en: Record<keyof typeof id, string> = {
 	'language.error.expected_comma_or_brace': "Expected ',' or '}' in the set of words.",
 	'language.error.undefined_reference': "Language '{name}' is not defined.",
 	'language.error.cyclic_reference': "A cyclic reference was found at '{name}'.",
+	'language.error.length_too_large': 'The string length is too large to list (at most {limit}).',
+	'language.error.expression_too_long': 'The expression is too long (at most {limit} characters).',
 	'language.error.generic':
 		'The language expression could not be processed. Check the syntax and try again.',
 	'api.invalid_environment': 'The language data is not valid.',

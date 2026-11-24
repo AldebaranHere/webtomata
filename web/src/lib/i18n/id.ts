@@ -951,6 +951,12 @@ export const id = {
 	'language.error.expected_comma_or_brace': "Diharapkan ',' atau '}' dalam himpunan kata",
 	'language.error.undefined_reference': "Bahasa '{name}' belum didefinisikan",
 	'language.error.cyclic_reference': "Referensi siklik terdeteksi pada '{name}'",
+	// TODO(review): new Indonesian wording for T-090 enumeration length limit.
+	'language.error.length_too_large':
+		'Panjang string terlalu besar untuk dicacah (paling banyak {limit}).',
+	// TODO(review): new Indonesian wording for T-090 expression character limit.
+	'language.error.expression_too_long':
+		'Ekspresi terlalu panjang (paling banyak {limit} karakter).',
 	// TODO(review): wording of the generic language error fallback.
 	'language.error.generic': 'Ekspresi bahasa tidak dapat diproses. Periksa kembali sintaksnya.',
 	// TODO(review): new id text; this key had no entry before T-028b.
