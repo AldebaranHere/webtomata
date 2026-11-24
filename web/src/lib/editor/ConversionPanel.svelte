@@ -932,6 +932,9 @@
 		color: var(--color-on-ink);
 		font-weight: var(--weight-strong);
 	}
+	.seg button:focus-visible {
+		outline-offset: calc(var(--focus-ring-width) * -1);
+	}
 	.sentence {
 		padding: var(--space-2) var(--space-3);
 		border-radius: var(--radius-md);
