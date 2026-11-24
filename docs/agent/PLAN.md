@@ -4356,7 +4356,7 @@ Cause 4, 5 and part of 6 are one defect: the module mixes **byte** lengths and *
 
 ## Task T-091 — The focus ring is not cut off at the sides of the panel's scroll area
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker (Gemini; CSS and a generic e2e guard)
 
 **Goal:** On a phone, with the cursor in the PDA's "String masukan" field, the blue focus ring shows at the top and bottom of the field but is **cut off at the left and right edges** (the owner's phone check of 2026-11-25). The cause is the pattern `overflow-y: auto` on an ancestor: when one axis is not `visible`, the other computes to `auto` too, so everything that draws outside the box on the left and the right (the 2 px ring plus its 2 px offset, `--focus-ring-width` and `--focus-ring-offset`) is clipped, and a control that sits flush with the edge of the scroll box (a full-width input, a button in a row) loses its ring there. WCAG 2.4.7 needs the ring to be visible. After this task a focused control's ring is fully visible on all four sides in the scroll areas of the editors.
