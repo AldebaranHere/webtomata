@@ -975,6 +975,7 @@ export const id = {
 	'grammar.math_preview_title': 'Notasi Matematika (CFG)',
 	'grammar.resize_library_aria': 'Ubah lebar perpustakaan tata bahasa',
 	'grammar.delete_custom': 'Hapus tata bahasa kustom',
+	'grammar.deleted_custom': "Tata bahasa '{title}' dihapus.",
 	'grammar.legend_title': 'Definisi & Format Penulisan Tata Bahasa',
 	'grammar.legend_hide': '▲ Sembunyikan',
 	'grammar.legend_show': '▼ Tampilkan',

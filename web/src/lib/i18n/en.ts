@@ -969,6 +969,7 @@ export const en: Record<keyof typeof id, string> = {
 	'grammar.math_preview_title': 'Mathematical Notation (CFG)',
 	'grammar.resize_library_aria': 'Resize grammar library',
 	'grammar.delete_custom': 'Delete custom grammar',
+	'grammar.deleted_custom': "Grammar '{title}' deleted.",
 	'grammar.legend_title': 'Grammar Definitions & Formatting Guide',
 	'grammar.legend_hide': '▲ Hide',
 	'grammar.legend_show': '▼ Show',
