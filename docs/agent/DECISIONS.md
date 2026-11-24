@@ -872,3 +872,13 @@ Format:
 - Alternatives considered: a second helper in `web/src/lib/language/` (rejected: it is the same fifteen lines, and the next module would copy them again); fix the banner CSS here (rejected: layout, a separate decision, now T-089).
 - Reversible? yes
 - Affects: `crates/engine-core/src/language/`, `api.rs`, `web/src/lib/language/`, `web/src/lib/grammar/`, `web/src/lib/engine/`, `web/src/lib/i18n/`
+
+
+## 2026-11-25 — T-090: the language engine counts characters, uses exact arithmetic and refuses huge enumerations with a typed error
+
+- Decider: planner (the owner asked for the spec)
+- Context: DeepSeek found six inputs in T-028b that crash the language engine: `usize` overflow in the parser (`num + 1`, `offset + 1`) and in the count predicates, byte slicing and byte lengths on non-ASCII strings (panic and stack overflow), and an unbounded `with_capacity` and recursion for a huge `|w| >= N`. In release the overflows wrap silently, so the answer is wrong, not only a crash. The planner re-pinned each line on `origin/staging` before writing the block.
+- Decision: a length is a number of characters everywhere in `language/` (this also fixes `|w| = 1` for `é`); count predicates are computed in `u128` (exact; saturating rejected because two saturated sides compare equal); a number whose successor overflows is `NumberTooLarge`; enumeration refuses an effective start length above a fixed limit (200 to start, measured by the worker) with a new typed error `LengthTooLarge`, not with an empty list (an empty list would claim the language has no such string); the 4,096-character expression check gets its own language message instead of `machine.limit_exceeded`.
+- Alternatives considered: saturating arithmetic (rejected: wrong verdicts when both sides saturate); an empty list for a huge length (rejected: false); capping every number in the parser at a small maximum (rejected: it changes what the parser accepts far beyond the crashing inputs); folding the unnamed-environment-language banner in (rejected: UI wording, a separate decision).
+- Reversible? yes
+- Affects: `crates/engine-core/src/language/`, `api.rs`, `web/src/lib/i18n/`
