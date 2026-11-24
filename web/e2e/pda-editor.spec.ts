@@ -90,8 +90,8 @@ test.describe('E2: Label form opening mechanisms', () => {
 		// Connect q0 to q1 with Transisi tool
 		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
 		await transBtn.click();
-		const q0 = page.getByRole('button', { name: /^State q0/ });
-		const q1 = page.getByRole('button', { name: /^State q1/ });
+		const q0 = page.getByRole('button', { name: /^State q0(,|$)/ });
+		const q1 = page.getByRole('button', { name: /^State q1(,|$)/ });
 		await q0.click();
 		await q1.click();
 
@@ -147,8 +147,8 @@ test.describe('E2: Label form opening mechanisms', () => {
 		// Transisi tool
 		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
 		await transBtn.tap();
-		const q0 = page.getByRole('button', { name: /^State q0/ });
-		const q1 = page.getByRole('button', { name: /^State q1/ });
+		const q0 = page.getByRole('button', { name: /^State q0(,|$)/ });
+		const q1 = page.getByRole('button', { name: /^State q1(,|$)/ });
 		await q0.tap();
 		await q1.tap();
 
@@ -180,8 +180,8 @@ test.describe('E3: Typing and sending transitions', () => {
 
 		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
 		await transBtn.click();
-		await page.getByRole('button', { name: /^State q0/ }).click();
-		await page.getByRole('button', { name: /^State q1/ }).click();
+		await page.getByRole('button', { name: /^State q0(,|$)/ }).click();
+		await page.getByRole('button', { name: /^State q1(,|$)/ }).click();
 
 		const form = page.locator('.pda-label-form[role="dialog"]');
 		await expect(form).toBeVisible();
@@ -255,7 +255,9 @@ test.describe('E3: Typing and sending transitions', () => {
 		await expect(page.locator('.edge-node[data-edge="0>1"]')).toHaveCount(0);
 
 		// Urungkan restores edge
-		const undoBtn = page.getByRole('button', { name: /^Urungkan/ });
+		const undoBtn = page
+			.getByRole('toolbar', { name: 'Alat editor' })
+			.getByRole('button', { name: 'Urungkan', exact: true });
 		await undoBtn.click();
 		await expect(page.locator('.labels text.label').first()).toBeVisible();
 	});
@@ -277,7 +279,7 @@ test.describe('E4: + n lagi overflow button behavior', () => {
 
 		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
 		await transBtn.click();
-		const q0 = page.getByRole('button', { name: /^State q0/ });
+		const q0 = page.getByRole('button', { name: /^State q0(,|$)/ });
 		await q0.click();
 		await q0.click(); // self loop
 
@@ -368,8 +370,8 @@ test.describe('E5: Building wwᴿ sample automaton', () => {
 		if (isMobile) await transBtn.tap();
 		else await transBtn.click();
 
-		const q0 = page.getByRole('button', { name: /^State q0/ });
-		const q1 = page.getByRole('button', { name: /^State q1/ });
+		const q0 = page.getByRole('button', { name: /^State q0(,|$)/ });
+		const q1 = page.getByRole('button', { name: /^State q1(,|$)/ });
 		if (isMobile) {
 			await q0.tap();
 			await q1.tap();
@@ -520,7 +522,7 @@ test.describe('E6: Flush on mode switch', () => {
 		await switchToPda(page);
 
 		// State q0 is still there
-		await expect(page.getByRole('button', { name: /^State q0/ })).toBeVisible();
+		await expect(page.getByRole('button', { name: /^State q0(,|$)/ })).toBeVisible();
 	});
 });
 
@@ -542,7 +544,7 @@ test.describe('E7: Accessibility via Axe', () => {
 		if (isMobile) await stage.tap({ position: { x: 150, y: 150 } });
 		else await stage.click({ position: { x: 200, y: 200 } });
 
-		const q0 = page.getByRole('button', { name: /^State q0/ });
+		const q0 = page.getByRole('button', { name: /^State q0(,|$)/ });
 		if (isMobile) await q0.tap();
 		else await q0.click({ button: 'right' });
 
@@ -600,8 +602,8 @@ test.describe('E8: Phone sheet dimensions and labeled edge in view', () => {
 
 		const transBtn = page.getByRole('button', { name: /^Tambah transisi/ });
 		await transBtn.tap();
-		const q0 = page.getByRole('button', { name: /^State q0/ });
-		const q1 = page.getByRole('button', { name: /^State q1/ });
+		const q0 = page.getByRole('button', { name: /^State q0(,|$)/ });
+		const q1 = page.getByRole('button', { name: /^State q1(,|$)/ });
 		await q0.tap();
 		await q1.tap();
 

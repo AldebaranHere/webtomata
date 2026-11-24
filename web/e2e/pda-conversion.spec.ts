@@ -133,7 +133,11 @@ test.describe('E1: the tab and the RNF stepper', () => {
 
 		const after = await records(page);
 		expect(after.find((row) => row.id === 'pda-conv')!.doc).toBe(sourceBefore.doc);
-		await expect(page.getByRole('button', { name: /Urungkan/ })).toBeDisabled();
+		await expect(
+			page
+				.getByRole('toolbar', { name: 'Alat editor' })
+				.getByRole('button', { name: 'Urungkan', exact: true })
+		).toBeDisabled();
 
 		await last(page);
 		await expect(
@@ -213,7 +217,11 @@ test.describe('E2: the grammar stepper and the close', () => {
 		await expect(convert(page).getByRole('button', { name: 'Mulai' })).toBeVisible();
 		await expect(canvas(page)).toHaveCount(0);
 		await expect(page.locator('p.title')).toHaveText('wcwR');
-		await expect(page.getByRole('button', { name: /Urungkan/ })).toBeDisabled();
+		await expect(
+			page
+				.getByRole('toolbar', { name: 'Alat editor' })
+				.getByRole('button', { name: 'Urungkan', exact: true })
+		).toBeDisabled();
 		expect((await records(page)).find((row) => row.id === 'pda-conv')!.doc).toBe(before.doc);
 		await expectNoAxeViolations(page);
 	});
