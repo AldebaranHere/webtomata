@@ -10,7 +10,11 @@
 	import GrammarCnfStepper from './GrammarCnfStepper.svelte';
 	import GrammarCykTester from './GrammarCykTester.svelte';
 	import GrammarToPdaTab from './GrammarToPdaTab.svelte';
+	import Announcer from '../editor/Announcer.svelte';
+	import Toast from '../editor/Toast.svelte';
+	import type { Announcement } from '../editor/interaction/editor.ts';
 	import { formatEngineError } from '#lib/engine/error-text.ts';
+	import type { Params } from '#lib/i18n/translate.ts';
 	import WorkstationPhoneTabs, {
 		type PhoneTabItem
 	} from '#lib/components/WorkstationPhoneTabs.svelte';
@@ -85,6 +89,17 @@
 
 	let customGrammars = $state<CustomGrammar[]>([]);
 	let selectedId = $state<string>('CNF_ORDER');
+	/** What the last delete removed, for the toast with Urungkan. It goes with the next change. */
+	let undoDelete = $state<{ grammar: CustomGrammar; index: number; wasSelected: boolean } | null>(
+		null
+	);
+	let deletedToast = $state<Announcement | null>(null);
+	/** What a screen reader hears; the toast is not a live region itself. */
+	let liveAnnouncement = $state<Announcement | null>(null);
+	let announcementSeq = 0;
+	/** The select button of each custom card, so that the focus can follow the list. */
+	const selectButtonRefs = new SvelteMap<string, HTMLButtonElement>();
+	let newGrammarButton = $state<HTMLButtonElement | null>(null);
 	let cnfVersion = $state<'long' | 'short'>('long');
 	let pipelineCallId = 0;
 	let mounted = $state(false);
@@ -278,6 +293,7 @@
 		const { updated, created } = receiveGrammarRequest(customGrammars, openRequest, (id) =>
 			t('grammar.default_custom_title', { id })
 		);
+		dropUndo();
 		saveCustomGrammars(updated);
 		selectCustom(created);
 	});
@@ -289,6 +305,48 @@
 		} catch {
 			// ignore storage errors
 		}
+	}
+
+	/** One message for the toast and for the live region; `seq` makes the same words said again. */
+	function announce(key: MessageKey, params: Params = {}): Announcement {
+		return { key, params, seq: ++announcementSeq };
+	}
+
+	/**
+	 * The deletion becomes final: the toast and the undo go, and nothing is said. Every other change
+	 * of the list calls this, because a new grammar can take the id that the delete freed.
+	 */
+	function dropUndo() {
+		undoDelete = null;
+		deletedToast = null;
+	}
+
+	/** The focus follows the list: the next card's select button, or the new-grammar button. */
+	function focusSelect(grammarId: string | null) {
+		requestAnimationFrame(() => {
+			const target = grammarId ? selectButtonRefs.get(grammarId) : newGrammarButton;
+			if (!target) return;
+			target.focus();
+			revealAboveToast(target);
+		});
+	}
+
+	/** A focused card under the toast is scrolled up, so that the toast does not hide its ring. */
+	function revealAboveToast(target: HTMLElement) {
+		const toast = workstationRef?.querySelector('.toast');
+		if (!toast) return;
+		if (target.getBoundingClientRect().bottom > toast.getBoundingClientRect().top) {
+			target.scrollIntoView({ block: 'center' });
+		}
+	}
+
+	function registerSelectRef(node: HTMLButtonElement, id: string) {
+		selectButtonRefs.set(id, node);
+		return {
+			destroy() {
+				selectButtonRefs.delete(id);
+			}
+		};
 	}
 
 	function startLibraryResize(event: PointerEvent) {
@@ -398,6 +456,7 @@
 	}
 
 	function createNewCustomGrammar() {
+		dropUndo();
 		const id = nextCustomId(customGrammars);
 		const newGrammar: CustomGrammar = {
 			id,
@@ -411,6 +470,7 @@
 
 	function handleOpenCnfAsNewGrammar() {
 		if (!cnfTrace) return;
+		dropUndo();
 		const text = grammarToText(cnfTrace.finalGrammar);
 		const id = nextCustomId(customGrammars);
 		const title = computeCnfTitle(activeTitle, customGrammars);
@@ -426,12 +486,45 @@
 
 	function deleteCustomGrammar(id: string, event: MouseEvent) {
 		event.stopPropagation();
+		const index = customGrammars.findIndex((c) => c.id === id);
+		const grammar = customGrammars[index];
+		if (!grammar) return;
+		const wasSelected = selectedId === id;
 		const updated = customGrammars.filter((c) => c.id !== id);
 		saveCustomGrammars(updated);
-		if (selectedId === id) {
+		if (wasSelected) {
 			const fallback = GRAMMAR_PRESETS[0];
 			if (fallback) selectPreset(fallback);
+			// The library stays on screen: the toast and the focus that follows live there.
+			if (isPhone) phoneTab = 'pustaka';
 		}
+		const message = announce('grammar.deleted_custom', { title: grammar.title });
+		undoDelete = { grammar: { ...grammar }, index, wasSelected };
+		deletedToast = message;
+		liveAnnouncement = message;
+		const next = updated[index] ?? updated[index - 1];
+		focusSelect(next?.id ?? null);
+	}
+
+	function undoDeleteGrammar() {
+		const pending = undoDelete;
+		if (!pending) return;
+		const at = Math.min(pending.index, customGrammars.length);
+		saveCustomGrammars([
+			...customGrammars.slice(0, at),
+			pending.grammar,
+			...customGrammars.slice(at)
+		]);
+		// The selection comes back only if it is still the fallback that the delete left there.
+		const fallback = GRAMMAR_PRESETS[0];
+		if (pending.wasSelected && fallback && selectedId === fallback.id) {
+			selectCustom(pending.grammar);
+		}
+		if (isPhone) phoneTab = 'pustaka';
+		undoDelete = null;
+		deletedToast = null;
+		liveAnnouncement = announce('editor.undone');
+		focusSelect(pending.grammar.id);
 	}
 
 	function addRow() {
@@ -648,7 +741,9 @@
 		const customIdx = customGrammars.findIndex((c) => c.id === selectedId);
 		if (customIdx !== -1) {
 			const target = customGrammars[customIdx];
-			if (target) {
+			if (target && target.grammar !== text) {
+				// The rules of this custom grammar changed: an earlier delete is not undoable any more.
+				dropUndo();
 				const updated = [...customGrammars];
 				updated[customIdx] = {
 					id: target.id,
@@ -736,6 +831,9 @@
 		idPrefix="grammar"
 	/>
 
+	<!-- The words of the toast with Urungkan; the toast itself is not a live region. -->
+	<Announcer announcement={liveAnnouncement} />
+
 	<!-- Column 1: Grammar Library (Presets + Custom) -->
 	<div
 		class="col library-col"
@@ -747,7 +845,12 @@
 	>
 		<div class="col-header">
 			<h2 class="col-title">{t('grammar.library_title')}</h2>
-			<button type="button" class="btn-new" onclick={createNewCustomGrammar}>
+			<button
+				type="button"
+				class="btn-new"
+				bind:this={newGrammarButton}
+				onclick={createNewCustomGrammar}
+			>
 				{t('grammar.new_grammar')}
 			</button>
 		</div>
@@ -787,7 +890,12 @@
 				<div class="preset-list">
 					{#each customGrammars as custom (custom.id)}
 						<div class="preset-card custom-card" class:selected={selectedId === custom.id}>
-							<button type="button" class="card-select" onclick={() => selectCustom(custom)}>
+							<button
+								type="button"
+								class="card-select"
+								use:registerSelectRef={custom.id}
+								onclick={() => selectCustom(custom)}
+							>
 								<span class="preset-id-badge custom-badge">{custom.id}</span>
 								<span class="card-title">{custom.title}</span>
 							</button>
@@ -804,6 +912,11 @@
 				</div>
 			{/if}
 		</div>
+	</div>
+
+	<!-- The toast of the library: over the library column on a laptop, at the bottom of the screen on a phone. -->
+	<div class="toast-slot">
+		<Toast toast={deletedToast} onundo={undoDeleteGrammar} ondismiss={dropUndo} />
 	</div>
 
 	<!-- Splitter 1: Library to Editor -->
@@ -1215,6 +1328,8 @@
 		overflow: hidden;
 		user-select: text;
 		font-family: var(--font-ui);
+		/* The toast of the library positions itself on this box (see .toast-slot). */
+		position: relative;
 	}
 
 	.col {
@@ -1397,6 +1512,21 @@
 
 	.btn-delete:hover {
 		color: var(--color-warning-ink);
+	}
+
+	/* Where the toast of the library sits: over the library column, at its bottom. The box lets the
+	   pointer through, so that it never blocks the cards behind it; the toast itself takes it. */
+	.toast-slot {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		width: var(--library-width, 280px);
+		pointer-events: none;
+	}
+
+	.toast-slot :global(.toast) {
+		pointer-events: auto;
 	}
 
 	/* Resizable Splitter */
@@ -1987,6 +2117,13 @@
 		.library-scroll {
 			overflow-y: visible;
 			height: auto;
+		}
+
+		/* The library column scrolls with the page, so the toast keeps to the bottom of the screen. */
+		.toast-slot {
+			position: fixed;
+			inset: 0;
+			width: auto;
 		}
 
 		.editor-body {

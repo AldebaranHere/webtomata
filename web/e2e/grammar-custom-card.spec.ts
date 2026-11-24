@@ -2,7 +2,7 @@
 // `nested-interactive`). The card is a plain container with two sibling buttons: one selects the
 // grammar and one deletes it. These tests cover the axe guard (AC1), selecting by mouse and by
 // keyboard (AC2), deleting with the keyboard without selecting (AC3), and the look at 360 px (AC5).
-import { expect, expectNoAxeViolations, test } from './fixtures.ts';
+import { engineSettled, expect, expectNoAxeViolations, test } from './fixtures.ts';
 import type { Locator, Page } from '@playwright/test';
 
 // A title longer than the library card at 360 px, so that it must be cut off instead of pushing
@@ -246,4 +246,326 @@ test('AC5: at 360 px both buttons show a focus ring, a long title truncates, and
 	expect(deleteRing.focusVisible).toBe(true);
 	expect(deleteRing.outlineStyle).toBe('solid');
 	expect(deleteRing.outlineWidth).toBe('2px');
+});
+
+// ---- T-092: a deleted custom grammar can be undone ----
+
+/** The titles of the custom grammars in the storage, oldest first. */
+function storedTitles(page: Page): Promise<string[]> {
+	return page.evaluate(() => {
+		const raw = localStorage.getItem('webtomata.grammar.custom');
+		if (!raw) return [];
+		const list = JSON.parse(raw) as Array<{ title: string }>;
+		return list.map((grammar) => grammar.title);
+	});
+}
+
+/** The rules in the grammar editor, one line per row, in the matrix's own short form. */
+function matrixText(page: Page): Promise<string> {
+	return page.evaluate(() => {
+		const editor = document.querySelector('#grammar-pane-editor');
+		if (!editor) return '';
+		return [...editor.querySelectorAll('.matrix-row')]
+			.map((row) => {
+				const lhs = row.querySelector<HTMLInputElement>('.lhs-input')?.value ?? '';
+				const alternatives = [...row.querySelectorAll<HTMLInputElement>('.alt-cell-input')].map(
+					(input) => input.value
+				);
+				return `${lhs} -> ${alternatives.join(' | ')}`;
+			})
+			.join('\n');
+	});
+}
+
+function toastOf(page: Page): Locator {
+	return page.locator('.workstation .toast');
+}
+
+function liveRegion(page: Page): Locator {
+	return page.locator('.workstation [role="status"]');
+}
+
+function customCards(page: Page): Locator {
+	return page.locator('#grammar-pane-pustaka .custom-card');
+}
+
+function editorTitle(page: Page): Locator {
+	return page.locator('#grammar-pane-editor .active-item-title');
+}
+
+test('T-092 AC1: the × shows a toast, and Urungkan puts the grammar back at its old place', async ({
+	page,
+	isMobile
+}) => {
+	await openGrammar(page);
+	await addCustomGrammar(page, isMobile);
+	await addCustomGrammar(page, isMobile);
+	await addCustomGrammar(page, isMobile);
+	const cards = customCards(page);
+	await expect(cards).toHaveCount(3);
+
+	// The middle one (G2) is not the selected one (G3).
+	await showLibrary(page, isMobile);
+	await cards.nth(1).locator('.btn-delete').click();
+
+	await expect(cards).toHaveCount(2);
+	await expect(cards.nth(0).locator('.card-title')).toHaveText('Tata Bahasa G1');
+	await expect(cards.nth(1).locator('.card-title')).toHaveText('Tata Bahasa G3');
+	// The focus is not lost to the body: it is on the card that took the deleted one's place.
+	await expect(cards.nth(1).locator('.card-select')).toBeFocused();
+	const toast = toastOf(page);
+	await expect(toast).toBeVisible();
+	await expect(toast).toContainText("Tata bahasa 'Tata Bahasa G2' dihapus.");
+	await expect(liveRegion(page)).toHaveText("Tata bahasa 'Tata Bahasa G2' dihapus.");
+	expect(await storedTitles(page)).toEqual(['Tata Bahasa G1', 'Tata Bahasa G3']);
+
+	await toast.getByRole('button', { name: 'Urungkan' }).click();
+
+	await expect(cards).toHaveCount(3);
+	await expect(cards.nth(0).locator('.card-title')).toHaveText('Tata Bahasa G1');
+	await expect(cards.nth(1).locator('.card-title')).toHaveText('Tata Bahasa G2');
+	await expect(cards.nth(2).locator('.card-title')).toHaveText('Tata Bahasa G3');
+	expect(await storedTitles(page)).toEqual(['Tata Bahasa G1', 'Tata Bahasa G2', 'Tata Bahasa G3']);
+	await expect(toast).toHaveCount(0);
+	await expect(liveRegion(page)).toHaveText('Dibatalkan.');
+	await expect(cards.nth(1).locator('.card-select')).toBeFocused();
+});
+
+test('T-092 AC2: deleting the selected grammar falls back to the first preset, and Urungkan selects it again', async ({
+	page,
+	isMobile
+}) => {
+	await openGrammar(page);
+	const card = await addCustomGrammar(page, isMobile);
+	const rules = await matrixText(page);
+	expect(rules).toBe('S -> aSb | λ');
+
+	await showLibrary(page, isMobile);
+	await card.locator('.btn-delete').click();
+
+	await expect(customCards(page)).toHaveCount(0);
+	await expect(editorTitle(page)).toHaveText('Urutan Eliminasi Simbol (Fase 1-2)');
+	await expect(page.locator('#grammar-pane-pustaka .preset-card.selected')).toHaveCount(1);
+	await expect(liveRegion(page)).toHaveText("Tata bahasa 'Tata Bahasa G1' dihapus.");
+
+	await toastOf(page).getByRole('button', { name: 'Urungkan' }).click();
+
+	await expect(customCards(page)).toHaveCount(1);
+	await expect(customCards(page).first()).toHaveClass(/selected/);
+	await expect(editorTitle(page)).toHaveText('Tata Bahasa G1');
+	expect(await matrixText(page)).toBe(rules);
+});
+
+test('T-092 AC3: Urungkan restores the card, but not a selection the student made after the delete', async ({
+	page,
+	isMobile
+}) => {
+	await openGrammar(page);
+	await addCustomGrammar(page, isMobile);
+	await addCustomGrammar(page, isMobile);
+	const cards = customCards(page);
+	await expect(cards).toHaveCount(2);
+
+	// The second grammar is the selected one; deleting it falls back to the first preset.
+	await showLibrary(page, isMobile);
+	await expect(cards.nth(1)).toHaveClass(/selected/);
+	await cards.nth(1).locator('.btn-delete').click();
+	await expect(cards).toHaveCount(1);
+	await expect(editorTitle(page)).toHaveText('Urutan Eliminasi Simbol (Fase 1-2)');
+
+	// The student picks another grammar before Urungkan. The keyboard is used on purpose: on a
+	// phone the toast sits over the last row of the page, and the last row has nowhere to scroll to.
+	await cards.nth(0).locator('.card-select').focus();
+	await page.keyboard.press('Enter');
+	await expect(cards.nth(0)).toHaveClass(/selected/);
+	await expect(editorTitle(page)).toHaveText('Tata Bahasa G1');
+
+	await toastOf(page).getByRole('button', { name: 'Urungkan' }).click();
+
+	await expect(cards).toHaveCount(2);
+	await expect(cards.nth(0)).toHaveClass(/selected/);
+	await expect(cards.nth(1)).not.toHaveClass(/selected/);
+	await expect(editorTitle(page)).toHaveText('Tata Bahasa G1');
+	expect(await storedTitles(page)).toEqual(['Tata Bahasa G1', 'Tata Bahasa G2']);
+});
+
+test('T-092 AC4: the toast ends after six seconds exactly, holds under the focus, and the storage is final', async ({
+	page,
+	isMobile
+}) => {
+	await openGrammar(page);
+	await engineSettled(page);
+	await addCustomGrammar(page, isMobile);
+	await addCustomGrammar(page, isMobile);
+	const cards = customCards(page);
+	const toast = toastOf(page);
+
+	// The clock is paused on a time in the future of the installed one: installing lets it tick, and
+	// `pauseAt` refuses a time that has already passed.
+	const clockStart = new Date();
+	await page.clock.install({ time: clockStart });
+	await page.clock.pauseAt(new Date(clockStart.getTime() + 2000));
+
+	await showLibrary(page, isMobile);
+	await cards.nth(1).locator('.btn-delete').click();
+	await expect(toast).toBeVisible();
+
+	await page.clock.runFor(5999);
+	await expect(toast).toBeVisible();
+
+	// The focus on the toast holds it (Toast.svelte's own rule): no timer runs while it is held.
+	await toast.getByRole('button', { name: 'Urungkan' }).focus();
+	await page.clock.runFor(60000);
+	await expect(toast).toBeVisible();
+
+	// The focus leaves: a fresh six seconds, and then it goes.
+	await page.evaluate(() => {
+		if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+	});
+	await page.clock.runFor(5999);
+	await expect(toast).toBeVisible();
+	await page.clock.runFor(1);
+	await expect(toast).toHaveCount(0);
+	expect(await storedTitles(page)).toEqual(['Tata Bahasa G1']);
+
+	// A reload keeps the deletion: the undo was never in the storage.
+	await page.clock.resume();
+	await page.reload();
+	await engineSettled(page);
+	await expect(customCards(page)).toHaveCount(1);
+	expect(await storedTitles(page)).toEqual(['Tata Bahasa G1']);
+
+	// Urungkan before the six seconds, then a reload, shows the grammar back.
+	await showLibrary(page, isMobile);
+	await customCards(page).first().locator('.btn-delete').click();
+	await expect(toastOf(page)).toBeVisible();
+	await toastOf(page).getByRole('button', { name: 'Urungkan' }).click();
+	await expect(customCards(page)).toHaveCount(1);
+	await page.reload();
+	await engineSettled(page);
+	await expect(customCards(page)).toHaveCount(1);
+	expect(await storedTitles(page)).toEqual(['Tata Bahasa G1']);
+});
+
+test('T-092 AC5: a second delete replaces the undo, and + Tata Bahasa Baru drops it', async ({
+	page,
+	isMobile
+}) => {
+	await openGrammar(page);
+	await addCustomGrammar(page, isMobile);
+	await addCustomGrammar(page, isMobile);
+	await addCustomGrammar(page, isMobile);
+	const cards = customCards(page);
+	const toast = toastOf(page);
+	await showLibrary(page, isMobile);
+
+	// The first deletion (G1, not selected) is replaced by the second (G2).
+	await cards.nth(0).locator('.btn-delete').click();
+	await expect(toast).toContainText("Tata bahasa 'Tata Bahasa G1' dihapus.");
+	await cards.nth(0).locator('.btn-delete').click();
+	await expect(toast).toContainText("Tata bahasa 'Tata Bahasa G2' dihapus.");
+	await expect(toast).not.toContainText('G1');
+
+	await toast.getByRole('button', { name: 'Urungkan' }).click();
+	await expect(cards).toHaveCount(2);
+	expect(await storedTitles(page)).toEqual(['Tata Bahasa G2', 'Tata Bahasa G3']);
+
+	// A new grammar reuses the freed id, so the old deletion must not come back.
+	await cards.nth(0).locator('.btn-delete').click();
+	await expect(toast).toContainText("Tata bahasa 'Tata Bahasa G2' dihapus.");
+	await page.locator('#grammar-pane-pustaka .btn-new').click();
+
+	await expect(cards).toHaveCount(2);
+	await expect(toast).toHaveCount(0);
+	await expect(cards.nth(1).locator('.custom-badge')).toHaveText('G1');
+	expect(await storedTitles(page)).toEqual(['Tata Bahasa G3', 'Tata Bahasa G1']);
+});
+
+test('T-092 AC6: with the keyboard the focus lands on the next card, the toast is reachable, and an empty list leaves it on + Tata Bahasa Baru', async ({
+	page,
+	isMobile
+}) => {
+	await openGrammar(page);
+	await addCustomGrammar(page, isMobile);
+	await addCustomGrammar(page, isMobile);
+	const cards = customCards(page);
+	await expect(cards).toHaveCount(2);
+	await showLibrary(page, isMobile);
+
+	// Tab through the cards to the × of the last custom grammar.
+	await builtInPresets(page).last().focus();
+	await page.keyboard.press('Tab');
+	await expect(cards.nth(0).locator('.card-select')).toBeFocused();
+	await page.keyboard.press('Tab');
+	await expect(cards.nth(0).locator('.btn-delete')).toBeFocused();
+	await page.keyboard.press('Tab');
+	await expect(cards.nth(1).locator('.card-select')).toBeFocused();
+	await page.keyboard.press('Tab');
+	await expect(cards.nth(1).locator('.btn-delete')).toBeFocused();
+
+	// Enter deletes the last card; the focus is on the card before it.
+	await page.keyboard.press('Enter');
+	await expect(cards).toHaveCount(1);
+	await expect(cards.nth(0).locator('.card-select')).toBeFocused();
+
+	// Tab reaches its × and then the toast's Urungkan, which restores it.
+	await page.keyboard.press('Tab');
+	await expect(cards.nth(0).locator('.btn-delete')).toBeFocused();
+	await page.keyboard.press('Tab');
+	const undo = toastOf(page).getByRole('button', { name: 'Urungkan' });
+	await expect(undo).toBeFocused();
+	await page.keyboard.press('Enter');
+	await expect(cards).toHaveCount(2);
+	await expect(cards.nth(1).locator('.card-select')).toBeFocused();
+
+	// Delete both, and the empty list leaves the focus on the button that makes a new one.
+	await cards.nth(0).locator('.btn-delete').focus();
+	await page.keyboard.press('Enter');
+	await expect(cards).toHaveCount(1);
+	await expect(cards.nth(0).locator('.card-select')).toBeFocused();
+	await page.keyboard.press('Tab');
+	await page.keyboard.press('Enter');
+	await expect(cards).toHaveCount(0);
+	await expect(page.locator('#grammar-pane-pustaka .btn-new')).toBeFocused();
+	await expect(toastOf(page)).toBeVisible();
+});
+
+test('T-092 AC7: axe finds no violation with the toast open, on a phone of 360 px too', async ({
+	page,
+	isMobile
+}) => {
+	if (isMobile) await page.setViewportSize({ width: 360, height: 780 });
+	await openGrammar(page);
+	await addCustomGrammar(page, isMobile);
+	await addCustomGrammar(page, isMobile);
+	const cards = customCards(page);
+	await showLibrary(page, isMobile);
+	await cards.nth(0).locator('.btn-delete').click();
+
+	const toast = toastOf(page);
+	await expect(toast).toBeVisible();
+	// The focus on the toast holds it while axe reads the page (Toast.svelte's own rule).
+	await toast.getByRole('button', { name: 'Urungkan' }).focus();
+	await expectNoAxeViolations(page);
+	await expect(toast).toBeVisible();
+	await expect(toast.getByRole('button', { name: 'Urungkan' })).toBeFocused();
+});
+
+test('T-092 AC8: leaving the workstation drops the undo', async ({ page, isMobile }) => {
+	await openGrammar(page);
+	await addCustomGrammar(page, isMobile);
+	await showLibrary(page, isMobile);
+	await customCards(page).first().locator('.btn-delete').click();
+	await expect(toastOf(page)).toBeVisible();
+
+	await page.locator('.switcher-trigger').click();
+	await page.getByRole('option', { name: /Mesin FSM/ }).click();
+	await expect(page.locator('.workstation')).toHaveCount(0);
+
+	await page.locator('.switcher-trigger').click();
+	await page.getByRole('option', { name: /Tata Bahasa/ }).click();
+	await expect(page.locator('.workstation')).toBeVisible();
+	await expect(toastOf(page)).toHaveCount(0);
+	await expect(customCards(page)).toHaveCount(0);
+	expect(await storedTitles(page)).toEqual([]);
 });

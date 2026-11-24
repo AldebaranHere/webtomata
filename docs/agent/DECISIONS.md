@@ -933,3 +933,13 @@ Format:
 - Review note: the negative top margin of `.panes` lies in the 12 px gap above it (`.content` has `gap: var(--space-3)`), so it does not overlap the tab buttons; every one of 27 controls has a 0.00 px bounding-box delta; five guards were caught; `sandbox.html` first JS is 126,701 gzip bytes (CSS-only change).
 - Reversible? yes
 - Affects: `web/src/lib/editor/SidePanel.svelte`, `PdaLabelForm.svelte`, `ConversionPanel.svelte`, `web/src/lib/components/LanguageSwitch.svelte`, `web/src/lib/grammar/GrammarCykTester.svelte`, `web/src/lib/language/LanguageWorkstation.svelte`, `web/e2e/focus-ring.spec.ts`
+
+
+## 2026-11-25 — T-092 pre-flight and review rulings: the toast lives on the workstation, the size number is accepted
+
+- Decider: planner (DeepSeek's pre-flight and report, reviewed with the code)
+- Context: the block put the toast in the library pane, which on a phone is an auto-height pane of a scrolling page (the toast would be off-screen) and which a tab change hides. `selectPreset` and `selectCustom` switch the phone tab to the editor, so deleting the selected grammar hid the toast and left Urungkan unreachable. Two more writers of the custom list existed than the block named.
+- Decision: the toast slot is a child of `.workstation` (absolute over the library column on a laptop, fixed on a phone); the phone tab is held on Pustaka after a delete and after Urungkan; the undo is dropped by every other writer of the list; Urungkan reselects only while the selection is still the delete's fallback; the live region is `Announcer.svelte` and Urungkan says `editor.undone`. The 150-byte allowance for the lazy chunk was the planner's guess and is replaced by the measured 504 bytes (first JS +21): accepted, the route is at 123.8 of 170 KB.
+- Review note: the toast covers the last card row for 6 s (measured 38 of 42 px on a laptop, 52 of 62 px on a phone at the end of the page); the editors' toast does the same over the canvas, so it is accepted. If the owner's phone check finds it annoying, the fix is bottom padding of the page while the toast shows. Eight e2e cases were red first (16 of 16 failed) and green after, 160 of 160 over ten repeats, and B1 to B6 were each caught.
+- Reversible? yes
+- Affects: `web/src/lib/grammar/GrammarWorkstation.svelte`, `web/src/lib/i18n/{id,en}.ts`, `web/e2e/grammar-custom-card.spec.ts`
