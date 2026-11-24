@@ -882,3 +882,14 @@ Format:
 - Alternatives considered: saturating arithmetic (rejected: wrong verdicts when both sides saturate); an empty list for a huge length (rejected: false); capping every number in the parser at a small maximum (rejected: it changes what the parser accepts far beyond the crashing inputs); folding the unnamed-environment-language banner in (rejected: UI wording, a separate decision).
 - Reversible? yes
 - Affects: `crates/engine-core/src/language/`, `api.rs`, `web/src/lib/i18n/`
+
+
+## 2026-11-25 — T-090 pre-flight rulings: two more crashes in scope, wasm32 is 32-bit, the expression limit counts characters
+
+- Decider: planner (Gemini's pre-flight, reviewed with the code)
+- Context: Gemini reproduced the six crashes and found flaws in the block: `contains("a")` does not trigger crash 3 (it needs two counted letters); `usize` is 32 bits on `wasm32`, so the 64-bit inputs of the block fail in `parse_number` there and never reach `LengthTooLarge`; `Power(a, k)` recurses `k` times (crash 7, `{ε}^1000000`); `api::enumerate_language` adds 20 to the unclamped `min_length` (crash 8); and the 4,096 check counted bytes, not characters.
+- Decision: crashes 7 and 8 are fixed in T-090 (same family, same sweep); `Power` becomes an iteration bounded by `min(k, length)`; `min_length` is clamped once; the expression check counts characters; the wasm test uses numbers that fit in `u32` (`4294967295`, `1000000000`) and the native tests keep the 64-bit inputs; the crash-3 test uses `contains("aa")`.
+- Review note: `Power` was rewritten without an oracle test against the old recursive definition; the existing `{ab}^2` and `L1^3L2^2 - L7*` tests (thirteen strings of length 25) and the new `{a, ε}^1000000` test cover it. Accepted; if a Power bug shows up, add a comparison with a hand-built `Concat` chain for `k` in 0..5.
+- Alternatives considered: leave crashes 7 and 8 for a later task (rejected: found by the sweep this task asked for, and each is a few lines).
+- Reversible? yes
+- Affects: `crates/engine-core/src/language/`, `api.rs`, `web/src/lib/language/language-errors.wasm.test.ts`

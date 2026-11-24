@@ -520,6 +520,9 @@ pub struct EnumerateReport {
     pub alphabet: Vec<String>,
 }
 
+/// The longest language expression accepted by `enumerate_language`, in Unicode characters.
+const MAX_EXPRESSION_CHARS: usize = 4_096;
+
 /// Enumerates strings for a formal language expression in strict proper order.
 pub fn enumerate_language(
     expr_text: &str,
@@ -528,7 +531,10 @@ pub fn enumerate_language(
     env_json: Option<&str>,
 ) -> String {
     let run = || -> Result<EnumerateReport, Message> {
-        too_long(expr_text, "expression characters", 4096)?;
+        if expr_text.chars().count() > MAX_EXPRESSION_CHARS {
+            return Err(Message::new("language.error.expression_too_long")
+                .with("limit", MAX_EXPRESSION_CHARS));
+        }
 
         let mut env = std::collections::HashMap::new();
         if let Some(json) = env_json.filter(|j| !j.trim().is_empty()) {
@@ -547,8 +553,9 @@ pub fn enumerate_language(
         let alphabet_set = evaluator.infer_alphabet(&expr);
         let alphabet: Vec<String> = alphabet_set.into_iter().map(|c| c.to_string()).collect();
 
+        let min_length = min_length.clamp(0, 100);
         let options = crate::language::EnumerateOptions {
-            min_length: min_length.clamp(0, 100),
+            min_length,
             max_count: max_count.clamp(1, 100),
             max_depth: 30.max(min_length + 20),
         };

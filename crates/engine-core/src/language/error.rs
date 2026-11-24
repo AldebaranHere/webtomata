@@ -26,6 +26,8 @@ pub enum LanguageError {
     UndefinedReference { name: String },
     /// An expression refers to a language that refers back to itself.
     CyclicReference { name: String },
+    /// The starting string length to enumerate exceeds `ENUMERATION_MAX_LENGTH`.
+    LengthTooLarge { limit: usize },
 }
 
 impl LanguageError {
@@ -40,6 +42,7 @@ impl LanguageError {
             Self::ExpectedCommaOrBrace => "language.error.expected_comma_or_brace",
             Self::UndefinedReference { .. } => "language.error.undefined_reference",
             Self::CyclicReference { .. } => "language.error.cyclic_reference",
+            Self::LengthTooLarge { .. } => "language.error.length_too_large",
         }
     }
 }
@@ -61,6 +64,7 @@ impl From<LanguageError> for Message {
             }
             LanguageError::UndefinedReference { name }
             | LanguageError::CyclicReference { name } => Message::new(key).with("name", name),
+            LanguageError::LengthTooLarge { limit } => Message::new(key).with("limit", limit),
         }
     }
 }

@@ -40,8 +40,7 @@ impl<'a> LanguageParser<'a> {
     }
 
     fn skip_whitespace(&mut self) {
-        while self.pos < self.input.len() {
-            let ch = self.input[self.pos..].chars().next().unwrap();
+        while let Some(ch) = self.peek_char() {
             if ch.is_whitespace() {
                 self.pos += ch.len_utf8();
             } else {
@@ -272,7 +271,7 @@ impl<'a> LanguageParser<'a> {
         self.skip_whitespace();
 
         // Check if this is a set-builder notation: { w in {a, b}* : ... }
-        if let Some(pred_expr) = self.try_parse_set_builder() {
+        if let Some(pred_expr) = self.try_parse_set_builder()? {
             return Ok(pred_expr);
         }
 
@@ -319,9 +318,10 @@ impl<'a> LanguageParser<'a> {
         Ok(LanguageExpr::FiniteSet(words))
     }
 
-    /// Tries to read a set-builder. A failure means "not a set-builder": the caller backtracks and
-    /// reads the braces as a finite set of words, so no message is carried out of here.
-    fn try_parse_set_builder(&mut self) -> Option<LanguageExpr> {
+    /// Tries to read a set-builder. `Ok(None)` means "not a set-builder": the caller backtracks
+    /// and reads the braces as a finite set of words. `Err(NumberTooLarge)` propagates out so an
+    /// overflowing bound or offset is reported instead of falling back to a syntax error.
+    fn try_parse_set_builder(&mut self) -> Result<Option<LanguageExpr>, LanguageError> {
         let start_pos = self.pos;
         self.skip_whitespace();
 
@@ -336,7 +336,7 @@ impl<'a> LanguageParser<'a> {
         }
         if var_start == self.pos {
             self.pos = start_pos;
-            return None;
+            return Ok(None);
         }
 
         self.skip_whitespace();
@@ -383,27 +383,40 @@ impl<'a> LanguageParser<'a> {
             self.pos += 1;
         } else {
             self.pos = start_pos;
-            return None;
+            return Ok(None);
         }
 
         // Parse predicate expression
-        let predicate = self.parse_pred_or()?;
+        let Some(predicate) = self.parse_pred_or()? else {
+            self.pos = start_pos;
+            return Ok(None);
+        };
 
         self.skip_whitespace();
         if !self.starts_with("}") {
             self.pos = start_pos;
-            return None;
+            return Ok(None);
         }
         self.pos += 1;
 
-        Some(LanguageExpr::PredicateLanguage {
+        Ok(Some(LanguageExpr::PredicateLanguage {
             alphabet,
             predicate,
-        })
+        }))
     }
 
-    fn parse_pred_or(&mut self) -> Option<LanguagePredicate> {
-        let mut left = self.parse_pred_and()?;
+    fn parse_pred_number(&mut self) -> Result<Option<usize>, LanguageError> {
+        match self.parse_number() {
+            Ok(n) => Ok(Some(n)),
+            Err(LanguageError::ExpectedPowerNumber) => Ok(None),
+            Err(err) => Err(err),
+        }
+    }
+
+    fn parse_pred_or(&mut self) -> Result<Option<LanguagePredicate>, LanguageError> {
+        let Some(mut left) = self.parse_pred_and()? else {
+            return Ok(None);
+        };
         loop {
             self.skip_whitespace();
             if self.starts_with("∨") || self.starts_with_ci("OR") || self.starts_with("||") {
@@ -412,17 +425,21 @@ impl<'a> LanguageParser<'a> {
                 } else {
                     self.pos += 2; // "OR" or "||"
                 }
-                let right = self.parse_pred_and()?;
+                let Some(right) = self.parse_pred_and()? else {
+                    return Ok(None);
+                };
                 left = LanguagePredicate::Or(Box::new(left), Box::new(right));
             } else {
                 break;
             }
         }
-        Some(left)
+        Ok(Some(left))
     }
 
-    fn parse_pred_and(&mut self) -> Option<LanguagePredicate> {
-        let mut left = self.parse_pred_unary()?;
+    fn parse_pred_and(&mut self) -> Result<Option<LanguagePredicate>, LanguageError> {
+        let Some(mut left) = self.parse_pred_unary()? else {
+            return Ok(None);
+        };
         loop {
             self.skip_whitespace();
             if self.starts_with("∧")
@@ -439,16 +456,18 @@ impl<'a> LanguageParser<'a> {
                 } else {
                     self.pos += 1; // ','
                 }
-                let right = self.parse_pred_unary()?;
+                let Some(right) = self.parse_pred_unary()? else {
+                    return Ok(None);
+                };
                 left = LanguagePredicate::And(Box::new(left), Box::new(right));
             } else {
                 break;
             }
         }
-        Some(left)
+        Ok(Some(left))
     }
 
-    fn parse_pred_unary(&mut self) -> Option<LanguagePredicate> {
+    fn parse_pred_unary(&mut self) -> Result<Option<LanguagePredicate>, LanguageError> {
         self.skip_whitespace();
         if self.starts_with("¬") || self.starts_with("!") || self.starts_with_ci("NOT") {
             if self.starts_with("¬") {
@@ -458,24 +477,28 @@ impl<'a> LanguageParser<'a> {
             } else {
                 self.pos += 3;
             }
-            let inner = self.parse_pred_unary()?;
-            Some(LanguagePredicate::Not(Box::new(inner)))
+            let Some(inner) = self.parse_pred_unary()? else {
+                return Ok(None);
+            };
+            Ok(Some(LanguagePredicate::Not(Box::new(inner))))
         } else {
             self.parse_pred_atom()
         }
     }
 
-    fn parse_pred_atom(&mut self) -> Option<LanguagePredicate> {
+    fn parse_pred_atom(&mut self) -> Result<Option<LanguagePredicate>, LanguageError> {
         self.skip_whitespace();
         if self.starts_with("(") {
             self.pos += 1;
-            let inner = self.parse_pred_or()?;
+            let Some(inner) = self.parse_pred_or()? else {
+                return Ok(None);
+            };
             self.skip_whitespace();
             if !self.starts_with(")") {
-                return None;
+                return Ok(None);
             }
             self.pos += 1;
-            return Some(inner);
+            return Ok(Some(inner));
         }
 
         // Universal prefix or suffix: ∀v ∈ prefix(w) / forall v in prefix(w)
@@ -513,7 +536,7 @@ impl<'a> LanguageParser<'a> {
                 self.pos += 6;
                 false
             } else {
-                return None;
+                return Ok(None);
             };
 
             // Optional (w)
@@ -532,11 +555,13 @@ impl<'a> LanguageParser<'a> {
                 self.pos += 1;
             }
 
-            let sub = self.parse_pred_atom()?;
+            let Some(sub) = self.parse_pred_atom()? else {
+                return Ok(None);
+            };
             if is_prefix {
-                return Some(LanguagePredicate::ForallPrefix(Box::new(sub)));
+                return Ok(Some(LanguagePredicate::ForallPrefix(Box::new(sub))));
             } else {
-                return Some(LanguagePredicate::ForallSuffix(Box::new(sub)));
+                return Ok(Some(LanguagePredicate::ForallSuffix(Box::new(sub))));
             }
         }
 
@@ -554,7 +579,7 @@ impl<'a> LanguageParser<'a> {
                 }
                 self.pos += ch.len_utf8();
             }
-            return Some(LanguagePredicate::IsPalindrome);
+            return Ok(Some(LanguagePredicate::IsPalindrome));
         }
 
         // Length condition: |w| >= N, |w| <= N, |w| == N
@@ -568,20 +593,28 @@ impl<'a> LanguageParser<'a> {
                 self.pos += ch.len_utf8();
             }
             self.skip_whitespace();
-            let (op, num) = self.parse_cmp_and_num()?;
-            return Some(match op {
+            let Some((op, num)) = self.parse_cmp_and_num()? else {
+                return Ok(None);
+            };
+            let pred = match op {
                 RelOp::Gte => LanguagePredicate::LengthGte(num),
-                RelOp::Gt => LanguagePredicate::LengthGte(num + 1),
+                RelOp::Gt => LanguagePredicate::LengthGte(
+                    num.checked_add(1).ok_or(LanguageError::NumberTooLarge)?,
+                ),
                 RelOp::Lte => LanguagePredicate::LengthLte(num),
-                RelOp::Lt => LanguagePredicate::LengthLte(if num > 0 { num - 1 } else { 0 }),
+                RelOp::Lt => LanguagePredicate::LengthLte(num.saturating_sub(1)),
                 RelOp::Eq => LanguagePredicate::LengthEq(num),
-            });
+            };
+            return Ok(Some(pred));
         }
 
         // Count condition: e.g. 3#a(w) >= 6#b(w) + 1 or #a(w) mod 3 = 0
         let coeff_a = if let Some(ch) = self.peek_char() {
             if ch.is_ascii_digit() {
-                self.parse_number().ok()?
+                let Some(n) = self.parse_pred_number()? else {
+                    return Ok(None);
+                };
+                n
             } else {
                 1
             }
@@ -596,11 +629,13 @@ impl<'a> LanguageParser<'a> {
         }
 
         if !self.starts_with("#") {
-            return None;
+            return Ok(None);
         }
         self.pos += 1; // skip '#'
 
-        let char_a = self.peek_char()?;
+        let Some(char_a) = self.peek_char() else {
+            return Ok(None);
+        };
         self.pos += char_a.len_utf8();
 
         self.skip_whitespace();
@@ -622,7 +657,9 @@ impl<'a> LanguageParser<'a> {
             } else {
                 self.pos += 1;
             }
-            let modulus = self.parse_number().ok()?;
+            let Some(modulus) = self.parse_pred_number()? else {
+                return Ok(None);
+            };
             self.skip_whitespace();
             if self.starts_with("==") || self.starts_with("=") {
                 if self.starts_with("==") {
@@ -631,22 +668,28 @@ impl<'a> LanguageParser<'a> {
                     self.pos += 1;
                 }
             }
-            let remainder = self.parse_number().ok()?;
-            return Some(LanguagePredicate::CountMod {
+            let Some(remainder) = self.parse_pred_number()? else {
+                return Ok(None);
+            };
+            return Ok(Some(LanguagePredicate::CountMod {
                 char_a,
                 modulus,
                 remainder,
-            });
+            }));
         }
 
         // Comparison operator
-        let op = self.parse_relational_op()?;
+        let Some(op) = self.parse_relational_op() else {
+            return Ok(None);
+        };
         self.skip_whitespace();
 
         // Right hand side: could be coeff_b * #b(w) + offset OR a constant integer
         if let Some(ch) = self.peek_char() {
             if ch.is_ascii_digit() {
-                let num = self.parse_number().ok()?;
+                let Some(num) = self.parse_pred_number()? else {
+                    return Ok(None);
+                };
                 self.skip_whitespace();
                 if self.starts_with("*") {
                     self.pos += 1;
@@ -655,26 +698,40 @@ impl<'a> LanguageParser<'a> {
                 if self.starts_with("#") {
                     // It was coeff_b * #char_b
                     self.pos += 1;
-                    let char_b = self.peek_char()?;
+                    let Some(char_b) = self.peek_char() else {
+                        return Ok(None);
+                    };
                     self.pos += char_b.len_utf8();
                     self.skip_parens_if_any();
-                    let offset = self.parse_optional_offset()?;
-                    return Some(self.make_count_pred(op, char_a, coeff_a, char_b, num, offset));
+                    let Some(offset) = self.parse_optional_offset()? else {
+                        return Ok(None);
+                    };
+                    return Ok(Some(
+                        self.make_count_pred(op, char_a, coeff_a, char_b, num, offset)?,
+                    ));
                 } else {
                     // It was a constant number!
-                    return Some(self.make_count_pred(op, char_a, coeff_a, '_', 0, num));
+                    return Ok(Some(
+                        self.make_count_pred(op, char_a, coeff_a, '_', 0, num)?,
+                    ));
                 }
             } else if self.starts_with("#") {
                 self.pos += 1;
-                let char_b = self.peek_char()?;
+                let Some(char_b) = self.peek_char() else {
+                    return Ok(None);
+                };
                 self.pos += char_b.len_utf8();
                 self.skip_parens_if_any();
-                let offset = self.parse_optional_offset()?;
-                return Some(self.make_count_pred(op, char_a, coeff_a, char_b, 1, offset));
+                let Some(offset) = self.parse_optional_offset()? else {
+                    return Ok(None);
+                };
+                return Ok(Some(
+                    self.make_count_pred(op, char_a, coeff_a, char_b, 1, offset)?,
+                ));
             }
         }
 
-        None
+        Ok(None)
     }
 
     fn skip_parens_if_any(&mut self) {
@@ -689,13 +746,13 @@ impl<'a> LanguageParser<'a> {
         }
     }
 
-    fn parse_optional_offset(&mut self) -> Option<usize> {
+    fn parse_optional_offset(&mut self) -> Result<Option<usize>, LanguageError> {
         self.skip_whitespace();
         if self.starts_with("+") {
             self.pos += 1;
-            self.parse_number().ok()
+            self.parse_pred_number()
         } else {
-            Some(0)
+            Ok(Some(0))
         }
     }
 
@@ -720,10 +777,14 @@ impl<'a> LanguageParser<'a> {
         None
     }
 
-    fn parse_cmp_and_num(&mut self) -> Option<(RelOp, usize)> {
-        let op = self.parse_relational_op()?;
-        let num = self.parse_number().ok()?;
-        Some((op, num))
+    fn parse_cmp_and_num(&mut self) -> Result<Option<(RelOp, usize)>, LanguageError> {
+        let Some(op) = self.parse_relational_op() else {
+            return Ok(None);
+        };
+        let Some(num) = self.parse_pred_number()? else {
+            return Ok(None);
+        };
+        Ok(Some((op, num)))
     }
 
     fn make_count_pred(
@@ -734,8 +795,8 @@ impl<'a> LanguageParser<'a> {
         char_b: char,
         coeff_b: usize,
         offset: usize,
-    ) -> LanguagePredicate {
-        match op {
+    ) -> Result<LanguagePredicate, LanguageError> {
+        Ok(match op {
             RelOp::Gte => LanguagePredicate::CountLinearGte {
                 char_a,
                 coeff_a,
@@ -748,7 +809,7 @@ impl<'a> LanguageParser<'a> {
                 coeff_a,
                 char_b,
                 coeff_b,
-                offset: offset + 1,
+                offset: offset.checked_add(1).ok_or(LanguageError::NumberTooLarge)?,
             },
             RelOp::Lte => LanguagePredicate::CountLinearLte {
                 char_a,
@@ -762,7 +823,7 @@ impl<'a> LanguageParser<'a> {
                 coeff_a,
                 char_b,
                 coeff_b,
-                offset: if offset > 0 { offset - 1 } else { 0 },
+                offset: offset.saturating_sub(1),
             },
             RelOp::Eq => LanguagePredicate::CountEq {
                 char_a,
@@ -771,7 +832,7 @@ impl<'a> LanguageParser<'a> {
                 coeff_b,
                 offset,
             },
-        }
+        })
     }
 
     fn starts_with(&self, prefix: &str) -> bool {

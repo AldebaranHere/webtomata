@@ -111,6 +111,36 @@ describe('language errors wasm integration (T-028b AC4)', () => {
 			run: () => rawEnumerate('{a}', '{'),
 			expectedKey: 'api.invalid_environment',
 			expectedIdPhrase: 'Data bahasa tidak valid'
+		},
+		{
+			name: 'a strict length bound at u32::MAX overflows checked_add on wasm32 (T-090 crash 1)',
+			run: () => engine.enumerateLanguage('{ w in {a}* : |w| > 4294967295 }', 0, 5),
+			expectedKey: 'language.error.number_too_large',
+			expectedIdPhrase: 'Angka terlalu besar untuk diproses'
+		},
+		{
+			name: 'a strict length bound at u64::MAX overflows parse_number on wasm32 (T-090 crash 1)',
+			run: () => engine.enumerateLanguage('{ w in {a}* : |w| > 18446744073709551615 }', 0, 5),
+			expectedKey: 'language.error.number_too_large',
+			expectedIdPhrase: 'Angka terlalu besar untuk diproses'
+		},
+		{
+			name: 'a start length above the enumeration limit (1000000000, T-090 crash 6)',
+			run: () => engine.enumerateLanguage('{ w in {a}* : |w| >= 1000000000 }', 0, 5),
+			expectedKey: 'language.error.length_too_large',
+			expectedIdPhrase: 'Panjang string terlalu besar untuk dicacah'
+		},
+		{
+			name: 'a start length at u32::MAX above the enumeration limit (T-090 crash 6)',
+			run: () => engine.enumerateLanguage('{ w in {a}* : |w| >= 4294967295 }', 0, 5),
+			expectedKey: 'language.error.length_too_large',
+			expectedIdPhrase: 'Panjang string terlalu besar untuk dicacah'
+		},
+		{
+			name: 'an expression of 4,097 characters (T-090)',
+			run: () => engine.enumerateLanguage('{a}' + ' '.repeat(4094), 0, 5),
+			expectedKey: 'language.error.expression_too_long',
+			expectedIdPhrase: 'Ekspresi terlalu panjang'
 		}
 	];
 
@@ -129,4 +159,33 @@ describe('language errors wasm integration (T-028b AC4)', () => {
 			expect(renderedId).toContain(tc.expectedIdPhrase);
 		});
 	}
+
+	it('enumerates multibyte UTF-8 and large powers without trapping in wasm (T-090 crashes 4, 5, 7)', () => {
+		const inter = engine.enumerateLanguage('{éb} ∩ {é}{b}', 0, 5);
+		expect(inter.ok).toBe(true);
+		if (!inter.ok) throw new Error('expected ok');
+		expect(inter.value.strings).toEqual(['éb']);
+
+		const diff = engine.enumerateLanguage('{éb} - {é}{b}', 0, 5);
+		expect(diff.ok).toBe(true);
+		if (!diff.ok) throw new Error('expected ok');
+		expect(diff.value.strings).toEqual([]);
+
+		const multibyte = engine.enumerateLanguage('{ w in {é}* : |w| >= 1 }', 0, 10);
+		expect(multibyte.ok).toBe(true);
+		if (!multibyte.ok) throw new Error('expected ok');
+		expect(multibyte.value.strings).toEqual(
+			Array.from({ length: 10 }, (_, idx) => 'é'.repeat(idx + 1))
+		);
+
+		const epsPow = engine.enumerateLanguage('{ε}^1000000', 0, 5);
+		expect(epsPow.ok).toBe(true);
+		if (!epsPow.ok) throw new Error('expected ok');
+		expect(epsPow.value.strings).toEqual(['']);
+
+		const diffPow = engine.enumerateLanguage('{a} - {a}^1000000', 0, 5);
+		expect(diffPow.ok).toBe(true);
+		if (!diffPow.ok) throw new Error('expected ok');
+		expect(diffPow.value.strings).toEqual(['a']);
+	});
 });

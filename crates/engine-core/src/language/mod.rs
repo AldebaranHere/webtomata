@@ -93,11 +93,38 @@ pub enum LanguagePredicate {
     Or(Box<LanguagePredicate>, Box<LanguagePredicate>),
 }
 
+/// Maximum starting (and enumerated) string length in characters (ADR 0071).
+pub const ENUMERATION_MAX_LENGTH: usize = 200;
+
+/// Yields every valid UTF-8 byte boundary in `w`, from `0` through `w.len()` inclusive.
+fn char_boundary_indices(w: &str) -> impl Iterator<Item = usize> + '_ {
+    w.char_indices()
+        .map(|(i, _)| i)
+        .chain(std::iter::once(w.len()))
+}
+
+/// Evaluates `coeff_a * #char_a(w)` and `coeff_b * #char_b(w) + offset` in exact `u128` arithmetic.
+fn eval_linear_counts(
+    w: &str,
+    char_a: char,
+    coeff_a: usize,
+    char_b: char,
+    coeff_b: usize,
+    offset: usize,
+) -> (u128, u128) {
+    let to_u128 = |v: usize| u128::try_from(v).unwrap_or(u128::MAX);
+    let count_a = to_u128(w.chars().filter(|&c| c == char_a).count());
+    let count_b = to_u128(w.chars().filter(|&c| c == char_b).count());
+    let lhs = to_u128(coeff_a) * count_a;
+    let rhs = to_u128(coeff_b) * count_b + to_u128(offset);
+    (lhs, rhs)
+}
+
 /// Comparison function for strict proper (length-lexicographical) order.
-/// 1. Shorter strings precede longer strings.
-/// 2. Equal length strings are sorted alphabetically.
+/// 1. Shorter strings (in Unicode characters) precede longer strings.
+/// 2. Equal length strings are sorted lexicographically.
 pub fn compare_proper_order(a: &str, b: &str) -> Ordering {
-    match a.len().cmp(&b.len()) {
+    match a.chars().count().cmp(&b.chars().count()) {
         Ordering::Equal => a.cmp(b),
         other => other,
     }
@@ -173,8 +200,8 @@ impl<'a> LanguageEvaluator<'a> {
                     && !self.contains_internal(b, w, visited)?)
             }
             LanguageExpr::Concat(a, b) => {
-                // Check all splits w = u + v
-                for i in 0..=w.len() {
+                // Check all splits w = u + v on UTF-8 character boundaries
+                for i in char_boundary_indices(w) {
                     let u = &w[..i];
                     let v = &w[i..];
                     if self.contains_internal(a, u, visited)?
@@ -192,22 +219,56 @@ impl<'a> LanguageEvaluator<'a> {
                 if *k == 1 {
                     return self.contains_internal(a, w, visited);
                 }
-                // Reduce to Concat(a, Power(a, k - 1))
-                let sub = LanguageExpr::Power(a.clone(), k - 1);
-                self.contains_internal(&LanguageExpr::Concat(a.clone(), Box::new(sub)), w, visited)
+                let bounds: Vec<usize> = char_boundary_indices(w).collect();
+                let n = bounds.len() - 1;
+                let a_has_empty = self.contains_internal(a, "", visited)?;
+                if n == 0 {
+                    return Ok(a_has_empty);
+                }
+                if !a_has_empty && *k > n {
+                    return Ok(false);
+                }
+                // Iterative DP bounded by min(k, n) non-empty pieces (never recurses k times).
+                let max_steps = (*k).min(n);
+                let mut dp = vec![false; n + 1];
+                dp[0] = true;
+                for _ in 0..max_steps {
+                    let mut next = vec![false; n + 1];
+                    for j in 0..n {
+                        if !dp[j] {
+                            continue;
+                        }
+                        for i in (j + 1)..=n {
+                            if !next[i]
+                                && self.contains_internal(a, &w[bounds[j]..bounds[i]], visited)?
+                            {
+                                next[i] = true;
+                            }
+                        }
+                    }
+                    dp = next;
+                    if a_has_empty && dp[n] {
+                        return Ok(true);
+                    }
+                    if !dp.iter().any(|&reachable| reachable) {
+                        return Ok(false);
+                    }
+                }
+                Ok(dp[n])
             }
             LanguageExpr::Star(a) => {
                 if w.is_empty() {
                     return Ok(true);
                 }
-                // Dynamic programming for Kleene star partition
-                let n = w.len();
+                // Dynamic programming for Kleene star partition on UTF-8 character boundaries
+                let bounds: Vec<usize> = char_boundary_indices(w).collect();
+                let n = bounds.len() - 1;
                 let mut dp = vec![false; n + 1];
                 dp[0] = true;
                 for i in 1..=n {
                     for j in 0..i {
                         if dp[j] {
-                            let part = &w[j..i];
+                            let part = &w[bounds[j]..bounds[i]];
                             if !part.is_empty() && self.contains_internal(a, part, visited)? {
                                 dp[i] = true;
                                 break;
@@ -251,9 +312,9 @@ impl<'a> LanguageEvaluator<'a> {
                 coeff_b,
                 offset,
             } => {
-                let count_a = w.chars().filter(|&c| c == *char_a).count();
-                let count_b = w.chars().filter(|&c| c == *char_b).count();
-                coeff_a * count_a >= coeff_b * count_b + offset
+                let (lhs, rhs) =
+                    eval_linear_counts(w, *char_a, *coeff_a, *char_b, *coeff_b, *offset);
+                lhs >= rhs
             }
             LanguagePredicate::CountLinearLte {
                 char_a,
@@ -262,9 +323,9 @@ impl<'a> LanguageEvaluator<'a> {
                 coeff_b,
                 offset,
             } => {
-                let count_a = w.chars().filter(|&c| c == *char_a).count();
-                let count_b = w.chars().filter(|&c| c == *char_b).count();
-                coeff_a * count_a <= coeff_b * count_b + offset
+                let (lhs, rhs) =
+                    eval_linear_counts(w, *char_a, *coeff_a, *char_b, *coeff_b, *offset);
+                lhs <= rhs
             }
             LanguagePredicate::CountEq {
                 char_a,
@@ -273,9 +334,9 @@ impl<'a> LanguageEvaluator<'a> {
                 coeff_b,
                 offset,
             } => {
-                let count_a = w.chars().filter(|&c| c == *char_a).count();
-                let count_b = w.chars().filter(|&c| c == *char_b).count();
-                coeff_a * count_a == coeff_b * count_b + offset
+                let (lhs, rhs) =
+                    eval_linear_counts(w, *char_a, *coeff_a, *char_b, *coeff_b, *offset);
+                lhs == rhs
             }
             LanguagePredicate::CountMod {
                 char_a,
@@ -288,9 +349,9 @@ impl<'a> LanguageEvaluator<'a> {
                 let count = w.chars().filter(|&c| c == *char_a).count();
                 count % modulus == *remainder
             }
-            LanguagePredicate::LengthGte(min) => w.len() >= *min,
-            LanguagePredicate::LengthLte(max) => w.len() <= *max,
-            LanguagePredicate::LengthEq(target) => w.len() == *target,
+            LanguagePredicate::LengthGte(min) => w.chars().count() >= *min,
+            LanguagePredicate::LengthLte(max) => w.chars().count() <= *max,
+            LanguagePredicate::LengthEq(target) => w.chars().count() == *target,
             LanguagePredicate::IsPalindrome => {
                 let rev: String = w.chars().rev().collect();
                 w == rev
@@ -298,8 +359,8 @@ impl<'a> LanguageEvaluator<'a> {
             LanguagePredicate::ContainsSubstring(sub) => w.contains(sub),
             LanguagePredicate::Not(sub) => !self.evaluate_predicate(sub, w),
             LanguagePredicate::ForallPrefix(sub) => {
-                // Check every prefix of w, from length 0 to w.len()
-                for i in 0..=w.len() {
+                // Check every prefix of w on UTF-8 character boundaries
+                for i in char_boundary_indices(w) {
                     let prefix = &w[..i];
                     if !self.evaluate_predicate(sub, prefix) {
                         return false;
@@ -308,8 +369,8 @@ impl<'a> LanguageEvaluator<'a> {
                 true
             }
             LanguagePredicate::ForallSuffix(sub) => {
-                // Check every suffix of w, from length 0 to w.len()
-                for i in 0..=w.len() {
+                // Check every suffix of w on UTF-8 character boundaries
+                for i in char_boundary_indices(w) {
                     let suffix = &w[i..];
                     if !self.evaluate_predicate(sub, suffix) {
                         return false;
@@ -386,7 +447,7 @@ impl<'a> LanguageEvaluator<'a> {
     fn max_length_internal(&self, expr: &LanguageExpr, visited: &mut Vec<String>) -> Option<usize> {
         match expr {
             LanguageExpr::FiniteSet(words) => {
-                Some(words.iter().map(|w| w.len()).max().unwrap_or(0))
+                Some(words.iter().map(|w| w.chars().count()).max().unwrap_or(0))
             }
             LanguageExpr::Ref(name) => {
                 if visited.contains(name) {
@@ -446,7 +507,7 @@ impl<'a> LanguageEvaluator<'a> {
                 if words.is_empty() {
                     0
                 } else {
-                    words.iter().map(|w| w.len()).min().unwrap_or(0)
+                    words.iter().map(|w| w.chars().count()).min().unwrap_or(0)
                 }
             }
             LanguageExpr::Ref(name) => {
@@ -560,7 +621,7 @@ impl<'a> LanguageEvaluator<'a> {
         match expr {
             LanguageExpr::FiniteSet(words) => {
                 for w in words {
-                    if w.len() == target_len {
+                    if w.chars().count() == target_len {
                         results.insert(w.clone());
                     }
                 }
@@ -643,12 +704,64 @@ impl<'a> LanguageEvaluator<'a> {
                 } else if *k == 1 {
                     return self.generate_words_internal(a, target_len, visited);
                 } else {
-                    let sub = LanguageExpr::Power(a.clone(), k - 1);
-                    return self.generate_words_internal(
-                        &LanguageExpr::Concat(a.clone(), Box::new(sub)),
-                        target_len,
-                        visited,
-                    );
+                    let a_has_empty = !self.generate_words_internal(a, 0, visited)?.is_empty();
+                    if target_len == 0 {
+                        if a_has_empty {
+                            results.insert(String::new());
+                        }
+                        return Ok(results);
+                    }
+                    if !a_has_empty && *k > target_len {
+                        return Ok(results);
+                    }
+                    // Iterative DP bounded by min(k, target_len) non-empty pieces.
+                    let max_steps = (*k).min(target_len);
+                    let max_piece_len = if a_has_empty {
+                        target_len
+                    } else {
+                        target_len - (*k - 1)
+                    };
+                    let mut non_empty = vec![BTreeSet::new(); max_piece_len + 1];
+                    for (len, slot) in non_empty.iter_mut().enumerate().skip(1) {
+                        *slot = self.generate_words_internal(a, len, visited)?;
+                    }
+                    let mut current_sets = vec![BTreeSet::new(); target_len + 1];
+                    current_sets[0].insert(String::new());
+                    for _ in 0..max_steps {
+                        let mut next_sets = vec![BTreeSet::new(); target_len + 1];
+                        for (prev_len, prefixes) in current_sets.iter().enumerate() {
+                            if prefixes.is_empty() || prev_len >= target_len {
+                                continue;
+                            }
+                            let max_add = (target_len - prev_len).min(max_piece_len);
+                            for (piece_len, pieces) in
+                                non_empty.iter().enumerate().take(max_add + 1).skip(1)
+                            {
+                                if pieces.is_empty() {
+                                    continue;
+                                }
+                                let dest = &mut next_sets[prev_len + piece_len];
+                                for u in prefixes {
+                                    for v in pieces {
+                                        let mut combined = String::with_capacity(u.len() + v.len());
+                                        combined.push_str(u);
+                                        combined.push_str(v);
+                                        dest.insert(combined);
+                                    }
+                                }
+                            }
+                        }
+                        current_sets = next_sets;
+                        if a_has_empty {
+                            results.extend(current_sets[target_len].iter().cloned());
+                        }
+                        if current_sets.iter().all(BTreeSet::is_empty) {
+                            break;
+                        }
+                    }
+                    if !a_has_empty {
+                        results = current_sets.pop().unwrap_or_default();
+                    }
                 }
             }
             LanguageExpr::Star(a) => {
@@ -700,6 +813,11 @@ impl<'a> LanguageEvaluator<'a> {
 
         let expr_min = self.min_length(expr);
         let start_len = options.min_length.max(expr_min);
+        if start_len > ENUMERATION_MAX_LENGTH {
+            return Err(LanguageError::LengthTooLarge {
+                limit: ENUMERATION_MAX_LENGTH,
+            });
+        }
 
         let max_bound = self.max_length(expr);
         let end_len = match max_bound {
@@ -710,7 +828,8 @@ impl<'a> LanguageEvaluator<'a> {
                 bound.min(start_len.saturating_add(options.max_depth))
             }
             None => start_len.saturating_add(options.max_depth),
-        };
+        }
+        .min(ENUMERATION_MAX_LENGTH);
 
         let mut results = Vec::new();
 
@@ -742,6 +861,7 @@ impl<'a> LanguageEvaluator<'a> {
             self.generate_and_test(
                 &alphabet_vec,
                 len,
+                0,
                 &mut current,
                 expr,
                 &mut results,
@@ -761,6 +881,7 @@ impl<'a> LanguageEvaluator<'a> {
         &self,
         alphabet: &[char],
         target_len: usize,
+        depth: usize,
         current: &mut String,
         expr: &LanguageExpr,
         results: &mut Vec<String>,
@@ -770,7 +891,7 @@ impl<'a> LanguageEvaluator<'a> {
         if *budget == 0 || results.len() >= max_count {
             return Ok(());
         }
-        if current.len() == target_len {
+        if depth == target_len {
             *budget = budget.saturating_sub(1);
             if self.contains(expr, current)? {
                 results.push(current.clone());
@@ -780,7 +901,14 @@ impl<'a> LanguageEvaluator<'a> {
         for &c in alphabet {
             current.push(c);
             self.generate_and_test(
-                alphabet, target_len, current, expr, results, max_count, budget,
+                alphabet,
+                target_len,
+                depth + 1,
+                current,
+                expr,
+                results,
+                max_count,
+                budget,
             )?;
             current.pop();
             if *budget == 0 || results.len() >= max_count {
