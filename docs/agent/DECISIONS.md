@@ -903,3 +903,13 @@ Format:
 - Alternatives considered: a new field in `DiagramInput` (rejected: the geometry would learn about pairs; the drawing already takes key sets for runs); keep the old dashes while the engine is asked again (rejected: they would point at the wrong transitions); dash per line (rejected: the design draws edges, the label lines are already crowded).
 - Reversible? yes
 - Affects: `web/src/lib/editor/diagram/DiagramDrawing.svelte`, `EditorCanvas.svelte`, `PdaEditor.svelte`, `pda-determinism.ts`
+
+
+## 2026-11-25 — T-070 pre-flight rulings: the second edge is never "pressed", and the FSM guard is an e2e case
+
+- Decider: planner (DeepSeek's pre-flight, reviewed with the code)
+- Context: the block said to widen `chosen()` for the second edge. `chosen()` also sets `aria-pressed`, so the second edge would have been announced as selected, the exact defect guard B3 exists to catch. The block also named a wrong contrast path and a B5 that needed an edit outside the scope.
+- Decision: `alsoChosenEdge()` is separate; the CSS restates the dash after the chosen rule; the FSM proof is an e2e case on the FSM sandbox (no `svelte()` plugin added to `vitest.config.ts`); B5 breaks inside `DiagramDrawing`; `markedEdge` becomes `$state.raw`. The block's PLAN text carries an "Amended" paragraph.
+- Review note: DeepSeek's F3 reads computed styles in the browser (dash `6px, 4px`, warning `#b86e00`; after Tunjukkan both edges accent `#2f5bd3`, 3 px, dash kept; the second edge `aria-pressed="false"`), the FSM class lists were captured on staging before the edit, and `sandbox.html` first JS grew 129 gzip bytes with the wasm byte-identical.
+- Reversible? yes
+- Affects: `web/src/lib/editor/diagram/DiagramDrawing.svelte`, `EditorCanvas.svelte`, `PdaEditor.svelte`, `pda-determinism.ts`
