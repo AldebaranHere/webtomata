@@ -4107,7 +4107,7 @@ DeepSeek's pre-flight found 18 flaws. Where this block and the text above differ
 
 ## Task T-067 — Pick the delete tool by its exact name in the PDA panel e2e
 
-**Status:** todo
+**Status:** done (2026-11-24; branch `task/T-067-exact-delete-locator`; see `docs/agent/reports/T-067.md`)
 **Owner:** worker (Gemini)
 
 **Goal:** One e2e locator picks the delete tool with `page.getByRole('button', { name: /^Hapus/ })`, which matches every button whose name starts with "Hapus" (the tool, and the panel's "Hapus simbol …", "Hapus state …" and "Hapus baris …"). It is `web/e2e/pda-panel.spec.ts:470`, in the test that marks rows with "+ 2 lagi" and then switches to the delete tool. It passes today only because the Definisi tab is open at that point and has no such button; open any other tab and the locator matches several buttons and Playwright's strict mode fails. Make it exact, as the other specs already do (`editor-edges.spec.ts:163`: `{ name: 'Hapus', exact: true }`).
@@ -4210,7 +4210,7 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 - **T-028** The grammar engine's errors carry Indonesian sentences. `GrammarError` has `Display` with Indonesian text, and `api.invalid_grammar` and `api.cyk_failed` pass it as `detail`, which the grammar UI shows as it is, also in English; for a key without `detail` it shows the raw key. This breaks principle 6 of `CLAUDE.md`. Make the parser, the CNF transformer and CYK return typed errors with a message key and parameters, and translate them in the UI. Larger than T-019 (found while specifying T-019); needs its own spec and a test for every error.
 - **T-029** The CYK tester joins rule symbols with no space, so every CNF result with a helper variable fails in CYK: specified in its own block above (`todo`; found by the worker in T-010 and reproduced by the planner).
 - **T-066** One "new state" command for the FSM and the PDA table: specified in its own task block above (`todo`; found by the worker in T-061, which could not touch `table.ts`). The shared function goes to `interaction/placement.ts` and `table.ts` re-exports it.
-- **T-067** Pick the delete tool by its exact name in the PDA panel e2e: specified in its own task block above (`todo`). Only one of the two locators is left: the `pda-editor.spec.ts` one was fixed in T-061.
+- **T-067** Pick the delete tool by its exact name in the PDA panel e2e: specified in its own task block above (`done`). Only one of the two locators is left: the `pda-editor.spec.ts` one was fixed in T-061.
 - **T-068 (specified 2026-11-10 as "Task T-068" above; `done`)** `web/src/lib/editor/history.ts` holds both `createHistory` and `createPdaHistory`, so the routes that mount the editor (`sandbox.html` and the three `soal/*.html`) download `pda-commands.ts` and `pda-document.ts` in their first load. Split the PDA history into its own module and import it only with the PDA mode; it shrinks those four routes (the other five never fetched the PDA chunks), and it would remove the 0.2 KB that T-061 pays when its lazy table chunk starts importing the PDA commands (found by the worker in T-061, section 8 of its report).
 
 **B. Grammar additions** (a wireframe the owner approves comes first for T-020)
