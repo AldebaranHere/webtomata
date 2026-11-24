@@ -1,6 +1,8 @@
+use engine_core::Message;
 use engine_core::language::{
-    EnumerateOptions, LanguageEvaluator, LanguageParser, compare_proper_order,
+    EnumerateOptions, LanguageError, LanguageEvaluator, LanguageParser, compare_proper_order,
 };
+use proptest::prelude::*;
 use std::collections::HashMap;
 
 #[test]
@@ -331,5 +333,207 @@ fn test_parse_and_eval_all_preset_formulas() {
         assert!(res.is_ok(), "Failed to enumerate {}: {:?}", id, res.err());
         let strings = res.unwrap();
         println!("{}: {:?}", id, strings);
+    }
+}
+
+// ---- The error type is data mapped to message keys (T-028b) ----
+
+/// Parses text that must fail, and returns the error.
+fn parse_error(input: &str) -> LanguageError {
+    LanguageParser::parse(input).expect_err("the input must not parse")
+}
+
+fn options() -> EnumerateOptions {
+    EnumerateOptions {
+        min_length: 0,
+        max_count: 5,
+        max_depth: 5,
+    }
+}
+
+#[test]
+fn language_parse_errors_map_to_keys_and_print_only_the_key() {
+    let cases: Vec<(&str, LanguageError, Message)> = vec![
+        (
+            "{a} &",
+            LanguageError::UnexpectedCharacter {
+                position: 4,
+                rest: "&".to_string(),
+            },
+            Message::new("language.error.unexpected_character")
+                .with("position", 4usize)
+                .with("rest", "&"),
+        ),
+        (
+            "{a}^",
+            LanguageError::ExpectedPowerNumber,
+            Message::new("language.error.expected_power_number"),
+        ),
+        (
+            "{a}^99999999999999999999",
+            LanguageError::NumberTooLarge,
+            Message::new("language.error.number_too_large"),
+        ),
+        (
+            "({a}",
+            LanguageError::UnclosedParenthesis,
+            Message::new("language.error.unclosed_parenthesis"),
+        ),
+        (
+            "&",
+            LanguageError::UnexpectedSymbol { symbol: '&' },
+            Message::new("language.error.unexpected_symbol").with("symbol", "&"),
+        ),
+        (
+            "{a} ∪",
+            LanguageError::UnexpectedEnd,
+            Message::new("language.error.unexpected_end"),
+        ),
+        (
+            "{a",
+            LanguageError::ExpectedCommaOrBrace,
+            Message::new("language.error.expected_comma_or_brace"),
+        ),
+    ];
+
+    for (input, expected, message) in cases {
+        let error = parse_error(input);
+        assert_eq!(error, expected, "input {input:?}");
+        assert_eq!(
+            error.to_string(),
+            message.key,
+            "Display must print the key of {input:?}"
+        );
+        assert_eq!(Message::from(error), message, "message of {input:?}");
+    }
+}
+
+#[test]
+fn language_evaluation_errors_map_to_keys() {
+    let mut cyclic_env = HashMap::new();
+    cyclic_env.insert(
+        "L1".to_string(),
+        LanguageParser::parse("L1").expect("L1 parses"),
+    );
+    let cyclic_expr = LanguageParser::parse("L1").expect("L1 parses");
+    let cyclic = LanguageEvaluator::new(&cyclic_env)
+        .enumerate(&cyclic_expr, options())
+        .expect_err("a language that refers to itself must not enumerate");
+    assert_eq!(
+        cyclic,
+        LanguageError::CyclicReference {
+            name: "L1".to_string()
+        }
+    );
+    assert_eq!(cyclic.to_string(), "language.error.cyclic_reference");
+    assert_eq!(
+        Message::from(cyclic),
+        Message::new("language.error.cyclic_reference").with("name", "L1")
+    );
+
+    let empty_env = HashMap::new();
+    let undefined_expr = LanguageParser::parse("L2").expect("L2 parses");
+    let undefined = LanguageEvaluator::new(&empty_env)
+        .enumerate(&undefined_expr, options())
+        .expect_err("an unknown language must not enumerate");
+    assert_eq!(
+        undefined,
+        LanguageError::UndefinedReference {
+            name: "L2".to_string()
+        }
+    );
+    assert_eq!(undefined.to_string(), "language.error.undefined_reference");
+    assert_eq!(
+        Message::from(undefined),
+        Message::new("language.error.undefined_reference").with("name", "L2")
+    );
+}
+
+/// The forms that the parser accepts today. A change here means that the refactor changed what a
+/// student may type, which T-028b must not do.
+#[test]
+fn language_parse_accepts_every_grammar_form() {
+    let accepted = [
+        "{ab, aca, b, ccab}", // finite set
+        "{}",                 // the empty set
+        "{ε}",                // the empty string, two spellings
+        "{^}",
+        "{a} ∪ {b}",       // union
+        "{a, b} ∩ {b, c}", // intersection
+        "{a, b} - {b}",    // difference
+        "{a} ⊕ {b}",       // symmetric difference
+        "{ab}{c}",         // concatenation
+        "{ab}^2",          // power
+        "{ab}*",           // star, plus, reversal
+        "{ab}+",
+        "{ab}^R",
+        "L1^3L2^2 - L7*",                                        // references
+        "{ w in {a, b}* : 3#a(w) >= 5#b(w) + 3 }",               // coefficient and count
+        "{ w : #a(w) mod 2 = 0 }",                               // modulo
+        "{ w in {a, b}* : ∀v ∈ prefix(w). (3#a(v) >= 6#b(v)) }", // universal prefix
+        "{ w in {a, b}* : ∀v ∈ suffix(w). (3#a(v) >= 6#b(v)) }", // universal suffix
+        "{ w : |w| >= 2 }",                                      // the relation operators
+        "{ w : |w| > 1 }",
+        "{ w : |w| <= 4 }",
+        "{ w : |w| < 3 }",
+        "{ w : |w| == 2 }",
+        "{ w : |w| = 2 }",
+    ];
+
+    for input in accepted {
+        assert!(
+            LanguageParser::parse(input).is_ok(),
+            "the parser must still accept {input:?}"
+        );
+    }
+}
+
+/// The inputs that fail today, with the exact error. The last four pin the fallback of a malformed
+/// set-builder: its own messages never left `parse_set`, and the student sees the finite-set error.
+#[test]
+fn language_parse_rejects_the_same_inputs_with_the_same_error() {
+    let rejected: Vec<(&str, LanguageError)> = vec![
+        (
+            "{a} &",
+            LanguageError::UnexpectedCharacter {
+                position: 4,
+                rest: "&".to_string(),
+            },
+        ),
+        ("{a}^", LanguageError::ExpectedPowerNumber),
+        ("{a}^99999999999999999999", LanguageError::NumberTooLarge),
+        ("({a}", LanguageError::UnclosedParenthesis),
+        ("&", LanguageError::UnexpectedSymbol { symbol: '&' }),
+        ("{a} ∪", LanguageError::UnexpectedEnd),
+        ("{a", LanguageError::ExpectedCommaOrBrace),
+        (
+            "{ w in {a,b}* : 3#a(w) }",
+            LanguageError::ExpectedCommaOrBrace,
+        ),
+        (
+            "{ w in {a,b}* : #a(w) mod }",
+            LanguageError::ExpectedCommaOrBrace,
+        ),
+        ("{ w : |w| >= }", LanguageError::ExpectedCommaOrBrace),
+        (
+            "{ w in {a,b}* : prefix(w) }",
+            LanguageError::ExpectedCommaOrBrace,
+        ),
+    ];
+
+    for (input, expected) in rejected {
+        assert_eq!(parse_error(input), expected, "input {input:?}");
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(2_000))]
+
+    /// Whatever text comes in, the parser answers. It has no panic path, including with
+    /// non-ASCII characters at the failing position (T-028b).
+    #[test]
+    fn language_parse_never_panics(chars in proptest::collection::vec(any::<char>(), 0..40)) {
+        let input: String = chars.into_iter().collect();
+        let _ = LanguageParser::parse(&input);
     }
 }

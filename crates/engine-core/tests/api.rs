@@ -586,3 +586,81 @@ proptest! {
         }
     }
 }
+
+// ---- Language error keys (no detail parameter) ----
+
+#[test]
+fn language_api_errors_use_typed_keys_without_detail() {
+    let cases = [
+        (
+            api::enumerate_language("{a} &", 0, 5, None),
+            "language.error.unexpected_character",
+        ),
+        (
+            api::enumerate_language("{a}^", 0, 5, None),
+            "language.error.expected_power_number",
+        ),
+        (
+            api::enumerate_language("{a}^99999999999999999999", 0, 5, None),
+            "language.error.number_too_large",
+        ),
+        (
+            api::enumerate_language("({a}", 0, 5, None),
+            "language.error.unclosed_parenthesis",
+        ),
+        (
+            api::enumerate_language("&", 0, 5, None),
+            "language.error.unexpected_symbol",
+        ),
+        (
+            api::enumerate_language("{a} ∪", 0, 5, None),
+            "language.error.unexpected_end",
+        ),
+        (
+            api::enumerate_language("{a", 0, 5, None),
+            "language.error.expected_comma_or_brace",
+        ),
+        (
+            api::enumerate_language("{ w in {a,b}* : 3#a(w) }", 0, 5, None),
+            "language.error.expected_comma_or_brace",
+        ),
+        (
+            api::enumerate_language("L2", 0, 5, None),
+            "language.error.undefined_reference",
+        ),
+        (
+            api::enumerate_language("L1", 0, 5, Some(r#"{"L1":"L1"}"#)),
+            "language.error.cyclic_reference",
+        ),
+        (
+            api::enumerate_language("{a}", 0, 5, Some("{")),
+            "api.invalid_environment",
+        ),
+        (
+            api::enumerate_language("{a}", 0, 5, Some(r#"{"L1":"{"}"#)),
+            "language.error.expected_comma_or_brace",
+        ),
+    ];
+
+    for (raw, expected_key) in cases {
+        let error = err(raw);
+        assert_eq!(error["key"], expected_key);
+        assert!(
+            error["params"].get("detail").is_none(),
+            "language error {expected_key} must not carry a detail param: {error}"
+        );
+    }
+
+    let unexpected = err(api::enumerate_language("{a} &", 0, 5, None));
+    assert_eq!(unexpected["params"]["position"], 4);
+    assert_eq!(unexpected["params"]["rest"], "&");
+
+    let symbol = err(api::enumerate_language("&", 0, 5, None));
+    assert_eq!(symbol["params"]["symbol"], "&");
+
+    let undefined = err(api::enumerate_language("L2", 0, 5, None));
+    assert_eq!(undefined["params"]["name"], "L2");
+
+    let cyclic = err(api::enumerate_language("L1", 0, 5, Some(r#"{"L1":"L1"}"#)));
+    assert_eq!(cyclic["params"]["name"], "L1");
+}

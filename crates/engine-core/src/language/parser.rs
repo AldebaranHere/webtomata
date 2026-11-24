@@ -14,17 +14,27 @@ pub struct LanguageParser<'a> {
     pos: usize,
 }
 
+/// A relation operator of a predicate. The list is closed, so matching it is exhaustive: the old
+/// `_ =>` error arms for an unknown operator could never be reached by any input.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RelOp {
+    Gte,
+    Gt,
+    Lte,
+    Lt,
+    Eq,
+}
+
 impl<'a> LanguageParser<'a> {
     pub fn parse(input: &'a str) -> Result<LanguageExpr, LanguageError> {
         let mut parser = Self { input, pos: 0 };
         let expr = parser.parse_union_difference()?;
         parser.skip_whitespace();
         if parser.pos < parser.input.len() {
-            return Err(LanguageError::InvalidSyntax(format!(
-                "Karakter tak terduga pada posisi {}: '{}'",
-                parser.pos,
-                &parser.input[parser.pos..]
-            )));
+            return Err(LanguageError::UnexpectedCharacter {
+                position: parser.pos,
+                rest: parser.input[parser.pos..].to_string(),
+            });
         }
         Ok(expr)
     }
@@ -195,13 +205,14 @@ impl<'a> LanguageParser<'a> {
             }
         }
         if start == self.pos {
-            return Err(LanguageError::InvalidSyntax(
-                "Diharapkan angka setelah operator pangkat/koefisien".to_string(),
-            ));
+            return Err(LanguageError::ExpectedPowerNumber);
         }
+        // Only `PosOverflow` is possible here: the scan above accepted at least one and only ASCII
+        // digits, so `Empty` and `InvalidDigit` cannot happen, and `usize` has no sign, so
+        // `NegOverflow` cannot either. The limit is 64-bit natively and 32-bit in the WASM build.
         self.input[start..self.pos]
             .parse::<usize>()
-            .map_err(|e| LanguageError::InvalidSyntax(e.to_string()))
+            .map_err(|_| LanguageError::NumberTooLarge)
     }
 
     fn parse_primary(&mut self) -> Result<LanguageExpr, LanguageError> {
@@ -213,9 +224,7 @@ impl<'a> LanguageParser<'a> {
             let inner = self.parse_union_difference()?;
             self.skip_whitespace();
             if !self.starts_with(")") {
-                return Err(LanguageError::InvalidSyntax(
-                    "Kurung buka '(' tidak memiliki pasangan ')'".to_string(),
-                ));
+                return Err(LanguageError::UnclosedParenthesis);
             }
             self.pos += 1;
             Ok(inner)
@@ -223,14 +232,10 @@ impl<'a> LanguageParser<'a> {
             if ch.is_alphabetic() {
                 self.parse_identifier()
             } else {
-                Err(LanguageError::InvalidSyntax(format!(
-                    "Simbol tak terduga: '{ch}'"
-                )))
+                Err(LanguageError::UnexpectedSymbol { symbol: ch })
             }
         } else {
-            Err(LanguageError::InvalidSyntax(
-                "Ekspresi berakhir tiba-tiba".to_string(),
-            ))
+            Err(LanguageError::UnexpectedEnd)
         }
     }
 
@@ -267,7 +272,7 @@ impl<'a> LanguageParser<'a> {
         self.skip_whitespace();
 
         // Check if this is a set-builder notation: { w in {a, b}* : ... }
-        if let Ok(pred_expr) = self.try_parse_set_builder() {
+        if let Some(pred_expr) = self.try_parse_set_builder() {
             return Ok(pred_expr);
         }
 
@@ -307,16 +312,16 @@ impl<'a> LanguageParser<'a> {
                 self.pos += 1;
                 break;
             } else {
-                return Err(LanguageError::InvalidSyntax(
-                    "Diharapkan ',' atau '}' dalam himpunan kata".to_string(),
-                ));
+                return Err(LanguageError::ExpectedCommaOrBrace);
             }
         }
 
         Ok(LanguageExpr::FiniteSet(words))
     }
 
-    fn try_parse_set_builder(&mut self) -> Result<LanguageExpr, LanguageError> {
+    /// Tries to read a set-builder. A failure means "not a set-builder": the caller backtracks and
+    /// reads the braces as a finite set of words, so no message is carried out of here.
+    fn try_parse_set_builder(&mut self) -> Option<LanguageExpr> {
         let start_pos = self.pos;
         self.skip_whitespace();
 
@@ -331,7 +336,7 @@ impl<'a> LanguageParser<'a> {
         }
         if var_start == self.pos {
             self.pos = start_pos;
-            return Err(LanguageError::InvalidSyntax("Bukan predikat".into()));
+            return None;
         }
 
         self.skip_whitespace();
@@ -378,9 +383,7 @@ impl<'a> LanguageParser<'a> {
             self.pos += 1;
         } else {
             self.pos = start_pos;
-            return Err(LanguageError::InvalidSyntax(
-                "Diharapkan ':' atau '|'".into(),
-            ));
+            return None;
         }
 
         // Parse predicate expression
@@ -389,17 +392,17 @@ impl<'a> LanguageParser<'a> {
         self.skip_whitespace();
         if !self.starts_with("}") {
             self.pos = start_pos;
-            return Err(LanguageError::InvalidSyntax("Diharapkan '}'".into()));
+            return None;
         }
         self.pos += 1;
 
-        Ok(LanguageExpr::PredicateLanguage {
+        Some(LanguageExpr::PredicateLanguage {
             alphabet,
             predicate,
         })
     }
 
-    fn parse_pred_or(&mut self) -> Result<LanguagePredicate, LanguageError> {
+    fn parse_pred_or(&mut self) -> Option<LanguagePredicate> {
         let mut left = self.parse_pred_and()?;
         loop {
             self.skip_whitespace();
@@ -415,10 +418,10 @@ impl<'a> LanguageParser<'a> {
                 break;
             }
         }
-        Ok(left)
+        Some(left)
     }
 
-    fn parse_pred_and(&mut self) -> Result<LanguagePredicate, LanguageError> {
+    fn parse_pred_and(&mut self) -> Option<LanguagePredicate> {
         let mut left = self.parse_pred_unary()?;
         loop {
             self.skip_whitespace();
@@ -442,10 +445,10 @@ impl<'a> LanguageParser<'a> {
                 break;
             }
         }
-        Ok(left)
+        Some(left)
     }
 
-    fn parse_pred_unary(&mut self) -> Result<LanguagePredicate, LanguageError> {
+    fn parse_pred_unary(&mut self) -> Option<LanguagePredicate> {
         self.skip_whitespace();
         if self.starts_with("¬") || self.starts_with("!") || self.starts_with_ci("NOT") {
             if self.starts_with("¬") {
@@ -456,25 +459,23 @@ impl<'a> LanguageParser<'a> {
                 self.pos += 3;
             }
             let inner = self.parse_pred_unary()?;
-            Ok(LanguagePredicate::Not(Box::new(inner)))
+            Some(LanguagePredicate::Not(Box::new(inner)))
         } else {
             self.parse_pred_atom()
         }
     }
 
-    fn parse_pred_atom(&mut self) -> Result<LanguagePredicate, LanguageError> {
+    fn parse_pred_atom(&mut self) -> Option<LanguagePredicate> {
         self.skip_whitespace();
         if self.starts_with("(") {
             self.pos += 1;
             let inner = self.parse_pred_or()?;
             self.skip_whitespace();
             if !self.starts_with(")") {
-                return Err(LanguageError::InvalidSyntax(
-                    "Kurung buka '(' tidak memiliki pasangan ')'".into(),
-                ));
+                return None;
             }
             self.pos += 1;
-            return Ok(inner);
+            return Some(inner);
         }
 
         // Universal prefix or suffix: ∀v ∈ prefix(w) / forall v in prefix(w)
@@ -512,9 +513,7 @@ impl<'a> LanguageParser<'a> {
                 self.pos += 6;
                 false
             } else {
-                return Err(LanguageError::InvalidSyntax(
-                    "Diharapkan 'prefix(w)' atau 'suffix(w)'".into(),
-                ));
+                return None;
             };
 
             // Optional (w)
@@ -535,9 +534,9 @@ impl<'a> LanguageParser<'a> {
 
             let sub = self.parse_pred_atom()?;
             if is_prefix {
-                return Ok(LanguagePredicate::ForallPrefix(Box::new(sub)));
+                return Some(LanguagePredicate::ForallPrefix(Box::new(sub)));
             } else {
-                return Ok(LanguagePredicate::ForallSuffix(Box::new(sub)));
+                return Some(LanguagePredicate::ForallSuffix(Box::new(sub)));
             }
         }
 
@@ -555,7 +554,7 @@ impl<'a> LanguageParser<'a> {
                 }
                 self.pos += ch.len_utf8();
             }
-            return Ok(LanguagePredicate::IsPalindrome);
+            return Some(LanguagePredicate::IsPalindrome);
         }
 
         // Length condition: |w| >= N, |w| <= N, |w| == N
@@ -570,26 +569,19 @@ impl<'a> LanguageParser<'a> {
             }
             self.skip_whitespace();
             let (op, num) = self.parse_cmp_and_num()?;
-            return match op.as_str() {
-                ">=" | "≥" => Ok(LanguagePredicate::LengthGte(num)),
-                ">" => Ok(LanguagePredicate::LengthGte(num + 1)),
-                "<=" | "≤" => Ok(LanguagePredicate::LengthLte(num)),
-                "<" => Ok(LanguagePredicate::LengthLte(if num > 0 {
-                    num - 1
-                } else {
-                    0
-                })),
-                "==" | "=" => Ok(LanguagePredicate::LengthEq(num)),
-                _ => Err(LanguageError::InvalidSyntax(format!(
-                    "Operator relasi tidak dikenal: '{op}'"
-                ))),
-            };
+            return Some(match op {
+                RelOp::Gte => LanguagePredicate::LengthGte(num),
+                RelOp::Gt => LanguagePredicate::LengthGte(num + 1),
+                RelOp::Lte => LanguagePredicate::LengthLte(num),
+                RelOp::Lt => LanguagePredicate::LengthLte(if num > 0 { num - 1 } else { 0 }),
+                RelOp::Eq => LanguagePredicate::LengthEq(num),
+            });
         }
 
         // Count condition: e.g. 3#a(w) >= 6#b(w) + 1 or #a(w) mod 3 = 0
         let coeff_a = if let Some(ch) = self.peek_char() {
             if ch.is_ascii_digit() {
-                self.parse_number()?
+                self.parse_number().ok()?
             } else {
                 1
             }
@@ -604,17 +596,11 @@ impl<'a> LanguageParser<'a> {
         }
 
         if !self.starts_with("#") {
-            return Err(LanguageError::InvalidSyntax(format!(
-                "Diharapkan '#' pada posisi {}: '{}'",
-                self.pos,
-                &self.input[self.pos..]
-            )));
+            return None;
         }
         self.pos += 1; // skip '#'
 
-        let char_a = self.peek_char().ok_or_else(|| {
-            LanguageError::InvalidSyntax("Diharapkan karakter setelah '#'".into())
-        })?;
+        let char_a = self.peek_char()?;
         self.pos += char_a.len_utf8();
 
         self.skip_whitespace();
@@ -636,7 +622,7 @@ impl<'a> LanguageParser<'a> {
             } else {
                 self.pos += 1;
             }
-            let modulus = self.parse_number()?;
+            let modulus = self.parse_number().ok()?;
             self.skip_whitespace();
             if self.starts_with("==") || self.starts_with("=") {
                 if self.starts_with("==") {
@@ -645,8 +631,8 @@ impl<'a> LanguageParser<'a> {
                     self.pos += 1;
                 }
             }
-            let remainder = self.parse_number()?;
-            return Ok(LanguagePredicate::CountMod {
+            let remainder = self.parse_number().ok()?;
+            return Some(LanguagePredicate::CountMod {
                 char_a,
                 modulus,
                 remainder,
@@ -660,7 +646,7 @@ impl<'a> LanguageParser<'a> {
         // Right hand side: could be coeff_b * #b(w) + offset OR a constant integer
         if let Some(ch) = self.peek_char() {
             if ch.is_ascii_digit() {
-                let num = self.parse_number()?;
+                let num = self.parse_number().ok()?;
                 self.skip_whitespace();
                 if self.starts_with("*") {
                     self.pos += 1;
@@ -669,32 +655,26 @@ impl<'a> LanguageParser<'a> {
                 if self.starts_with("#") {
                     // It was coeff_b * #char_b
                     self.pos += 1;
-                    let char_b = self.peek_char().ok_or_else(|| {
-                        LanguageError::InvalidSyntax("Diharapkan karakter setelah '#'".into())
-                    })?;
+                    let char_b = self.peek_char()?;
                     self.pos += char_b.len_utf8();
                     self.skip_parens_if_any();
                     let offset = self.parse_optional_offset()?;
-                    return self.make_count_pred(&op, char_a, coeff_a, char_b, num, offset);
+                    return Some(self.make_count_pred(op, char_a, coeff_a, char_b, num, offset));
                 } else {
                     // It was a constant number!
-                    return self.make_count_pred(&op, char_a, coeff_a, '_', 0, num);
+                    return Some(self.make_count_pred(op, char_a, coeff_a, '_', 0, num));
                 }
             } else if self.starts_with("#") {
                 self.pos += 1;
-                let char_b = self.peek_char().ok_or_else(|| {
-                    LanguageError::InvalidSyntax("Diharapkan karakter setelah '#'".into())
-                })?;
+                let char_b = self.peek_char()?;
                 self.pos += char_b.len_utf8();
                 self.skip_parens_if_any();
                 let offset = self.parse_optional_offset()?;
-                return self.make_count_pred(&op, char_a, coeff_a, char_b, 1, offset);
+                return Some(self.make_count_pred(op, char_a, coeff_a, char_b, 1, offset));
             }
         }
 
-        Err(LanguageError::InvalidSyntax(
-            "Sintaks predikat hitungan tidak lengkap".into(),
-        ))
+        None
     }
 
     fn skip_parens_if_any(&mut self) {
@@ -709,84 +689,88 @@ impl<'a> LanguageParser<'a> {
         }
     }
 
-    fn parse_optional_offset(&mut self) -> Result<usize, LanguageError> {
+    fn parse_optional_offset(&mut self) -> Option<usize> {
         self.skip_whitespace();
         if self.starts_with("+") {
             self.pos += 1;
-            self.parse_number()
+            self.parse_number().ok()
         } else {
-            Ok(0)
+            Some(0)
         }
     }
 
-    fn parse_relational_op(&mut self) -> Result<String, LanguageError> {
+    fn parse_relational_op(&mut self) -> Option<RelOp> {
         self.skip_whitespace();
-        let ops = [">=", "≥", "<=", "≤", "==", "=", ">", "<"];
-        for &op in &ops {
-            if self.starts_with(op) {
-                self.pos += op.len();
-                return Ok(op.to_string());
+        let ops = [
+            (">=", RelOp::Gte),
+            ("≥", RelOp::Gte),
+            ("<=", RelOp::Lte),
+            ("≤", RelOp::Lte),
+            ("==", RelOp::Eq),
+            ("=", RelOp::Eq),
+            (">", RelOp::Gt),
+            ("<", RelOp::Lt),
+        ];
+        for (text, op) in ops {
+            if self.starts_with(text) {
+                self.pos += text.len();
+                return Some(op);
             }
         }
-        Err(LanguageError::InvalidSyntax(
-            "Diharapkan operator relasi (>=, <=, ==, =, >, <)".into(),
-        ))
+        None
     }
 
-    fn parse_cmp_and_num(&mut self) -> Result<(String, usize), LanguageError> {
+    fn parse_cmp_and_num(&mut self) -> Option<(RelOp, usize)> {
         let op = self.parse_relational_op()?;
-        let num = self.parse_number()?;
-        Ok((op, num))
+        let num = self.parse_number().ok()?;
+        Some((op, num))
     }
 
     fn make_count_pred(
         &self,
-        op: &str,
+        op: RelOp,
         char_a: char,
         coeff_a: usize,
         char_b: char,
         coeff_b: usize,
         offset: usize,
-    ) -> Result<LanguagePredicate, LanguageError> {
+    ) -> LanguagePredicate {
         match op {
-            ">=" | "≥" => Ok(LanguagePredicate::CountLinearGte {
+            RelOp::Gte => LanguagePredicate::CountLinearGte {
                 char_a,
                 coeff_a,
                 char_b,
                 coeff_b,
                 offset,
-            }),
-            ">" => Ok(LanguagePredicate::CountLinearGte {
+            },
+            RelOp::Gt => LanguagePredicate::CountLinearGte {
                 char_a,
                 coeff_a,
                 char_b,
                 coeff_b,
                 offset: offset + 1,
-            }),
-            "<=" | "≤" => Ok(LanguagePredicate::CountLinearLte {
+            },
+            RelOp::Lte => LanguagePredicate::CountLinearLte {
                 char_a,
                 coeff_a,
                 char_b,
                 coeff_b,
                 offset,
-            }),
-            "<" => Ok(LanguagePredicate::CountLinearLte {
+            },
+            RelOp::Lt => LanguagePredicate::CountLinearLte {
                 char_a,
                 coeff_a,
                 char_b,
                 coeff_b,
                 offset: if offset > 0 { offset - 1 } else { 0 },
-            }),
-            "==" | "=" => Ok(LanguagePredicate::CountEq {
+            },
+            RelOp::Eq => LanguagePredicate::CountEq {
                 char_a,
                 coeff_a,
                 char_b,
                 coeff_b,
                 offset,
-            }),
-            _ => Err(LanguageError::InvalidSyntax(format!(
-                "Operator relasi '{op}' tidak didukung"
-            ))),
+            },
         }
     }
 

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { engine } from '#lib/engine/client.ts';
+	import { formatEngineError } from '#lib/engine/error-text.ts';
+	import type { Message } from '#lib/engine/types.ts';
 	import { t, getLocale } from '#lib/i18n/index.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/id.ts';
 	import LanguageMathDisplay from './LanguageMathDisplay.svelte';
@@ -111,7 +113,10 @@
 	let emptySymbol = $state<'^' | 'ε'>('^');
 
 	let isEvaluating = $state<boolean>(false);
-	let errorMessage = $state<string | null>(null);
+	let error = $state<Message | null>(null);
+	const errorMessage = $derived(
+		error ? formatEngineError(error, t, 'language.error.generic') : null
+	);
 	let results = $state<string[]>([]);
 	let inferredAlphabet = $state<string[]>([]);
 	let copied = $state<boolean>(false);
@@ -321,7 +326,7 @@
 		selectedId = preset.id;
 		expression = preset.formula;
 		phoneTab = 'editor';
-		errorMessage = null;
+		error = null;
 		void runEnumeration();
 	}
 
@@ -329,7 +334,7 @@
 		selectedId = custom.id;
 		expression = custom.formula;
 		phoneTab = 'editor';
-		errorMessage = null;
+		error = null;
 		void runEnumeration();
 	}
 
@@ -391,7 +396,7 @@
 
 	async function runEnumeration() {
 		isEvaluating = true;
-		errorMessage = null;
+		error = null;
 
 		const clampedMin = Math.max(0, Math.min(100, Number(minLength) || 0));
 		const clampedCount = Math.max(1, Math.min(100, Number(maxCount) || 10));
@@ -401,15 +406,15 @@
 			if (res.ok) {
 				results = res.value.strings;
 				inferredAlphabet = res.value.alphabet;
-				errorMessage = null;
+				error = null;
 			} else {
 				results = [];
-				const detail = res.error.params?.detail ? String(res.error.params.detail) : '';
-				errorMessage = detail || t(res.error.key as never) || 'Sintaks ekspresi tidak valid';
+				error = res.error;
 			}
-		} catch (err) {
+		} catch {
 			results = [];
-			errorMessage = err instanceof Error ? err.message : 'Gagal mengevaluasi bahasa';
+			// The engine crashed or did not answer: never show its exception text.
+			error = { key: 'language.error.generic', params: {} };
 		} finally {
 			isEvaluating = false;
 		}

@@ -10,7 +10,7 @@
 	import GrammarCnfStepper from './GrammarCnfStepper.svelte';
 	import GrammarCykTester from './GrammarCykTester.svelte';
 	import GrammarToPdaTab from './GrammarToPdaTab.svelte';
-	import { formatGrammarError } from './grammar-error-text.ts';
+	import { formatEngineError } from '#lib/engine/error-text.ts';
 	import WorkstationPhoneTabs, {
 		type PhoneTabItem
 	} from '#lib/components/WorkstationPhoneTabs.svelte';
@@ -115,7 +115,9 @@
 	let phoneTab = $state<'pustaka' | 'editor' | 'cnf' | 'cyk' | 'topda'>('editor');
 	let isTransforming = $state<boolean>(false);
 	let pipelineError = $state<Message | null>(null);
-	const errorMessage = $derived(pipelineError ? formatGrammarError(pipelineError, t) : null);
+	const errorMessage = $derived(
+		pipelineError ? formatEngineError(pipelineError, t, 'grammar.error.generic') : null
+	);
 
 	let isPhone = $state(false);
 
