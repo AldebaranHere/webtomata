@@ -811,3 +811,13 @@ Format:
 - Alternatives considered: send it back to shave more (rejected: the remaining bytes need a worse interface); keep the FSM checker as a copy (rejected: that is the duplication the task removes).
 - Reversible? yes
 - Affects: `docs/agent/PLAN.md` (T-071, AC6)
+
+
+## 2026-11-24 — T-088b: one shared Rust cache key for the e2e, cross-browser and lighthouse jobs
+
+- Decider: owner (chose step 2 of the cache proposal), planner (the scope)
+- Context: after the pruning job, the largest remaining waste is three Rust caches of 253 MB per lockfile generation that hold the same dependencies, one for each of three jobs that run identical build steps.
+- Decision: give those three jobs `shared-key: wasm-build` on `Swatinem/rust-cache`, and nothing else. `checks` stays separate (it also builds the test profile and its cache is larger), as do `rust`, `fuzz`, `audit` and `deploy`. No new check or script.
+- Alternatives considered: join `checks` too (rejected: the light jobs would restore 388 MB for a 253 MB need); a workflow check that equal steps share a key (rejected: more code than the three lines it guards).
+- Reversible? yes
+- Affects: `.github/workflows/ci.yml`, `docs/agent/PLAN.md` (T-088b)
