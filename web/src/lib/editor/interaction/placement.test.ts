@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { build } from '../diagram/testing.ts';
+import { pdaDocumentFrom } from '../pda-samples.ts';
 import { LIMIT } from './canvas.ts';
-import { freeSpot } from './placement.ts';
+import { freeSpot, newStateCommand } from './placement.ts';
 
 describe('freeSpot', () => {
 	it('is the spot itself when no state is within 72', () => {
@@ -54,5 +55,27 @@ describe('freeSpot', () => {
 			]
 		});
 		expect(freeSpot(doc, { x: 330, y: 300 })).toEqual(freeSpot(doc, { x: 330, y: 300 }));
+	});
+});
+
+describe('newStateCommand', () => {
+	it('is the same place on an FSM and on a PDA with the same states, inside the limit', () => {
+		const fsm = build({
+			states: [
+				[100, 200],
+				[LIMIT - 40, 200]
+			]
+		});
+		const pda = pdaDocumentFrom({
+			states: [
+				[100, 200, 'q0'],
+				[LIMIT - 40, 200, 'q1']
+			]
+		});
+		const onFsm = newStateCommand(fsm);
+		const onPda = newStateCommand(pda);
+		expect(onFsm).toEqual(onPda);
+		expect(Math.abs(onFsm.x)).toBeLessThanOrEqual(LIMIT);
+		expect(Math.abs(onFsm.y)).toBeLessThanOrEqual(LIMIT);
 	});
 });

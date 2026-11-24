@@ -1,10 +1,9 @@
 // The pure part of the editable PDA table: what an edit of a row becomes, the counts that the
-// toast shows, where a new state goes, and the names that the Alfabet field refuses before it
-// sends anything (docs/agent/PLAN.md, Task T-061). No DOM, no editor.
+// toast shows, and the names that the Alfabet field refuses before it sends anything
+// (docs/agent/PLAN.md, Task T-061). No DOM, no editor.
 //
 // A row is parsed by `parseRows` of the label form (the only parser of a transition's text) and
 // sent as ONE batch, so one Urungkan takes the row and the alphabet back together.
-import { freeSpot } from './interaction/placement.ts';
 import type { Refusal } from './interaction/editor.ts';
 import type { PdaCommand } from './pda-commands.ts';
 import type { PdaDocument, PdaTransitionEntry } from './pda-document.ts';
@@ -44,23 +43,6 @@ export function symbolUseCount(doc: PdaDocument, symbol: string, kind: SymbolKin
 /** How many transitions a state is in, from or to: what `removeState` takes with it. */
 export function stateUseCount(doc: PdaDocument, id: number): number {
 	return doc.transitions.filter((t) => t.from === id || t.to === id).length;
-}
-
-/** The distance between a new state and the one that is the furthest to the right. */
-const STEP = 130;
-
-/**
- * A new state, to the right of the others and in the row of the last one, at the nearest free spot.
- * The FSM's `newStateCommand` says the same thing but is typed for `MachineDocument`, and no FSM
- * file changes in this task.
- */
-export function addStateCommand(doc: PdaDocument): PdaCommand {
-	const last = doc.states.reduce<{ x: number; y: number } | null>(
-		(far, state) => (far === null || state.x > far.x ? { x: state.x, y: state.y } : far),
-		null
-	);
-	const spot = last === null ? { x: 200, y: 200 } : freeSpot(doc, { x: last.x + STEP, y: last.y });
-	return { type: 'addState', x: spot.x, y: spot.y };
 }
 
 /** The commands that add the symbols of a row that the document does not have yet. */

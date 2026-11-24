@@ -4,7 +4,6 @@
 // document, so the one history (and undo) covers it, and the diagram and the definition follow.
 import type { Command } from './commands.ts';
 import type { Kind, MachineDocument } from './document.ts';
-import { freeSpot } from './interaction/placement.ts';
 
 export interface TableCell {
 	from: number;
@@ -92,18 +91,7 @@ export function clearCell(doc: MachineDocument, from: number, on: string | null)
 	return setCellTargets(doc, from, on, []);
 }
 
-/** The distance between a new state and the one that is the furthest to the right. */
-const STEP = 130;
-
-/** A new state, to the right of the others and in the row of the last one (or at the free spot nearest to it). */
-export function newStateCommand(doc: MachineDocument): Command {
-	const last = doc.states.reduce<{ x: number; y: number } | null>(
-		(far, s) => (far === null || s.x > far.x ? { x: s.x, y: s.y } : far),
-		null
-	);
-	const spot = last === null ? { x: 200, y: 200 } : freeSpot(doc, { x: last.x + STEP, y: last.y });
-	return { type: 'addState', x: spot.x, y: spot.y };
-}
+export { newStateCommand } from './interaction/placement.ts';
 
 /** A new symbol. The ends are trimmed, and the document checks the rest. */
 export function addSymbolCommand(symbol: string): Command {
