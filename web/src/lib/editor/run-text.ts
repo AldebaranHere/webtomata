@@ -11,16 +11,22 @@ export interface Text {
 	params: Params;
 }
 
+/**
+ * The symbol that is not in the alphabet, and where it stands counted from 1 (the engine counts the
+ * symbols before it; people count from 1). The FSM and the PDA use the same engine key, so they
+ * share this mapping (T-071).
+ */
+export function unknownSymbolText(message: Message): Text {
+	const { symbol, position } = message.params;
+	return {
+		key: 'input.unknown_symbol',
+		params: { symbol: String(symbol), position: typeof position === 'number' ? position + 1 : 1 }
+	};
+}
+
 /** Why a string cannot be run at all, as a text: a symbol that is not in the alphabet, no start state. */
 export function refusalText(refusal: Message | undefined): Text {
-	if (refusal?.key === 'input.unknown_symbol') {
-		const { symbol, position } = refusal.params;
-		return {
-			key: 'input.unknown_symbol',
-			// The engine counts the symbols before this one; people count from 1.
-			params: { symbol: String(symbol), position: typeof position === 'number' ? position + 1 : 1 }
-		};
-	}
+	if (refusal?.key === 'input.unknown_symbol') return unknownSymbolText(refusal);
 	if (refusal?.key === 'sim.no_start_state') return { key: 'sim.no_start_state', params: {} };
 	if (refusal?.key === 'sim.stopped') return stoppedText(String(refusal.params.reason));
 	return { key: 'sim.refused_other', params: {} };

@@ -2,7 +2,7 @@
 	import { onMount, untrack } from 'svelte';
 	import type { Component } from 'svelte';
 	import { engine } from '#lib/engine/client.ts';
-	import type { Competition } from '#lib/engine/types.ts';
+	import type { Competition, PdaStringOutcome } from '#lib/engine/types.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import type { BaseAutosave } from '#lib/storage/autosave.ts';
 	import { useAutosaveBinding } from './autosave-binding.svelte.ts';
@@ -19,7 +19,7 @@
 	import { pdaCheckItems } from './pda-checks.ts';
 	import PdaDeterminismBadge from './PdaDeterminismBadge.svelte';
 	import { badgeModel, createDeterminism } from './pda-determinism.ts';
-	import { toEnginePda } from './pda-document.ts';
+	import { pdaDocumentsEqual, toEnginePda } from './pda-document.ts';
 	import type { PdaDocument, PdaKind } from './pda-document.ts';
 	import PdaLabelForm from './PdaLabelForm.svelte';
 	import PdaLabelPopover from './PdaLabelPopover.svelte';
@@ -31,13 +31,13 @@
 	import { createPdaRunner } from './pda-run.ts';
 	import type { PdaText } from './pda-run.ts';
 	import PdaTestList from './PdaTestList.svelte';
-	import { createPdaTester } from './pda-tester.ts';
 	import type { PdaRowFocus } from './pda-table-props.ts';
 	import type { PdaTableProps } from './pda-table-props.ts';
 	import { readTab, saveTab } from './panel-tab.ts';
 	import type { PanelTab } from './panel-tab.ts';
 	import SidePanel from './SidePanel.svelte';
 	import { addTest, removeTest } from './test-list.ts';
+	import { createTester } from './tester.ts';
 
 	// The editor of a pushdown automaton: the tools, the canvas, the title bar and the side panel.
 	// Starts from `doc`. Changes are debounced-saved to storage with `autosave`.
@@ -239,8 +239,10 @@
 
 	// The test strings: not saved in this version (the document has no field for them), kept for the
 	// session, and run again after each change of the machine.
-	const tester = createPdaTester({
-		run: (d, inputs) => engine.simulatePdaMany(toEnginePda(d), inputs)
+	const tester = createTester<PdaDocument, PdaStringOutcome>({
+		run: (d, inputs) => engine.simulatePdaMany(toEnginePda(d), inputs),
+		// The PDA's own equality: the FSM's reads `on` and ignores `pop` and `push` (T-071, B7).
+		sameDocument: pdaDocumentsEqual
 	});
 	let testList = $state.raw<string[]>([]);
 	const readTesting = () => ({

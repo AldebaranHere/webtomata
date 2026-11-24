@@ -20,10 +20,11 @@ import type {
 	RnfResult,
 	RnfStep
 } from '../engine/types.ts';
+import { grammarToText } from '../grammar/grammar-text.ts';
 import { LIMITS } from './document.ts';
+import { windowRows } from './list-window.ts';
 import { fromEnginePda, pdaDocumentsEqual, toEnginePda } from './pda-document.ts';
 import type { PdaDocument } from './pda-document.ts';
-import { shownRows } from './pda-run.ts';
 
 /** What the converter needs from the engine (the client of engine/client.ts has it). */
 export interface PdaConversionEngine {
@@ -158,25 +159,12 @@ export function ruleText(rule: Production, label: (name: string) => string): str
  * first, one space between symbols, `ε` for an empty body. The names are the engine's `V_…`
  * names: the parser keeps `<…>` in a head but drops it in a body (see T-038b's pre-flight), so
  * the pretty names are for the panel only.
+ *
+ * The definition is `grammarToText` in `grammar/grammar-text.ts` (T-071: one definition; the two
+ * give the same text, and a test holds them together). This name stays for the panel and its tests.
  */
 export function grammarText(grammar: Grammar): string {
-	const heads: string[] = [];
-	const bodies = new Map<string, string[]>();
-	const add = (head: string) => {
-		if (bodies.has(head)) return;
-		heads.push(head);
-		bodies.set(head, []);
-	};
-	add(grammar.start);
-	for (const rule of grammar.rules) add(rule.head);
-	for (const rule of grammar.rules) {
-		const body = rule.body.length === 0 ? 'ε' : rule.body.map((symbol) => symbol.value).join(' ');
-		bodies.get(rule.head)!.push(body);
-	}
-	return heads
-		.filter((head) => (bodies.get(head) ?? []).length > 0)
-		.map((head) => `${head} -> ${bodies.get(head)!.join(' | ')}`)
-		.join('\n');
+	return grammarToText(grammar);
 }
 
 /**
@@ -285,7 +273,7 @@ export function listWindow<T>(rows: readonly T[]): {
 	shown: T[];
 	hidden: number;
 } {
-	return shownRows(rows, 50);
+	return windowRows(rows, 50);
 }
 
 /** The last 50 rules of a list, and how many are before them. */
