@@ -851,3 +851,13 @@ Format:
 - Alternatives considered: do grammar and language together (rejected: two engines, two UI files, about 30 sites, one diff nobody reads); keep `api.invalid_grammar` as a wrapper key with the specific key as a parameter (rejected: the UI would translate two levels for no gain).
 - Reversible? yes
 - Affects: `crates/engine-core/src/grammar/`, `api.rs`, `web/src/lib/grammar/`, `web/src/lib/i18n/`
+
+
+## 2026-11-24 — T-028b: one shared UI helper for engine errors; the language module follows the grammar pattern
+
+- Decider: planner (the owner asked for the spec)
+- Context: the language module has the same defect that T-028 fixed in the grammar module: about 17 free sentences in `InvalidSyntax(String)`, one of them a Rust standard-library text, shipped as `detail`; the component shows `detail`, `err.message` or two hard-coded sentences. Its error paths have no test at all.
+- Decision: typed variants (one per distinct meaning), one `From<LanguageError> for Message`, `Display` prints the key; the wording of every sentence stays; `formatGrammarError` moves to `web/src/lib/engine/error-text.ts` as `formatEngineError(error, translate, genericKey)` and both workstations use it, so there is one place that decides how an engine error reaches a screen. The new tests pin what the parser accepts and rejects, so the refactor cannot change the language of the parser.
+- Alternatives considered: a second helper in `web/src/lib/language/` (rejected: it is the same fifteen lines, and the next module would copy them again); fix the banner CSS here (rejected: layout, a separate decision, now T-089).
+- Reversible? yes
+- Affects: `crates/engine-core/src/language/`, `api.rs`, `web/src/lib/language/`, `web/src/lib/grammar/`, `web/src/lib/engine/`, `web/src/lib/i18n/`
