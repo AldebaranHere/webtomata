@@ -1,29 +1,51 @@
 use std::fmt;
 
+use crate::message::Message;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GrammarError {
     EmptyGrammar,
-    MissingStartSymbol,
-    InvalidRuleFormat(String),
-    UnexpectedToken(String),
-    BudgetExceeded(String),
+    RuleWithoutArrow { line: String },
+    EmptyRuleHead,
+    NotChomskyNormalForm,
+    TooManyNullable { rule: String, limit: usize },
+    InputTooLong { length: usize, limit: usize },
+}
+
+impl GrammarError {
+    fn key(&self) -> &'static str {
+        match self {
+            GrammarError::EmptyGrammar => "grammar.error.empty",
+            GrammarError::RuleWithoutArrow { .. } => "grammar.error.no_arrow",
+            GrammarError::EmptyRuleHead => "grammar.error.empty_head",
+            GrammarError::NotChomskyNormalForm => "grammar.error.not_cnf",
+            GrammarError::TooManyNullable { .. } => "grammar.error.too_many_nullable",
+            GrammarError::InputTooLong { .. } => "grammar.cyk_input_too_long",
+        }
+    }
+}
+
+impl From<GrammarError> for Message {
+    fn from(error: GrammarError) -> Self {
+        let key = error.key();
+        match error {
+            GrammarError::EmptyGrammar
+            | GrammarError::EmptyRuleHead
+            | GrammarError::NotChomskyNormalForm => Message::new(key),
+            GrammarError::RuleWithoutArrow { line } => Message::new(key).with("line", line),
+            GrammarError::TooManyNullable { rule, limit } => {
+                Message::new(key).with("rule", rule).with("limit", limit)
+            }
+            GrammarError::InputTooLong { length, limit } => Message::new(key)
+                .with("limit", limit)
+                .with("length", length),
+        }
+    }
 }
 
 impl fmt::Display for GrammarError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            GrammarError::EmptyGrammar => write!(f, "Tata bahasa tidak memiliki aturan produksi"),
-            GrammarError::MissingStartSymbol => {
-                write!(f, "Simbol awal (start symbol) tidak ditentukan")
-            }
-            GrammarError::InvalidRuleFormat(msg) => {
-                write!(f, "Format aturan produksi tidak valid: {}", msg)
-            }
-            GrammarError::UnexpectedToken(msg) => write!(f, "Token tidak terduga: {}", msg),
-            GrammarError::BudgetExceeded(msg) => {
-                write!(f, "Batas komputasi tata bahasa terlampaui: {}", msg)
-            }
-        }
+        f.write_str(self.key())
     }
 }
 

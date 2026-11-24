@@ -334,12 +334,13 @@ impl CnfTransformer {
                 continue;
             }
 
+            const MAX_NULLABLE_PER_RULE: usize = 10;
             // Cap subset combination explosion to avoid OOM
-            if nullable_indices.len() > 10 {
-                return Err(GrammarError::BudgetExceeded(format!(
-                    "aturan '{}' memiliki terlalu banyak variabel nullable (> 10)",
-                    rule
-                )));
+            if nullable_indices.len() > MAX_NULLABLE_PER_RULE {
+                return Err(GrammarError::TooManyNullable {
+                    rule: rule.to_string(),
+                    limit: MAX_NULLABLE_PER_RULE,
+                });
             }
 
             let num_combinations = 1 << nullable_indices.len();

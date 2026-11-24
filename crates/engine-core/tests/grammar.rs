@@ -1,6 +1,9 @@
 use std::collections::BTreeSet;
 
-use engine_core::grammar::{CnfTransformer, CykParser, Grammar, GrammarParser, Production, Symbol};
+use engine_core::Message;
+use engine_core::grammar::{
+    CnfTransformer, CykParser, Grammar, GrammarError, GrammarParser, Production, Symbol,
+};
 use proptest::prelude::*;
 
 #[test]
@@ -1366,4 +1369,86 @@ fn test_t027_audit_lambda_presets_and_grammars() {
     assert!(!cyk(&line31_trace.final_grammar, "c"));
     assert!(!cyk(&line31_trace.final_grammar, "ab"));
     assert_cnf_idempotent(&line31_trace.final_grammar);
+}
+
+#[test]
+fn test_grammar_error_variants_messages_and_display() {
+    // 1. EmptyGrammar
+    let empty_err = GrammarParser::parse("   \n# comment only\n// another").unwrap_err();
+    assert_eq!(empty_err, GrammarError::EmptyGrammar);
+    let empty_msg = Message::from(empty_err.clone());
+    assert_eq!(empty_msg, Message::new("grammar.error.empty"));
+    assert_eq!(empty_err.to_string(), "grammar.error.empty");
+
+    // 2. RuleWithoutArrow
+    let no_arrow_err = GrammarParser::parse("S a b").unwrap_err();
+    assert_eq!(
+        no_arrow_err,
+        GrammarError::RuleWithoutArrow {
+            line: "S a b".into(),
+        }
+    );
+    let no_arrow_msg = Message::from(no_arrow_err.clone());
+    assert_eq!(
+        no_arrow_msg,
+        Message::new("grammar.error.no_arrow").with("line", "S a b")
+    );
+    assert_eq!(no_arrow_err.to_string(), "grammar.error.no_arrow");
+
+    // 3. EmptyRuleHead
+    let empty_head_err = GrammarParser::parse("-> a").unwrap_err();
+    assert_eq!(empty_head_err, GrammarError::EmptyRuleHead);
+    let empty_head_msg = Message::from(empty_head_err.clone());
+    assert_eq!(empty_head_msg, Message::new("grammar.error.empty_head"));
+    assert_eq!(empty_head_err.to_string(), "grammar.error.empty_head");
+
+    // 4. TooManyNullable (boundary: 10 succeeds, 11 fails)
+    let ten_nullable = GrammarParser::parse("S -> A A A A A A A A A A\nA -> ε").unwrap();
+    assert!(CnfTransformer::transform(&ten_nullable).is_ok());
+
+    let eleven_nullable = GrammarParser::parse("S -> A A A A A A A A A A A\nA -> ε").unwrap();
+    let nullable_err = CnfTransformer::transform(&eleven_nullable).unwrap_err();
+    assert_eq!(
+        nullable_err,
+        GrammarError::TooManyNullable {
+            rule: "S -> AAAAAAAAAAA".into(),
+            limit: 10,
+        }
+    );
+    let nullable_msg = Message::from(nullable_err.clone());
+    assert_eq!(
+        nullable_msg,
+        Message::new("grammar.error.too_many_nullable")
+            .with("rule", "S -> AAAAAAAAAAA")
+            .with("limit", 10usize)
+    );
+    assert_eq!(nullable_err.to_string(), "grammar.error.too_many_nullable");
+
+    // 5. NotChomskyNormalForm
+    let non_cnf = GrammarParser::parse("S -> a b").unwrap();
+    let not_cnf_err = CykParser::parse(&non_cnf, "ab").unwrap_err();
+    assert_eq!(not_cnf_err, GrammarError::NotChomskyNormalForm);
+    let not_cnf_msg = Message::from(not_cnf_err.clone());
+    assert_eq!(not_cnf_msg, Message::new("grammar.error.not_cnf"));
+    assert_eq!(not_cnf_err.to_string(), "grammar.error.not_cnf");
+
+    // 6. InputTooLong (boundary: 100 succeeds, 101 fails)
+    let cnf = GrammarParser::parse("S -> a").unwrap();
+    assert!(CykParser::parse(&cnf, &"a".repeat(100)).is_ok());
+    let long_err = CykParser::parse(&cnf, &"a".repeat(101)).unwrap_err();
+    assert_eq!(
+        long_err,
+        GrammarError::InputTooLong {
+            length: 101,
+            limit: CykParser::MAX_INPUT_LEN,
+        }
+    );
+    let long_msg = Message::from(long_err.clone());
+    assert_eq!(
+        long_msg,
+        Message::new("grammar.cyk_input_too_long")
+            .with("limit", CykParser::MAX_INPUT_LEN)
+            .with("length", 101usize)
+    );
+    assert_eq!(long_err.to_string(), "grammar.cyk_input_too_long");
 }
