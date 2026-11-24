@@ -4138,7 +4138,7 @@ DeepSeek's pre-flight found 18 flaws. Where this block and the text above differ
 
 ## Task T-067b — Tighten the e2e locators that T-067's search found
 
-**Status:** todo
+**Status:** in-progress
 **Owner:** worker (DeepSeek: it runs many specs and counts them)
 
 **Goal:** T-067 fixed one locator that matched too many buttons and reported the others it found (`docs/agent/reports/T-067.md`). None of them fails today; each passes because of what is on the screen at that moment, and each would fail on Playwright's strict mode, or click the wrong button, after an unrelated change (the way the delete tool broke in T-061 when the panel got "Hapus …" buttons). Make them say what they mean. **This is a behavior-preserving change to test code only:** the same tests pass, in the same number, before and after.
