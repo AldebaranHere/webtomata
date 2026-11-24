@@ -2871,17 +2871,54 @@ Follow the rules of `AGENTS.md` for every shell command (the Playwright runs are
 
 ---
 
-## Task T-070 — Competing edges drawn dashed and the second edge of a pair selected (draft)
+## Task T-070 — Competing edges drawn dashed and the second edge of a pair selected
 
-**Status:** proposed (after T-062)
-**Owner:** worker
+**Status:** todo
+**Owner:** worker (DeepSeek: a small change to the shared drawing, with guards that the FSM diagram does not change)
 
-**Goal:** Design section 2 of `design/screens/pda-editor.md`: in a **DPDA**, the edges that hold a competing pair are drawn dashed in `--color-warning` (in an NDPDA they stay solid), and **Tunjukkan** of T-062 gives both edges of a pair the selection stroke (T-062 selects the first edge and marks both rows only). Both change the shared drawing (`DiagramDrawing.svelte`, `EditorCanvas.svelte`, the edge input of `DiagramInput`), so they need FSM tests (the FSM diagram must not change) and a decision about how the diagram learns the pairs (a new optional field of `DiagramInput`, the badge's own result as input). Not before T-062 is merged; the planner writes the full spec then.
+**Goal:** Two things that `design/screens/pda-editor.md` section 2 promises and T-062 left out. (1) In a **DPDA**, every edge that holds a transition of a competing pair is drawn **dashed** in `--color-warning`; in an NDPDA the same pairs are normal and every edge stays solid. (2) **Tunjukkan** of T-062 selects the first edge of a pair and marks both rows; after this task the **second** edge of the pair gets the same selection stroke when it is a different edge. A student who builds a DPDA sees from the picture alone which edges break it, and, after pressing Tunjukkan, both edges of the pair.
 
-**Depends on:** T-062.
+**Facts checked on 2026-11-25 (the planner read the code; the worker verifies):**
+
+- The shared drawing is `web/src/lib/editor/diagram/DiagramDrawing.svelte`. It already takes optional sets for the run (`taken: ReadonlySet<string>` of `"from>to"` keys, `takenLines`) and one `selectedEdge: {from,to} | null`; the class `chosen` on `.edge` and on `.label` gives the accent stroke (3 px, `--color-accent`) and the strong accent-ink label. `EditorCanvas.svelte` passes `selectedEdge={view.edge}`, `{taken}` and `{takenLines}` through. The FSM editor uses the same two components and passes none of the new props.
+- `PdaEditor.svelte` already has the competing pairs (`pairs = { status, pairs }` from `createDeterminism`, T-062), `marked: ReadonlySet<number>` (row indices) and `markedEdge: { from, to } | null` (the first edge), and a rule that clears the marks when the document or the selection changes. A pair is `{ from, first, second }`: zero-based indices into `doc.transitions`.
+- An edge of the diagram is one `(from, to)` group of transitions (`pdaDiagram`). A pair can lie on **one** edge (two transitions with the same `from` and `to`: nothing to add for the second edge) or on **two** edges (same `from`, different `to`).
+- `design/screens/pda-editor.md` section 2 says dashed `--color-warning`, "only when the machine is a DPDA".
+
+**Decisions (the planner's; the worker may find a flaw, may not silently change one):**
+
+1. **The diagram learns two optional sets of edge keys, nothing else.** `DiagramDrawing` gets `dashed?: ReadonlySet<string>` and `alsoChosen?: ReadonlySet<string>` (keys `"from>to"`, as `taken` has), `EditorCanvas` passes them through, and both default to empty. `DiagramInput`, `geometry.ts`, `pdaDiagram` and every FSM file stay as they are. No other prop, no kind or pair type enters the drawing.
+2. **Dashed is per edge, not per line.** An edge is dashed when at least one of its transitions is in a pair of the engine's answer. The key set comes from a pure function in `pda-determinism.ts`, `dashedEdges(kind, status, doc, pairs): Set<string>`, which returns the empty set unless `kind === 'dpda'` **and** `status === 'ready'`. The second condition is the badge's rule (T-062): a pair holds indices of one document, so an answer for an older document is never drawn; while the engine is asked again the dashes are gone, and they come back with the badge (about 200 ms after the last edit).
+3. **How it looks.** `.edge.dashed .line { stroke: var(--color-warning); stroke-dasharray: 6 4; }` (the worker may change the two numbers after looking at it at 100 % and 150 % zoom, and says which). The dash pattern is the sign that is not a color; the color is the second. An edge that is both dashed and chosen keeps the dash and takes the accent color and 3 px stroke (so a selected competing edge never looks like an ordinary solid edge). The arrowhead stays as it is. Use only tokens; if `pnpm check:contrast` lists color pairs, add `--color-warning` on the canvas background as the design allows, and say what the ratio is.
+4. **The second edge.** `alsoChosen` draws the same `chosen` stroke and label style on the listed edges, **visually only**: no `aria-pressed` (the selection is one edge; pressed means selected), no change in `selectedEdge`, in the history, in the document or in what the keyboard focuses. A `data-also-chosen` attribute marks it for tests. The key set is derived in `PdaEditor.svelte` by a pure function in `pda-determinism.ts`, `extraMarkedEdges(doc, marked, markedEdge): Set<string>`: the edge keys of the transitions in `marked`, **minus `markedEdge`'s own key**. It is derived from the same `marked` that already clears itself, so no new state and no new clearing rule. The marks of the "+ n lagi" button (rows of one edge) therefore add nothing.
+5. **No new string.** Nothing is announced or named differently: the badge, its live region and the list already say what a screen reader needs (the dash is a visual help, as the stroke of a selected edge is). If the worker thinks an edge button's accessible name should say "competing", that is a separate task: say so in the report.
+6. **Not here:** the Tabel and Definisi tabs, `DiagramInput`, `geometry.ts`, `pdaDiagram`, `checker.ts`, the badge and its list, any engine or `crates/` change, the label geometry, per-line dashing, a legend, an animation, any FSM behaviour, the run panel's `taken` marks, new dependencies.
+
+**Scope (files):** `web/src/lib/editor/diagram/DiagramDrawing.svelte` (two optional props, one class on `.edge`, two CSS rules, the `chosen` test widened for `alsoChosen`), `web/src/lib/editor/EditorCanvas.svelte` (two optional props passed through), `web/src/lib/editor/PdaEditor.svelte` (the two derived sets and the two props), `web/src/lib/editor/pda-determinism.ts` and `pda-determinism.test.ts` (two pure functions and their tests), `web/e2e/pda-determinism.spec.ts` (new cases), `web/src/lib/editor/diagram/` tests if the repository has a place to test the drawing with the FSM (the worker looks and says), `web/scripts` contrast list if it names color pairs, `docs/decisions/0072-competing-edges-are-drawn-by-key.md` (short: decisions 1 to 4), `docs/agent/PLAN.md` (status), `docs/agent/reports/T-070.md`.
+
+**Fixtures (derive by hand first, then check with the real engine and the real functions, and paste both):**
+
+- *Machine G* (as in T-051 and T-062): Σ {a, b}, Γ {A}; q0 (start), q1 (accepting); rows 1 `q0|ε|ε|ε|q1`, 2 `q0|a|ε|A|q0`, 3 `q0|b|A|ε|q1`, 4 `q1|b|A|ε|q1`. Pairs: `{from:q0, first:0, second:1}` (rows 1 and 2: edges `q0>q1` and `q0>q0`) and `{from:q0, first:0, second:2}` (rows 1 and 3: both on edge `q0>q1`).
+- **F1, `dashedEdges` on G:** as a DPDA with status `ready`: the keys of `q0>q1` and `q0>q0`, **not** `q1>q1`. As an NDPDA: empty. As a DPDA with status `checking`, `idle` or `failed`: empty. A DPDA with no pair: empty.
+- **F2, `extraMarkedEdges` on G:** Tunjukkan on pair 1 (`marked = {0, 1}`, `markedEdge = q0>q1`): `{q0>q0}`. Pair 2 (`marked = {0, 2}`): empty (both rows are on the marked edge). The marks of "+ n lagi" for edge `q0>q1` (`marked = {0, 2}`, `markedEdge = q0>q1`): empty. `marked` empty: empty. An index out of range is ignored.
+- **F3, the page (e2e, `desktop` and `phone`):** build or load G as a DPDA: the edges `q0>q1` and `q0>q0` have `stroke-dasharray` other than `none` (read the computed style) and `q1>q1` has none; switch to NDPDA: none has it; switch back: the two again. Press Tunjukkan on pair 1: `q0>q1` has the `chosen` class, `q0>q0` has `data-also-chosen` and the same stroke width, and **neither the second edge nor any other edge has `aria-pressed="true"`** except what T-062 already sets; press it again: both lose it. Press Tunjukkan on pair 2: no edge has `data-also-chosen`. Edit a transition (change the document): the marks and dashes follow the rules above (marks cleared by the existing rule; dashes gone while checking, back when ready).
+
+**Acceptance criteria:**
+
+1. `DiagramDrawing` and `EditorCanvas` have the two new optional props and nothing else new; with both empty (the default), the markup of an FSM diagram is **identical** to before: the worker shows this (for example a test that renders the FSM and the PDA drawing with default props and compares the class lists of every `.edge` and `.label` to the pre-change values, or the existing FSM geometry and e2e specs passing unedited plus a test of the defaults; say which).
+2. The two pure functions exist in `pda-determinism.ts` with the unit tests of F1 and F2, written first and red.
+3. F3 passes on `desktop` and `phone`. The existing `pda-determinism.spec.ts`, `pda-editor` specs, the FSM editor specs and `geometry.test.ts` pass **unedited**.
+4. `pnpm check:contrast` passes; the report says what the dashed warning line's contrast is and the stroke pattern chosen.
+5. Budgets: initial JS and wasm unchanged within noise; report `sandbox.html` first JS in bytes before and after (expected: under 300 gzip bytes of growth).
+6. ADR 0072 and the report exist (the report has the by-hand pairs next to the engine's answer, the F3 steps with what was seen, and what the FSM check looked like); `PLAN.md` says `done`.
+
+**Verification:** `pnpm lint && pnpm check && pnpm format:check && pnpm test:web && pnpm check:strings && pnpm check:tokens && pnpm check:contrast && pnpm build && pnpm size`; e2e `pda-determinism`, the PDA editor specs, and the FSM editor specs, on `desktop` and `phone`. No `crates/` change, so the Rust gate is not needed (say it). **Break each guard once on the final code and show a test catches it:** B1 let `dashedEdges` return the keys for an NDPDA (F1 fails); B2 let it ignore `status` (F1 fails); B3 give the second edge `aria-pressed="true"` (F3 fails); B4 let `extraMarkedEdges` include the marked edge's own key, or ignore the `"+ n lagi"` case (F2 fails); B5 pass a non-empty `dashed` to the FSM canvas (the FSM check of acceptance 1 fails); B6 drop the dash when the edge is chosen (F3 or a unit check fails).
+
+**Rollback:** revert the PR (two optional props and one class: nothing else depends on them).
+
+**Depends on:** T-062 (merged).
 
 ---
-
 ## Task T-062 — PDA editor, part 11 of 12: the determinism badge and the competing pairs
 
 **Status:** done
@@ -4370,22 +4407,23 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 
 **A. Clean up (P-001 is done)**
 
-- **T-010** e2e and axe tests for the grammar workstation flow: specified in its own task block above (`todo`, after T-024).
-- **T-011** e2e and axe tests for the language workstation and the switcher: specified in its own task block above (`todo`).
+- **T-010** e2e and axe tests for the grammar workstation flow: specified in its own task block above (`done`, after T-024).
+- **T-011** e2e and axe tests for the language workstation and the switcher: specified in its own task block above (`done`).
 - **T-012** `rejected` on 2026-11-04: the panel drag handle already has seven tests with real touch events in `web/e2e/editor-panel-height.spec.ts` (drag up and down, limits, tap, keys, 44 px, no page scroll). Reopen it only if the owner sees a failing handle on a real phone; a WebKit run would need a real iPhone.
 - **T-016** The phone layout of the grammar and the language workstations: done (PR 121).
-- **T-015** The UI switch between the long version and the short version of the CNF conversion: specified in its own block above (`todo`; T-060 is merged).
+- **T-015** The UI switch between the long version and the short version of the CNF conversion: specified in its own block above (`done`; T-060 is merged).
 - **T-060** CNF phases in the homework order, with message keys: specified in its own block above (`done`).
-- **T-013** Preset text in `id` and `en`, and readable rule chips: specified in its own task block above (`todo`).
-- **T-024** Bigger touch areas for the rule boxes of the grammar Editor on a phone: specified in its own task block above (`todo`; the owner approved the design on 2026-11-04).
-- **T-025** Landmarks on a laptop, tab panels on a phone: specified in its own task block above (`todo`).
-- **T-019** One limit and one translated message for the length of a CYK string: specified in its own task block above (`todo`).
-- **T-017** The two local-reference tests keep only finite automata: specified in its own task block above (`todo`).
-- **T-028** The grammar engine's errors are keys with parameters, not Indonesian sentences: specified in its own task block above (`todo`). `GrammarError` becomes data, one conversion to `Message`, one UI helper that never shows a raw key or a `detail`.
+- **T-013** Preset text in `id` and `en`, and readable rule chips: specified in its own task block above (`done`).
+- **T-024** Bigger touch areas for the rule boxes of the grammar Editor on a phone: specified in its own task block above (`done`; the owner approved the design on 2026-11-04).
+- **T-025** Landmarks on a laptop, tab panels on a phone: specified in its own task block above (`done`).
+- **T-019** One limit and one translated message for the length of a CYK string: specified in its own task block above (`done`).
+- **T-017** The two local-reference tests keep only finite automata: specified in its own task block above (`done`).
+- **T-028** The grammar engine's errors are keys with parameters, not Indonesian sentences: specified in its own task block above (`done`). `GrammarError` becomes data, one conversion to `Message`, one UI helper that never shows a raw key or a `detail`.
 - **T-028b** The language engine's errors are keys with parameters, not Indonesian sentences: specified in its own task block above (`done`, PR 272). `LanguageError` becomes data (one variant per meaning), one conversion to `Message`, one shared UI helper (`formatEngineError`, moved from the grammar folder), and the language workstation stops showing `detail`, `err.message` and two hard-coded sentences.
 - **T-089** (proposed) The error banners of the grammar, CYK and language workstations have no `overflow-wrap`, so a long unbroken rule, line or expression overflows sideways. An old problem (the old `detail` had it too), found in T-028. Needs a look at the three banners on a phone first; written when the owner asks.
 - **T-090** The language engine never panics, overflows or aborts on user input: specified in its own task block above (`done`, Gemini; eight crashes, see its report). Six reproducing inputs found in T-028b (`usize` overflow in the parser and in the count predicates, byte slicing and byte lengths on non-ASCII strings, an unbounded `with_capacity` and recursion on a huge `|w| >= N`); length means characters; exact `u128` counts; a typed `LengthTooLarge`; the 4,096-character check gets a language message. Left out: naming an environment language that fails to parse.
-- **T-029** The CYK tester joins rule symbols with no space, so every CNF result with a helper variable fails in CYK: specified in its own block above (`todo`; found by the worker in T-010 and reproduced by the planner).
+- **T-070** Competing edges drawn dashed in a DPDA, and the second edge of a pair selected by Tunjukkan: specified in its own task block above (`todo`, DeepSeek). Two optional sets of edge keys on the shared drawing; the FSM diagram must not change.
+- **T-029** The CYK tester joins rule symbols with no space, so every CNF result with a helper variable fails in CYK: specified in its own block above (`done`; found by the worker in T-010 and reproduced by the planner).
 - **T-066** One "new state" command for the FSM and the PDA table: specified in its own task block above (`done`, PR 264; found by the worker in T-061, which could not touch `table.ts`). The shared function goes to `interaction/placement.ts` and `table.ts` re-exports it.
 - **T-067** Pick the delete tool by its exact name in the PDA panel e2e: specified in its own task block above (`done`). Only one of the two locators is left: the `pda-editor.spec.ts` one was fixed in T-061.
 - **T-067b** Tighten the e2e locators that T-067's search found (unanchored `State q…`, two `Hapus`, four whole-page `Urungkan`): specified in its own task block above (`done`; three of the four `Urungkan` sites, per the owner's ruling of 2026-11-24: `pda-panel.spec.ts:182` stays whole-page because it runs on the phone, where the rail's undo is hidden). Test code only; the same tests pass in the same number.
@@ -4400,17 +4438,17 @@ The owner's idea (2026-11-02): the CNF conversion shows a verbose version that f
 **C. The PDA** (each step has its own ADR; a wireframe the owner approves comes first for T-033)
 Decided by the owner on 2026-11-04 (see `DECISIONS.md`): the notation is Rich's and the slides' (not Sipser's); the PDA is non-deterministic as well as deterministic (the course homework uses both); every run has a step budget, like the FSM engine, and ends as "stopped" with the partial trace.
 
-- **T-030** PDA data model, JSON, validation and the determinism check: specified in its own block above (`todo`). The three questions are settled from the slides (2026-11-05): the stack starts empty, one acceptance rule (input used up, stack empty, accepting state), `pop` and `push` are lists of named symbols, top first.
-- **T-031** PDA simulation, breadth-first, with a stack trace, budgets and the peak number of configurations: specified in its own block above (`todo`; after T-030).
-- **T-032** PDA `.jff` import and export: specified in its own block above (`todo`; T-030 and T-031 are merged).
-- **T-033** PDA editor, part 1 of 5, the PDA document, its commands and its history: specified in its own block above (`done`, PR 165). **T-039** (the diagram shows a PDA): specified in its own block above (`done`, PR 167). **T-049** (the interaction core works for two kinds of document): specified in its own block above (`done`, PR 169). **T-053** (the canvas works for two kinds of document): specified in its own block above (`done`, PR 173). **T-054** (the label form): specified in its own block above (`done`, PR 176). **T-055** (the editor frame is shared): specified in its own block above (`done`, PR 178). **T-056** (saving a PDA on the device): specified in its own block above (`todo`, since 2026-11-08). **T-057** (the editor shell and the mode), **T-051** (the panel) and **T-052** (saved machines, files, examples): drafts above (`proposed`), one after the other.
-- **T-034** CFG to PDA, top-down (slides, `CFGtoPDAtopdown`): specified in its own block above (`todo`, since 2026-11-05; T-032 is merged). Tested by language equivalence, not by structure against JFLAP's file.
-- **T-035** CFG to PDA, bottom-up (slides, shift and reduce): specified in its own block above (`todo`, since 2026-11-05; T-034 is merged).
+- **T-030** PDA data model, JSON, validation and the determinism check: specified in its own block above (`done`). The three questions are settled from the slides (2026-11-05): the stack starts empty, one acceptance rule (input used up, stack empty, accepting state), `pop` and `push` are lists of named symbols, top first.
+- **T-031** PDA simulation, breadth-first, with a stack trace, budgets and the peak number of configurations: specified in its own block above (`done`; after T-030).
+- **T-032** PDA `.jff` import and export: specified in its own block above (`done`; T-030 and T-031 are merged).
+- **T-033** PDA editor, part 1 of 5, the PDA document, its commands and its history: specified in its own block above (`done`, PR 165). **T-039** (the diagram shows a PDA): specified in its own block above (`done`, PR 167). **T-049** (the interaction core works for two kinds of document): specified in its own block above (`done`, PR 169). **T-053** (the canvas works for two kinds of document): specified in its own block above (`done`, PR 173). **T-054** (the label form): specified in its own block above (`done`, PR 176). **T-055** (the editor frame is shared): specified in its own block above (`done`, PR 178). **T-056** (saving a PDA on the device): specified in its own block above (`done`, since 2026-11-08). **T-057** (the editor shell and the mode), **T-051** (the panel) and **T-052** (saved machines, files, examples): drafts above (`proposed`), one after the other.
+- **T-034** CFG to PDA, top-down (slides, `CFGtoPDAtopdown`): specified in its own block above (`done`; specified on 2026-11-05; T-032 is merged). Tested by language equivalence, not by structure against JFLAP's file.
+- **T-035** CFG to PDA, bottom-up (slides, shift and reduce): specified in its own block above (`done`; specified on 2026-11-05; T-034 is merged).
 - **T-036** PDA to restricted normal form, with a trace: specified in its own block above (`done`, PR 161).
 - **T-037** PDA in restricted normal form to CFG, with a trace: specified in its own block above (`done`, PR 163). The slides' example `wcwᴿ` is the oracle (76 rules, 15 after cleanup).
 - **T-038** Conversions and simulation panel for the PDA: split on 2026-11-23 into T-038a (`done`, PR 243: the Simulasi tab), T-038b (`todo`: Konversi, PDA to grammar; DeepSeek) and T-038c (`todo`: "Ke PDA" in the grammar mode; Gemini); b and c run at the same time and the planner reconciles their two cross-mode handoffs before "Go".
-- **T-085** The PDA simulation marks the line of the transition that fired, not the whole `from>to` group: specified in its own task block above (`todo`).
-- **T-086** The tour's step 5 promises that the test list is saved on the device, which is false for the PDA: specified in its own task block above (`todo`).
+- **T-085** The PDA simulation marks the line of the transition that fired, not the whole `from>to` group: specified in its own task block above (`done`).
+- **T-086** The tour's step 5 promises that the test list is saved on the device, which is false for the PDA: specified in its own task block above (`done`).
 - **T-087** The custom-grammar card in the library has a button inside a button (axe `nested-interactive`): specified in its own task block above (`done`, commit `05bcff0`).
 - **T-071** One scheduled query, one tester and the small copies of the PDA work: specified in its own task block above (`done`, branch `task/T-071-shared-query-tester`; the first-JS growth on the four editor routes is recorded there and in the report).
 - **T-071b** The big copies of the PDA work (`proposed`, split from T-071 on 2026-11-24): the run models `run.ts` / `pda-run.ts`, `RunPanel` / `PdaRunPanel`, `TestList` / `PdaTestList`, the conversion models and panels, and the two FSM panels' inline 50-row windows (`RunPanel.svelte`, `ComparePlayer.svelte`). They are similar, not the same; decide the shared shape after the Turing-machine task shows what a third machine needs, and write the spec then.
