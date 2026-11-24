@@ -4043,6 +4043,36 @@ DeepSeek's pre-flight found 18 flaws. Where this block and the text above differ
 
 **Depends on:** ADR 0027 (merged).
 
+## Task T-088b — One Rust cache for the three jobs that build the same WASM
+
+**Status:** todo
+**Owner:** worker (Gemini)
+
+**Goal:** `e2e`, `cross-browser` and `lighthouse` in `ci.yml` run the same steps up to the last one (`cargo install wasm-pack --locked`, `pnpm build:wasm`, `pnpm --filter web build`), but each saves its own Rust cache of about 253 MB per lockfile generation (the dry run of 2026-11-24 lists three families of `253.0` MB each). `Swatinem/rust-cache` builds its key from the job name, so three jobs mean three caches of the same dependencies. Give the three jobs one key so that only one such cache exists per generation: about 500 MB less of the 10 GB, and one cold build instead of three when the lockfile changes. This is step 2 of the proposal in T-088; step 1 is merged.
+
+**Decisions (the planner's; the worker may find a flaw, may not silently change one):**
+
+1. **The change is one input:** `shared-key: wasm-build` on the `Swatinem/rust-cache` step of `e2e`, `cross-browser` and `lighthouse`, with a one-line comment above it saying that these three jobs build the same WASM and must keep the same value. The action version, its SHA pin and `save-if` do not change.
+2. **Not these jobs:** `rust` (native tests) and `checks` (it also runs `pnpm test:wasm`, which compiles the test profile, so its target directory is larger and different), `fuzz`, `audit` and `deploy` keep their own keys. Do not merge `checks` into the shared key: the three light jobs would then restore a 388 MB cache for a 253 MB need.
+3. **No new code:** no script, no check in `check-workflows.mjs`, no test. A rule that "jobs with equal steps must share a key" costs more than the three lines it protects. If the worker disagrees, say so in the pre-flight; do not add it.
+4. **What to expect, to put in the PR description:** the first run after the merge on `staging` is cold for these three jobs (the new key has no cache yet), so one slower run; the four `e2e` shards and the two `cross-browser` jobs already race to save the same key today, and that has worked (the action skips the save when the key exists, with a warning), so the race of the three jobs needs no handling. The three old families (`v0-rust-e2e-…`, `v0-rust-cross-browser-…`, `v0-rust-lighthouse-…`) stop being written; the prune job keeps the newest cache of each, and GitHub evicts them after 7 days unused, so they leave by themselves.
+5. **Not here:** any change to the other workflows, to `prune-caches.mjs`, to the Playwright or pnpm caches, or to a cache key other than these three.
+
+**Scope (files):** `.github/workflows/ci.yml` (three `with:` blocks and one comment), `docs/decisions/0027-ci-time-limits-and-faster-ci.md` (one sentence pointing here), `docs/agent/PLAN.md` (status). No ADR (one input, reversible by deleting the lines), no report file.
+
+**Acceptance criteria:**
+
+1. `git diff --stat` shows only `ci.yml`, ADR 0027 and `PLAN.md`; in `ci.yml` the diff is the three `shared-key` lines and the comment, nothing else.
+2. The `shared-key` value is the same string in the three jobs, and no other job has a `shared-key`.
+3. `pnpm check:workflows`, `pnpm lint` and `pnpm format:check` pass (the worker cannot run the workflow itself; say so).
+4. The PR description gives the expected effect (decision 4) and **how the owner checks it after the merge**: after two pushes to `staging` the cache list (Actions, Caches) has one `v0-rust-wasm-build-Linux-x64-…` family; the `Run workflow` of **Clean caches** with `dry_run` on lists it as kept 1; and the `e2e`, `cross-browser` and `lighthouse` logs of the second run say the Rust cache was restored (an exact hit).
+
+**Verification:** the checks in criterion 3 only. There is nothing to break on purpose: the change is data, and a wrong value shows as a cold build in the next run, not as a failure.
+
+**Rollback:** revert the PR; the three jobs write their own caches again from the next run on `staging`.
+
+**Depends on:** T-088 (merged).
+
 ---
 
 ## Planner task P-005 — Wireframe of the PDA simulation, the stack and the conversions
