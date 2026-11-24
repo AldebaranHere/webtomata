@@ -58,19 +58,15 @@ impl CykParser {
         let n = chars.len();
 
         if n > Self::MAX_INPUT_LEN {
-            return Err(GrammarError::BudgetExceeded(format!(
-                "Panjang string CYK ({} karakter) melebihi batas maksimal {}",
-                n,
-                Self::MAX_INPUT_LEN
-            )));
+            return Err(GrammarError::InputTooLong {
+                length: n,
+                limit: Self::MAX_INPUT_LEN,
+            });
         }
 
         let is_cnf = Self::is_cnf(grammar);
         if !is_cnf {
-            return Err(GrammarError::InvalidRuleFormat(
-                "Tata bahasa harus berada dalam Bentuk Normal Chomsky (CNF) untuk menjalankan algoritma CYK."
-                    .into(),
-            ));
+            return Err(GrammarError::NotChomskyNormalForm);
         }
 
         // Handle empty string ε

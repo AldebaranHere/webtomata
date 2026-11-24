@@ -6,7 +6,6 @@ pub struct GrammarParser;
 impl GrammarParser {
     pub fn parse(input: &str) -> Result<Grammar, GrammarError> {
         let mut rules = Vec::new();
-        let mut start_symbol: Option<String> = None;
 
         for line in input.lines() {
             let trimmed = line.trim();
@@ -23,21 +22,14 @@ impl GrammarParser {
             } else if let Some((h, b)) = trimmed.split_once("::=") {
                 (h, b)
             } else {
-                return Err(GrammarError::InvalidRuleFormat(format!(
-                    "Baris '{}' tidak memiliki pemisah panah (-> atau →)",
-                    trimmed
-                )));
+                return Err(GrammarError::RuleWithoutArrow {
+                    line: trimmed.to_string(),
+                });
             };
 
             let head = head_part.trim().to_string();
             if head.is_empty() {
-                return Err(GrammarError::InvalidRuleFormat(
-                    "Ruas kiri (head) aturan produksi tidak boleh kosong".into(),
-                ));
-            }
-
-            if start_symbol.is_none() {
-                start_symbol = Some(head.clone());
+                return Err(GrammarError::EmptyRuleHead);
             }
 
             // Parse alternatives separated by '|'
@@ -47,12 +39,11 @@ impl GrammarParser {
             }
         }
 
-        if rules.is_empty() {
+        let Some(first) = rules.first() else {
             return Err(GrammarError::EmptyGrammar);
-        }
+        };
 
-        let start = start_symbol.ok_or(GrammarError::MissingStartSymbol)?;
-        Ok(Grammar::new(start, rules))
+        Ok(Grammar::new(first.head.clone(), rules))
     }
 
     fn parse_rhs_symbols(rhs: &str) -> Result<Vec<Symbol>, GrammarError> {

@@ -488,6 +488,49 @@ fn cyk_parse_limit_e_300_and_5000_chars() {
     assert_eq!(res_5000["params"]["length"], 5000);
 }
 
+// ---- Grammar error keys (no detail parameter) ----
+
+#[test]
+fn grammar_api_errors_use_typed_keys_without_detail() {
+    let cases = [
+        (api::parse_grammar(""), "grammar.error.empty"),
+        (api::parse_grammar("S a b"), "grammar.error.no_arrow"),
+        (api::parse_grammar("-> a"), "grammar.error.empty_head"),
+        (api::transform_to_cnf("", false), "grammar.error.empty"),
+        (
+            api::transform_to_cnf("S -> A A A A A A A A A A A\nA -> ε", false),
+            "grammar.error.too_many_nullable",
+        ),
+        (api::cyk_parse("S -> a b", "ab"), "grammar.error.not_cnf"),
+        (
+            api::cyk_parse("S -> a", &"a".repeat(101)),
+            "grammar.cyk_input_too_long",
+        ),
+        (api::cyk_parse("S a b", "a"), "grammar.error.no_arrow"),
+        (api::cfg_to_pda_topdown("S a b"), "grammar.error.no_arrow"),
+        (api::cfg_to_pda_bottomup("-> a"), "grammar.error.empty_head"),
+    ];
+
+    for (raw, expected_key) in cases {
+        let error = err(raw);
+        assert_eq!(error["key"], expected_key);
+        assert!(
+            error["params"].get("detail").is_none(),
+            "grammar error {expected_key} must not carry a detail param: {error}"
+        );
+    }
+
+    let no_arrow = err(api::parse_grammar("S a b"));
+    assert_eq!(no_arrow["params"]["line"], "S a b");
+
+    let nullable = err(api::transform_to_cnf(
+        "S -> A A A A A A A A A A A\nA -> ε",
+        false,
+    ));
+    assert_eq!(nullable["params"]["rule"], "S -> AAAAAAAAAAA");
+    assert_eq!(nullable["params"]["limit"], 10);
+}
+
 // ---- always an envelope, always the same answer ----
 
 #[test]

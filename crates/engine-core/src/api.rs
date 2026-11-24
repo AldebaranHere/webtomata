@@ -569,8 +569,7 @@ pub fn enumerate_language(
 pub fn parse_grammar(grammar_text: &str) -> String {
     let run = || -> Result<crate::grammar::Grammar, Message> {
         too_long(grammar_text, "grammar characters", 8192)?;
-        crate::grammar::GrammarParser::parse(grammar_text)
-            .map_err(|e| Message::new("api.invalid_grammar").with("detail", e.to_string()))
+        crate::grammar::GrammarParser::parse(grammar_text).map_err(Message::from)
     };
     finish(run())
 }
@@ -579,11 +578,9 @@ pub fn parse_grammar(grammar_text: &str) -> String {
 pub fn transform_to_cnf(grammar_text: &str, short_version: bool) -> String {
     let run = || -> Result<crate::grammar::CnfTransformationTrace, Message> {
         too_long(grammar_text, "grammar characters", 8192)?;
-        let grammar = crate::grammar::GrammarParser::parse(grammar_text)
-            .map_err(|e| Message::new("api.invalid_grammar").with("detail", e.to_string()))?;
-        crate::grammar::CnfTransformer::transform_with_options(&grammar, short_version).map_err(
-            |e| Message::new("api.cnf_transformation_failed").with("detail", e.to_string()),
-        )
+        let grammar = crate::grammar::GrammarParser::parse(grammar_text).map_err(Message::from)?;
+        crate::grammar::CnfTransformer::transform_with_options(&grammar, short_version)
+            .map_err(Message::from)
     };
     finish(run())
 }
@@ -594,14 +591,13 @@ pub fn cyk_parse(grammar_text: &str, input_word: &str) -> String {
         too_long(grammar_text, "grammar characters", 8192)?;
         let input_len = input_word.chars().count();
         if input_len > crate::grammar::CykParser::MAX_INPUT_LEN {
-            return Err(Message::new("grammar.cyk_input_too_long")
-                .with("limit", crate::grammar::CykParser::MAX_INPUT_LEN)
-                .with("length", input_len));
+            return Err(Message::from(crate::grammar::GrammarError::InputTooLong {
+                length: input_len,
+                limit: crate::grammar::CykParser::MAX_INPUT_LEN,
+            }));
         }
-        let grammar = crate::grammar::GrammarParser::parse(grammar_text)
-            .map_err(|e| Message::new("api.invalid_grammar").with("detail", e.to_string()))?;
-        crate::grammar::CykParser::parse(&grammar, input_word)
-            .map_err(|e| Message::new("api.cyk_failed").with("detail", e.to_string()))
+        let grammar = crate::grammar::GrammarParser::parse(grammar_text).map_err(Message::from)?;
+        crate::grammar::CykParser::parse(&grammar, input_word).map_err(Message::from)
     };
     finish(run())
 }
@@ -610,8 +606,7 @@ pub fn cyk_parse(grammar_text: &str, input_word: &str) -> String {
 pub fn cfg_to_pda_topdown(grammar_text: &str) -> String {
     let run = || -> Result<crate::cfg_pda::CfgToPda, Message> {
         too_long(grammar_text, "grammar characters", 8192)?;
-        let grammar = crate::grammar::GrammarParser::parse(grammar_text)
-            .map_err(|e| Message::new("api.invalid_grammar").with("detail", e.to_string()))?;
+        let grammar = crate::grammar::GrammarParser::parse(grammar_text).map_err(Message::from)?;
         crate::cfg_pda::cfg_to_pda_topdown(&grammar)
     };
     finish(run())
@@ -621,8 +616,7 @@ pub fn cfg_to_pda_topdown(grammar_text: &str) -> String {
 pub fn cfg_to_pda_bottomup(grammar_text: &str) -> String {
     let run = || -> Result<crate::cfg_pda::CfgToPda, Message> {
         too_long(grammar_text, "grammar characters", 8192)?;
-        let grammar = crate::grammar::GrammarParser::parse(grammar_text)
-            .map_err(|e| Message::new("api.invalid_grammar").with("detail", e.to_string()))?;
+        let grammar = crate::grammar::GrammarParser::parse(grammar_text).map_err(Message::from)?;
         crate::cfg_pda::cfg_to_pda_bottomup(&grammar)
     };
     finish(run())

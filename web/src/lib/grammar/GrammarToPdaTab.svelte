@@ -4,14 +4,14 @@
 	import { engineProblem } from '#lib/engine/problem.ts';
 	import type { EngineProblem } from '#lib/engine/problem.ts';
 	import type { CfgToPda, Grammar, Message } from '#lib/engine/types.ts';
-	import { id as sharedMessages, type MessageKey } from '#lib/i18n/id.ts';
+	import type { MessageKey } from '#lib/i18n/id.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { library } from '#lib/storage/library.svelte.ts';
 	import { createPdaMachine } from '#lib/storage/pda-work.ts';
+	import { formatGrammarError } from './grammar-error-text.ts';
 	import {
 		buildConvertedPdaDocument,
 		buildConvertedPdaTitle,
-		formatCfgPdaRefusal,
 		formatStepTransition,
 		showBottomUpEpsilonNote,
 		windowEarlierRows,
@@ -80,9 +80,7 @@
 	const showEpsilonNote = $derived(
 		result !== null && showBottomUpEpsilonNote(method, parsedGrammar)
 	);
-	const refusalText = $derived(
-		refusal ? formatCfgPdaRefusal(refusal, t, (key) => Object.hasOwn(sharedMessages, key)) : null
-	);
+	const refusalText = $derived(refusal ? formatGrammarError(refusal, t) : null);
 
 	async function runConversion(targetMethod: CfgToPdaMethod) {
 		const textSnapshot = grammarText;

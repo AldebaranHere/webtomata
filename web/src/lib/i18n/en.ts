@@ -1005,6 +1005,16 @@ export const en: Record<keyof typeof id, string> = {
 	'grammar.cyk_len_col': 'Length (l)',
 	'grammar.cyk_input_too_long':
 		'The string is too long to test ({length} characters; at most {limit}).',
+	'grammar.error.empty': 'The grammar has no production rules.',
+	'grammar.error.no_arrow': "Line '{line}' is missing an arrow separator (-> or →).",
+	'grammar.error.empty_head': 'The left-hand side (head) of a production rule cannot be empty.',
+	'grammar.error.not_cnf':
+		'The grammar must be in Chomsky Normal Form (CNF) to run the CYK algorithm.',
+	'grammar.error.too_many_nullable':
+		"Rule '{rule}' has too many nullable variables (more than {limit}).",
+	// TODO(review): wording of the generic grammar error fallback.
+	'grammar.error.generic':
+		'The grammar could not be processed. Check the production rules and try again.',
 	'grammar.legend_arrow_desc': 'Production rule separator (-> or →)',
 	'grammar.legend_alt_desc': 'Right-hand side alternative separator (|)',
 	'grammar.legend_empty_desc': 'Empty string production (ε, λ, ^)',

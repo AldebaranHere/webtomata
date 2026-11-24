@@ -1006,6 +1006,15 @@ export const id = {
 	'grammar.cyk_len_col': 'Panjang (l)',
 	'grammar.cyk_input_too_long':
 		'String terlalu panjang untuk diuji ({length} karakter; paling banyak {limit}).',
+	'grammar.error.empty': 'Tata bahasa tidak memiliki aturan produksi',
+	'grammar.error.no_arrow': "Baris '{line}' tidak memiliki pemisah panah (-> atau →)",
+	'grammar.error.empty_head': 'Ruas kiri (head) aturan produksi tidak boleh kosong',
+	'grammar.error.not_cnf':
+		'Tata bahasa harus berada dalam Bentuk Normal Chomsky (CNF) untuk menjalankan algoritma CYK.',
+	'grammar.error.too_many_nullable':
+		"Aturan '{rule}' memiliki terlalu banyak variabel nullable (> {limit})",
+	// TODO(review): wording of the generic grammar error fallback.
+	'grammar.error.generic': 'Tata bahasa tidak dapat diproses. Periksa kembali aturan produksinya.',
 	'grammar.legend_arrow_desc': 'Pemisah aturan produksi ruas kiri ke ruas kanan (-> atau →)',
 	'grammar.legend_alt_desc': 'Pemisah alternatif ruas kanan (|)',
 	'grammar.legend_empty_desc': 'Aturan produksi string kosong (ε, λ, ^)',

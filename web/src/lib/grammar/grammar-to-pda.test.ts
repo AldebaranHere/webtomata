@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { LIMITS } from '../editor/document.ts';
-import type { CfgToPda, Grammar, Message, StateName } from '../engine/types.ts';
+import type { CfgToPda, Grammar, StateName } from '../engine/types.ts';
 import {
 	CFG_PDA_SPACING,
 	CFG_PDA_STEP_WINDOW,
 	buildConvertedPdaDocument,
 	buildConvertedPdaTitle,
 	cfgPdaLayout,
-	formatCfgPdaRefusal,
 	formatStepTransition,
 	hasEpsilonRule,
 	showBottomUpEpsilonNote,
@@ -194,25 +193,6 @@ describe('grammar-to-pda', () => {
 			);
 			expect(row0).toEqual({ index: 0, fromName: 'p', toName: 'q', label: 'ε / ε / S' });
 			expect(row1).toEqual({ index: 1, fromName: 'q', toName: 'q', label: 'ε / S / aSb' });
-		});
-	});
-
-	describe('formatCfgPdaRefusal', () => {
-		it('translates known keys, falls back to detail, then raw key', () => {
-			const hasKey = (k: string) => k === 'pda.cfg.symbol_clash';
-			const tr = (k: string, p?: Record<string, string | number>) => `${k}:${p?.symbol ?? ''}`;
-
-			const clash: Message = { key: 'pda.cfg.symbol_clash', params: { symbol: 'a' } };
-			expect(formatCfgPdaRefusal(clash, tr, hasKey)).toBe('pda.cfg.symbol_clash:a');
-
-			const syntax: Message = {
-				key: 'api.invalid_grammar',
-				params: { detail: 'Baris tidak valid' }
-			};
-			expect(formatCfgPdaRefusal(syntax, tr, hasKey)).toBe('Baris tidak valid');
-
-			const unknown: Message = { key: 'unknown.key', params: {} };
-			expect(formatCfgPdaRefusal(unknown, tr, hasKey)).toBe('unknown.key');
 		});
 	});
 });
