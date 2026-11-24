@@ -893,3 +893,13 @@ Format:
 - Alternatives considered: leave crashes 7 and 8 for a later task (rejected: found by the sweep this task asked for, and each is a few lines).
 - Reversible? yes
 - Affects: `crates/engine-core/src/language/`, `api.rs`, `web/src/lib/language/language-errors.wasm.test.ts`
+
+
+## 2026-11-25 — T-070: the drawing learns two optional sets of edge keys; dashes follow the badge's freshness rule
+
+- Decider: planner (the owner chose T-070 as the next task)
+- Context: design section 2 promises dashed competing edges (DPDA only) and T-062 left the second edge of a pair without a selection stroke. Both change the shared drawing, which the FSM editor also uses.
+- Decision: `DiagramDrawing` and `EditorCanvas` get two optional props, `dashed` and `alsoChosen`, sets of `"from>to"` keys like the existing `taken`; `DiagramInput` and the geometry do not change. The sets come from two pure functions in `pda-determinism.ts`. Dashes are drawn only for a DPDA and only when the engine's answer is for the newest document (the badge's rule: a pair holds indices of one document). The second edge gets the stroke visually only: no `aria-pressed`, no change of the selection or of focus. A selected competing edge keeps its dash.
+- Alternatives considered: a new field in `DiagramInput` (rejected: the geometry would learn about pairs; the drawing already takes key sets for runs); keep the old dashes while the engine is asked again (rejected: they would point at the wrong transitions); dash per line (rejected: the design draws edges, the label lines are already crowded).
+- Reversible? yes
+- Affects: `web/src/lib/editor/diagram/DiagramDrawing.svelte`, `EditorCanvas.svelte`, `PdaEditor.svelte`, `pda-determinism.ts`
