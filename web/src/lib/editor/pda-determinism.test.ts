@@ -4,7 +4,13 @@
 // `engine.pdaDeterminism`, proved against the real engine in `pda-determinism.wasm.test.ts`.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Competition, EngineResult } from '../engine/types.ts';
-import { badgeModel, competitionReason, createDeterminism } from './pda-determinism.ts';
+import {
+	badgeModel,
+	competitionReason,
+	createDeterminism,
+	dashedEdges,
+	extraMarkedEdges
+} from './pda-determinism.ts';
 import type { PdaDocument } from './pda-document.ts';
 import { pdaDocumentFrom } from './pda-samples.ts';
 
@@ -456,5 +462,65 @@ describe('U18: a failure and dispose', () => {
 		await settle();
 		expect(determinism.pairs()).toEqual([]);
 		expect(determinism.status()).toBe('checking');
+	});
+});
+
+// ---- the drawing sets (T-070, F1 and F2) ----
+
+/** A set of keys as a sorted array, so that a failure shows the exact edges. */
+const keys = (set: ReadonlySet<string>) => [...set].sort();
+
+describe('U23: F1, the edges of a DPDA that hold a competing transition', () => {
+	it('U23: G as a DPDA with a ready answer dashes q0>q1 and q0>q0, and never q1>q1', () => {
+		expect(keys(dashedEdges('dpda', 'ready', machineG(), G_PAIRS))).toEqual(['0>0', '0>1']);
+	});
+
+	it('U24: an NDPDA and every status but ready draw no dash, although the pairs are the same', () => {
+		expect(keys(dashedEdges('ndpda', 'ready', machineG(), G_PAIRS))).toEqual([]);
+		for (const status of ['idle', 'checking', 'failed'] as const) {
+			expect(keys(dashedEdges('dpda', status, machineG(), G_PAIRS))).toEqual([]);
+		}
+	});
+
+	it('U25: a DPDA with no pair, or with no pair in the answer, draws no dash', () => {
+		expect(keys(dashedEdges('dpda', 'ready', machineF(), []))).toEqual([]);
+		expect(keys(dashedEdges('dpda', 'ready', machineG(), []))).toEqual([]);
+	});
+
+	it('U26: an index that names no transition is ignored, and the other edge still dashes', () => {
+		expect(keys(dashedEdges('dpda', 'ready', machineG(), [pair(0, 0, 9), pair(0, 1, 2)]))).toEqual([
+			'0>0',
+			'0>1'
+		]);
+	});
+});
+
+describe('U27: F2, the second edge of the shown transitions', () => {
+	it('U27: pair 1 of G marks q0>q0, and not the edge that Tunjukkan selected', () => {
+		expect(keys(extraMarkedEdges(machineG(), new Set([0, 1]), { from: 0, to: 1 }))).toEqual([
+			'0>0'
+		]);
+	});
+
+	it('U28: a pair on one edge adds nothing, and the "+ n lagi" rows of an edge are the same case', () => {
+		// Pair 2 of G: both rows are q0>q1, so the marked edge is the only edge of the rows.
+		expect(keys(extraMarkedEdges(machineG(), new Set([0, 2]), { from: 0, to: 1 }))).toEqual([]);
+		// "+ n lagi" on q0>q1 marks exactly rows 0 and 2 with the edge itself: the same input, and
+		// nothing extra either. (The function cannot tell the two callers apart, by design.)
+		expect(keys(extraMarkedEdges(machineG(), new Set([0, 2]), { from: 0, to: 1 }))).toEqual([]);
+	});
+
+	it('U29: no mark gives no edge, and an index that names no transition is ignored', () => {
+		expect(keys(extraMarkedEdges(machineG(), new Set(), null))).toEqual([]);
+		expect(keys(extraMarkedEdges(machineG(), new Set([9, -1]), { from: 0, to: 1 }))).toEqual([]);
+	});
+
+	it('U30: without a marked edge every marked row counts; with it, only its own key is subtracted', () => {
+		expect(keys(extraMarkedEdges(machineG(), new Set([0, 1]), null))).toEqual(['0>0', '0>1']);
+		expect(keys(extraMarkedEdges(machineG(), new Set([0, 1]), { from: 0, to: 0 }))).toEqual([
+			'0>1'
+		]);
+		// A marked row on a third edge is its own key, whatever the marked edge is.
+		expect(keys(extraMarkedEdges(machineG(), new Set([3]), { from: 0, to: 1 }))).toEqual(['1>1']);
 	});
 });

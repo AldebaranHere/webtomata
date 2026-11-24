@@ -51,6 +51,10 @@
 		active?: ReadonlySet<number>;
 		taken?: ReadonlySet<string>;
 		takenLines?: ReadonlyMap<string, ReadonlySet<number>>;
+		/** The edges to draw dashed, "from>to" keys (the PDA's competing edges, T-070). */
+		dashed?: ReadonlySet<string>;
+		/** The edges of the shown pair other than the selected one, "from>to" keys (T-070). */
+		alsoChosen?: ReadonlySet<string>;
 		onlayout?: () => void;
 		revealLabeling?: boolean;
 	}
@@ -70,6 +74,8 @@
 		active = new Set<number>(),
 		taken = new Set<string>(),
 		takenLines,
+		dashed = new Set<string>(),
+		alsoChosen = new Set<string>(),
 		onlayout,
 		revealLabeling = false
 	}: EditorCanvasProps<D, C> = $props();
@@ -871,6 +877,8 @@
 				{active}
 				{taken}
 				{takenLines}
+				{dashed}
+				{alsoChosen}
 				interactive
 			/>
 			{#if preview}
