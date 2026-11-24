@@ -15,6 +15,17 @@ Format:
 
 ---
 
+## 2026-11-24 — The language errors become keys; the unreachable ones are deleted (T-028b)
+
+- Decider: owner (five rulings of 2026-11-24, written down by the worker)
+- Context: the T-028b block listed 20 `LanguageError::InvalidSyntax` sites; reading the code showed that 10 of the 17 distinct messages can never leave `parse` (the set-builder attempt at `parser.rs:270` discards its error and backtracks), two more cannot be produced at all (fixed operator list), and `DepthExceeded` is never constructed. Keeping them would add keys no screen can show, need white-box tests, and pass the 600 B size allowance.
+- Decision: (1) `LanguageError` keeps nine variants (seven syntax, two evaluation) and every one is reachable through `parse`, the evaluator or `api`; the ten dead syntax messages, the two fixed-list arms and `DepthExceeded` are deleted; `try_parse_set_builder` and its subtree become payload-free; the two `_` arms use a private `RelOp` enum so no panic path or dead variant remains; a pinning case asserts a malformed set-builder still reports `expected_comma_or_brace`; the overflow input is 20 nines. (2) The four pre-existing crash classes found in the module (byte-index slicing, unbounded recursion, `usize::MAX` arithmetic, capacity overflow) are **not** fixed or logged as a plan task: the exact input and failure go in the report and the owner writes that task; one permanent `language_parse_never_panics` proptest is added. (3) `formatEngineError(error, translate, genericKey)` has no `hasKey`. (4) `number_too_large`, `language.error.generic` and the two `api.invalid_environment` entries carry `TODO(review)` and go in the pull request for the owner.
+- Alternatives considered: keep the eight internal messages typed with keys and white-box tests (rejected: ~400 B of text no screen can show); rewrite the set-builder errors to reach the screen (rejected: changes the wording of today's messages, out of scope).
+- Reversible? yes
+- Affects: `crates/engine-core/src/language/{mod,parser,error}.rs`, `crates/engine-core/src/api.rs`, `web/src/lib/i18n/{id,en}.ts`, `web/src/lib/engine/error-text.ts`, `web/src/lib/language/LanguageWorkstation.svelte`, `docs/decisions/0070-language-errors-are-keys.md`
+
+---
+
 ## 2026-11-10 — FSM and PDA machines in one "Mesin saya" list with shared store and openStore decoupling (T-074)
 
 - Decider: worker (approved by owner)
