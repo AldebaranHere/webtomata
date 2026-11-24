@@ -8,7 +8,7 @@
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { library } from '#lib/storage/library.svelte.ts';
 	import { createPdaMachine } from '#lib/storage/pda-work.ts';
-	import { formatGrammarError } from './grammar-error-text.ts';
+	import { formatEngineError } from '#lib/engine/error-text.ts';
 	import {
 		buildConvertedPdaDocument,
 		buildConvertedPdaTitle,
@@ -80,7 +80,9 @@
 	const showEpsilonNote = $derived(
 		result !== null && showBottomUpEpsilonNote(method, parsedGrammar)
 	);
-	const refusalText = $derived(refusal ? formatGrammarError(refusal, t) : null);
+	const refusalText = $derived(
+		refusal ? formatEngineError(refusal, t, 'grammar.error.generic') : null
+	);
 
 	async function runConversion(targetMethod: CfgToPdaMethod) {
 		const textSnapshot = grammarText;

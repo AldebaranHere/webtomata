@@ -940,6 +940,19 @@ export const en: Record<keyof typeof id, string> = {
 	'language.results_meta':
 		'Showing first {count} strings (ordered by string length first, then alphabetically):',
 	'language.length_badge': '|w| = {len}',
+	'language.error.unexpected_character': "Unexpected character at position {position}: '{rest}'",
+	'language.error.expected_power_number':
+		'Expected a number after the power or coefficient operator.',
+	'language.error.number_too_large': 'The number is too large to process.',
+	'language.error.unclosed_parenthesis': "The opening parenthesis '(' has no matching ')'",
+	'language.error.unexpected_symbol': "Unexpected symbol: '{symbol}'",
+	'language.error.unexpected_end': 'The expression ends too early.',
+	'language.error.expected_comma_or_brace': "Expected ',' or '}' in the set of words.",
+	'language.error.undefined_reference': "Language '{name}' is not defined.",
+	'language.error.cyclic_reference': "A cyclic reference was found at '{name}'.",
+	'language.error.generic':
+		'The language expression could not be processed. Check the syntax and try again.',
+	'api.invalid_environment': 'The language data is not valid.',
 	'grammar.title': 'Context-Free Grammar & Chomsky Normal Form',
 	'grammar.library_aria': 'Grammar Library',
 	'grammar.library_title': 'Grammar Library',

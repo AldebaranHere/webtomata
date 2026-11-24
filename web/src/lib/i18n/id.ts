@@ -941,6 +941,20 @@ export const id = {
 	'language.results_meta':
 		'Menampilkan {count} string pertama (diurutkan berdasarkan panjang string terlebih dahulu, kemudian alfabetis):',
 	'language.length_badge': '|w| = {len}',
+	'language.error.unexpected_character': "Karakter tak terduga pada posisi {position}: '{rest}'",
+	'language.error.expected_power_number': 'Diharapkan angka setelah operator pangkat/koefisien',
+	// TODO(review): new Indonesian wording; before T-028b this was the Rust library's English text.
+	'language.error.number_too_large': 'Angka terlalu besar untuk diproses',
+	'language.error.unclosed_parenthesis': "Kurung buka '(' tidak memiliki pasangan ')'",
+	'language.error.unexpected_symbol': "Simbol tak terduga: '{symbol}'",
+	'language.error.unexpected_end': 'Ekspresi berakhir tiba-tiba',
+	'language.error.expected_comma_or_brace': "Diharapkan ',' atau '}' dalam himpunan kata",
+	'language.error.undefined_reference': "Bahasa '{name}' belum didefinisikan",
+	'language.error.cyclic_reference': "Referensi siklik terdeteksi pada '{name}'",
+	// TODO(review): wording of the generic language error fallback.
+	'language.error.generic': 'Ekspresi bahasa tidak dapat diproses. Periksa kembali sintaksnya.',
+	// TODO(review): new id text; this key had no entry before T-028b.
+	'api.invalid_environment': 'Data bahasa tidak valid',
 	'grammar.title': 'Tata Bahasa Bebas Konteks & Bentuk Normal Chomsky',
 	'grammar.library_aria': 'Daftar Tata Bahasa',
 	'grammar.library_title': 'Perpustakaan Tata Bahasa',

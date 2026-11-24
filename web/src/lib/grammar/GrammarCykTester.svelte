@@ -2,7 +2,7 @@
 	import { engine } from '#lib/engine/client.ts';
 	import type { CykResult, Grammar, Message } from '#lib/engine/types.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
-	import { formatGrammarError } from './grammar-error-text.ts';
+	import { formatEngineError } from '#lib/engine/error-text.ts';
 	import { grammarToText } from './grammar-text.ts';
 
 	let {
@@ -18,7 +18,9 @@
 	let cykResult = $state<CykResult | null>(null);
 	let cykError = $state<Message | null>(null);
 
-	const cykErrorMessage = $derived(cykError ? formatGrammarError(cykError, t) : null);
+	const cykErrorMessage = $derived(
+		cykError ? formatEngineError(cykError, t, 'grammar.error.generic') : null
+	);
 
 	// Convert grammar object to canonical text format with spaced symbols for the engine call
 	const grammarText = $derived(grammarToText(grammar));
